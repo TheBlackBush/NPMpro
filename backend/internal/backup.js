@@ -6,6 +6,7 @@ import { pipeline } from "node:stream/promises";
 import { BackupError, readHeader } from "../lib/backup/format.js";
 import { loadStageData, previewReplace } from "../lib/backup/restore-db.js";
 import { CATEGORIES, TYPES } from "../lib/backup/types.js";
+import errs from "../lib/error.js";
 import { createBackupWriter } from "./backup-create.js";
 import { createMerge } from "./backup-merge.js";
 import { createOfflineChecks } from "./backup-offline.js";
@@ -87,6 +88,12 @@ const createBackupService = ({
 	const adminOf = (access) => {
 		access.canAdmin();
 		return access.token.getUserId(0);
+	};
+
+	// a token may not replace or add users: the restore or merge of the Users part stays in a session (the routes
+	// require types, so "every part" is a list holding users)
+	const refuseTokenUsers = (access, types) => {
+		if (access.apiToken && Array.isArray(types) && types.includes("users")) throw new errs.PermissionError();
 	};
 
 	// one shared set of the injected values (defaults applied) for the files the service is built from
@@ -381,6 +388,7 @@ const createBackupService = ({
 		 * @returns {Promise<Object>}  the plan
 		 */
 		plan: async (access, token, { mode = "merge", types, items, choices } = {}) => {
+			refuseTokenUsers(access, types);
 			if (mode !== "merge") throw new BackupError("invalid-types", "Only a merge is planned");
 			const { entry, scope } = openSession(access, token);
 			return (await buildPlan({ entry, scope, types, items, choices })).plan;
@@ -394,6 +402,7 @@ const createBackupService = ({
 		 *          offlineHosts }; merge: { counts, cleared, needsSecrets, restartNeeded, runtimeFailed, offlineHosts }
 		 */
 		restore: async (access, token, { mode = "replace", types, items, choices, planHash } = {}) => {
+			refuseTokenUsers(access, types);
 			if (mode === "merge") return await mergeRestore(access, token, { types, items, choices, planHash });
 			if (mode !== "replace") throw new BackupError("invalid-types", "Unknown restore mode");
 			const adminUserId = adminOf(access);

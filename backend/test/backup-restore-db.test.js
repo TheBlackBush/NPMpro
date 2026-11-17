@@ -43,6 +43,10 @@ const sqlite = async () => {
 		t.string("visibility").notNull();
 		t.unique("user_id");
 	});
+	await knex.schema.createTable("npmpro_api_token", (t) => {
+		t.increments("id");
+		t.integer("user_id").notNull();
+	});
 	await knex.schema.createTable("proxy_host", (t) => {
 		t.increments("id");
 		t.integer("owner_user_id").notNull();

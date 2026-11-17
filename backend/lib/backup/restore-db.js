@@ -280,6 +280,8 @@ const createInserter = (trx) => {
 };
 
 const deleteType = async (trx, typeId, adminUserId) => {
+	// the restored users replace these rows, and an id may now name someone else: their API tokens go too
+	if (typeId === "users") await trx("npmpro_api_token").whereNot("user_id", adminUserId).del();
 	for (const { table, where } of [...typeOf(typeId).tables].reverse()) {
 		const query = trx(table);
 		if (typeId === "users") query.whereNot(table === "user" ? "id" : "user_id", adminUserId);
