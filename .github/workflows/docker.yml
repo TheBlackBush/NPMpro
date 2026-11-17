@@ -21,11 +21,11 @@ jobs:
         with:
           # the PR merge commit and its first parent (the base), for Changed Certbot Files
           fetch-depth: 2
-      - name: build arguments
+      - name: Build Arguments
         id: args
-        run: |
-          echo "version=ci-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-          echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/build-args
+        with:
+          version: ci
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
           driver-opts: env.BUILDKIT_STEP_LOG_MAX_SIZE=-1
@@ -41,6 +41,8 @@ jobs:
             VERSION=${{ steps.args.outputs.version }}
             ALPINE_REFRESH=${{ steps.args.outputs.week }}
       - uses: ./.github/actions/setup
+        with:
+          project: frontend
       - name: password of the first user
         run: |
           password="Ci-$(openssl rand -hex 12)-9"
@@ -81,12 +83,30 @@ jobs:
             echo "::error::image runs $image, .node-version says ${want#v}"
             exit 1
           fi
-      - name: install the browser for the CSP check
+      - name: Install Dependencies
         working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Playwright Version
+        id: playwright
+        working-directory: frontend
+        run: echo "version=$(node -p 'require("./package.json").devDependencies.playwright')" >> "$GITHUB_OUTPUT"
+      - name: Browser Cache
+        id: browser-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}-chromium-headless-shell
+      - name: Install Browser
+        working-directory: frontend
+        env:
+          CACHE_HIT: ${{ steps.browser-cache.outputs.cache-hit }}
+        # the runner image already has Chrome's libraries; the system packages come from the Ubuntu mirror and are
+        # tried only when the browser itself is not cached (the CSP check fails if a library is missing)
         run: |
-          pnpm install --frozen-lockfile
-          # the system packages come from the Ubuntu mirror; the runner image already has Chrome's libraries, so when
-          # the mirror cannot be reached the browser alone is enough (the CSP check fails if a library is missing)
+          if [ "$CACHE_HIT" = true ]; then
+            pnpm exec playwright install --only-shell chromium
+            exit 0
+          fi
           for attempt in 1 2; do
             timeout 300 pnpm exec playwright install --with-deps --only-shell chromium && exit 0
             echo "::warning::browser install with system packages failed (attempt $attempt of 2)"

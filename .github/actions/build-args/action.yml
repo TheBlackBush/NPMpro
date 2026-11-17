@@ -1,0 +1,24 @@
+name: Build Arguments
+description: The VERSION and ALPINE_REFRESH build arguments of the image
+inputs:
+  version:
+    description: version prefix shown in the app, the short commit hash is appended
+    required: true
+outputs:
+  version:
+    description: the VERSION build argument, <version>-<short commit hash>
+    value: ${{ steps.args.outputs.version }}
+  week:
+    description: the ALPINE_REFRESH build argument, the ISO week (the Alpine packages refresh weekly)
+    value: ${{ steps.args.outputs.week }}
+runs:
+  using: composite
+  steps:
+    - name: Build Arguments
+      id: args
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        echo "version=$VERSION-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+        echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"

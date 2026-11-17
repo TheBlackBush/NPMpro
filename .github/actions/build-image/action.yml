@@ -35,14 +35,11 @@ runs:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
         password: ${{ inputs.token }}
-    - name: build arguments
+    - name: Build Arguments
       id: args
-      shell: bash
-      env:
-        VERSION: ${{ inputs.version }}
-      run: |
-        echo "version=$VERSION-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-        echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+      uses: ./.github/actions/build-args
+      with:
+        version: ${{ inputs.version }}
     - id: build
       uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
       with:
