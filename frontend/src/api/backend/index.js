@@ -44,6 +44,7 @@ export * from "./getGeoipSettings";
 export * from "./getHealth";
 export * from "./getHostsReport";
 export * from "./getLandingPages";
+export * from "./getMcpTools";
 export * from "./getMonitoringCrowdsec";
 export * from "./getMonitoringSettings";
 export * from "./getMonitoringSummary";

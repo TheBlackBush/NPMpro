@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createApiToken, getApiTokens, getOwnApiTokens, revokeApiToken, revokeOwnApiToken } from "src/api/backend";
+import {
+	createApiToken,
+	getApiTokens,
+	getMcpTools,
+	getOwnApiTokens,
+	revokeApiToken,
+	revokeOwnApiToken,
+} from "src/api/backend";
 
 // a token change is audited
 const INVALIDATED = [["api-tokens"], ["audit-logs"]];
@@ -30,6 +37,16 @@ const useAllApiTokens = (enabled = true) =>
 	});
 
 /**
+ * The MCP tools and what each needs; administrators only
+ */
+const useMcpTools = () =>
+	useQuery({
+		queryKey: ["mcp-tools"],
+		queryFn: () => getMcpTools(),
+		staleTime: 60 * 1000,
+	});
+
+/**
  * Variables: the token form payload; resolves with the token and its text, shown once
  */
 const useCreateApiToken = () => {
@@ -53,4 +70,4 @@ const useRevokeApiToken = ({ admin = false } = {}) => {
 	});
 };
 
-export { useAllApiTokens, useCreateApiToken, useOwnApiTokens, useRevokeApiToken };
+export { useAllApiTokens, useCreateApiToken, useMcpTools, useOwnApiTokens, useRevokeApiToken };
