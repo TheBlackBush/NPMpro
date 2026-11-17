@@ -131,7 +131,7 @@ const COMMAND = /<!--#\s*([a-z]+)((?:\s+[a-z]+="[^"]*")*)\s*-->/gu;
 const ATTRIBUTE = /([a-z]+)="([^"]*)"/gu;
 const OPENER = /<!--#/gu;
 const SPECIFIER = /%(.)/gsu;
-const ECHO_VARS = new Set(["remote_addr", "date_gmt", "date_local", "status", "host"]);
+const ECHO_VARS = new Set(["remote_addr", "date_gmt", "date_local", "status", "host", "npmpro_visit_time"]);
 const ECHO_ATTRIBUTES = new Set(["var", "default", "encoding"]);
 const TIME_LETTERS = new Set(["Y", "m", "d", "H", "M", "S", "Z", "A", "b", "%"]);
 

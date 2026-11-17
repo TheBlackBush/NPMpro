@@ -1,5 +1,5 @@
 -- Fills the server-side include (SSI) commands of the CrowdSec ban and captcha pages for each answer, with the rules of
--- backend/lib/landing-pages/placeholders.js: echo of remote_addr, host, status, date_gmt and date_local (HTML-escaped)
+-- backend/lib/landing-pages/placeholders.js: echo of remote_addr, host, status, date_gmt, date_local and npmpro_visit_time (HTML-escaped)
 -- and config timefmt; other commands are dropped. nginx's own SSI cannot run on these pages: the bouncer answers from
 -- the access phase of the visitor's location, where ssi would also parse the upstream's pages.
 local M = {}
@@ -39,6 +39,8 @@ function M.fill(html, status)
       value = os.date("!" .. timefmt, now)
     elseif values.var == "date_local" then
       value = os.date(timefmt, now)
+    elseif values.var == "npmpro_visit_time" then
+      value = ngx.var.npmpro_visit_time
     else
       return ""
     end

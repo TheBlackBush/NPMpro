@@ -245,7 +245,7 @@ const internalLandingPages = {
 			shown = "denied";
 			html = await ofPlace("access_list", accessListModel, shown);
 		} else throw notFound();
-		return previewHtml(html, shown);
+		return previewHtml(html, shown, { visitTime: visitTimeOf(await readStoredLandingPages()) });
 	},
 };
 

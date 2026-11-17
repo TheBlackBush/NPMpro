@@ -5,6 +5,8 @@ import { VISIT_TIME_CONF, VISIT_TIMES, visitTimeConf, visitTimeOf } from "../lib
 
 const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
 
+const NGINX_INCLUDE = /^ {2}include \/data\/npmpro\/nginx\/landing-pages\.conf;$/mu;
+
 it("knows the three choices, utc by default and for anything else", () => {
 	assert.deepEqual(VISIT_TIMES, ["utc", "local", "local-utc"]);
 	for (const value of VISIT_TIMES) assert.equal(visitTimeOf({ visit_time: value }), value);
@@ -23,10 +25,7 @@ it("writes a map include that only ever holds one of the three choices", () => {
 });
 
 it("nginx.conf includes the file and data-setup.sh creates it with the utc text when it is missing", () => {
-	assert.match(
-		read("rootfs/usr/local/nginx/conf/nginx.conf"),
-		/^ {2}include \/data\/npmpro\/nginx\/landing-pages\.conf;$/mu,
-	);
+	assert.match(read("rootfs/usr/local/nginx/conf/nginx.conf"), NGINX_INCLUDE);
 	const dataSetup = read("rootfs/usr/local/bin/data-setup.sh");
 	assert.ok(
 		dataSetup.includes(

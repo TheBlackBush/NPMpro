@@ -65,6 +65,15 @@ it("a place's page: its own, the global one, nothing for the upstream's own answ
 	assert.equal((await admin.get("/settings/landing-pages/preview/other/ban")).status, 404);
 });
 
+it("the preview fills the saved visit time into a custom page that echoes it", async () => {
+	await admin.put("/settings/landing-pages", {
+		visit_time: "local-utc",
+		pages: { maintenance: { choice: "custom", html: '<p><!--# echo var="npmpro_visit_time" --></p>' } },
+	});
+	assert.equal((await admin.get("/settings/landing-pages/preview/global/maintenance")).text, "<p>local-utc</p>");
+	await admin.put("/settings/landing-pages", { visit_time: "utc", pages: { maintenance: { choice: "npmpro" } } });
+});
+
 it("admins only", async () => {
 	const user = await api.limited({
 		visibility: "all",

@@ -15,10 +15,11 @@ const CAPTCHA = {
  * @param   {string} type
  * @param   {Object} [options]
  * @param   {Date}   [options.now]
+ * @param   {string} [options.visitTime]  Settings, Landing pages, Visit time ($npmpro_visit_time in nginx)
  * @returns {string}
  */
-export const previewHtml = (html, type, { now = new Date() } = {}) => {
-	let page = fillPlaceholders(html, { ...SAMPLE, status: SAMPLE_STATUS[type], now });
+export const previewHtml = (html, type, { now = new Date(), visitTime = "utc" } = {}) => {
+	let page = fillPlaceholders(html, { ...SAMPLE, status: SAMPLE_STATUS[type], npmpro_visit_time: visitTime, now });
 	for (const [placeholder, value] of Object.entries(CAPTCHA)) page = page.replaceAll(placeholder, value);
 	return page;
 };

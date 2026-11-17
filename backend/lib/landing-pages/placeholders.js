@@ -1,10 +1,10 @@
 // The server-side include (SSI) commands a landing page may hold (built-in or custom), and how they are filled. nginx
 // fills them where it serves a page (ssi on); the CrowdSec bouncer's ban and captcha pages are filled with the same
 // rules by rootfs/usr/local/share/lua/5.1/npmpro_pages.lua, and the preview by fillPlaceholders. Allowed: echo of the
-// five variables below (HTML-escaped, nginx's default encoding) and config timefmt. Anything else (include, set, if,
+// six variables below (HTML-escaped, nginx's default encoding) and config timefmt. Anything else (include, set, if,
 // other variables) would give the author of a custom page server-side reach, so a save refuses it.
 
-export const ECHO_VARS = ["remote_addr", "date_gmt", "date_local", "status", "host"];
+export const ECHO_VARS = ["remote_addr", "date_gmt", "date_local", "status", "host", "npmpro_visit_time"];
 // nginx's default timefmt
 export const DEFAULT_TIMEFMT = "%A, %d-%b-%Y %H:%M:%S %Z";
 
@@ -100,7 +100,7 @@ const formatTime = (format, date) =>
  * empty value, config timefmt for the echoes after it; commands that are not allowed are dropped
  *
  * @param   {string} html
- * @param   {{ remote_addr?: string, status?: number|string, host?: string, now?: Date }} values
+ * @param   {{ remote_addr?: string, status?: number|string, host?: string, npmpro_visit_time?: string, now?: Date }} values
  * @returns {string}
  */
 export const fillPlaceholders = (html, values) => {

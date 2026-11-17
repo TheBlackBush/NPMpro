@@ -44,6 +44,7 @@ it("checks a page like the backend: size in bytes, UTF-8, the allowed SSI", () =
 	assert.ok(
 		ssiAllowed('<!--# config timefmt="%Y" --><!--# echo var="date_gmt" --> <!--# echo var="host" default="" -->'),
 	);
+	assert.ok(ssiAllowed('<!--# echo var="npmpro_visit_time" default="utc" -->'));
 	assert.ok(!ssiAllowed('<!--# echo var="remote_addr" encoding="none" -->'));
 	assert.ok(!ssiAllowed('<!--# echo var="remote_addr" other="x" -->'));
 	assert.ok(!ssiAllowed('<!--# echo var="server_name" -->'));
