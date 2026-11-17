@@ -63,7 +63,8 @@ const rpc = async (token, method, params) => {
 			headers: { authorization: `Bearer ${token}` },
 		},
 	);
-	assert.equal(res.status, 200, res.text);
+	// a helper, not a test: it throws instead of asserting
+	if (res.status !== 200) throw new Error(`MCP answered ${res.status}: ${res.text}`);
 	return res.body;
 };
 const listed = async (token) => (await rpc(token, "tools/list")).result.tools;
@@ -76,8 +77,8 @@ const call = async (token, name, args = {}) => {
 // a call that must succeed: the parsed result
 const run = async (token, name, args = {}) => {
 	const body = await call(token, name, args);
-	assert.ok(body.result, JSON.stringify(body));
-	assert.notEqual(body.result.isError, true, body.result.content[0].text);
+	if (!body.result) throw new Error(`no result: ${JSON.stringify(body)}`);
+	if (body.result.isError === true) throw new Error(`tool error: ${body.result.content[0].text}`);
 	return JSON.parse(body.result.content[0].text);
 };
 
