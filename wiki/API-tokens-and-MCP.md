@@ -45,7 +45,8 @@ permissions, expiry, last use and creation date. To make one:
    **Manage**, **View Only** or **Hidden**. A level above your own cannot be chosen. Choosing a section turns on what
    it needs, such as access lists for proxy hosts.
 6. **Administrator** (only for administrators): the token acts as an administrator for settings, the audit log,
-   backups and monitoring, but never for users. It is off by default; keep such a token like your password.
+   backups and monitoring, but never for users or the sign-in settings. It is off by default; keep such a token like
+   your password.
 7. **Allow delete**: lets the token delete (delete requests, replace restores and the MCP delete tools). It is off by
    default.
 8. **Create**. The token is shown once in a window with **Copy** and the note "This token is shown only once": copy
