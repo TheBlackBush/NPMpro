@@ -1,4 +1,4 @@
-name: test
+name: Tests
 on:
   push:
     branches:
@@ -46,20 +46,25 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: ./.github/actions/setup
-      - run: pnpm install --frozen-lockfile
-      - name: no known high or critical advisories in production dependencies
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set Up Node and pnpm
+        uses: ./.github/actions/setup
+        with:
+          project: backend
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Audit Production Dependencies
         run: pnpm audit --prod --audit-level high
-      - name: lint and format
+      - name: Lint and Format
         run: pnpm biome ci
-      - name: openapi schema
+      - name: OpenAPI Schema
         run: node validate-schema.js
-      - name: unit tests with the coverage floor
+      - name: Unit Tests with Coverage Floor
         run: pnpm run coverage # fails on a failed test or below coverage-floor.json; the summary is in this log
-      - name: data folder move
+      - name: Data Folder Move
         run: sh test/migrate-data-folder.test.sh
-      - name: tests on real database servers
+      - name: Real Database Servers
         shell: bash
         env:
           POSTGRES_NPMPRO_HOST: 127.0.0.1
@@ -101,24 +106,29 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: ./.github/actions/setup
-      - run: pnpm install --frozen-lockfile
-      - name: no known high or critical advisories in production dependencies
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set Up Node and pnpm
+        uses: ./.github/actions/setup
+        with:
+          project: frontend
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Audit Production Dependencies
         run: pnpm audit --prod --audit-level high
-      - name: lint and format
+      - name: Lint and Format
         run: pnpm biome ci
-      - name: translations sorted
+      - name: Translations Sorted
         run: |
           ./translations/sort-locale.sh
           git diff --exit-code -- translations
-      - name: translation keys exist
+      - name: Translation Keys Exist
         run: ./translations/check-keys.sh
-      - name: every language has every key
+      - name: Every Language Has Every Key
         run: ./translations/check-locale.sh
-      - name: every translation key is used
+      - name: Every Translation Key Used
         run: node translations/check-unused.js
-      - name: unit tests with the coverage floor
+      - name: Unit Tests with Coverage Floor
         # the floor covers src/modules, the code with a test harness (measured 98.63, 95.19, 97.34); node's own
         # --test-coverage-* flags read 98.5 as 98, so scripts/coverage-floor.js checks the decimals
         run: |
@@ -126,9 +136,9 @@ jobs:
           node --test --experimental-test-coverage --test-coverage-include='src/modules/**' 'src/**/*.test.js' \
             | tee "$RUNNER_TEMP/coverage.txt"
           node scripts/coverage-floor.js 98.5 95.1 97.2 < "$RUNNER_TEMP/coverage.txt"
-      - name: build
+      - name: Build
         run: pnpm vite build
-      - name: no Tabler or Bootstrap in the bundle
+      - name: No Tabler or Bootstrap in the Bundle
         # tabler-theme is the kept localStorage key of the theme (src/modules/Theme.js), not Tabler code
         run: |
           if grep -rnoE 'data-bs-|@popperjs|tblr|tabler[a-z-]*' dist | grep -v ':tabler-theme$'; then
@@ -139,38 +149,41 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: ludeeus/action-shellcheck@00b27aa7cb85167568cb48a3838b75f4265f2bca # master
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Shell Scripts
+        uses: ludeeus/action-shellcheck@00b27aa7cb85167568cb48a3838b75f4265f2bca # master
         with:
           check_together: 'yes'
-      - name: dockerfile
+      - name: Dockerfiles
         run: |
           curl -sSfL https://github.com/hadolint/hadolint/releases/download/v2.15.1/hadolint-linux-x86_64 -o "$RUNNER_TEMP/hadolint"
           chmod +x "$RUNNER_TEMP/hadolint"
           git ls-files '*Dockerfile' | xargs -n1 "$RUNNER_TEMP/hadolint" --ignore DL3018 --ignore DL3003 --ignore DL3013
-      - name: workflows
+      - name: Workflows
         run: |
           curl -sSfL https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz | tar -xz -C "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint" -ignore SC2086 -ignore SC2012
-      - name: json syntax
+      - name: JSON Syntax
         run: git ls-files '*.json' | xargs -n1 jq empty
-      - name: old project name
+      - name: Old Project Name
         run: sh .github/scripts/check-names.sh
-      - name: compose.yaml variables
+      - name: Compose Variables
         run: sh .github/scripts/check-compose-envs.sh
-      - name: Unraid template
+      - name: Unraid Template
         run: |
           python3 -I .github/scripts/check-unraid-template.py
           sh .github/scripts/check-unraid-template.test.sh
-      - name: release version script
+      - name: Release Version Script
         run: sh .github/scripts/release-version.test.sh
-      - name: update scripts stop on a failed download or a bad hash
+      - name: Update Scripts
         run: sh .github/scripts/update-sources.test.sh
-      - name: nginx config format
+      - name: nginx Config Format
         run: |
           npx --yes nginxbeautifier@1.0.19 -s 2 -r rootfs/usr/local/nginx/conf
           git diff --exit-code -- rootfs/usr/local/nginx/conf
-      - uses: codespell-project/actions-codespell@e3258cca84ce02b0bb36a3d41f2c18f719a0cc1a # v2.4.3
+      - name: Spelling
+        uses: codespell-project/actions-codespell@e3258cca84ce02b0bb36a3d41f2c18f719a0cc1a # v2.4.3
         with:
           check_filenames: true
           check_hidden: true

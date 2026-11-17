@@ -9,6 +9,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   version:
+    name: Version
     if: ${{ github.repository_owner == 'TheBlackBush' }}
     runs-on: ubuntu-slim
     permissions:
@@ -17,14 +18,16 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       tags: ${{ steps.version.outputs.tags }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: version
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Version and Tags
         id: version
         env:
           TAG: ${{ github.ref_name }}
         run: sh .github/scripts/release-version.sh .version "$TAG" >> "$GITHUB_OUTPUT"
 
   publish:
+    name: Publish
     needs: version
     permissions:
       contents: read
@@ -39,12 +42,13 @@ jobs:
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
   release:
+    name: GitHub Release
     needs: [version, publish]
     runs-on: ubuntu-slim
     permissions:
       contents: write
     steps:
-      - name: github release
+      - name: Create Release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}

@@ -17,19 +17,22 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # the PR merge commit and its first parent (the base), for Changed Certbot Files
           fetch-depth: 2
-      - name: build arguments
+      - name: Build Arguments
         id: args
-        run: |
-          echo "version=ci-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-          echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        uses: ./.github/actions/build-args
+        with:
+          version: ci
+      - name: Set Up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
           driver-opts: env.BUILDKIT_STEP_LOG_MAX_SIZE=-1
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      - name: Build Image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           platforms: linux/amd64
@@ -40,13 +43,16 @@ jobs:
             FLAGS=-march=x86-64-v2 -mtune=generic -fcf-protection=full
             VERSION=${{ steps.args.outputs.version }}
             ALPINE_REFRESH=${{ steps.args.outputs.week }}
-      - uses: ./.github/actions/setup
-      - name: password of the first user
+      - name: Set Up Node and pnpm
+        uses: ./.github/actions/setup
+        with:
+          project: frontend
+      - name: First User Password
         run: |
           password="Ci-$(openssl rand -hex 12)-9"
           echo "::add-mask::$password"
           echo "CHECK_PASSWORD=$password" >> "$GITHUB_ENV"
-      - name: start container and wait until healthy
+      - name: Start and Wait Until Healthy
         run: |
           mkdir -p "$RUNNER_TEMP/data"
           docker run -d --name npmpro --network host -e TZ=UTC -v "$RUNNER_TEMP/data:/data" npmpro:test
@@ -60,7 +66,7 @@ jobs:
           done
           echo "::error::NPMpro did not become healthy within 5 minutes"
           exit 1
-      - name: the version reaches the app
+      - name: Version Reaches the App
         env:
           WANT: ${{ steps.args.outputs.version }}
         run: |
@@ -73,7 +79,7 @@ jobs:
             echo "::error::the start log does not show 'Version:  $WANT'"
             exit 1
           fi
-      - name: the image runs the Node major CI tests on
+      - name: Image Runs the CI Node Major
         run: |
           image="$(docker exec npmpro node --version)"
           want="v$(cat .node-version)"
@@ -81,12 +87,30 @@ jobs:
             echo "::error::image runs $image, .node-version says ${want#v}"
             exit 1
           fi
-      - name: install the browser for the CSP check
+      - name: Install Dependencies
         working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Playwright Version
+        id: playwright
+        working-directory: frontend
+        run: echo "version=$(node -p 'require("./package.json").devDependencies.playwright')" >> "$GITHUB_OUTPUT"
+      - name: Browser Cache
+        id: browser-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}-chromium-headless-shell
+      - name: Install Browser
+        working-directory: frontend
+        env:
+          CACHE_HIT: ${{ steps.browser-cache.outputs.cache-hit }}
+        # the runner image already has Chrome's libraries; the system packages come from the Ubuntu mirror and are
+        # tried only when the browser itself is not cached (the CSP check fails if a library is missing)
         run: |
-          pnpm install --frozen-lockfile
-          # the system packages come from the Ubuntu mirror; the runner image already has Chrome's libraries, so when
-          # the mirror cannot be reached the browser alone is enough (the CSP check fails if a library is missing)
+          if [ "$CACHE_HIT" = true ]; then
+            pnpm exec playwright install --only-shell chromium
+            exit 0
+          fi
           for attempt in 1 2; do
             timeout 300 pnpm exec playwright install --with-deps --only-shell chromium && exit 0
             echo "::warning::browser install with system packages failed (attempt $attempt of 2)"
@@ -94,25 +118,25 @@ jobs:
           done
           echo "::warning::installing the browser without system packages"
           pnpm exec playwright install --only-shell chromium
-      - name: no CSP violation or page error on any page, menu or window
+      - name: No CSP Violation or Page Error
         working-directory: frontend
         env:
           CSP_CHECK_PASSWORD: ${{ env.CHECK_PASSWORD }}
         run: node scripts/csp-check.js https://127.0.0.1:81 chromium
-      - name: browser flows of the host lists, windows, settings and language
+      - name: Browser Flows
         working-directory: frontend
         env:
           FLOWS_PASSWORD: ${{ env.CHECK_PASSWORD }}
         run: node scripts/flows/run.js https://127.0.0.1:81 chromium
-      - name: nginx accepts every host type
+      - name: nginx Accepts Every Host Type
         env:
           NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: node .github/scripts/config-check.js https://127.0.0.1:81
-      - name: real log lines match the field lists and the parsers
+      - name: Log Lines Match the Parsers
         env:
           NODE_TLS_REJECT_UNAUTHORIZED: "0"
         run: node .github/scripts/log-sample-check.js https://127.0.0.1:81
-      - name: nginx -t on the whole config
+      - name: nginx Config Test
         run: docker exec npmpro nginx -t
       - name: Changed Certbot Files
         id: certbot
@@ -126,13 +150,50 @@ jobs:
       - name: Every DNS Plugin Installs
         if: ${{ steps.certbot.outputs.changed == 'true' }}
         run: sh .github/scripts/dns-plugins-check.sh npmpro
-      - name: PUID binds ports below 1024 without the host sysctl
+      - name: PUID Binds Low Ports
         run: .github/scripts/puid-low-ports.sh npmpro:test npmpro-puid
-      - name: container logs
+      - name: Container Logs
         if: ${{ failure() }}
         run: docker logs npmpro
 
+  browser-cache:
+    # a pull request reads only its own caches and its base branch's: this job writes the smoke test's browser cache in
+    # develop's scope (same runner, same key), so pull requests restore it instead of downloading the browser
+    name: Browser Cache
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set Up Node and pnpm
+        uses: ./.github/actions/setup
+        with:
+          project: frontend
+      - name: Install Dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Playwright Version
+        id: playwright
+        working-directory: frontend
+        run: echo "version=$(node -p 'require("./package.json").devDependencies.playwright')" >> "$GITHUB_OUTPUT"
+      - name: Browser Cache
+        id: browser-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}-chromium-headless-shell
+      - name: Download Browser
+        if: ${{ steps.browser-cache.outputs.cache-hit != 'true' }}
+        working-directory: frontend
+        run: pnpm exec playwright install --only-shell chromium
+
   publish:
+    name: Publish
     if: ${{ github.event_name != 'pull_request' && github.repository_owner == 'TheBlackBush' }}
     permissions:
       contents: read
