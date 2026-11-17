@@ -1,0 +1,41 @@
+// the object types and actions the audit log filters offer; their labels are built at runtime from these ids
+// (`<type>`, `audit-log.action.<action>` and `object.event.<action>`), AuditLog.test.js pins them against en.json
+export const AUDIT_OBJECT_TYPES = Object.freeze([
+	"proxy-host",
+	"redirection-host",
+	"dead-host",
+	"stream",
+	"access-list",
+	"certificate",
+	"dns-credential",
+	"user",
+	"setting",
+	"backup-schedule",
+	"backup",
+	"database",
+	"api-token",
+]);
+
+export const AUDIT_ACTIONS = Object.freeze([
+	"created",
+	"updated",
+	"deleted",
+	"enabled",
+	"disabled",
+	"backup-succeeded",
+	"backup-failed",
+	"moved",
+	"move-failed",
+	"restored",
+	"merged",
+	"imported",
+	"exported",
+	"uploaded",
+	"downloaded",
+	"oidc-linked",
+	"oidc-unlinked",
+	"oidc-refused",
+	"revoked",
+	"expired",
+	"first-used",
+]);

@@ -1,5 +1,5 @@
 import { CopyIcon } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
 import { TokenBadges, TokenCreated, TokenExpiry, TokenLastUsed, TokenPermissions } from "src/components/ApiTokenCells";
@@ -10,6 +10,7 @@ import { TapTooltip } from "src/components/TapTooltip";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "src/components/ui/input-group";
 import { Label } from "src/components/ui/label";
 import { useCreateApiToken, useOwnApiTokens, useRevokeApiToken, useUser } from "src/hooks";
+import { useIsMobile } from "src/hooks/use-mobile";
 import { intl, T } from "src/locale";
 import { EXPIRY_CHOICES, newTokenValues, ownerCaps, tokenPayload, tomorrowOf } from "src/modules/ApiTokens";
 import EasyModal from "src/modules/easyModal";
@@ -26,6 +27,18 @@ const validate = fieldsValidate((values) => ({
 	name: validateString(1, 100, true),
 	...(values.expiry === "date" ? { expiryDate: validateRequired() } : {}),
 }));
+
+// A step that replaces another one takes the focus (the pressed button is gone with the old step): its target, else
+// its title. The first step of an opening is left to the window, which focuses its first field.
+function useStepFocus(focus, target) {
+	const title = useRef(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the step focuses once, when it mounts
+	useEffect(() => {
+		if (!focus) return;
+		(target?.() ?? title.current)?.focus({ preventScroll: true });
+	}, []);
+	return title;
+}
 
 function TokenRow({ token, now, onRevoke }) {
 	return (
@@ -74,13 +87,14 @@ function TokenRow({ token, now, onRevoke }) {
 	);
 }
 
-function ListStep({ onNew, onRevoke, onClose }) {
+function ListStep({ focus, onNew, onRevoke, onClose }) {
+	const title = useStepFocus(focus);
 	const { data, isPending, error } = useOwnApiTokens();
 	const now = new Date();
 	return (
 		<>
 			<AppModal.Header closeButton>
-				<AppModal.Title>
+				<AppModal.Title ref={title} tabIndex={-1}>
 					<T id="api-tokens.title" />
 				</AppModal.Title>
 			</AppModal.Header>
@@ -151,8 +165,11 @@ function ExpiryFields({ baseId }) {
 	);
 }
 
-function NewStep({ user, onCancel, onCreated }) {
+function NewStep({ focus, user, onCancel, onCreated }) {
 	const baseId = useId();
+	const isPhone = useIsMobile();
+	// the Name field on a desktop; on a phone the title, so the on-screen keyboard does not cover the window
+	const title = useStepFocus(focus, () => (isPhone ? null : document.querySelector(`[id="${baseId}-name"]`)));
 	const caps = ownerCaps(user);
 	const admin = isAdmin(user.roles);
 	const [error, setError] = useState(null);
@@ -172,7 +189,7 @@ function NewStep({ user, onCancel, onCreated }) {
 	return (
 		<HookForm methods={methods} onSubmit={onSubmit}>
 			<AppModal.Header closeButton={!isSubmitting}>
-				<AppModal.Title>
+				<AppModal.Title ref={title} tabIndex={-1}>
 					<T id="api-tokens.new" />
 				</AppModal.Title>
 			</AppModal.Header>
@@ -228,9 +245,11 @@ function NewStep({ user, onCancel, onCreated }) {
 }
 
 // the token is shown once: only Done ends this step (the window has no X, no Escape)
-function SecretStep({ token, onDone }) {
+function SecretStep({ focus, token, onDone }) {
 	const id = useId();
 	const input = useRef(null);
+	// the token field, ready to be copied
+	useStepFocus(focus, () => input.current);
 	const copy = async () => {
 		try {
 			await navigator.clipboard.writeText(token);
@@ -264,6 +283,8 @@ function SecretStep({ token, onDone }) {
 							className="break-all font-mono text-sm"
 							value={token}
 							readOnly
+							autoComplete="off"
+							spellCheck={false}
 							data-api-token-secret
 							onClick={(e) => e.target.select()}
 						/>
@@ -290,7 +311,8 @@ function SecretStep({ token, onDone }) {
 	);
 }
 
-function RevokeStep({ token, onCancel, onRevoked }) {
+function RevokeStep({ focus, token, onCancel, onRevoked }) {
+	const title = useStepFocus(focus);
 	const [error, setError] = useState(null);
 	const revoke = useRevokeApiToken();
 	const confirm = async () => {
@@ -306,7 +328,7 @@ function RevokeStep({ token, onCancel, onRevoked }) {
 	return (
 		<>
 			<AppModal.Header closeButton={!revoke.isPending}>
-				<AppModal.Title>
+				<AppModal.Title ref={title} tabIndex={-1}>
 					<T id="api-tokens.revoke" />
 				</AppModal.Title>
 			</AppModal.Header>
@@ -331,7 +353,13 @@ function RevokeStep({ token, onCancel, onRevoked }) {
 const ApiTokensModal = EasyModal.create(({ id, visible, remove }) => {
 	const { data: user, isPending } = useUser(id);
 	const [step, setStep] = useState({ name: "list" });
-	const toList = () => setStep({ name: "list" });
+	// false until the first step change: the window itself focuses the first step
+	const [moved, setMoved] = useState(false);
+	const go = (next) => {
+		setMoved(true);
+		setStep(next);
+	};
+	const toList = () => go({ name: "list" });
 	// the secret step only ends with Done
 	const closable = step.name !== "secret";
 
@@ -339,17 +367,20 @@ const ApiTokensModal = EasyModal.create(({ id, visible, remove }) => {
 	if (step.name === "list") {
 		content = (
 			<ListStep
-				onNew={() => setStep({ name: "new" })}
-				onRevoke={(token) => setStep({ name: "revoke", token })}
+				focus={moved}
+				onNew={() => go({ name: "new" })}
+				onRevoke={(token) => go({ name: "revoke", token })}
 				onClose={remove}
 			/>
 		);
 	} else if (step.name === "new" && user) {
-		content = <NewStep user={user} onCancel={toList} onCreated={(token) => setStep({ name: "secret", token })} />;
+		content = (
+			<NewStep focus={moved} user={user} onCancel={toList} onCreated={(token) => go({ name: "secret", token })} />
+		);
 	} else if (step.name === "secret") {
-		content = <SecretStep token={step.token} onDone={toList} />;
+		content = <SecretStep focus={moved} token={step.token} onDone={toList} />;
 	} else if (step.name === "revoke") {
-		content = <RevokeStep token={step.token} onCancel={toList} onRevoked={toList} />;
+		content = <RevokeStep focus={moved} token={step.token} onCancel={toList} onRevoked={toList} />;
 	}
 
 	return (
@@ -357,8 +388,8 @@ const ApiTokensModal = EasyModal.create(({ id, visible, remove }) => {
 			show={visible}
 			onHide={closable ? remove : undefined}
 			backdrop="static"
+			// one size for every step: the window keeps its kind (dialog or side sheet) from step to step
 			keyboard={closable}
-			size={step.name === "new" ? undefined : "sm"}
 		>
 			{isPending ? <Loading noLogo /> : content}
 		</AppModal>

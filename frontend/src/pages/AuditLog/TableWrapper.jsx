@@ -7,48 +7,10 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "src/components/ui/
 import { useAuditLogs, usePaging, useUsers } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showEventDetailsModal } from "src/modals";
+import { AUDIT_ACTIONS, AUDIT_OBJECT_TYPES } from "src/modules/AuditLog";
 import { SettingsHeading } from "../Settings/SettingsHeading";
 import { SettingsLead } from "../Settings/SettingsLead";
 import Table from "./Table";
-
-const OBJECT_TYPES = [
-	"proxy-host",
-	"redirection-host",
-	"dead-host",
-	"stream",
-	"access-list",
-	"certificate",
-	"dns-credential",
-	"user",
-	"setting",
-	"backup-schedule",
-	"backup",
-	"database",
-	"api-token",
-];
-const ACTIONS = [
-	"created",
-	"updated",
-	"deleted",
-	"enabled",
-	"disabled",
-	"backup-succeeded",
-	"backup-failed",
-	"moved",
-	"move-failed",
-	"restored",
-	"merged",
-	"imported",
-	"exported",
-	"uploaded",
-	"downloaded",
-	"oidc-linked",
-	"oidc-unlinked",
-	"oidc-refused",
-	"revoked",
-	"expired",
-	"first-used",
-];
 
 // two filters per row on phones (half the row minus half the gap-2; a lone last one grows to the full row), their own width from md
 const FILTER_CLASS = "w-auto min-w-[calc(50%-0.25rem)] max-w-full flex-1 md:min-w-0 md:max-w-56 md:flex-none";
@@ -138,13 +100,16 @@ export default function TableWrapper() {
 							label="audit-log.filter.type"
 							value={objectType}
 							onChange={setObjectType}
-							options={OBJECT_TYPES.map((t) => ({ value: t, label: intl.formatMessage({ id: t }) }))}
+							options={AUDIT_OBJECT_TYPES.map((t) => ({
+								value: t,
+								label: intl.formatMessage({ id: t }),
+							}))}
 						/>
 						<FilterSelect
 							label="audit-log.filter.action"
 							value={action}
 							onChange={setAction}
-							options={ACTIONS.map((a) => ({
+							options={AUDIT_ACTIONS.map((a) => ({
 								value: a,
 								label: intl.formatMessage({ id: `audit-log.action.${a}` }),
 							}))}

@@ -162,7 +162,7 @@ function DocsCard() {
 		<SettingsCard title={<T id="settings.api-access.docs" />} lines>
 			<SettingLine
 				id="api-access-docs"
-				title={<T id="api-tokens.docs" />}
+				title={<T id="settings.api-access.docs.openapi" />}
 				control={
 					<Button asChild variant="outline" size="sm">
 						<a href="/api/docs" target="_blank" rel="noopener noreferrer">

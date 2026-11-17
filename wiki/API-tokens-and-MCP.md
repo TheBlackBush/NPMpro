@@ -43,7 +43,7 @@ permissions, expiry, last use and creation date. To make one:
    visibility is all items.
 5. **Permissions**: for each of proxy hosts, redirection hosts, 404 hosts, streams, access lists and certificates,
    **Manage**, **View Only** or **Hidden**. A level above your own cannot be chosen. Choosing a section turns on what
-   it needs, such as access lists for proxy hosts.
+   it needs, such as access lists for proxy hosts, when your own permissions allow it: the caps above still apply.
 6. **Administrator** (only for administrators): the token acts as an administrator for settings, the audit log,
    backups and monitoring, but never for users or the sign-in settings. It is off by default; keep such a token like
    your password.
@@ -54,8 +54,8 @@ permissions, expiry, last use and creation date. To make one:
 
 To end a token, choose **Revoke** on its row in the list and confirm. It stops working at once.
 
-Scripts can also create a token through the API: `POST /api/users/me/api-tokens`, described in the OpenAPI
-documentation at `/api/docs`. The answer carries the token once.
+The window uses `POST /api/users/me/api-tokens` (described in the OpenAPI documentation at `/api/docs`). The route
+needs a signed-in session, so scripts do not create tokens: a token cannot create tokens.
 
 ## Administrators: Settings, API access
 
