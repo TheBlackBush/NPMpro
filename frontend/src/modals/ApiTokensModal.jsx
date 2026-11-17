@@ -1,5 +1,5 @@
 import { CopyIcon } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
 import { HookForm, SelectField, SwitchField, SwitchList, TextField, useAppForm } from "src/components/Form";
@@ -257,9 +257,15 @@ function NewStep({ user, onCancel, onCreated }) {
 // the token is shown once: only Done ends this step (the window has no X, no Escape)
 function SecretStep({ token, onDone }) {
 	const id = useId();
+	const input = useRef(null);
 	const copy = async () => {
-		await navigator.clipboard.writeText(token);
-		showSuccess(intl.formatMessage({ id: "api-tokens.copied" }));
+		try {
+			await navigator.clipboard.writeText(token);
+			showSuccess(intl.formatMessage({ id: "api-tokens.copied" }));
+		} catch {
+			// no clipboard access (a browser setting or policy): select the token so it can be copied by hand
+			input.current?.select();
+		}
 	};
 	return (
 		<>
@@ -278,6 +284,7 @@ function SecretStep({ token, onDone }) {
 					</Label>
 					<InputGroup>
 						<InputGroupInput
+							ref={input}
 							id={id}
 							className="font-mono"
 							value={token}

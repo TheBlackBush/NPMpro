@@ -37,6 +37,8 @@ const useCreateApiToken = () => {
 	return useMutation({
 		mutationFn: (data) => createApiToken(data),
 		onSuccess: () => invalidateAll(queryClient),
+		// gcTime 0: the result holds the token text, so it leaves the mutation cache as soon as the window is gone
+		gcTime: 0,
 	});
 };
 
