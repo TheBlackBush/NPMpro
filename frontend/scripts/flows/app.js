@@ -1,6 +1,7 @@
 // A settings save with its toast, the CrowdSec section, a refused save that opens a collapsed card, the Landing pages
 // section (with the visit time choices), the phone layout of a host list, the MFA and help windows, and the language
 // switch (last: it reloads the page).
+import { request } from "playwright";
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
 import {
@@ -20,6 +21,14 @@ const TAG_B_URL = /[?&]tag=flow-b(?:&|$)/u;
 const TAGS_BUTTON = /^Tags: /u;
 const BOTH_TAGS_URL = /tag=flow-b&tag=flow-a/u;
 const GERMAN_CHUNK = /\/assets\/de-[\w-]+\.js$/u;
+const API_TOKEN = /^npmpro_[0-9a-f]{16}_[\w-]{43}$/u;
+// valid on purpose: the body is checked before the permission, so only a permission refusal answers 403
+const TOKEN_HOST = {
+	domain_names: ["flow-token.example.com"],
+	forward_scheme: "http",
+	forward_host: "10.0.0.1",
+	forward_port: 8080,
+};
 const SWITCH = "#runtime-logNotFound";
 // a switch is a checkbox input or a button with aria-checked
 const switchOn = (selector) => {
@@ -426,6 +435,52 @@ async function mfaWindow({ browser, base, viewerPassword }) {
 	}
 }
 
+// a token made in the window works for a script and stops at its revoke (shown once, never listed again)
+async function apiTokens({ admin, base }) {
+	const { page } = admin;
+	let script = null;
+	try {
+		await page.goto("/");
+		await page.locator("header").getByRole("button", { name: "Open user menu" }).click();
+		await page.getByRole("menuitem", { name: "API tokens", exact: true }).click();
+		const dialog = page.getByRole("dialog");
+		await dialog.getByRole("button", { name: "New token", exact: true }).click();
+		await dialog.getByRole("textbox", { name: "Name", exact: true }).fill("flow-token");
+		// Proxy Hosts: View Only (its dependency turns on access lists and certificates view)
+		await dialog
+			.getByRole("group", { name: "Proxy Hosts" })
+			.getByRole("radio", { name: "View Only", exact: true })
+			.click();
+		await dialog.getByRole("button", { name: "Create", exact: true }).click();
+		const secret = await dialog.locator("[data-api-token-secret]").inputValue();
+		if (!API_TOKEN.test(secret)) throw new Error("the window did not show a token");
+		script = await request.newContext({
+			baseURL: base,
+			ignoreHTTPSErrors: true,
+			extraHTTPHeaders: { authorization: `Bearer ${secret}` },
+		});
+		if ((await script.get("/api/nginx/proxy-hosts")).status() !== 200)
+			throw new Error("the token could not list proxy hosts");
+		if ((await script.post("/api/nginx/proxy-hosts", { data: TOKEN_HOST })).status() !== 403)
+			throw new Error("a view token could create");
+		await dialog.getByRole("button", { name: "Done", exact: true }).click();
+		// the list shows the token without its secret
+		await dialog.getByText("flow-token", { exact: true }).waitFor();
+		if ((await dialog.getByText(secret).count()) > 0) throw new Error("the list shows the secret");
+		await dialog.getByRole("button", { name: "Revoke flow-token", exact: true }).click();
+		await dialog.getByRole("button", { name: "Revoke", exact: true }).click();
+		await dialog.getByText("flow-token", { exact: true }).waitFor({ state: "detached" });
+		if ((await script.get("/api/nginx/proxy-hosts")).status() !== 401)
+			throw new Error("the revoked token still works");
+		await dialog.getByRole("button", { name: "Close", exact: true }).last().click();
+		await windowClosed(page);
+		if (admin.errors.length > 0) throw new Error(`page error: ${admin.errors[0]}`);
+	} finally {
+		await script?.dispose();
+		await cleanUp(admin.api);
+	}
+}
+
 // The Sign-in column of the Users table: the viewer (a password, no OIDC link) shows Local, and its row menu has no
 // Unlink OIDC, which only a linked user offers (R5). The API cannot link a user, so the live check covers a linked row.
 async function usersSignIn({ admin }) {
@@ -662,6 +717,7 @@ export const appFlows = [
 	{ name: "landing pages settings", run: landingPagesSettings },
 	{ name: "phone list", run: phoneList },
 	{ name: "mfa window", run: mfaWindow },
+	{ name: "api tokens", run: apiTokens },
 	{ name: "users sign-in", run: usersSignIn },
 	{ name: "window focus tooltip", run: windowFocusTooltip },
 	{ name: "help sheet", run: helpSheet },

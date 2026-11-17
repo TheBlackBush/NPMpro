@@ -311,10 +311,10 @@ export async function cleanUp(api) {
 	}
 }
 
-/** Removes what the flows create (not the viewer when withViewer is false, for a flow that is not the last): hosts and streams named flow-..., access lists named flow-... and the viewer */
+/** Removes what the flows create (not the viewer when withViewer is false, for a flow that is not the last): hosts and streams named flow-..., access lists, API tokens named flow-... and the viewer */
 export async function removeFlowData(api, withViewer = true) {
 	const isFlow = (text) => String(text ?? "").startsWith("flow-");
-	const [proxy, redirection, dead, streams, lists, users, certificates] = await Promise.all(
+	const [proxy, redirection, dead, streams, lists, users, certificates, tokens] = await Promise.all(
 		[
 			"/nginx/proxy-hosts",
 			"/nginx/redirection-hosts",
@@ -323,6 +323,7 @@ export async function removeFlowData(api, withViewer = true) {
 			"/nginx/access-lists",
 			"/users",
 			"/nginx/certificates",
+			"/api-tokens",
 		].map((path) => api("GET", path)),
 	);
 	const paths = [
@@ -335,6 +336,7 @@ export async function removeFlowData(api, withViewer = true) {
 		...lists.filter((row) => isFlow(row.name)).map((row) => `/nginx/access-lists/${row.id}`),
 		...users.filter((row) => withViewer && row.email === VIEWER_EMAIL).map((row) => `/users/${row.id}`),
 		...certificates.filter((row) => isFlow(row.nice_name)).map((row) => `/nginx/certificates/${row.id}`),
+		...tokens.filter((row) => isFlow(row.name)).map((row) => `/api-tokens/${row.id}`),
 	];
 	for (const path of paths) {
 		// biome-ignore lint/performance/noAwaitInLoops: one request after another

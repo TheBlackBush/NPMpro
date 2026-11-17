@@ -262,6 +262,7 @@ function SecretStep({ token, onDone }) {
 							className="font-mono"
 							value={token}
 							readOnly
+							data-api-token-secret
 							onClick={(e) => e.target.select()}
 						/>
 						<InputGroupAddon align="inline-end">
