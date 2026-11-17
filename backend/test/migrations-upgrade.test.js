@@ -1,6 +1,6 @@
 import "./support/secret-key-env.js";
 import assert from "node:assert/strict";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, it } from "node:test";
 import knexFactory from "knex";
@@ -8,24 +8,58 @@ import { knexConfigOf } from "../lib/database/knex-config.js";
 import { fillRow, tempSqlite } from "./support/database.js";
 import { migrateRest, migrateThrough, migrationNames, schemaSnapshot } from "./support/migrations.js";
 
-// the key folder made by secret-key-env.js
-after(() => rm(path.dirname(process.env.NPMPRO_SECRET_KEY_FILE), { recursive: true, force: true }));
+// Templates: a SQLite file per migration index i with the migrations before names[i] applied, made once with VACUUM
+// INTO and copied for every test that starts there. A test changes only its copy.
+const templateDir = await tempSqlite();
+const templates = new Map();
+let builder;
+
+const stopBuilder = async () => {
+	await builder?.knex.destroy();
+	await builder?.db.cleanup();
+	builder = undefined;
+};
+
+const templateFor = async (names, index) => {
+	if (templates.has(index)) return templates.get(index);
+	if (!builder || builder.index > index) {
+		// the tests are mostly in migration order; on a step back, start from the closest earlier template
+		await stopBuilder();
+		const db = await tempSqlite();
+		const start = Math.max(-1, ...[...templates.keys()].filter((key) => key <= index));
+		if (start >= 0) await copyFile(templates.get(start), db.file);
+		builder = { db, knex: knexFactory(knexConfigOf(db.connection)), index: Math.max(start, 0) };
+	}
+	await migrateThrough(builder.knex, builder.db, names[index - 1]);
+	builder.index = index;
+	const file = path.join(templateDir.dir, `${index}.sqlite`);
+	await builder.knex.raw("VACUUM INTO ?", [file]);
+	templates.set(index, file);
+	return file;
+};
+
+// the key folder made by secret-key-env.js, the templates and the database they are built in
+after(async () => {
+	await stopBuilder();
+	await templateDir.cleanup();
+	await rm(path.dirname(process.env.NPMPRO_SECRET_KEY_FILE), { recursive: true, force: true });
+});
 
 const SCHEME = /\$scheme/u;
 const AUTO = /auto/u;
 const UNIQUE = /UNIQUE/u;
 const SNAPSHOT = new URL("./fixtures/schema-snapshot.json", import.meta.url);
 
-// Builds a database up to the migration before `stem` and hands the test two steps: `step` runs only that migration
+// Copies a database up to the migration before `stem` from its template and hands the test two steps: `step` runs only that migration
 // (the rows are then exactly what it left), `rest` runs everything after the old state to the newest migration.
 const atMigration = async (stem, test) => {
 	const names = await migrationNames();
 	const index = names.indexOf(`${stem}.js`);
 	if (index === -1) throw new Error(`no migration ${stem}`);
 	const db = await tempSqlite();
+	if (index > 0) await copyFile(await templateFor(names, index), db.file);
 	const knex = knexFactory(knexConfigOf(db.connection));
 	try {
-		if (index > 0) await migrateThrough(knex, db, names[index - 1]);
 		await test(knex, {
 			step: () => migrateThrough(knex, db, `${stem}.js`),
 			rest: () => migrateRest(knex, db),
