@@ -15,8 +15,10 @@ const REPO = path.join(HERE, "../..");
 const PLACEHOLDER = /@@(?<name>[A-Z_]+)@@/gu;
 const ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 const SPECIAL = /[&<>"']/gu;
+// the time chip: nginx's UTC text, and for the page script the same moment in ISO 8601 (data-utc) and Settings,
+// Landing pages, Visit time (data-visit-time). Single-quoted attributes: the SSI commands inside hold double quotes.
 const CHIPS =
-	'<div class="chips"><span class="chip">IP <!--# echo var="remote_addr" --></span><span class="chip" data-npmpro-time><!--# config timefmt="%Y-%m-%d %H:%M UTC" --><!--# echo var="date_gmt" --></span></div>';
+	'<div class="chips"><span class="chip">IP <!--# echo var="remote_addr" --></span><span class="chip" data-npmpro-time data-utc=\'<!--# config timefmt="%Y-%m-%dT%H:%M:%SZ" --><!--# echo var="date_gmt" -->\' data-visit-time=\'<!--# echo var="npmpro_visit_time" default="utc" -->\'><!--# config timefmt="%Y-%m-%d %H:%M UTC" --><!--# echo var="date_gmt" --></span></div>';
 const CAPTCHA_HEAD = '<script src="{{captcha_frontend_js}}" async defer></script>';
 const CAPTCHA_FORM =
 	'<form action="" method="POST" id="captcha-form" class="captcha"><div id="captcha" class="{{captcha_frontend_key}}" data-sitekey="{{captcha_site_key}}" data-callback="captchaCallback"></div></form>';

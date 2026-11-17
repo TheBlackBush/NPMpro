@@ -43,6 +43,8 @@ const proxy = async (extra = {}) => {
 	assert.equal(done.status, 201, done.text);
 	return done.body;
 };
+const UTC_DEFAULT = /default "utc";/u;
+const LOCAL_DEFAULT = /default "local";/u;
 const rowOf = (table, id) => api.db(table).where({ id }).first();
 
 it("the landing pages travel in a backup and a restore writes their files", async () => {
@@ -197,4 +199,15 @@ it("an older backup's hand-edited CrowdSec ban page becomes the custom ban page"
 	assert.equal(view.pages.ban.html, "<p>old hand-edited ban</p>");
 	assert.equal(await api.read("/data/public/pages/global/ban.html"), "<p>old hand-edited ban</p>");
 	assert.equal(await fileExists(api, "data/crowdsec/ban.html.before-pages"), true);
+});
+
+it("the visit time travels in a backup and a restore writes the include", async () => {
+	await admin.put("/settings/landing-pages", { visit_time: "local" });
+	const entry = await keep(["settings_landing_pages"]);
+	await admin.put("/settings/landing-pages", { visit_time: "utc" });
+	assert.match(await api.read("/data/npmpro/nginx/landing-pages.conf"), UTC_DEFAULT);
+	await restore(entry, ["settings_landing_pages"]);
+	assert.equal((await admin.get("/settings/landing-pages")).body.visit_time, "local");
+	assert.match(await api.read("/data/npmpro/nginx/landing-pages.conf"), LOCAL_DEFAULT);
+	await admin.put("/settings/landing-pages", { visit_time: "utc" });
 });

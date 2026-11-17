@@ -131,7 +131,7 @@ const COMMAND = /<!--#\s*([a-z]+)((?:\s+[a-z]+="[^"]*")*)\s*-->/gu;
 const ATTRIBUTE = /([a-z]+)="([^"]*)"/gu;
 const OPENER = /<!--#/gu;
 const SPECIFIER = /%(.)/gsu;
-const ECHO_VARS = new Set(["remote_addr", "date_gmt", "date_local", "status", "host"]);
+const ECHO_VARS = new Set(["remote_addr", "date_gmt", "date_local", "status", "host", "npmpro_visit_time"]);
 const ECHO_ATTRIBUTES = new Set(["var", "default", "encoding"]);
 const TIME_LETTERS = new Set(["Y", "m", "d", "H", "M", "S", "Z", "A", "b", "%"]);
 
@@ -265,12 +265,16 @@ export const defaultSitePreview = (saved) =>
 		? previewPath({ source: "global", type: DEFAULT_PAGE.api })
 		: null;
 
+// Settings, Landing pages, Visit time: how the built-in pages show the time of the visit (backend visit-time.js)
+export const VISIT_TIMES = Object.freeze(["utc", "local", "local-utc"]);
+
 /**
  * @param   {Object} data  GET /settings/landing-pages, camelized
- * @returns {Object}  { defaultSite: the default site's form values, pages: { [key]: { choice, html } } }
+ * @returns {Object}  { defaultSite: the default site's form values, visitTime, pages: { [key]: { choice, html } } }
  */
 export const landingValues = (data) => ({
 	defaultSite: { ...defaultSiteValues(data.defaultSite), meta: data.defaultSite?.meta ?? {} },
+	visitTime: VISIT_TIMES.includes(data.visitTime) ? data.visitTime : "utc",
 	pages: Object.fromEntries(
 		PAGE_TYPES.map(({ key }) => [
 			key,
@@ -314,6 +318,7 @@ export const landingPayload = (values, saved) => {
 	if (JSON.stringify(site) !== JSON.stringify(savedSite)) {
 		body.defaultSite = defaultSitePayload(values.defaultSite, { meta: savedMeta ?? {} });
 	}
+	if (values.visitTime !== saved.visitTime) body.visitTime = values.visitTime;
 	const pages = Object.fromEntries(
 		PAGE_TYPES.filter(
 			({ key }) =>

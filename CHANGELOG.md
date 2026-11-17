@@ -50,6 +50,8 @@ below as its release notes.
   the old folder is kept as a backup.
 - **Certificates:** Baidu moves to Baidu AI Cloud DNS, so it needs Baidu AI Cloud keys; the old Beget plugin stays for
   the certificates that already use it.
+- **Landing pages:** the visit time on the built-in pages can show the visitor's local time, or local time with UTC
+  (Settings, Landing pages, Page details); UTC stays the default.
 
 ### Security
 

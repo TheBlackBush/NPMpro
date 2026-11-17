@@ -16,23 +16,37 @@ const TEXTS = /<script type="application\/json" id="npmpro-texts">([^<]*)<\/scri
 const OUTSIDE = /(?:src|href)="(?!data:)[^"]*"/gu;
 const CAPTCHA_JS = 'src="{{captcha_frontend_js}}"';
 
-// runs the page's inline script against a minimal document: the data-t elements, the time chip, the root
-const runScript = (html, languages) => {
+// runs the page's inline script against a minimal document: the data-t elements, the time chip, the root. chip: the
+// chip's text and data attributes as nginx filled them; zone: the visitor's time zone (Intl is wrapped to use it)
+const runScript = (html, languages, { chip = {}, zone = "UTC", intl } = {}) => {
 	const elements = [...html.matchAll(/data-t="([a-z]+)"/gu)].map(([, key]) => ({
 		dataset: { t: key },
 		textContent: "",
 	}));
-	const time = { textContent: "" };
+	const dataset = Object.fromEntries(
+		Object.entries({ utc: chip.utc, visitTime: chip.visitTime }).filter(([, value]) => value !== undefined),
+	);
+	const time = { textContent: chip.text ?? "", dataset };
 	const root = { lang: "en" };
 	const document = {
 		documentElement: root,
-		getElementById: (id) => (id === "npmpro-texts" ? { textContent: html.match(TEXTS)[1] } : null),
 		querySelectorAll: (selector) => (selector === "[data-t]" ? elements : []),
-		querySelector: (selector) =>
-			selector === "[data-npmpro-time]" && html.includes("data-npmpro-time") ? time : null,
+		querySelector: (selector) => {
+			if (selector === "#npmpro-texts") return { textContent: html.match(TEXTS)[1] };
+			return selector === "[data-npmpro-time]" && html.includes("data-npmpro-time") ? time : null;
+		},
 	};
 	// the context is the script's global object, so window.x and globalThis.x land in the same place
-	const context = { document, navigator: { languages, language: languages[0] }, setTimeout };
+	// the visitor's zone unless the script asks for one (the UTC date of local-utc asks for UTC)
+	function zonedFormat(locale, options) {
+		return new Intl.DateTimeFormat(locale, { timeZone: zone, ...options });
+	}
+	const context = {
+		document,
+		navigator: { languages, language: languages[0] },
+		setTimeout,
+		Intl: intl ?? { DateTimeFormat: zonedFormat },
+	};
 	context.window = context;
 	vm.runInNewContext(html.match(SCRIPT)[1], context);
 	return { root, elements, time, window: context };
@@ -132,5 +146,113 @@ it("moves only without prefers-reduced-motion, and the logo in both schemes", ()
 		assert.ok(html.includes('class="logo logo-light" src="data:image/svg+xml;base64,'), file);
 		assert.ok(html.includes('class="logo logo-dark" src="data:image/svg+xml;base64,'), file);
 		assert.ok(html.includes("Served by NPMpro") || html.includes("Protected by CrowdSec"), file);
+	}
+});
+
+const CLOCK = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/u;
+// an Intl that refuses every format, like a browser without the options
+const THROWING_INTL = {
+	DateTimeFormat: () => {
+		throw new RangeError("unsupported");
+	},
+};
+const UTC_TEXT = "2026-11-17 18:53 UTC";
+const ISO = "2026-11-17T18:53:00Z";
+const FORMAT = {
+	year: "numeric",
+	month: "short",
+	day: "numeric",
+	hour: "2-digit",
+	minute: "2-digit",
+	timeZoneName: "short",
+};
+const chipOf = (visitTime, utc = ISO) => ({ text: UTC_TEXT, utc, visitTime });
+
+it("visit time: utc keeps nginx's text, local and local-utc show the visitor's zone in the page's language", () => {
+	const html = pageOf("ban");
+	assert.equal(runScript(html, ["de"], { chip: chipOf("utc"), zone: "Europe/Berlin" }).time.textContent, UTC_TEXT);
+	assert.equal(
+		runScript(html, ["de"], { chip: chipOf("local"), zone: "Europe/Berlin" }).time.textContent,
+		"17. Nov. 2026, 19:53 MEZ",
+	);
+	assert.equal(
+		runScript(html, ["de"], { chip: chipOf("local-utc"), zone: "Europe/Berlin" }).time.textContent,
+		"17. Nov. 2026, 19:53 MEZ (18:53 UTC)",
+	);
+	assert.equal(
+		runScript(html, ["en-US"], { chip: chipOf("local"), zone: "Europe/Berlin" }).time.textContent,
+		"Nov 17, 2026, 07:53 PM GMT+1",
+	);
+	// same date in both zones: the short form, the UTC time only
+	assert.equal(
+		runScript(html, ["en"], { chip: chipOf("local-utc"), zone: "Europe/Berlin" }).time.textContent,
+		"Nov 17, 2026, 07:53 PM GMT+1 (18:53 UTC)",
+	);
+	// the local date is the next day (Tokyo): local-utc adds the UTC date in the page's language
+	const tokyo = new Intl.DateTimeFormat("en", { ...FORMAT, timeZone: "Asia/Tokyo" }).format(new Date(ISO));
+	assert.ok(tokyo.startsWith("Nov 18, 2026"), tokyo);
+	assert.equal(
+		runScript(html, ["en"], { chip: chipOf("local-utc"), zone: "Asia/Tokyo" }).time.textContent,
+		`${tokyo} (Nov 17, 18:53 UTC)`,
+	);
+	const tokyoDe = new Intl.DateTimeFormat("de", { ...FORMAT, timeZone: "Asia/Tokyo" }).format(new Date(ISO));
+	assert.equal(
+		runScript(html, ["de"], { chip: chipOf("local-utc"), zone: "Asia/Tokyo" }).time.textContent,
+		`${tokyoDe} (17. Nov., 18:53 UTC)`,
+	);
+	// the local date is the day before (New York, 02:00 UTC)
+	const early = "2026-11-17T02:00:00Z";
+	const newYork = new Intl.DateTimeFormat("en", { ...FORMAT, timeZone: "America/New_York" }).format(new Date(early));
+	assert.equal(
+		runScript(html, ["en"], { chip: chipOf("local-utc", early), zone: "America/New_York" }).time.textContent,
+		`${newYork} (Nov 17, 02:00 UTC)`,
+	);
+	// local never adds the UTC part
+	assert.equal(runScript(html, ["en"], { chip: chipOf("local"), zone: "Asia/Tokyo" }).time.textContent, tokyo);
+});
+
+it("visit time: a missing or bad moment, an unknown choice or a throwing Intl keep nginx's text", () => {
+	const html = pageOf("captcha");
+	for (const chip of [
+		chipOf("local", "nonsense"),
+		chipOf("local", ""),
+		{ text: UTC_TEXT, visitTime: "local" },
+		chipOf("Local"),
+		chipOf(undefined),
+	]) {
+		assert.equal(
+			runScript(html, ["en"], { chip, zone: "Asia/Tokyo" }).time.textContent,
+			UTC_TEXT,
+			JSON.stringify(chip),
+		);
+	}
+	assert.equal(
+		runScript(html, ["en"], { chip: chipOf("local-utc"), intl: THROWING_INTL }).time.textContent,
+		UTC_TEXT,
+	);
+});
+
+it("visit time: an empty chip still gets the visitor's clock in UTC, whatever the choice", () => {
+	const text = runScript(pageOf("denied"), ["en"], { chip: { text: "", utc: ISO, visitTime: "local" } }).time
+		.textContent;
+	assert.match(text, CLOCK);
+});
+
+it("the chip carries the ISO moment and the choice, filled like nginx would", () => {
+	const now = new Date(ISO);
+	for (const page of PAGES.filter(({ chips }) => chips)) {
+		const filled = fillPlaceholders(pageOf(page.id), {
+			remote_addr: "203.0.113.7",
+			status: 418,
+			host: "h",
+			now,
+			npmpro_visit_time: "local",
+		});
+		assert.ok(
+			filled.includes(
+				`<span class="chip" data-npmpro-time data-utc='2026-11-17T18:53:00Z' data-visit-time='local'>2026-11-17 18:53 UTC</span>`,
+			),
+			page.file,
+		);
 	}
 });

@@ -5,6 +5,7 @@ import { scriptHash } from "../landing-pages/build.js";
 import { startApi } from "./support/api.js";
 
 let api;
+const CHIP = /data-utc='\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z' data-visit-time='local'>/u;
 let admin;
 
 before(async () => {
@@ -65,6 +66,15 @@ it("a place's page: its own, the global one, nothing for the upstream's own answ
 	assert.equal((await admin.get("/settings/landing-pages/preview/other/ban")).status, 404);
 });
 
+it("the preview fills the saved visit time into a custom page that echoes it", async () => {
+	await admin.put("/settings/landing-pages", {
+		visit_time: "local-utc",
+		pages: { maintenance: { choice: "custom", html: '<p><!--# echo var="npmpro_visit_time" --></p>' } },
+	});
+	assert.equal((await admin.get("/settings/landing-pages/preview/global/maintenance")).text, "<p>local-utc</p>");
+	await admin.put("/settings/landing-pages", { visit_time: "utc", pages: { maintenance: { choice: "npmpro" } } });
+});
+
 it("admins only", async () => {
 	const user = await api.limited({
 		visibility: "all",
@@ -87,4 +97,11 @@ it("nginx serves the previews sandboxed, scripts limited to the built-in pages' 
 	assert.ok(!csp.includes("allow-same-origin"));
 	assert.ok(csp.includes("default-src 'none';"));
 	assert.ok(csp.includes("img-src data:;"));
+});
+
+it("the built-in preview carries the saved visit time in the chip", async () => {
+	await admin.put("/settings/landing-pages", { visit_time: "local" });
+	const page = (await admin.get("/settings/landing-pages/preview/npmpro/ban")).text;
+	assert.match(page, CHIP);
+	await admin.put("/settings/landing-pages", { visit_time: "utc" });
 });

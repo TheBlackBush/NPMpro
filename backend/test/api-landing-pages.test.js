@@ -6,6 +6,9 @@ import { startApi } from "./support/api.js";
 
 let api;
 let admin;
+const UTC_DEFAULT = /default "utc";/u;
+const LOCAL_UTC_DEFAULT = /default "local-utc";/u;
+const NGINX_TEST = /nginx -tq/u;
 const STOCK_BAN = "<html>stock ban page</html>";
 
 before(async () => {
@@ -55,7 +58,7 @@ it("saves a custom page, checks it, writes the file, tests and reloads nginx", a
 	assert.equal(res.status, 200);
 	assert.deepEqual(res.body.pages.upstream_error, { choice: "custom", html: "<p>down</p>" });
 	assert.equal(await api.read("/data/public/pages/global/upstream-error.html"), "<p>down</p>");
-	assert.match((await api.outside.calls()).join("\n"), /nginx -tq/u);
+	assert.match((await api.outside.calls()).join("\n"), NGINX_TEST);
 	const empty = await admin.put("/settings/landing-pages", { pages: { maintenance: { choice: "custom" } } });
 	assert.equal(empty.status, 400);
 	const ssi = await admin.put("/settings/landing-pages", {
@@ -105,6 +108,54 @@ it("an empty html with the custom choice keeps the saved page, another choice cl
 	assert.deepEqual(kept.body.pages.denied, { choice: "custom", html: "<p>no</p>" });
 	const cleared = await admin.put("/settings/landing-pages", { pages: { denied: { choice: "npmpro", html: "" } } });
 	assert.deepEqual(cleared.body.pages.denied, { choice: "npmpro", html: "" });
+});
+
+it("visit time: utc by default, saved with an nginx test and reload, refused when unknown, admins only", async () => {
+	const conf = "/data/npmpro/nginx/landing-pages.conf";
+	assert.equal((await admin.get("/settings/landing-pages")).body.visit_time, "utc");
+	assert.match(await api.read(conf), UTC_DEFAULT);
+	await api.outside.clearCalls();
+	const saved = await admin.put("/settings/landing-pages", { visit_time: "local-utc" });
+	assert.equal(saved.status, 200);
+	assert.equal(saved.body.visit_time, "local-utc");
+	assert.match(await api.read(conf), LOCAL_UTC_DEFAULT);
+	assert.match((await api.outside.calls()).join("\n"), NGINX_TEST);
+	assert.equal((await admin.get("/settings/landing-pages")).body.visit_time, "local-utc");
+	assert.deepEqual((await admin.get("/audit-log")).body[0].meta, { id: "landing_pages", changed: ["visit_time"] });
+	assert.equal((await admin.put("/settings/landing-pages", { visit_time: "berlin" })).status, 400);
+	const user = await api.limited({ visibility: "all", access_lists: "manage" });
+	assert.equal((await user.put("/settings/landing-pages", { visit_time: "local" })).status, 403);
+	// a page save keeps the choice
+	await admin.put("/settings/landing-pages", { pages: { ban: { choice: "npmpro" } } });
+	assert.equal((await admin.get("/settings/landing-pages")).body.visit_time, "local-utc");
+	await admin.put("/settings/landing-pages", { visit_time: "utc" });
+});
+
+it("visit time: a failed nginx -t puts the include back and keeps the old choice", async () => {
+	const conf = "/data/npmpro/nginx/landing-pages.conf";
+	const previous = await api.read(conf);
+	await api.outside.failCommand("nginx", "nginx: [emerg] test failure");
+	const res = await admin.put("/settings/landing-pages", { visit_time: "local" });
+	await api.outside.passCommand("nginx");
+	assert.equal(res.status, 400);
+	assert.equal(await api.read(conf), previous);
+	assert.equal((await admin.get("/settings/landing-pages")).body.visit_time, "utc");
+});
+
+it("visit time: a stored value outside the three choices reads and is written as utc", async () => {
+	const row = await api.db("setting").where({ id: "landing_pages" }).first();
+	const meta = typeof row.meta === "string" ? JSON.parse(row.meta) : row.meta;
+	await api
+		.db("setting")
+		.where({ id: "landing_pages" })
+		.update({ meta: JSON.stringify({ ...meta, visit_time: 'x"; }' }) });
+	assert.equal((await admin.get("/settings/landing-pages")).body.visit_time, "utc");
+	await admin.put("/settings/landing-pages", { pages: { ban: { choice: "npmpro" } } });
+	assert.match(await api.read("/data/npmpro/nginx/landing-pages.conf"), UTC_DEFAULT);
+	await api
+		.db("setting")
+		.where({ id: "landing_pages" })
+		.update({ meta: JSON.stringify(meta) });
 });
 
 it("a failure writing the global files at start is logged and does not throw", async () => {

@@ -49,15 +49,15 @@ h1{font-size:22px;margin:16px 0 0;font-weight:700;letter-spacing:-.01em}
 <p class="text" data-t="text">Your connection looked a little unusual. Solve the check below to continue to the site.</p>
 <p class="witty" data-t="witty">Just making sure you&#39;re not a very polite robot.</p>
 <form action="" method="POST" id="captcha-form" class="captcha"><div id="captcha" class="{{captcha_frontend_key}}" data-sitekey="{{captcha_site_key}}" data-callback="captchaCallback"></div></form>
-<div class="chips"><span class="chip">IP <!--# echo var="remote_addr" --></span><span class="chip" data-npmpro-time><!--# config timefmt="%Y-%m-%d %H:%M UTC" --><!--# echo var="date_gmt" --></span></div>
+<div class="chips"><span class="chip">IP <!--# echo var="remote_addr" --></span><span class="chip" data-npmpro-time data-utc='<!--# config timefmt="%Y-%m-%dT%H:%M:%SZ" --><!--# echo var="date_gmt" -->' data-visit-time='<!--# echo var="npmpro_visit_time" default="utc" -->'><!--# config timefmt="%Y-%m-%d %H:%M UTC" --><!--# echo var="date_gmt" --></span></div>
 </div></main>
 <div class="foot" data-t="footer">Protected by CrowdSec</div>
 <script type="application/json" id="npmpro-texts">{"en":{"title":"Quick check","text":"Your connection looked a little unusual. Solve the check below to continue to the site.","witty":"Just making sure you're not a very polite robot.","footer":"Protected by CrowdSec"},"de":{"title":"Kurze Prüfung","text":"Ihre Verbindung wirkte etwas ungewöhnlich. Lösen Sie die Prüfung unten, um zur Website zu gelangen.","witty":"Wir wollen nur sichergehen, dass Sie kein sehr höflicher Roboter sind.","footer":"Geschützt durch CrowdSec"},"zh":{"title":"快速验证","text":"您的连接看起来有些异常。请完成下方的验证，以继续访问网站。","witty":"只是想确认您不是一个非常有礼貌的机器人。","footer":"由 CrowdSec 保护"},"fr":{"title":"Petite vérification","text":"Votre connexion semblait un peu inhabituelle. Effectuez la vérification ci-dessous pour continuer vers le site.","witty":"On vérifie simplement que vous n'êtes pas un robot très poli.","footer":"Protégé par CrowdSec"},"es":{"title":"Comprobación rápida","text":"Tu conexión parecía un poco inusual. Resuelve la comprobación de abajo para continuar al sitio.","witty":"Solo queremos asegurarnos de que no eres un robot muy educado.","footer":"Protegido por CrowdSec"},"pt":{"title":"Verificação rápida","text":"A sua ligação pareceu um pouco invulgar. Resolva a verificação abaixo para continuar para o site.","witty":"Só queremos garantir que não é um robô muito educado.","footer":"Protegido por CrowdSec"},"ru":{"title":"Быстрая проверка","text":"Ваше соединение выглядело немного необычно. Пройдите проверку ниже, чтобы перейти на сайт.","witty":"Просто убеждаемся, что вы не очень вежливый робот.","footer":"Защищено CrowdSec"},"it":{"title":"Controllo rapido","text":"La tua connessione è sembrata un po' insolita. Risolvi il controllo qui sotto per continuare verso il sito.","witty":"Vogliamo solo assicurarci che tu non sia un robot molto educato.","footer":"Protetto da CrowdSec"},"nl":{"title":"Snelle controle","text":"Je verbinding zag er een beetje ongewoon uit. Los de controle hieronder op om verder te gaan naar de site.","witty":"We willen alleen zeker weten dat je geen heel beleefde robot bent.","footer":"Beschermd door CrowdSec"},"pl":{"title":"Szybka weryfikacja","text":"Twoje połączenie wyglądało trochę nietypowo. Rozwiąż poniższą weryfikację, aby przejść do witryny.","witty":"Chcemy tylko upewnić się, że nie jesteś bardzo uprzejmym robotem.","footer":"Chronione przez CrowdSec"},"ja":{"title":"簡単な確認","text":"接続がいつもと少し違って見えました。続行するには、下の確認を完了してください。","witty":"とても礼儀正しいロボットではないか、念のため確認しています。","footer":"CrowdSec で保護"},"ko":{"title":"간단한 확인","text":"연결이 조금 특이해 보였습니다. 사이트로 계속 이동하려면 아래 확인을 완료하세요.","witty":"아주 예의 바른 로봇은 아닌지 확인하고 있을 뿐입니다.","footer":"CrowdSec 보호 중"},"uk":{"title":"Швидка перевірка","text":"Ваше з'єднання виглядало трохи незвично. Пройдіть перевірку нижче, щоб перейти на сайт.","witty":"Просто переконуємося, що ви не дуже ввічливий робот.","footer":"Захищено CrowdSec"}}</script>
 <script>// Inlined into every landing page by build.js (identical in all eight, so one CSP hash allows it): shows the texts of
-// the visitor's browser language (English is in the HTML already), fills the time chip when nginx did not, and holds
-// the captcha form's callback.
+// the visitor's browser language (English is in the HTML already), shows the visit time as Settings, Landing pages
+// chose (nginx writes UTC), fills the time chip when nginx did not, and holds the captcha form's callback.
 (() => {
-	const texts = JSON.parse(document.getElementById("npmpro-texts").textContent);
+	const texts = JSON.parse(document.querySelector("#npmpro-texts").textContent);
 	const wanted = [...(navigator.languages ?? []), navigator.language ?? ""];
 	let code = "en";
 	for (const tag of wanted) {
@@ -76,9 +76,41 @@ h1{font-size:22px;margin:16px 0 0;font-weight:700;letter-spacing:-.01em}
 	const time = document.querySelector("[data-npmpro-time]");
 	if (time && time.textContent.trim() === "") {
 		time.textContent = `${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC`;
+	} else if (time) {
+		const choice = time.dataset.visitTime;
+		const moment = new Date(time.dataset.utc ?? "");
+		if ((choice === "local" || choice === "local-utc") && !Number.isNaN(moment.getTime())) {
+			try {
+				const local = new Intl.DateTimeFormat(code, {
+					year: "numeric",
+					month: "short",
+					day: "numeric",
+					hour: "2-digit",
+					minute: "2-digit",
+					timeZoneName: "short",
+				}).format(moment);
+				// local-utc: the UTC time, with the UTC date (page's language, month short, day numeric) when the
+				// visitor's date is another day
+				const dayIn = (zone) =>
+					new Intl.DateTimeFormat(code, {
+						year: "numeric",
+						month: "numeric",
+						day: "numeric",
+						...(zone ? { timeZone: zone } : {}),
+					}).format(moment);
+				const utcTime = moment.toISOString().slice(11, 16);
+				const utcDate =
+					dayIn() === dayIn("UTC")
+						? ""
+						: `${new Intl.DateTimeFormat(code, { month: "short", day: "numeric", timeZone: "UTC" }).format(moment)}, `;
+				time.textContent = choice === "local" ? local : `${local} (${utcDate}${utcTime} UTC)`;
+			} catch {
+				// a browser without these options keeps nginx's UTC text
+			}
+		}
 	}
-	window.captchaCallback = () => {
-		setTimeout(() => document.getElementById("captcha-form")?.submit(), 500);
+	globalThis.captchaCallback = () => {
+		setTimeout(() => document.querySelector("#captcha-form")?.submit(), 500);
 	};
 })();</script>
 </body>

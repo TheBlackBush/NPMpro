@@ -17,11 +17,12 @@ Landing pages are the pages NPMpro shows instead of a site: when nothing is set 
 
 ## Settings, Landing pages
 
-Settings, Landing pages (administrators) shows a short note and three cards. Every line has a dropdown and a **Preview** button, which opens the saved page in a new tab with sample values (save first to preview a change).
+Settings, Landing pages (administrators) shows a short note and four cards. Every page line has a dropdown and a **Preview** button, which opens the saved page in a new tab with sample values (save first to preview a change).
 
 - **Default site:** the answer to a request that matches no host. Options: **Congratulations Page** (the default), **404 Page**, **No Response (444)**, **Redirect** (to an address you enter) and **Custom HTML** (your own page, with an optional status code). A new choice is tested with nginx before it is saved.
 - **Errors:** **Page not found** (404), **Upstream error** (502, 503, 504), **Maintenance** (503) and **Certificate problem** (495).
 - **Access and security:** **Denied** (401, 403), **CrowdSec ban** and **CrowdSec captcha**.
+- **Page details:** **Visit time**, how the Upstream error, Denied, CrowdSec ban and CrowdSec captcha pages show the time of the visit: **UTC** (the default, as before), **Visitor's local time** (the date and time in the visitor's time zone and the page's language, with the zone's short name, for example `17. Nov. 2026, 19:53 MEZ`), or **Visitor's local time and UTC** (`17. Nov. 2026, 19:53 MEZ (18:53 UTC)`; when the visitor's date is another day than in UTC, the UTC date is added: `Nov 18, 2026, 03:53 AM GMT+9 (Nov 17, 18:53 UTC)`). The time is always the server's; only the zone and the format come from the visitor's browser. Without JavaScript the pages show UTC. The change applies on save, without a restart.
 
 Each line in Errors and in Access and security offers the NPMpro page (named after the page: **Not found page**, **Site unavailable page**, **Maintenance page**, **Secure connection page**, **Access denied page**, **Access blocked page**, **Captcha page**) or **Custom page**.
 

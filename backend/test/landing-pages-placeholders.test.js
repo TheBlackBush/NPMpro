@@ -6,13 +6,14 @@ import { DEFAULT_TIMEFMT, ECHO_VARS, fillPlaceholders, ssiProblems } from "../li
 const NOW = new Date(Date.UTC(2026, 10, 13, 9, 41, 7));
 const VALUES = { remote_addr: "203.0.113.7", status: 502, host: "example.com", now: NOW };
 
-it("allows the echo of the five values and config timefmt", () => {
+it("allows the echo of the six values and config timefmt", () => {
 	const html = [
 		'<!--# echo var="remote_addr" -->',
 		'<!--# echo var="host" default="" encoding="entity" -->',
 		'<!--# echo var="status" default="404" -->',
 		'<!--# config timefmt="%Y-%m-%d %H:%M UTC" --><!--# echo var="date_gmt" -->',
 		'<!--# echo var="date_local" -->',
+		'<!--# echo var="npmpro_visit_time" default="utc" -->',
 	].join("\n");
 	assert.deepEqual(ssiProblems(html), []);
 	assert.deepEqual(ssiProblems("<p>no commands</p><!-- a plain comment -->"), []);
@@ -48,6 +49,16 @@ it("fills the values HTML-escaped, with the timefmt of the page or nginx's defau
 	);
 });
 
+it("fills the visit time choice and the ISO moment the same way the chip asks for them", () => {
+	const chip =
+		'<span data-utc=\'<!--# config timefmt="%Y-%m-%dT%H:%M:%SZ" --><!--# echo var="date_gmt" -->\' data-visit-time=\'<!--# echo var="npmpro_visit_time" default="utc" -->\'><!--# config timefmt="%Y-%m-%d %H:%M UTC" --><!--# echo var="date_gmt" --></span>';
+	assert.equal(
+		fillPlaceholders(chip, { ...VALUES, npmpro_visit_time: "local-utc" }),
+		"<span data-utc='2026-11-13T09:41:07Z' data-visit-time='local-utc'>2026-11-13 09:41 UTC</span>",
+	);
+	assert.ok(fillPlaceholders(chip, VALUES).includes("data-visit-time='utc'"));
+});
+
 it("uses default for an empty value and drops what is not allowed", () => {
 	assert.equal(fillPlaceholders('<!--# echo var="host" default="none" -->', { ...VALUES, host: "" }), "none");
 	assert.equal(fillPlaceholders('a<!--# include virtual="/" -->b', VALUES), "ab");
@@ -57,6 +68,7 @@ it("uses default for an empty value and drops what is not allowed", () => {
 it("npmpro_pages.lua knows the same variables and default timefmt", () => {
 	const lua = readFileSync(new URL("../../rootfs/usr/local/share/lua/5.1/npmpro_pages.lua", import.meta.url), "utf8");
 	for (const name of ECHO_VARS) assert.ok(lua.includes(`values.var == "${name}"`), name);
+	assert.ok(lua.includes("value = ngx.var.npmpro_visit_time"));
 	assert.ok(lua.includes(`local DEFAULT_TIMEFMT = "${DEFAULT_TIMEFMT}"`));
 	const conf = readFileSync(
 		new URL("../../rootfs/usr/local/nginx/conf/crowdsec-bouncer.conf", import.meta.url),
