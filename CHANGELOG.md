@@ -45,6 +45,9 @@ below as its release notes.
 - **MCP:** an MCP server at `/api/mcp` for AI assistants, using API tokens: 28 tools for hosts, access
   lists, certificates, monitoring and the audit log, limited to the token's permissions; delete tools only with the
   token's Allow delete switch.
+- **API:** the API reference at `/api/docs` describes every route and field with examples, groups the routes like the
+  menu, starts with a Getting started guide (tokens, permissions, limits, errors, MCP) and follows the app's look and
+  light or dark theme.
 
 ### Changed
 
