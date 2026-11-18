@@ -1,6 +1,6 @@
 {
 	"operationId": "getAccessLists",
-	"summary": "Get all access lists",
+	"summary": "List access lists",
 	"tags": [
 		"Access Lists"
 	],
@@ -16,7 +16,7 @@
 		{
 			"in": "query",
 			"name": "expand",
-			"description": "Expansions",
+			"description": "Relations to add to each access list of the answer: one or several of `owner` (the user who created it), `items` (its basic auth users, without passwords) and `clients` (its address rules), separated by commas.",
 			"schema": {
 				"type": "string",
 				"enum": [
@@ -29,25 +29,36 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The access lists, ordered by name",
 			"content": {
 				"application/json": {
-					"example": {
-						"id": 1,
-						"created_on": "2024-10-08T22:15:40.000Z",
-						"modified_on": "2024-10-08T22:15:40.000Z",
-						"owner_user_id": 1,
-						"name": "test1234",
-						"satisfy_any": true,
-						"pass_auth": false,
-						"proxy_host_count": 0,
-						"npmpro_denied_page": "global"
-					},
 					"schema": {
-						"$ref": "../../../components/access-list-object.json"
+						"type": "array",
+						"description": "The access lists",
+						"items": {
+							"$ref": "../../../components/access-list-object.json"
+						}
+					},
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"id": 3,
+									"created_on": "2026-11-17T09:30:00.000Z",
+									"modified_on": "2026-11-17T09:30:00.000Z",
+									"owner_user_id": 1,
+									"name": "Office network",
+									"satisfy_any": true,
+									"pass_auth": false,
+									"proxy_host_count": 1,
+									"npmpro_denied_page": "global"
+								}
+							]
+						}
 					}
 				}
 			}
 		}
-	}
+	},
+	"description": "Lists the access lists, ordered by name, each with the number of proxy hosts that use it. A user limited to their own items sees only theirs. The `query` query parameter searches the names. The answers never carry password hashes.\nNeeds: Access Lists view"
 }

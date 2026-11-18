@@ -13,7 +13,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "DNS credential payload",
+		"description": "The credential to save: a name, the DNS provider and its values",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -33,7 +33,7 @@
 						},
 						"fields": {
 							"type": "array",
-							"description": "Secret values may be omitted or empty to keep the stored value",
+							"description": "The credential values as the provider's fields, as listed by the DNS providers operation. A secret left out or empty keeps its stored value. Send either `fields` or `ini`, not both.",
 							"items": {
 								"type": "object",
 								"required": [
@@ -43,11 +43,13 @@
 								"properties": {
 									"key": {
 										"type": "string",
+										"description": "Name of the provider field, such as `dns_cloudflare_api_token`",
 										"minLength": 1,
 										"maxLength": 255
 									},
 									"value": {
 										"type": "string",
+										"description": "Value of the field",
 										"maxLength": 4096
 									}
 								}
@@ -57,21 +59,44 @@
 							"$ref": "../../../components/dns-credential-object.json#/properties/ini"
 						}
 					}
+				},
+				"examples": {
+					"fields": {
+						"summary": "The values as provider fields",
+						"value": {
+							"name": "Cloudflare main",
+							"provider": "cloudflare",
+							"fields": [
+								{
+									"key": "dns_cloudflare_api_token",
+									"value": "YOUR_CLOUDFLARE_TOKEN"
+								}
+							]
+						}
+					},
+					"ini": {
+						"summary": "A raw credentials file",
+						"value": {
+							"name": "Cloudflare main",
+							"provider": "cloudflare",
+							"ini": "dns_cloudflare_api_token = YOUR_CLOUDFLARE_TOKEN"
+						}
+					}
 				}
 			}
 		}
 	},
 	"responses": {
 		"201": {
-			"description": "201 response",
+			"description": "The saved credential, without its values",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
 								"id": 1,
-								"created_on": "2024-10-09T05:31:58.000Z",
-								"modified_on": "2024-10-09T05:32:11.000Z",
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T09:30:00.000Z",
 								"owner_user_id": 1,
 								"name": "Cloudflare main",
 								"provider": "cloudflare",
@@ -79,6 +104,14 @@
 									{
 										"key": "dns_cloudflare_api_token",
 										"is_set": true
+									},
+									{
+										"key": "dns_cloudflare_email",
+										"is_set": false
+									},
+									{
+										"key": "dns_cloudflare_api_key",
+										"is_set": false
 									}
 								],
 								"ini_set": false,
@@ -92,5 +125,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Saves a DNS credential for a DNS provider, to use in the DNS challenge of certificates. The values are stored encrypted and never returned. The name must be unused among your credentials, and a deprecated provider is refused. Send the values as `fields` or, for a provider without a field list, as a raw credentials file in `ini`.\nNeeds: Certificates manage"
 }

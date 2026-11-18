@@ -1,6 +1,6 @@
 {
 	"operationId": "getCertificate",
-	"summary": "Get a Certificate",
+	"summary": "Get a certificate",
 	"tags": [
 		"Certificates"
 	],
@@ -16,36 +16,37 @@
 		{
 			"in": "path",
 			"name": "certID",
-			"description": "Certificate ID",
+			"description": "ID of the certificate, as the list shows it",
 			"schema": {
 				"type": "integer",
 				"minimum": 1
 			},
 			"required": true,
-			"example": 1
+			"example": 5
 		}
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The certificate",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"id": 4,
-								"created_on": "2024-10-09T05:31:58.000Z",
-								"modified_on": "2024-10-09T05:32:11.000Z",
+								"id": 5,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T09:30:00.000Z",
 								"owner_user_id": 1,
 								"provider": "letsencrypt",
-								"nice_name": "test.example.com",
+								"nice_name": "app.example.com",
 								"domain_names": [
-									"test.example.com"
+									"app.example.com"
 								],
-								"expires_on": "2025-01-07T04:34:18.000Z",
+								"expires_on": "2027-02-15T09:30:00.000Z",
 								"npmpro_reuse_key": false,
 								"npmpro_dns_challenge": false,
 								"npmpro_dns_provider": "",
+								"npmpro_dns_credential_id": null,
 								"npmpro_propagation_seconds": 0
 							}
 						}
@@ -56,5 +57,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns one certificate. The answer carries no owner or host objects; use the list with `expand` for those.\nNeeds: Certificates view"
 }

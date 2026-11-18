@@ -1,6 +1,6 @@
 {
 	"operationId": "deleteAccessList",
-	"summary": "Delete a Access List",
+	"summary": "Delete an access list",
 	"tags": [
 		"Access Lists"
 	],
@@ -16,60 +16,59 @@
 		{
 			"in": "path",
 			"name": "listID",
-			"description": "Access List ID",
+			"description": "ID of the access list, as the list shows it",
 			"schema": {
 				"type": "integer",
 				"minimum": 1
 			},
 			"required": true,
-			"example": 2
+			"example": 3
 		}
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The access list that was deleted",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"id": 1,
-								"created_on": "2024-10-08T22:15:40.000Z",
-								"modified_on": "2024-10-08T22:34:34.000Z",
+								"id": 3,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T09:30:00.000Z",
 								"owner_user_id": 1,
-								"name": "test123!!",
+								"name": "Office network",
 								"satisfy_any": true,
 								"pass_auth": false,
-								"proxy_host_count": 0,
+								"proxy_host_count": 1,
+								"npmpro_denied_page": "global",
 								"items": [
 									{
-										"id": 1,
-										"created_on": "2024-10-08T22:15:40.000Z",
-										"modified_on": "2024-10-08T22:15:40.000Z",
-										"access_list_id": 1,
-										"username": "admin",
-										"password": ""
-									},
-									{
-										"id": 2,
-										"created_on": "2024-10-08T22:15:40.000Z",
-										"modified_on": "2024-10-08T22:15:40.000Z",
-										"access_list_id": 1,
-										"username": "asdad",
-										"password": ""
+										"id": 4,
+										"created_on": "2026-11-17T09:30:00.000Z",
+										"modified_on": "2026-11-17T09:30:00.000Z",
+										"access_list_id": 3,
+										"username": "jane"
 									}
 								],
 								"clients": [
 									{
-										"id": 1,
-										"created_on": "2024-10-08T22:15:40.000Z",
-										"modified_on": "2024-10-08T22:15:40.000Z",
-										"access_list_id": 1,
-										"address": "127.0.0.1",
+										"id": 5,
+										"created_on": "2026-11-17T09:30:00.000Z",
+										"modified_on": "2026-11-17T09:30:00.000Z",
+										"access_list_id": 3,
+										"address": "198.51.100.0/24",
 										"directive": "allow"
+									},
+									{
+										"id": 6,
+										"created_on": "2026-11-17T09:30:00.000Z",
+										"modified_on": "2026-11-17T09:30:00.000Z",
+										"access_list_id": 3,
+										"address": "all",
+										"directive": "deny"
 									}
-								],
-								"npmpro_denied_page": "global"
+								]
 							}
 						}
 					},
@@ -79,5 +78,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Deletes an access list for good with its users and rules, and removes it from every proxy host and location that used it: a host left with no list becomes public, a location left with none falls back to the host's. Those hosts are rewritten and nginx is reloaded. The answer is the list as it was, without password hashes.\nNeeds: Access Lists manage and the token's Allow delete switch"
 }

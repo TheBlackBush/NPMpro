@@ -1,6 +1,6 @@
 {
 	"operationId": "testHttpReach",
-	"summary": "Test HTTP Reachability",
+	"summary": "Test the HTTP challenge",
 	"tags": [
 		"Certificates"
 	],
@@ -13,7 +13,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "Test Payload",
+		"description": "The domains to test",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -28,26 +28,62 @@
 							"$ref": "../../../../common.json#/properties/domain_names"
 						}
 					}
+				},
+				"example": {
+					"domains": [
+						"app.example.com",
+						"old.example.com"
+					]
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The result for each domain",
 			"content": {
 				"application/json": {
+					"schema": {
+						"type": "array",
+						"description": "One result per domain, in the order sent",
+						"items": {
+							"type": "object",
+							"required": [
+								"domain",
+								"status"
+							],
+							"additionalProperties": false,
+							"properties": {
+								"domain": {
+									"type": "string",
+									"description": "The domain that was tested",
+									"example": "app.example.com"
+								},
+								"status": {
+									"type": "string",
+									"description": "`ok` when the test file came back, `wrong-data` when the domain answered 200 with something else, `404` when it answered not found, `no-host` when the domain does not resolve, `failed` when the outside service could not be asked, or `other:` followed by another status code or the service's message",
+									"example": "ok"
+								}
+							}
+						}
+					},
 					"examples": {
 						"default": {
-							"value": {
-								"test.example.org": "ok",
-								"test.example.com": "other:Invalid domain or IP",
-								"nonexistent.example.com": "404"
-							}
+							"value": [
+								{
+									"domain": "app.example.com",
+									"status": "ok"
+								},
+								{
+									"domain": "old.example.com",
+									"status": "404"
+								}
+							]
 						}
 					}
 				}
 			}
 		}
-	}
+	},
+	"description": "Checks that each domain reaches this instance over HTTP on port 80, as the HTTP challenge needs: it writes a test file and asks an outside service (site24x7) to fetch it. The answer lists one result per domain; a domain that fails does not fail the request.\nNeeds: Certificates manage"
 }

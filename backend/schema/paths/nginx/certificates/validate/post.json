@@ -1,6 +1,6 @@
 {
 	"operationId": "validateCertificates",
-	"summary": "Validates given Custom Certificates",
+	"summary": "Validate certificate files",
 	"tags": [
 		"Certificates"
 	],
@@ -13,22 +13,25 @@
 		}
 	],
 	"requestBody": {
-		"$ref": "../../../../common.json#/properties/certificate_files"
+		"$ref": "../../../../common.json#/properties/certificate_files",
+		"description": "The certificate in PEM form (`certificate`) and, for a custom certificate, its private key (`certificate_key`), as form fields holding files of at most 1 MiB each"
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "What was read from the files",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
 								"certificate": {
-									"cn": "mkcert",
-									"issuer": "O = mkcert development CA, OU = jc@jc-Laptop.local (John Doe), CN = mkcert jc@jc-Laptop.local (John Doe)",
+									"cn": [
+										"*.example.com"
+									],
+									"issuer": "C = US, O = Example CA, CN = Example Issuing CA",
 									"dates": {
-										"from": 1728458537,
-										"to": 1799479337
+										"from": 1795000000,
+										"to": 1826536000
 									}
 								},
 								"certificate_key": true
@@ -39,8 +42,7 @@
 						"type": "object",
 						"additionalProperties": false,
 						"required": [
-							"certificate",
-							"certificate_key"
+							"certificate"
 						],
 						"properties": {
 							"certificate": {
@@ -53,12 +55,19 @@
 								],
 								"properties": {
 									"cn": {
-										"type": "string",
-										"example": "example.com"
+										"type": "array",
+										"description": "The names the certificate is valid for: its subject alternative names, or its common name when it has none",
+										"items": {
+											"type": "string"
+										},
+										"example": [
+											"*.example.com"
+										]
 									},
 									"issuer": {
 										"type": "string",
-										"example": "C = US, O = Let's Encrypt, CN = E5"
+										"example": "C = US, O = Example CA, CN = Example Issuing CA",
+										"description": "Who issued the certificate"
 									},
 									"dates": {
 										"type": "object",
@@ -69,30 +78,36 @@
 										],
 										"properties": {
 											"from": {
-												"type": "integer"
+												"type": "integer",
+												"description": "Start of the validity"
 											},
 											"to": {
-												"type": "integer"
+												"type": "integer",
+												"description": "End of the validity"
 											}
 										},
 										"example": {
-											"from": 1728448218,
-											"to": 1736224217
-										}
+											"from": 1795000000,
+											"to": 1826536000
+										},
+										"description": "When the certificate is valid, as Unix time in seconds"
 									}
-								}
+								},
+								"description": "What the certificate says"
 							},
 							"certificate_key": {
 								"type": "boolean",
-								"example": true
+								"example": true,
+								"description": "Whether the private key is readable and matches the certificate; absent when no key was sent"
 							}
-						}
+						},
+						"description": "The result of the checks"
 					}
 				}
 			}
 		},
 		"400": {
-			"description": "400 response",
+			"description": "A file is not a valid certificate or key, the certificate has expired, or the key does not match",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -100,7 +115,7 @@
 							"value": {
 								"error": {
 									"code": 400,
-									"message": "Certificate is not valid"
+									"message": "Certificate Key does not match the Certificate"
 								}
 							}
 						}
@@ -111,5 +126,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Checks an uploaded certificate and key without storing anything: the key must be readable, the certificate valid and not expired, and the two must match. Send multipart form data. Only the files you send are reported; a failed check answers 400 with the reason.\nNeeds: Certificates manage"
 }

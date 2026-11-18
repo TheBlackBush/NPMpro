@@ -1,6 +1,6 @@
 {
 	"operationId": "getCertificates",
-	"summary": "Get all certificates",
+	"summary": "List certificates",
 	"tags": [
 		"Certificates"
 	],
@@ -16,7 +16,7 @@
 		{
 			"in": "query",
 			"name": "expand",
-			"description": "Expansions",
+			"description": "Relations to add to each certificate of the answer: one or several of `owner` (the user who created it), `proxy_hosts`, `redirection_hosts`, `dead_hosts` and `streams` (the hosts using it as their certificate) and `mtls_proxy_hosts`, `mtls_redirection_hosts`, `mtls_dead_hosts` and `mtls_streams` (the hosts using it as their client CA), separated by commas.",
 			"schema": {
 				"type": "string",
 				"enum": [
@@ -35,26 +35,62 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The certificates, ordered by name",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": [
 								{
-									"id": 4,
-									"created_on": "2024-10-09T05:31:58.000Z",
-									"modified_on": "2024-10-09T05:32:11.000Z",
+									"id": 6,
+									"created_on": "2026-11-17T09:35:00.000Z",
+									"modified_on": "2026-11-17T09:35:00.000Z",
 									"owner_user_id": 1,
 									"provider": "letsencrypt",
-									"nice_name": "test.example.com",
+									"nice_name": "*.example.com, example.com",
 									"domain_names": [
-										"test.example.com"
+										"*.example.com",
+										"example.com"
 									],
-									"expires_on": "2025-01-07T04:34:18.000Z",
+									"expires_on": "2027-02-15T09:35:00.000Z",
+									"npmpro_reuse_key": false,
+									"npmpro_dns_challenge": true,
+									"npmpro_dns_provider": "cloudflare",
+									"npmpro_dns_credential_id": 1,
+									"npmpro_propagation_seconds": 60
+								},
+								{
+									"id": 7,
+									"created_on": "2026-11-17T10:00:00.000Z",
+									"modified_on": "2026-11-17T10:05:00.000Z",
+									"owner_user_id": 1,
+									"provider": "other",
+									"nice_name": "Internal wildcard",
+									"domain_names": [
+										"*.example.com"
+									],
+									"expires_on": "2027-11-17T10:00:00.000Z",
 									"npmpro_reuse_key": false,
 									"npmpro_dns_challenge": false,
 									"npmpro_dns_provider": "",
+									"npmpro_dns_credential_id": null,
+									"npmpro_propagation_seconds": 0
+								},
+								{
+									"id": 5,
+									"created_on": "2026-11-17T09:30:00.000Z",
+									"modified_on": "2026-11-17T09:30:00.000Z",
+									"owner_user_id": 1,
+									"provider": "letsencrypt",
+									"nice_name": "app.example.com",
+									"domain_names": [
+										"app.example.com"
+									],
+									"expires_on": "2027-02-15T09:30:00.000Z",
+									"npmpro_reuse_key": false,
+									"npmpro_dns_challenge": false,
+									"npmpro_dns_provider": "",
+									"npmpro_dns_credential_id": null,
 									"npmpro_propagation_seconds": 0
 								}
 							]
@@ -66,5 +102,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Lists the certificates, ordered by name. A user limited to their own items sees only theirs. The `query` query parameter searches the names.\nNeeds: Certificates view"
 }

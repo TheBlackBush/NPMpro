@@ -1,6 +1,6 @@
 {
 	"operationId": "setCertificateDnsCredential",
-	"summary": "Links another saved DNS credential to a Certificate",
+	"summary": "Change the DNS credential of a certificate",
 	"tags": [
 		"Certificates"
 	],
@@ -16,13 +16,13 @@
 		{
 			"in": "path",
 			"name": "certID",
-			"description": "Certificate ID",
+			"description": "ID of the certificate that uses the DNS challenge, as the list shows it",
 			"schema": {
 				"type": "integer",
 				"minimum": 1
 			},
 			"required": true,
-			"example": 1
+			"example": 6
 		}
 	],
 	"requestBody": {
@@ -40,23 +40,50 @@
 						"npmpro_dns_credential_id": {
 							"type": "integer",
 							"minimum": 1,
-							"example": 1
+							"example": 1,
+							"description": "ID of the saved DNS credential to use, as the DNS credential list shows it"
 						}
 					}
+				},
+				"example": {
+					"npmpro_dns_credential_id": 2
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The certificate with the new credential",
 			"content": {
 				"application/json": {
 					"schema": {
 						"$ref": "../../../../../components/certificate-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"id": 6,
+								"created_on": "2026-11-17T09:35:00.000Z",
+								"modified_on": "2026-11-18T08:00:00.000Z",
+								"owner_user_id": 1,
+								"provider": "letsencrypt",
+								"nice_name": "*.example.com, example.com",
+								"domain_names": [
+									"*.example.com",
+									"example.com"
+								],
+								"expires_on": "2027-02-15T09:35:00.000Z",
+								"npmpro_reuse_key": false,
+								"npmpro_dns_challenge": true,
+								"npmpro_dns_provider": "cloudflare",
+								"npmpro_dns_credential_id": 2,
+								"npmpro_propagation_seconds": 60
+							}
+						}
 					}
 				}
 			}
 		}
-	}
+	},
+	"description": "Links another saved DNS credential to a Let's Encrypt certificate that uses the DNS challenge. It is used from the next renewal on, and it must belong to the same DNS provider as the certificate. Any other certificate answers 400.\nNeeds: Certificates manage"
 }
