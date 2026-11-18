@@ -31,7 +31,10 @@
 			"description": "Kind of object the entry is about, such as `proxy-host`, `certificate` or `user`"
 		},
 		"object_id": {
-			"$ref": "../common.json#/properties/id"
+			"type": "integer",
+			"minimum": 0,
+			"example": 12,
+			"description": "Id of the object the entry is about; 0 when the event has no single object, such as a backup"
 		},
 		"action": {
 			"type": "string",

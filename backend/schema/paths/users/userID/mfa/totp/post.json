@@ -57,6 +57,9 @@
 				}
 			},
 			"description": "The pending TOTP secret and its otpauth address"
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
 		}
 	},
 	"description": "Creates a new TOTP secret for your own account and returns it with an `otpauth_url` for a QR code. TOTP is not on until you confirm a code from your authenticator with the enable route within 10 minutes; a new start replaces the unconfirmed secret. Only for your own account, and 400 when TOTP is already on.\n\nNeeds: a signed-in session as that user (API tokens are refused)"

@@ -46,7 +46,7 @@
 		},
 		"proxy_host_count": {
 			"type": "integer",
-			"description": "Number of proxy hosts that use the list",
+			"description": "Number of proxy hosts that use the list. Only the access list routes carry it; the access lists inside a proxy host do not",
 			"minimum": 0,
 			"example": 3
 		},

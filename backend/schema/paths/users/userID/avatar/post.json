@@ -75,6 +75,9 @@
 					}
 				}
 			}
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
 		}
 	},
 	"description": "Replaces the avatar of a user with an uploaded image (a multipart form with the file in `avatar`, at most 1 MiB, PNG, JPEG, WebP or GIF as detected from the file). Anything else is refused with 400.\n\nNeeds: a signed-in session as that user or as an administrator (API tokens are refused)"

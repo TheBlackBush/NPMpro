@@ -1,0 +1,134 @@
+{
+	"type": "object",
+	"description": "An access list inside a proxy host's `access_lists`. The same as the access list routes answer, but without `proxy_host_count`, which only the access list routes carry. Password hashes are never part of an answer",
+	"required": [
+		"id",
+		"created_on",
+		"modified_on",
+		"owner_user_id",
+		"name",
+		"satisfy_any",
+		"pass_auth",
+		"npmpro_denied_page"
+	],
+	"properties": {
+		"id": {
+			"$ref": "../common.json#/properties/id"
+		},
+		"created_on": {
+			"$ref": "../common.json#/properties/created_on"
+		},
+		"modified_on": {
+			"$ref": "../common.json#/properties/modified_on"
+		},
+		"owner_user_id": {
+			"$ref": "../common.json#/properties/user_id"
+		},
+		"name": {
+			"type": "string",
+			"description": "Name shown in the lists and when choosing an access list",
+			"minLength": 1,
+			"maxLength": 255,
+			"example": "My Access List"
+		},
+		"satisfy_any": {
+			"type": "boolean",
+			"description": "Whether a visitor needs to pass only one of the checks (a basic auth user or an allowed address) instead of all",
+			"default": false,
+			"example": true
+		},
+		"pass_auth": {
+			"type": "boolean",
+			"description": "Whether the basic auth credentials are passed on to the upstream server",
+			"default": false,
+			"example": false
+		},
+		"npmpro_denied_page": {
+			"$ref": "../common.json#/properties/npmpro_denied_page"
+		},
+		"npmpro_denied_page_html": {
+			"$ref": "../common.json#/properties/npmpro_page_html"
+		},
+		"owner": {
+			"$ref": "./user-object.json",
+			"description": "The user who created it; only with `expand`"
+		},
+		"items": {
+			"type": "array",
+			"description": "The basic auth users; only with `expand` (and in the answers of create, update, get and delete)",
+			"items": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "integer",
+						"description": "ID of the user row",
+						"example": 4
+					},
+					"created_on": {
+						"type": "string",
+						"description": "When the user was added, in UTC",
+						"example": "2026-11-17T09:30:00.000Z"
+					},
+					"modified_on": {
+						"type": "string",
+						"description": "When the user was last saved, in UTC",
+						"example": "2026-11-17T09:30:00.000Z"
+					},
+					"access_list_id": {
+						"type": "integer",
+						"description": "ID of the access list the user belongs to",
+						"example": 3
+					},
+					"username": {
+						"type": "string",
+						"description": "Name the user signs in with",
+						"example": "jane"
+					}
+				}
+			}
+		},
+		"clients": {
+			"type": "array",
+			"description": "The address rules in the order nginx checks them; only with `expand` (and in the answers of create, update, get and delete)",
+			"items": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "integer",
+						"description": "ID of the rule row",
+						"example": 5
+					},
+					"created_on": {
+						"type": "string",
+						"description": "When the rule was added, in UTC",
+						"example": "2026-11-17T09:30:00.000Z"
+					},
+					"modified_on": {
+						"type": "string",
+						"description": "When the rule was last saved, in UTC",
+						"example": "2026-11-17T09:30:00.000Z"
+					},
+					"access_list_id": {
+						"type": "integer",
+						"description": "ID of the access list the rule belongs to",
+						"example": 3
+					},
+					"address": {
+						"type": "string",
+						"description": "The client address or network the rule matches, or `all`",
+						"example": "198.51.100.0/24"
+					},
+					"directive": {
+						"type": "string",
+						"description": "Whether a matching address is allowed or denied",
+						"enum": [
+							"allow",
+							"deny"
+						],
+						"example": "allow"
+					}
+				}
+			}
+		}
+	}
+}

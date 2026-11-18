@@ -37,6 +37,9 @@
 				}
 			},
 			"description": "true when MFA was reset"
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
 		}
 	},
 	"description": "Turns off every second factor and deletes the backup codes of another user, for someone who lost their device. It works for other users only (400 for your own account) and 400 when MFA is not on. The change is in the audit log.\n\nNeeds: a signed-in session of an administrator (API tokens are refused)"

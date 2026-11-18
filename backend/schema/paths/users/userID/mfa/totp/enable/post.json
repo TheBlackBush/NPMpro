@@ -106,6 +106,9 @@
 				}
 			},
 			"description": "The backup codes, shown once, or null when they already exist"
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
 		}
 	},
 	"description": "Checks a code from your authenticator against the pending secret and turns TOTP on. The first factor also creates the backup codes, shown once in the answer (null when codes already exist). The answer sets a fresh session cookie.\n\nNeeds: a signed-in session as that user (API tokens are refused)"

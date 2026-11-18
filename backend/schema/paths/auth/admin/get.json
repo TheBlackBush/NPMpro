@@ -12,6 +12,9 @@
 	"responses": {
 		"200": {
 			"description": "The session belongs to an administrator; the answer has no body"
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot be used for this request`."
 		}
 	},
 	"description": "nginx asks this before it serves an admin page (the `auth_request` directive) and shows the page only when the answer is 200. The answer has no body: 200 for a signed-in administrator, 401 without a valid session, 403 for an API token or a user who is not an administrator. Scripts have no use for it.\n\nNeeds: a signed-in session of an administrator (API tokens are refused)"

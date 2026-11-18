@@ -26,8 +26,12 @@ const FONT_FILES = new Map([
 	],
 ]);
 
-// in the head, so the first paint has the theme; files from 'self' (the page CSP allows no inline style or script)
-const HEAD = '<link rel="stylesheet" href="./npmpro/docs.css"><script src="./npmpro/theme.js"></script>';
+// in the head, so the first paint has the theme and the page fits a phone's width; files from 'self' (the page CSP allows no inline style or script)
+const HEAD = [
+	'<meta name="viewport" content="width=device-width, initial-scale=1">',
+	'<link rel="stylesheet" href="./npmpro/docs.css">',
+	'<script src="./npmpro/theme.js"></script>',
+].join("");
 const logo = (theme) => `<img class="npmpro-logo-${theme}" src="/images/logo-horizontal-${theme}.svg" alt="NPMpro">`;
 const HEADER = [
 	'<header class="npmpro-docs-header">',

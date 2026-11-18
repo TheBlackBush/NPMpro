@@ -45,6 +45,9 @@
 				}
 			},
 			"description": "true when the link was removed or there was none"
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
 		}
 	},
 	"description": "Removes the link between a user and their OIDC identity. The next OIDC sign-in with the same email links it again. The change is in the audit log.\n\nNeeds: a signed-in session of an administrator (API tokens are refused)"

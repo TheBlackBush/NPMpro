@@ -13,6 +13,7 @@ const UNSAFE_INLINE = /unsafe-inline/u;
 const FONT_SRC = /font-src 'self';/u;
 const CSS_LINK = /<link rel="stylesheet" href="\.\/npmpro\/docs\.css">/u;
 const THEME_SCRIPT = /<script src="\.\/npmpro\/theme\.js"><\/script>/u;
+const VIEWPORT = /<meta name="viewport" content="width=device-width, initial-scale=1">/u;
 const HEADER = /<header class="npmpro-docs-header">[\s\S]*logo-horizontal-light\.svg[\s\S]*logo-horizontal-dark\.svg/u;
 const TITLE = /<title>NPMpro API<\/title>/u;
 const FAVICON = /href="\/images\/favicon\/favicon\.svg"/u;
@@ -42,6 +43,11 @@ it("loads the theme in the head, before the Swagger UI scripts, and shows the NP
 	assert.match(page, HEADER);
 	assert.match(page, TITLE);
 	assert.match(page, FAVICON);
+});
+
+it("has a viewport meta in the head, so a phone shows the page at its own width", () => {
+	const head = page.slice(0, page.indexOf("</head>"));
+	assert.match(head, VIEWPORT);
 });
 
 it("serves only the four Latin font files, from the fontsource packages", () => {

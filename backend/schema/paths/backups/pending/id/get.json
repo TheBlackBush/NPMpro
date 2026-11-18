@@ -46,6 +46,9 @@
 					}
 				}
 			}
+		},
+		"410": {
+			"description": "The id is unknown, malformed, expired (unfetched downloads are removed after 30 minutes), already fetched, or belongs to another user. The answer is an error such as {\"error\": {\"code\": 410, \"message\": \"The restore session has expired\", \"message_i18n\": \"backup.error.token-expired\"}}."
 		}
 	}
 }

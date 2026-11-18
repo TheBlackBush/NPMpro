@@ -405,7 +405,7 @@
 		"access_lists": {
 			"type": "array",
 			"items": {
-				"$ref": "./access-list-object.json"
+				"$ref": "./proxy-host-access-list-object.json"
 			},
 			"example": [],
 			"description": "The access lists applied to the host itself, in the order they were chosen. Set npmpro_access_list_ids to change them; a request never sends this field."

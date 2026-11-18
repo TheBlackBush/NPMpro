@@ -89,6 +89,9 @@
 					}
 				}
 			}
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
 		}
 	},
 	"description": "Changes the name, email, roles or disabled state of a user; only the fields sent change. Changing roles needs an administrator, and nobody can change their own roles or disable themselves (403). Disabling a user ends their sessions and stops their API tokens.\n\nNeeds: a signed-in session as that user or as an administrator (API tokens are refused)"

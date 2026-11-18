@@ -26,6 +26,9 @@
 					}
 				}
 			}
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot be used for this request`."
 		}
 	},
 	"description": "Sets a new session cookie that is valid 1 hour from now, for a signed-in user who is still active. The web interface calls it before the session ends. A signed-in session is needed: API tokens are refused with 403.\n\nNeeds: a signed-in session (API tokens are refused)"

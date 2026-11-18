@@ -104,6 +104,9 @@
 					}
 				}
 			}
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot be used for this request`."
 		}
 	}
 }

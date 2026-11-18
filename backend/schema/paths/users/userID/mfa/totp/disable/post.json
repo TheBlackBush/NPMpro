@@ -68,6 +68,9 @@
 				}
 			},
 			"description": "true when TOTP was turned off"
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
 		}
 	},
 	"description": "Turns TOTP off for your own account after a check of one current code. The backup codes are deleted when no other factor is left. 400 when TOTP is not on or the code is wrong.\n\nNeeds: a signed-in session as that user (API tokens are refused)"
