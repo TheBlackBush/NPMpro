@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "src/components/ui/tabs
 import { intl, T } from "src/locale";
 import { buildCurl, buildNode, buildPython } from "src/modules/ApiRequest";
 import { CodeBlock } from "./CodeBlock";
+import { TryIt } from "./TryIt";
 
 /** The code language of the whole page: `{ language, setLanguage }`, kept in memory only */
 export const CodeLanguageContext = createContext({ language: "curl", setLanguage: () => undefined });
@@ -48,6 +49,7 @@ export function CodePanel({ operation }) {
 					))}
 				</Tabs>
 			</div>
+			<TryIt operation={operation} />
 			{success ? (
 				<div>
 					<h4 className="m-0 mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">

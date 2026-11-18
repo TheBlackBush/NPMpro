@@ -6,6 +6,7 @@ import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { Logo } from "src/shell/Logo";
 import { ThemeMenu } from "src/shell/ThemeMenu";
+import { TokenControl } from "./TokenControl";
 
 /**
  * The route search. Escape clears it.
@@ -90,6 +91,7 @@ export function ApiHeader({ version, query, onQuery, searchRef, onOpenNav }) {
 					shortcut
 					className={cn("hidden w-72 lg:flex")}
 				/>
+				<TokenControl />
 				<ThemeMenu />
 			</header>
 		</>
