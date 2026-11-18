@@ -1,6 +1,6 @@
 {
 	"operationId": "docs",
-	"summary": "Returns the Swagger UI for this API schema",
+	"summary": "Open the API reference page",
 	"tags": [
 		"System"
 	],
@@ -14,10 +14,11 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The Swagger UI page as `text/html`",
 			"content": {
 				"text/html": {}
 			}
 		}
-	}
+	},
+	"description": "Returns this reference as an HTML page (Swagger UI). `/api/docs` without the final slash redirects to `/api/docs/`. The page's Authorize button takes an API token.\n\nNeeds: a signed-in user (a session or an API token)"
 }

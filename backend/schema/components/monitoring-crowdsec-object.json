@@ -28,18 +28,21 @@
 			"type": [
 				"string",
 				"null"
-			]
+			],
+			"description": "Why the last poll failed, null when it succeeded"
 		},
 		"fetched_at": {
 			"type": [
 				"string",
 				"null"
 			],
-			"format": "date-time"
+			"format": "date-time",
+			"description": "When the decisions were last read, null before the first successful poll"
 		},
 		"total": {
 			"type": "integer",
-			"minimum": 0
+			"minimum": 0,
+			"description": "Number of active decisions"
 		},
 		"added_24h": {
 			"type": "integer",
@@ -58,11 +61,13 @@
 				],
 				"properties": {
 					"scenario": {
-						"type": "string"
+						"type": "string",
+						"description": "CrowdSec scenario that caused the decisions"
 					},
 					"count": {
 						"type": "integer",
-						"minimum": 1
+						"minimum": 1,
+						"description": "Number of active decisions of this scenario"
 					}
 				}
 			}
@@ -79,11 +84,13 @@
 				],
 				"properties": {
 					"origin": {
-						"type": "string"
+						"type": "string",
+						"description": "Where the decisions come from, such as `crowdsec`, `cscli` or `CAPI`"
 					},
 					"count": {
 						"type": "integer",
-						"minimum": 1
+						"minimum": 1,
+						"description": "Number of active decisions from this origin"
 					}
 				}
 			}
@@ -100,11 +107,13 @@
 				],
 				"properties": {
 					"type": {
-						"type": "string"
+						"type": "string",
+						"description": "Decision type, such as `ban` or `captcha`"
 					},
 					"count": {
 						"type": "integer",
-						"minimum": 1
+						"minimum": 1,
+						"description": "Number of active decisions of this type"
 					}
 				}
 			}
@@ -117,23 +126,28 @@
 				"type": "object",
 				"properties": {
 					"id": {
-						"type": "integer"
+						"type": "integer",
+						"description": "CrowdSec decision ID"
 					},
 					"value": {
 						"type": "string",
 						"description": "IP or range"
 					},
 					"scope": {
-						"type": "string"
+						"type": "string",
+						"description": "What the value is: `Ip`, `Range` or another CrowdSec scope"
 					},
 					"scenario": {
-						"type": "string"
+						"type": "string",
+						"description": "CrowdSec scenario that caused the decision"
 					},
 					"origin": {
-						"type": "string"
+						"type": "string",
+						"description": "Where the decision comes from"
 					},
 					"type": {
-						"type": "string"
+						"type": "string",
+						"description": "Decision type, such as `ban`"
 					},
 					"duration": {
 						"type": "string",
@@ -141,13 +155,15 @@
 					},
 					"seconds_left": {
 						"type": "integer",
-						"minimum": 0
+						"minimum": 0,
+						"description": "Seconds until the decision ends"
 					},
 					"country": {
 						"type": [
 							"string",
 							"null"
-						]
+						],
+						"description": "ISO 3166-1 alpha-2 country code of an IP decision, null when unknown"
 					}
 				},
 				"additionalProperties": false,
@@ -175,14 +191,17 @@
 				],
 				"properties": {
 					"country": {
-						"type": "string"
+						"type": "string",
+						"description": "ISO 3166-1 alpha-2 country code"
 					},
 					"count": {
 						"type": "integer",
-						"minimum": 1
+						"minimum": 1,
+						"description": "Number of active decisions for this country"
 					}
 				}
-			}
+			},
+			"description": "Active decisions per country, most first"
 		}
 	}
 }

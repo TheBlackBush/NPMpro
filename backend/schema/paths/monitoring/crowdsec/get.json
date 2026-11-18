@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The CrowdSec decisions and their summary, as of the last poll",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -72,5 +72,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns the active decisions (bans) NPMpro reads from the CrowdSec local API with its bouncer key: totals, groups by scenario, origin and type, the newest decisions and a count per country. Without a configured bouncer, `configured` is false and the lists are empty. After a failed poll the last list is kept and `reachable` is false with the `error`.\n\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

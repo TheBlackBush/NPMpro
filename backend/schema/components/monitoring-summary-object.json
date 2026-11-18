@@ -21,7 +21,8 @@
 				"integer",
 				"null"
 			],
-			"minimum": 0
+			"minimum": 0,
+			"description": "Requests since the start of the UTC day; null when traffic statistics are off"
 		},
 		"series_24h": {
 			"type": [
@@ -38,11 +39,13 @@
 				],
 				"properties": {
 					"bucket": {
-						"type": "integer"
+						"type": "integer",
+						"description": "Start of the hour as a unix time in hours"
 					},
 					"requests": {
 						"type": "integer",
-						"minimum": 0
+						"minimum": 0,
+						"description": "Number of requests in this hour"
 					}
 				}
 			}
@@ -53,7 +56,8 @@
 				"null"
 			],
 			"minimum": 0,
-			"maximum": 1
+			"maximum": 1,
+			"description": "Share of 4xx and 5xx responses today, from 0 to 1; null when traffic statistics are off"
 		},
 		"client_errors_today": {
 			"type": [
@@ -104,11 +108,13 @@
 				"properties": {
 					"scenario": {
 						"type": "string",
-						"minLength": 1
+						"minLength": 1,
+						"description": "CrowdSec scenario"
 					},
 					"count": {
 						"type": "integer",
-						"minimum": 1
+						"minimum": 1,
+						"description": "Number of active bans of this scenario"
 					}
 				}
 			}
@@ -117,7 +123,8 @@
 			"type": [
 				"string",
 				"null"
-			]
+			],
+			"description": "Country code with the most requests today; null when traffic statistics are off or no GeoIP database is installed"
 		},
 		"top_countries_today": {
 			"type": [
@@ -135,11 +142,13 @@
 				],
 				"properties": {
 					"country": {
-						"type": "string"
+						"type": "string",
+						"description": "ISO 3166-1 alpha-2 country code"
 					},
 					"requests": {
 						"type": "integer",
-						"minimum": 0
+						"minimum": 0,
+						"description": "Number of requests from this country today"
 					}
 				}
 			}

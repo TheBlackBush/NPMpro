@@ -1,6 +1,6 @@
 {
 	"operationId": "authAdminCheck",
-	"summary": "Check that the current token belongs to an admin, used by the nginx auth_request directive",
+	"summary": "Check that an administrator is signed in",
 	"tags": [
 		"Admin Port Checks"
 	],
@@ -11,7 +11,8 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response"
+			"description": "The session belongs to an administrator; the answer has no body"
 		}
-	}
+	},
+	"description": "nginx asks this before it serves an admin page (the `auth_request` directive) and shows the page only when the answer is 200. The answer has no body: 200 for a signed-in administrator, 401 without a valid session, 403 for an API token or a user who is not an administrator. Scripts have no use for it.\n\nNeeds: a signed-in session of an administrator (API tokens are refused)"
 }

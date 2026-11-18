@@ -13,20 +13,20 @@
 				"string",
 				"null"
 			],
-			"description": "Current version string",
-			"example": "v2.10.1"
+			"description": "Version of the running build: `<version>-<commit>` for a release build, `0.0.0` for a plain local build",
+			"example": "1.0.0-3f9c2a7"
 		},
 		"latest": {
 			"type": [
 				"string",
 				"null"
 			],
-			"description": "Latest version string",
-			"example": "v2.13.4"
+			"description": "Tag of the latest GitHub release, or `unknown` when it could not be read",
+			"example": "v1.1.0"
 		},
 		"update_available": {
 			"type": "boolean",
-			"description": "Whether there's an update available",
+			"description": "Whether the latest release is newer than the running release build; always false for a build that is not a release build",
 			"example": true
 		}
 	}

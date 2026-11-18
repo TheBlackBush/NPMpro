@@ -24,11 +24,13 @@
 			"properties": {
 				"requests": {
 					"type": "integer",
-					"minimum": 0
+					"minimum": 0,
+					"description": "Number of requests"
 				},
 				"bytes": {
 					"type": "integer",
-					"minimum": 0
+					"minimum": 0,
+					"description": "Bytes sent to visitors"
 				},
 				"error_rate": {
 					"type": "number",
@@ -45,7 +47,8 @@
 					"type": "boolean",
 					"description": "The per host and day visitor limit was reached in the selection, so visitors is a lower bound (at least). Stays true for a day whose limit was raised later. Only present when unique visitors are counted"
 				}
-			}
+			},
+			"description": "Sums over the whole range and filter"
 		},
 		"series": {
 			"type": "array",
@@ -59,7 +62,8 @@
 				],
 				"properties": {
 					"bucket": {
-						"type": "integer"
+						"type": "integer",
+						"description": "Start of the bucket as a unix time in minutes (ranges 1h and 24h) or hours (7d and 30d)"
 					},
 					"by_class": {
 						"type": "object",
@@ -103,7 +107,8 @@
 							"dead",
 							"deleted",
 							"other"
-						]
+						],
+						"description": "Kind of entry: a proxy, redirection or 404 host, a name no host lists any more (`deleted`), or requests to names no host lists (`other`)"
 					},
 					"name": {
 						"type": "string",
@@ -118,11 +123,13 @@
 					},
 					"requests": {
 						"type": "integer",
-						"minimum": 0
+						"minimum": 0,
+						"description": "Number of requests to this host"
 					},
 					"bytes": {
 						"type": "integer",
-						"minimum": 0
+						"minimum": 0,
+						"description": "Bytes sent for this host"
 					},
 					"visitors": {
 						"type": "integer",
@@ -153,10 +160,12 @@
 					},
 					"requests": {
 						"type": "integer",
-						"minimum": 0
+						"minimum": 0,
+						"description": "Number of requests from this country"
 					}
 				}
-			}
+			},
+			"description": "Up to ten countries with the most requests, most first"
 		},
 		"top_asns": {
 			"type": "array",
@@ -176,14 +185,17 @@
 						"description": "AS number, 0 for networks over the per host and hour limit"
 					},
 					"asn_name": {
-						"type": "string"
+						"type": "string",
+						"description": "Name of the network"
 					},
 					"requests": {
 						"type": "integer",
-						"minimum": 0
+						"minimum": 0,
+						"description": "Number of requests from this network"
 					}
 				}
-			}
+			},
+			"description": "Up to ten networks (autonomous systems) with the most requests, most first. Empty without a GeoIP ASN database"
 		},
 		"top_ips": {
 			"type": "array",
@@ -198,11 +210,13 @@
 				],
 				"properties": {
 					"ip": {
-						"type": "string"
+						"type": "string",
+						"description": "Visitor address, or `other` for the addresses over the per host and hour limit"
 					},
 					"requests": {
 						"type": "integer",
-						"minimum": 0
+						"minimum": 0,
+						"description": "Number of requests from this address"
 					}
 				}
 			}
@@ -219,11 +233,13 @@
 				],
 				"properties": {
 					"country": {
-						"type": "string"
+						"type": "string",
+						"description": "ISO 3166-1 alpha-2 country code, `--` when unknown"
 					},
 					"requests": {
 						"type": "integer",
-						"minimum": 0
+						"minimum": 0,
+						"description": "Number of requests from this country"
 					}
 				}
 			}
@@ -249,7 +265,8 @@
 				"properties": {
 					"time": {
 						"type": "string",
-						"format": "date-time"
+						"format": "date-time",
+						"description": "When the request was logged"
 					},
 					"host_id": {
 						"type": [
@@ -266,7 +283,8 @@
 							"dead",
 							"deleted",
 							"other"
-						]
+						],
+						"description": "Kind of entry: a proxy, redirection or 404 host, a name no host lists any more (`deleted`), or requests to names no host lists (`other`)"
 					},
 					"name": {
 						"type": "string",
@@ -284,11 +302,13 @@
 					"status": {
 						"type": "integer",
 						"minimum": 0,
-						"maximum": 999
+						"maximum": 999,
+						"description": "HTTP status code of the answer"
 					},
 					"bytes": {
 						"type": "integer",
-						"minimum": 0
+						"minimum": 0,
+						"description": "Bytes sent for this request"
 					},
 					"country": {
 						"type": [
@@ -341,13 +361,15 @@
 						"string",
 						"null"
 					],
-					"format": "date-time"
+					"format": "date-time",
+					"description": "When the access log was last read, null before the first read"
 				},
 				"error": {
 					"type": [
 						"string",
 						"null"
-					]
+					],
+					"description": "The last read or write error, null when there is none"
 				},
 				"unique_visitors": {
 					"type": "boolean",
@@ -360,7 +382,8 @@
 					],
 					"description": "Why visitors cannot be counted right now (the visitor key could not be loaded), null otherwise"
 				}
-			}
+			},
+			"description": "State of the statistics collection, so a client can tell an empty answer from a switched off one"
 		}
 	}
 }

@@ -6,12 +6,7 @@ import $RefParser from "@apidevtools/json-schema-ref-parser";
 import Ajv from "ajv/dist/2020.js";
 import { getCompiledSchema } from "../schema/index.js";
 
-// Item 27 PR 4 writes the reference part by part: operations of a pending tag or path are not checked yet. Each
-// writing task removes its part; the last one removes both lists.
-const PENDING_TAGS = new Set(["Dashboard", "Monitoring", "Audit Log", "MCP", "System", "Admin Port Checks"]);
-const PENDING_PATHS = [];
-
-// the parts several tags reach, always checked
+// the parts several tags reach, checked in full
 const SHARED = [
 	"common.json",
 	"components/error.json",
@@ -36,8 +31,6 @@ const operations = (schema) =>
 	Object.entries(schema.paths).flatMap(([path, methods]) =>
 		Object.entries(methods).map(([method, op]) => ({ key: `${method} ${path}`, path, op })),
 	);
-const pending = ({ path, op }) =>
-	PENDING_TAGS.has(op.tags?.[0]) || PENDING_PATHS.some((prefix) => path.startsWith(prefix));
 const described = (value) => typeof value === "string" && value.trim() !== "";
 
 function fieldGaps(schema, at, out = [], stack = new Set()) {
@@ -94,11 +87,9 @@ function operationGaps({ key, op }) {
 	return gaps;
 }
 
-it("documents every operation that is not pending: summary, description, examples that validate, fields", async () => {
+it("documents every operation: summary, description, examples that validate, fields", async () => {
 	const schema = await getCompiledSchema();
-	const gaps = operations(schema)
-		.filter((entry) => !pending(entry))
-		.flatMap(operationGaps);
+	const gaps = operations(schema).flatMap(operationGaps);
 	assert.deepEqual(gaps.slice(0, 40), [], `${gaps.length} gaps`);
 });
 
@@ -109,30 +100,6 @@ it("documents every field of the shared parts", async () => {
 		gaps.push(...fieldGaps(schema, file));
 	}
 	assert.deepEqual(gaps, []);
-});
-
-it("lists no pending tag or path that is already complete", async () => {
-	const schema = await getCompiledSchema();
-	const ops = operations(schema);
-	const complete = (match) => ops.filter(match).flatMap(operationGaps).length === 0;
-	const stale = [
-		...[...PENDING_TAGS].filter((tag) => complete(({ op }) => op.tags?.[0] === tag)).map((tag) => `tag ${tag}`),
-		...PENDING_PATHS.filter((prefix) => complete(({ path }) => path.startsWith(prefix))).map(
-			(prefix) => `path ${prefix}`,
-		),
-	];
-	assert.deepEqual(stale, [], `complete, remove from the pending lists: ${stale.join(", ")}`);
-});
-
-it("names only pending tags and paths that exist", async () => {
-	const schema = await getCompiledSchema();
-	const tags = new Set(schema.tags.map((tag) => tag.name));
-	for (const tag of PENDING_TAGS) assert.ok(tags.has(tag), tag);
-	for (const prefix of PENDING_PATHS)
-		assert.ok(
-			Object.keys(schema.paths).some((path) => path.startsWith(prefix)),
-			prefix,
-		);
 });
 
 const stripped = (value) => {
