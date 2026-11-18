@@ -9,19 +9,63 @@
 	"properties": {
 		"code": {
 			"type": "integer",
+			"description": "HTTP status code of the answer",
 			"example": 400
 		},
 		"message": {
 			"type": "string",
+			"description": "What went wrong, in English; internal errors only say Internal Error",
 			"example": "Bad Request"
 		},
 		"message_i18n": {
 			"type": "string",
+			"description": "Key the web interface translates instead of the English message, when the error has one",
 			"example": "error.invalid-auth"
 		},
 		"output": {
 			"type": "string",
+			"description": "nginx, certbot or database driver output that explains the failure, shortened to its end",
 			"example": "Some challenges have failed."
+		},
+		"message_values": {
+			"type": "object",
+			"description": "Values filled into the translated message (names and numbers the message mentions)",
+			"additionalProperties": true,
+			"example": {
+				"name": "app.example.com"
+			}
+		},
+		"saved_id": {
+			"type": "integer",
+			"description": "Identifier of the host that was saved although nginx refused to reload; only on a reload error",
+			"minimum": 1,
+			"example": 12
+		},
+		"saved_certificate_id": {
+			"type": "integer",
+			"description": "Identifier of the certificate saved with that host; only on a reload error",
+			"minimum": 1,
+			"example": 5
+		},
+		"checks": {
+			"type": "array",
+			"description": "The checks of a refused CrowdSec save, one line each, never a key",
+			"items": {
+				"type": "object",
+				"description": "One check and its result",
+				"additionalProperties": true
+			},
+			"example": [
+				{
+					"name": "lapi",
+					"ok": false
+				}
+			]
+		},
+		"force_blocked": {
+			"type": "boolean",
+			"description": "Whether the refused save cannot be forced, because a check failed that force does not skip",
+			"example": false
 		}
 	}
 }

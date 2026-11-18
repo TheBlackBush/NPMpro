@@ -27,22 +27,26 @@
 		},
 		"name": {
 			"type": "string",
+			"description": "Name shown in the lists and when choosing an access list",
 			"minLength": 1,
 			"maxLength": 255,
 			"example": "My Access List"
 		},
 		"satisfy_any": {
 			"type": "boolean",
+			"description": "Whether a visitor needs to pass only one of the checks (a basic auth user or an allowed address) instead of all",
 			"default": false,
 			"example": true
 		},
 		"pass_auth": {
 			"type": "boolean",
+			"description": "Whether the basic auth credentials are passed on to the upstream server",
 			"default": false,
 			"example": false
 		},
 		"proxy_host_count": {
 			"type": "integer",
+			"description": "Number of proxy hosts that use the list",
 			"minimum": 0,
 			"example": 3
 		},

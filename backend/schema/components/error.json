@@ -4,7 +4,8 @@
 	"additionalProperties": false,
 	"properties": {
 		"error": {
-			"$ref": "./error-object.json"
+			"$ref": "./error-object.json",
+			"description": "What went wrong"
 		}
 	}
 }
