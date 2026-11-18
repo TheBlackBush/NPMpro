@@ -1,18 +1,6 @@
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
-
-const METHOD_CLASS = {
-	GET: "text-method-get",
-	POST: "text-method-post",
-	PUT: "text-method-put",
-	PATCH: "text-method-put",
-	DELETE: "text-method-delete",
-};
-
-/** The method of a route in its colour (PATCH shares the PUT colour) */
-export function MethodBadge({ method, className }) {
-	return <span className={cn("font-mono font-semibold text-[10px]", METHOD_CLASS[method], className)}>{method}</span>;
-}
+import { MethodBadge } from "./MethodBadge";
 
 const START_HREF = "#getting-started";
 

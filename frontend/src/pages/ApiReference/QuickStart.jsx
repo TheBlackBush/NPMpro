@@ -1,9 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Button } from "src/components/ui/button";
 import { T } from "src/locale";
 import { buildCurl } from "src/modules/ApiRequest";
 import { CodeBlock } from "./CodeBlock";
-import { GuideSheet } from "./GuideSheet";
 
 const FACTS = [
 	{ id: "api-reference.fact.owner" },
@@ -36,9 +35,9 @@ function Step({ number, title, text, data }) {
  *
  * @param {Object} props
  * @param {object} props.reference  the reference view model
+ * @param {() => void} props.onOpenGuide  opens the full guide
  */
-export function QuickStart({ reference }) {
-	const [guideOpen, setGuideOpen] = useState(false);
+export function QuickStart({ reference, onOpenGuide }) {
 	const first = useMemo(
 		() =>
 			reference.groups
@@ -80,7 +79,7 @@ export function QuickStart({ reference }) {
 							</li>
 						))}
 					</ul>
-					<Button type="button" variant="outline" size="sm" onClick={() => setGuideOpen(true)}>
+					<Button type="button" variant="outline" size="sm" onClick={onOpenGuide}>
 						<T id="api-reference.full-guide" />
 					</Button>
 				</div>
@@ -93,7 +92,6 @@ export function QuickStart({ reference }) {
 					</div>
 				) : null}
 			</div>
-			<GuideSheet open={guideOpen} onOpenChange={setGuideOpen} text={reference.guide} />
 		</section>
 	);
 }
