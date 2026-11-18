@@ -2,7 +2,7 @@
 	"operationId": "deleteCertificate",
 	"summary": "Delete a Certificate",
 	"tags": [
-		"certificates"
+		"Certificates"
 	],
 	"security": [
 		{

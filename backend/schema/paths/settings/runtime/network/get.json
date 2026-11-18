@@ -2,7 +2,7 @@
 	"operationId": "getRuntimeNetworkSettings",
 	"summary": "Get the network settings",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

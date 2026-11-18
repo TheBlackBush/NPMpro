@@ -3,7 +3,7 @@
 	"summary": "Get Settings, Landing pages",
 	"description": "Admins only: the Default page and the seven global pages",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

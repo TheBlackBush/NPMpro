@@ -3,7 +3,7 @@
 	"summary": "Delete a backup schedule",
 	"description": "Admin only. With files=true the stored files of the schedule are removed too; that fails with busy (409) while a backup or restore runs.",
 	"tags": [
-		"backups"
+		"Backups"
 	],
 	"security": [
 		{

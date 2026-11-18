@@ -3,7 +3,7 @@
 	"summary": "Download the OIDC login button icon from a URL",
 	"description": "http or https only, at most 3 redirects, 10 s timeout and 256 KB. The same type checks as an upload apply.",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

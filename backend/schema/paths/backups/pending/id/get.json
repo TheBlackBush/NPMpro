@@ -3,7 +3,7 @@
 	"summary": "Download a backup created without keep",
 	"description": "Admin only. One time: the file is removed after it is sent.",
 	"tags": [
-		"backups"
+		"Backups"
 	],
 	"security": [
 		{

@@ -3,7 +3,7 @@
 	"summary": "Update the log files settings",
 	"description": "Fields set by environment variables are ignored. The change is applied before it is saved: when applying fails, nothing is saved.",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

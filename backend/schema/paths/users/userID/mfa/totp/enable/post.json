@@ -1,7 +1,7 @@
 {
 	"operationId": "enableUserTotp",
 	"summary": "Verify code and enable TOTP",
-	"tags": ["users"],
+	"tags": ["Users"],
 	"security": [
 		{
 			"cookieAuth": []

@@ -2,7 +2,7 @@
 	"operationId": "createUser",
 	"summary": "Create a User",
 	"tags": [
-		"users"
+		"Users"
 	],
 	"security": [
 		{

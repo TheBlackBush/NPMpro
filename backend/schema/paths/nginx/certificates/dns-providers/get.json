@@ -2,7 +2,7 @@
 	"operationId": "getDNSProviders",
 	"summary": "Get DNS Providers for Certificates",
 	"tags": [
-		"certificates"
+		"Certificates"
 	],
 	"security": [
 		{

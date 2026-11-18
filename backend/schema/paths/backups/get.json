@@ -3,7 +3,7 @@
 	"summary": "List the stored backups",
 	"description": "Admin only. Newest first, automatic backups included.",
 	"tags": [
-		"backups"
+		"Backups"
 	],
 	"security": [
 		{

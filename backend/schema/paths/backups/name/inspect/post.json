@@ -3,7 +3,7 @@
 	"summary": "Open a stored backup for a restore",
 	"description": "Admin only. Unpacks the backup and returns a restore token with what a restore would change. The token expires; cancel it with DELETE /backups/restore/{token}. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed.",
 	"tags": [
-		"backups"
+		"Backups"
 	],
 	"security": [
 		{

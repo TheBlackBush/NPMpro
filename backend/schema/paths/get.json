@@ -2,7 +2,7 @@
 	"operationId": "health",
 	"summary": "Returns the API health status",
 	"tags": [
-		"public"
+		"System"
 	],
 	"responses": {
 		"200": {

@@ -1,7 +1,7 @@
 {
 	"operationId": "adminDisableUserMfa",
 	"summary": "Reset MFA for a user (disables all second factors and backup codes)",
-	"tags": ["users"],
+	"tags": ["Users"],
 	"security": [
 		{
 			"cookieAuth": []

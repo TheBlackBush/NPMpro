@@ -2,7 +2,7 @@
 	"operationId": "deleteStream",
 	"summary": "Delete a Stream",
 	"tags": [
-		"streams"
+		"Streams"
 	],
 	"security": [
 		{

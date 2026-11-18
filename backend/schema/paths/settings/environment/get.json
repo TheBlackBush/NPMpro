@@ -2,7 +2,7 @@
 	"operationId": "getEnvironment",
 	"summary": "Get the startup environment variables (admin only, secret values are never returned)",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

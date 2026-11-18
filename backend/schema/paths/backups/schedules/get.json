@@ -3,7 +3,7 @@
 	"summary": "List the backup schedules",
 	"description": "Admin only. Newest first by id.",
 	"tags": [
-		"backups"
+		"Backups"
 	],
 	"security": [
 		{

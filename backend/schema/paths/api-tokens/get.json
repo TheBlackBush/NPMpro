@@ -2,7 +2,7 @@
 	"operationId": "getApiTokens",
 	"summary": "List the API tokens of every user (administrators)",
 	"tags": [
-		"api-tokens"
+		"API Tokens"
 	],
 	"security": [
 		{

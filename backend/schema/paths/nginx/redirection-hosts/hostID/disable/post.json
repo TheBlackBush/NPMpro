@@ -2,7 +2,7 @@
 	"operationId": "disableRedirectionHost",
 	"summary": "Disable a Redirection Host",
 	"tags": [
-		"redirection-hosts"
+		"Redirection Hosts"
 	],
 	"security": [
 		{

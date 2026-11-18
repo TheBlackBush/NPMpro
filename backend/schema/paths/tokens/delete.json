@@ -2,7 +2,7 @@
 	"operationId": "deleteToken",
 	"summary": "Clear the token cookie",
 	"tags": [
-		"tokens"
+		"Sign-in"
 	],
 	"responses": {
 		"200": {

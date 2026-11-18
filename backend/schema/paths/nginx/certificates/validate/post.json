@@ -2,7 +2,7 @@
 	"operationId": "validateCertificates",
 	"summary": "Validates given Custom Certificates",
 	"tags": [
-		"certificates"
+		"Certificates"
 	],
 	"security": [
 		{

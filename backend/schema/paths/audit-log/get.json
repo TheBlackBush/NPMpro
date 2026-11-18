@@ -2,7 +2,7 @@
 	"operationId": "getAuditLogs",
 	"summary": "Get Audit Logs",
 	"tags": [
-		"audit-log"
+		"Audit Log"
 	],
 	"security": [
 		{

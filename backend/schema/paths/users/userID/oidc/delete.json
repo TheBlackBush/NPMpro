@@ -1,7 +1,7 @@
 {
 	"operationId": "unlinkUserOidc",
 	"summary": "Remove a user's OIDC identity link",
-	"tags": ["users"],
+	"tags": ["Users"],
 	"security": [
 		{
 			"cookieAuth": []

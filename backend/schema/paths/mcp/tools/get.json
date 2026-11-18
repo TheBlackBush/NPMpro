@@ -2,7 +2,7 @@
 	"operationId": "getMcpTools",
 	"summary": "List the MCP tools and what each needs (administrators)",
 	"tags": [
-		"mcp"
+		"MCP"
 	],
 	"security": [
 		{

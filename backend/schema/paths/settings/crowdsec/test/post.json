@@ -3,7 +3,7 @@
 	"summary": "Test the connection to the CrowdSec LAPI and AppSec",
 	"description": "Uses the submitted (unsaved) values over the saved ones; an empty secret uses the saved one. Fields set by environment variables always use the environment value. force is ignored.",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

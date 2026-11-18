@@ -2,7 +2,7 @@
 	"operationId": "authCheck",
 	"summary": "Check that the current token belongs to a user, used by the nginx auth_request directive",
 	"tags": [
-		"auth"
+		"Admin Port Checks"
 	],
 	"security": [
 		{

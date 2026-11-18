@@ -2,7 +2,7 @@
 	"operationId": "getDatabase",
 	"summary": "The database in use, its tables and the current or last move",
 	"description": "Admin only.",
-	"tags": ["database"],
+	"tags": ["Database"],
 	"security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
 	"responses": {
 		"200": {

@@ -2,7 +2,7 @@
 	"operationId": "setCertificateDnsCredential",
 	"summary": "Links another saved DNS credential to a Certificate",
 	"tags": [
-		"certificates"
+		"Certificates"
 	],
 	"security": [
 		{

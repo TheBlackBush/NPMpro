@@ -2,7 +2,7 @@
 	"operationId": "deleteAccessList",
 	"summary": "Delete a Access List",
 	"tags": [
-		"access-lists"
+		"Access Lists"
 	],
 	"security": [
 		{

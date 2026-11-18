@@ -3,7 +3,7 @@
 	"summary": "Upload the OIDC login button icon",
 	"description": "PNG, JPEG, WebP or SVG detected from the content, at most 256 KB. SVG with scripts, event handlers or javascript: URLs is refused.",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

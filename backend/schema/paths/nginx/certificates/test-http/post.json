@@ -2,7 +2,7 @@
 	"operationId": "testHttpReach",
 	"summary": "Test HTTP Reachability",
 	"tags": [
-		"certificates"
+		"Certificates"
 	],
 	"security": [
 		{

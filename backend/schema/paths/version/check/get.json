@@ -2,7 +2,7 @@
 	"operationId": "checkVersion",
 	"summary": "Returns any new version data from github",
 	"tags": [
-		"version"
+		"System"
 	],
 	"security": [
 		{

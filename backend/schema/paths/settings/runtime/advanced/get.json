@@ -2,7 +2,7 @@
 	"operationId": "getRuntimeAdvancedSettings",
 	"summary": "Get the advanced settings",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

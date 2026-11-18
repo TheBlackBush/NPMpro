@@ -2,7 +2,7 @@
 	"operationId": "oidcAuthorize",
 	"summary": "Start the OIDC authorization code flow (redirects to /login?oidc_error=not_configured when OIDC is not active)",
 	"tags": [
-		"public"
+		"Sign-in"
 	],
 	"responses": {
 		"302": {

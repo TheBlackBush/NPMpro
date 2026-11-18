@@ -2,7 +2,7 @@
 	"operationId": "updateUser",
 	"summary": "Update a User",
 	"tags": [
-		"users"
+		"Users"
 	],
 	"security": [
 		{

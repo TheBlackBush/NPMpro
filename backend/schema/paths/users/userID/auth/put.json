@@ -2,7 +2,7 @@
 	"operationId": "updateUserAuth",
 	"summary": "Update a User's Authentication",
 	"tags": [
-		"users"
+		"Users"
 	],
 	"security": [
 		{

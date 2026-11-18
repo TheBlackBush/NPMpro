@@ -2,7 +2,7 @@
 	"operationId": "revokeOwnApiToken",
 	"summary": "Revoke an API token of the signed-in user",
 	"tags": [
-		"api-tokens"
+		"API Tokens"
 	],
 	"security": [
 		{

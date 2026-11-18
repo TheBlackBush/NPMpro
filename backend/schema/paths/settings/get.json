@@ -2,7 +2,7 @@
 	"operationId": "getSettings",
 	"summary": "Get all settings",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

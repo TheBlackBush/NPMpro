@@ -2,7 +2,7 @@
 	"operationId": "getProxyHost",
 	"summary": "Get a Proxy Host",
 	"tags": [
-		"proxy-hosts"
+		"Proxy Hosts"
 	],
 	"security": [
 		{

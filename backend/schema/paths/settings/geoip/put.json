@@ -3,7 +3,7 @@
 	"summary": "Update the GeoIP settings",
 	"description": "Fields set by environment variables are ignored. An empty or omitted license_key keeps the saved one.",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

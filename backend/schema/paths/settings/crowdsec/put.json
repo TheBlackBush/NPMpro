@@ -3,7 +3,7 @@
 	"summary": "Update and apply the CrowdSec bouncer settings",
 	"description": "Fields set by environment variables are ignored. While the bouncer is on, the connection test runs first and a failure answers 409 with its checks unless force is true. The file and the nginx includes are written, tested with nginx -t and reloaded; a failure puts everything back.",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

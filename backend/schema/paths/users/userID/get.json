@@ -2,7 +2,7 @@
 	"operationId": "getUser",
 	"summary": "Get a user",
 	"tags": [
-		"users"
+		"Users"
 	],
 	"security": [
 		{

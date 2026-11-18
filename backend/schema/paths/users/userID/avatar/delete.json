@@ -2,7 +2,7 @@
 	"operationId": "deleteUserAvatar",
 	"summary": "Remove the custom avatar of a user, falling back to gravatar",
 	"tags": [
-		"users"
+		"Users"
 	],
 	"security": [
 		{

@@ -3,7 +3,7 @@
 	"summary": "Update a backup schedule",
 	"description": "Admin only. Errors carry a backup.schedule.error.<code> message id: name, name-taken, frequency, every-hours, time, weekday, month-day, types, protection, keep, passphrase, passphrase-required.",
 	"tags": [
-		"backups"
+		"Backups"
 	],
 	"security": [
 		{

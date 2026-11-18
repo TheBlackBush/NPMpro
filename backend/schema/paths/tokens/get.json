@@ -2,7 +2,7 @@
 	"operationId": "refreshToken",
 	"summary": "Refresh your access token",
 	"tags": [
-		"tokens"
+		"Sign-in"
 	],
 	"security": [
 		{

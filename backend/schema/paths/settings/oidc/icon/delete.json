@@ -3,7 +3,7 @@
 	"summary": "Remove the OIDC login button icon file",
 	"description": "The button falls back to the default builtin icon.",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

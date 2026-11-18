@@ -2,7 +2,7 @@
 	"operationId": "previewLandingPageDeadHost",
 	"summary": "The page a 404 host shows, as HTML",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

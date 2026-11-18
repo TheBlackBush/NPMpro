@@ -2,7 +2,7 @@
 	"operationId": "disableStream",
 	"summary": "Disable a Stream",
 	"tags": [
-		"streams"
+		"Streams"
 	],
 	"security": [
 		{

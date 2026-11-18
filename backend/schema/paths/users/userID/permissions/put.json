@@ -2,7 +2,7 @@
 	"operationId": "updateUserPermissions",
 	"summary": "Update a User's Permissions",
 	"tags": [
-		"users"
+		"Users"
 	],
 	"security": [
 		{

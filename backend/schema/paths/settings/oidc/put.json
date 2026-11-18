@@ -3,7 +3,7 @@
 	"summary": "Update the OIDC settings",
 	"description": "Fields set by environment variables are ignored. An empty or omitted client_secret keeps the saved one. disable_password can only be set to true from a session that signed in with OIDC.",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

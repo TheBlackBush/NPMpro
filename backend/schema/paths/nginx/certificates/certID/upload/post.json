@@ -2,7 +2,7 @@
 	"operationId": "uploadCertificate",
 	"summary": "Uploads a custom Certificate",
 	"tags": [
-		"certificates"
+		"Certificates"
 	],
 	"security": [
 		{

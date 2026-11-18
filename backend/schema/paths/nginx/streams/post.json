@@ -2,7 +2,7 @@
 	"operationId": "createStream",
 	"summary": "Create a Stream",
 	"tags": [
-		"streams"
+		"Streams"
 	],
 	"security": [
 		{

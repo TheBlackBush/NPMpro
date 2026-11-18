@@ -2,7 +2,7 @@
 	"operationId": "createAccessList",
 	"summary": "Create a Access List",
 	"tags": [
-		"access-lists"
+		"Access Lists"
 	],
 	"security": [
 		{

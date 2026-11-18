@@ -2,7 +2,7 @@
 	"operationId": "revokeApiToken",
 	"summary": "Revoke any API token (administrators)",
 	"tags": [
-		"api-tokens"
+		"API Tokens"
 	],
 	"security": [
 		{

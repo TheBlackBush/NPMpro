@@ -3,7 +3,7 @@
 	"summary": "Update the nginx settings",
 	"description": "Fields set by environment variables are ignored. The change is applied before it is saved: nginx -t runs on the new core config and nginx is reloaded; when applying fails, nothing is saved.",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

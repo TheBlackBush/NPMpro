@@ -3,7 +3,7 @@
 	"info": {
 		"title": "NPMpro API",
 		"version": "2.x.x",
-		"description": "This is the official API documentation for NPMpro.\n\nRequests authenticate with the session cookie of a signed-in browser, or with an API token sent as `Authorization: Bearer <token>` (create one in the user menu, API tokens). When a request carries both, the token acts and the cookie is ignored. Only a bearer starting with npmpro_ is an API token. The login is `POST /tokens`."
+		"description": "Loaded from getting-started.md by schema/index.js"
 	},
 	"servers": [
 		{
@@ -17,84 +17,80 @@
 	},
 	"tags": [
 		{
-			"name": "public",
-			"description": "Endpoints that do not require authentication"
+			"name": "Dashboard",
+			"description": "The counts the dashboard shows: hosts per type and their state, and the backup schedules that failed."
 		},
 		{
-			"name": "auth",
-			"description": "Endpoints used by the nginx auth_request directive"
+			"name": "Proxy Hosts",
+			"description": "Proxy hosts send the requests for their domains to an upstream server. Saving one writes its nginx config and reloads nginx; a config nginx refuses is stored, shown with its error (`npmpro_nginx_online` false, `npmpro_nginx_err`) and left out until it is fixed."
 		},
 		{
-			"name": "api-tokens",
-			"description": "API tokens of the signed-in user, and all tokens for administrators (signed-in session only)"
+			"name": "Redirection Hosts",
+			"description": "Redirection hosts answer the requests for their domains with a redirect to another address, keeping the path when asked. Saving one reloads nginx like a proxy host."
 		},
 		{
-			"name": "mcp",
-			"description": "The MCP endpoint for AI agents (API token only) and the list of its tools"
+			"name": "404 Hosts",
+			"description": "404 hosts answer every request for their domains with a not found page: the built-in one, a global landing page or their own HTML."
 		},
 		{
-			"name": "audit-log",
-			"description": "Endpoints related to Audit Logs"
+			"name": "Streams",
+			"description": "Streams forward TCP or UDP ports to an upstream server, outside HTTP. Each one listens on its own incoming port of the container."
 		},
 		{
-			"name": "access-lists",
-			"description": "Endpoints related to Access Lists"
+			"name": "Certificates",
+			"description": "TLS certificates: requested from Let's Encrypt or another ACME server (HTTP or DNS challenge), or uploaded. NPMpro renews ACME certificates on its own; the answers never contain a private key."
 		},
 		{
-			"name": "certificates",
-			"description": "Endpoints related to Certificates"
+			"name": "DNS Credentials",
+			"description": "Saved credentials of a DNS provider for DNS challenges, shared by several certificates. The answers never contain the credential values."
 		},
 		{
-			"name": "404-hosts",
-			"description": "Endpoints related to 404 Hosts"
+			"name": "Access Lists",
+			"description": "Access lists protect proxy hosts with HTTP basic authentication, client address rules or both. The answers never contain password hashes."
 		},
 		{
-			"name": "proxy-hosts",
-			"description": "Endpoints related to Proxy Hosts"
+			"name": "Monitoring",
+			"description": "Traffic statistics and the active CrowdSec decisions, as the Monitoring pages show them. Administrators only."
 		},
 		{
-			"name": "redirection-hosts",
-			"description": "Endpoints related to Redirection Hosts"
+			"name": "Settings",
+			"description": "The settings of every Settings section: the default site and landing pages, network, nginx, sign-in (OIDC), forward authentication, CrowdSec, certificates and TLS, monitoring, GeoIP, logs and the startup environment. Administrators only; a value set by an environment variable is reported as locked and cannot be saved."
 		},
 		{
-			"name": "streams",
-			"description": "Endpoints related to Streams"
+			"name": "Backups",
+			"description": "Backups of the NPMpro data: create, download, upload, schedule, and restore (replace or merge, chosen per part). Administrators only; API tokens are never part of a backup."
 		},
 		{
-			"name": "monitoring",
-			"description": "Traffic statistics and CrowdSec decisions (administrators only)"
+			"name": "Database",
+			"description": "The database in use and a move of NPMpro to another database (SQLite, MySQL or PostgreSQL). Administrators only."
 		},
 		{
-			"name": "reports",
-			"description": "Endpoints for viewing reports"
+			"name": "Users",
+			"description": "User accounts, their permissions, MFA and sign-in links. Managing users needs a signed-in session: no API token can create, list, change or delete users."
 		},
 		{
-			"name": "settings",
-			"description": "Endpoints for managing application settings"
+			"name": "Audit Log",
+			"description": "Every change made in NPMpro, with who made it and, for a request made with an API token, the token's name. Administrators only."
 		},
 		{
-			"name": "tokens",
-			"description": "Endpoints for managing authentication tokens"
+			"name": "API Tokens",
+			"description": "API tokens of the signed-in user, and every user's tokens for administrators. These routes need a signed-in session: a token cannot create, list or revoke tokens."
 		},
 		{
-			"name": "users",
-			"description": "Endpoints for managing users"
+			"name": "MCP",
+			"description": "The MCP endpoint for AI assistants and the list of its tools. It takes an API token as a bearer, never a session cookie; see MCP for AI assistants above."
 		},
 		{
-			"name": "version",
-			"description": "Endpoints related to the running version"
+			"name": "Sign-in",
+			"description": "Signing in to the web interface: with email and password (and a second factor), with OIDC, and the first administrator of a new instance. Scripts use API tokens instead."
 		},
 		{
-			"name": "docs",
-			"description": "Endpoints related to this API documentation"
+			"name": "System",
+			"description": "The health check, the version check and this reference itself."
 		},
 		{
-			"name": "backups",
-			"description": "Endpoints related to backups and restores"
-		},
-		{
-			"name": "database",
-			"description": "Endpoints related to the database in use and moves"
+			"name": "Admin Port Checks",
+			"description": "The checks nginx runs (auth_request) before it serves admin pages such as GoAccess and avatars. They need a signed-in session and are not meant for scripts."
 		}
 	],
 	"paths": {

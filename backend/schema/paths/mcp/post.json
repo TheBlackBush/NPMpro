@@ -2,7 +2,7 @@
 	"operationId": "mcp",
 	"summary": "MCP endpoint (Streamable HTTP, stateless, JSON responses)",
 	"tags": [
-		"mcp"
+		"MCP"
 	],
 	"security": [
 		{

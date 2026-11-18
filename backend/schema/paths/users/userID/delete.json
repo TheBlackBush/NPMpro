@@ -2,7 +2,7 @@
 	"operationId": "deleteUser",
 	"summary": "Delete a User",
 	"tags": [
-		"users"
+		"Users"
 	],
 	"security": [
 		{

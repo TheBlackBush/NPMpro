@@ -3,7 +3,7 @@
 	"summary": "Update the traffic statistics settings",
 	"description": "Fields set by environment variables are ignored. delete_stats: true deletes the stored statistics while traffic statistics are switched off; with a failed delete nothing is saved.",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

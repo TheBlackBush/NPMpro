@@ -2,7 +2,7 @@
 	"operationId": "getRuntimeCertificatesSettings",
 	"summary": "Get the certificates and TLS settings",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

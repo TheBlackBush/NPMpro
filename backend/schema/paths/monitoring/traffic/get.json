@@ -2,7 +2,7 @@
 	"operationId": "getMonitoringTraffic",
 	"summary": "Get the traffic statistics",
 	"tags": [
-		"monitoring"
+		"Monitoring"
 	],
 	"security": [
 		{

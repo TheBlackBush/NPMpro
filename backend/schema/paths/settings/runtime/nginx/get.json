@@ -2,7 +2,7 @@
 	"operationId": "getRuntimeNginxSettings",
 	"summary": "Get the nginx settings",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

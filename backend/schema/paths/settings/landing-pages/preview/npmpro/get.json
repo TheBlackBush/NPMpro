@@ -2,7 +2,7 @@
 	"operationId": "previewLandingPageBuiltin",
 	"summary": "A built-in NPMpro page, as HTML",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

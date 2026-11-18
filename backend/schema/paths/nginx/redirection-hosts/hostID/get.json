@@ -2,7 +2,7 @@
 	"operationId": "getRedirectionHost",
 	"summary": "Get a Redirection Host",
 	"tags": [
-		"redirection-hosts"
+		"Redirection Hosts"
 	],
 	"security": [
 		{

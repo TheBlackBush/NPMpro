@@ -2,7 +2,7 @@
 	"operationId": "updateGeoipNow",
 	"summary": "Update the GeoIP databases now",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

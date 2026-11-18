@@ -3,7 +3,7 @@
 	"summary": "Preview a restore of chosen types",
 	"description": "Admin only. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed.",
 	"tags": [
-		"backups"
+		"Backups"
 	],
 	"security": [
 		{

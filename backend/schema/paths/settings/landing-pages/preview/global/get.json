@@ -2,7 +2,7 @@
 	"operationId": "previewLandingPageGlobal",
 	"summary": "A global page as saved, as HTML",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

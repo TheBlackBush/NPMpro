@@ -2,7 +2,7 @@
 	"operationId": "deleteProxyHost",
 	"summary": "Delete a Proxy Host",
 	"tags": [
-		"proxy-hosts"
+		"Proxy Hosts"
 	],
 	"security": [
 		{

@@ -2,7 +2,7 @@
 	"operationId": "getStreams",
 	"summary": "Get all streams",
 	"tags": [
-		"streams"
+		"Streams"
 	],
 	"security": [
 		{

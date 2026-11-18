@@ -2,7 +2,7 @@
 	"operationId": "enableDeadHost",
 	"summary": "Enable a 404 Host",
 	"tags": [
-		"404-hosts"
+		"404 Hosts"
 	],
 	"security": [
 		{

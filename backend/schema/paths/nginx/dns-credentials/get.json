@@ -2,7 +2,7 @@
 	"operationId": "getDnsCredentials",
 	"summary": "Get all DNS credentials",
 	"tags": [
-		"certificates"
+		"DNS Credentials"
 	],
 	"security": [
 		{

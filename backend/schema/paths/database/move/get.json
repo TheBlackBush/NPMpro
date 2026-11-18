@@ -2,7 +2,7 @@
 	"operationId": "getDatabaseMove",
 	"summary": "Progress of the current or last database move",
 	"description": "Admin only. In memory: empty after a restart.",
-	"tags": ["database"],
+	"tags": ["Database"],
 	"security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
 	"responses": {
 		"200": {

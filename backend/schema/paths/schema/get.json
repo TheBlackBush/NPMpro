@@ -2,7 +2,7 @@
 	"operationId": "schema",
 	"summary": "Returns this swagger API schema",
 	"tags": [
-		"docs"
+		"System"
 	],
 	"security": [
 		{

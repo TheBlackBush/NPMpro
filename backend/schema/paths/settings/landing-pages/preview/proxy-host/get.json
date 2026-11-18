@@ -2,7 +2,7 @@
 	"operationId": "previewLandingPageProxyHost",
 	"summary": "The page a proxy host shows, as HTML",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

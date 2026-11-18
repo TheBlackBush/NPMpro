@@ -3,7 +3,7 @@
 	"summary": "Delete a stored backup",
 	"description": "Admin only.",
 	"tags": [
-		"backups"
+		"Backups"
 	],
 	"security": [
 		{

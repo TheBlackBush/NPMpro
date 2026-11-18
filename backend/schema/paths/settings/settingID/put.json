@@ -2,7 +2,7 @@
 	"operationId": "updateSetting",
 	"summary": "Update a setting",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

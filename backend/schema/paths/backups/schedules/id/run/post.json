@@ -3,7 +3,7 @@
 	"summary": "Run a backup schedule now",
 	"description": "Admin only. Errors: busy (409) while another backup or restore runs, any other failure is stored on the schedule.",
 	"tags": [
-		"backups"
+		"Backups"
 	],
 	"security": [
 		{

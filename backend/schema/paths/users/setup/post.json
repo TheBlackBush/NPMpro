@@ -2,7 +2,7 @@
 	"operationId": "createSetupUser",
 	"summary": "Create the initial admin User, only possible while no User exists",
 	"tags": [
-		"public"
+		"Sign-in"
 	],
 	"requestBody": {
 		"description": "User Payload",

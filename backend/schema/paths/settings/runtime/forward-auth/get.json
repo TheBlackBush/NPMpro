@@ -2,7 +2,7 @@
 	"operationId": "getRuntimeForwardAuthSettings",
 	"summary": "Get the forward authentication settings",
 	"tags": [
-		"settings"
+		"Settings"
 	],
 	"security": [
 		{

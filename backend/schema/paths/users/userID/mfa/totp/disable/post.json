@@ -1,7 +1,7 @@
 {
 	"operationId": "disableUserTotp",
 	"summary": "Disable totp for user",
-	"tags": ["users"],
+	"tags": ["Users"],
 	"security": [
 		{
 			"cookieAuth": []

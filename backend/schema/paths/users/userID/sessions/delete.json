@@ -1,7 +1,7 @@
 {
 	"operationId": "revokeUserSessions",
 	"summary": "Revoke all of a user's sessions",
-	"tags": ["users"],
+	"tags": ["Users"],
 	"security": [
 		{
 			"cookieAuth": []

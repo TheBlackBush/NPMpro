@@ -3,7 +3,7 @@
 	"summary": "Create a backup",
 	"description": "Admin only. With keep the backup is stored and returned as entry; without keep it is returned as a pending download (GET /backups/pending/{id}), once. Secrets need a passphrase. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed.",
 	"tags": [
-		"backups"
+		"Backups"
 	],
 	"security": [
 		{

@@ -2,7 +2,7 @@
 	"operationId": "getDeadHosts",
 	"summary": "Get all 404 hosts",
 	"tags": [
-		"404-hosts"
+		"404 Hosts"
 	],
 	"security": [
 		{
