@@ -27,7 +27,8 @@
 							"goaccess",
 							"database",
 							"certificates-account"
-						]
+						],
+						"description": "The group: network, users, nginx, modules, goaccess, database or certificates-account"
 					},
 					"items": {
 						"type": "array",
@@ -48,26 +49,26 @@
 								},
 								"value": {
 									"type": "string",
-									"description": "Effective value, omitted for secrets"
+									"description": "The effective value; left out for a secret variable"
 								},
 								"default": {
 									"type": [
 										"string",
 										"null"
 									],
-									"description": "Default value, null for secrets"
+									"description": "The default value; null for a secret variable"
 								},
 								"is_default": {
 									"type": "boolean",
-									"description": "True when the variable is not set or equals the default"
+									"description": "Whether the variable is not set or equals its default"
 								},
 								"secret": {
 									"type": "boolean",
-									"description": "Secret items never carry a value"
+									"description": "Whether the variable holds a credential or personal data; its value is never returned"
 								},
 								"set": {
 									"type": "boolean",
-									"description": "True when the user set the variable"
+									"description": "Whether the variable was set when the container started"
 								},
 								"setting": {
 									"type": "string",
@@ -75,13 +76,15 @@
 										"advanced",
 										"monitoring"
 									],
-									"description": "Settings section of a variable that is also a setting applied after a restart (TZ, GOA): without the variable, value is the one from that section the container runs with"
+									"description": "The settings section that also holds this variable as a setting applied after a restart; without the variable, value is the one that section has"
 								}
 							}
-						}
+						},
+						"description": "The variables of the group"
 					}
 				}
-			}
+			},
+			"description": "The startup variables, grouped as the Environment page shows them"
 		},
 		"locked_runtime": {
 			"type": "array",
@@ -109,13 +112,16 @@
 							"monitoring",
 							"geoip",
 							"advanced"
-						]
+						],
+						"description": "The settings section the locked setting belongs to"
 					},
 					"key": {
-						"type": "string"
+						"type": "string",
+						"description": "The name of the locked setting in that section"
 					},
 					"env": {
-						"type": "string"
+						"type": "string",
+						"description": "The environment variable that locks it (the name only, never its value)"
 					},
 					"reason": {
 						"type": [
@@ -130,7 +136,7 @@
 							"proxy-protocol",
 							null
 						],
-						"description": "Why the variable of another setting locks it (an indirect lock), null when the setting's own variable sets it"
+						"description": "Why a variable of another setting locks it; null when the setting's own variable sets it"
 					}
 				}
 			}

@@ -21,13 +21,13 @@
 				"minLength": 1
 			},
 			"required": true,
-			"description": "Setting ID",
+			"description": "Id of the setting row, for example default-site",
 			"example": "default-site"
 		}
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The setting",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -47,5 +47,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns one stored setting row. The answer is 404 for an unknown id and for the rows served elsewhere (CrowdSec, landing pages and the runtime sections). OIDC and GeoIP come without their secrets.\nNeeds: an administrator (a token needs its Administrator switch)"
 }

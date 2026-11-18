@@ -11,7 +11,6 @@ import { getCompiledSchema } from "../schema/index.js";
 const PENDING_TAGS = new Set([
 	"Dashboard",
 	"Monitoring",
-	"Settings",
 	"Backups",
 	"Database",
 	"Users",
@@ -22,7 +21,7 @@ const PENDING_TAGS = new Set([
 	"System",
 	"Admin Port Checks",
 ]);
-const PENDING_PATHS = [];
+const PENDING_PATHS = ["/settings/runtime/"];
 
 // the parts several tags reach, always checked
 const SHARED = [

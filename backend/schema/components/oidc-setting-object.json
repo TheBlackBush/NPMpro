@@ -24,39 +24,39 @@
 	"properties": {
 		"enabled": {
 			"type": "boolean",
-			"description": "OIDC login enabled"
+			"description": "Whether OIDC sign-in is on. It also needs the issuer URL, client ID, client secret and redirect domain"
 		},
 		"issuer_url": {
 			"type": "string",
-			"description": "Issuer URL"
+			"description": "The https address of the OIDC provider (its issuer); empty when not set"
 		},
 		"client_id": {
 			"type": "string",
-			"description": "Client ID"
+			"description": "The client ID registered for NPMpro at the provider"
 		},
 		"client_secret_set": {
 			"type": "boolean",
-			"description": "A client secret is saved or set by the environment"
+			"description": "Whether a client secret is saved or set by the environment. The secret itself is never returned"
 		},
 		"redirect_domain": {
 			"type": "string",
-			"description": "Redirect domain"
+			"description": "The domain this instance is reached on, with its port when it is not 443; the callback address is built from it"
 		},
 		"scopes": {
 			"type": "string",
-			"description": "Scopes"
+			"description": "Space separated scopes asked from the provider; it always includes openid. Default: openid email profile"
 		},
 		"require_verified_email": {
 			"type": "boolean",
-			"description": "Require a verified email claim"
+			"description": "Whether the provider must report the email address as verified. Default: on"
 		},
 		"skip_mfa": {
 			"type": "boolean",
-			"description": "Skip the MFA challenge after OIDC login"
+			"description": "Whether a user who signed in with OIDC skips NPMpro's own second factor. Default: off"
 		},
 		"disable_password": {
 			"type": "boolean",
-			"description": "Disable password login"
+			"description": "Whether password sign-in is refused so that only OIDC works. Default: off"
 		},
 		"auto_create": {
 			"type": "object",
@@ -64,7 +64,7 @@
 			"properties": {
 				"enabled": {
 					"type": "boolean",
-					"description": "Create unknown users on their first OIDC login"
+					"description": "Whether an account is created on the first OIDC sign-in of an unknown email address. Default: off"
 				},
 				"allowed_domains": {
 					"type": "array",
@@ -74,17 +74,19 @@
 						"pattern": "^(?=.{1,253}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,63}$",
 						"example": "example.com"
 					},
-					"description": "Email domains allowed to be created, empty allows any"
+					"description": "Email domains that may get an account; empty allows any domain"
 				},
 				"permissions": {
-					"$ref": "./permission-object.json"
+					"$ref": "./permission-object.json",
+					"description": "The permissions a created account gets, in the shape of a user's permissions"
 				}
 			},
 			"required": [
 				"enabled",
 				"allowed_domains",
 				"permissions"
-			]
+			],
+			"description": "What happens when someone signs in with OIDC and has no account yet"
 		},
 		"button": {
 			"type": "object",
@@ -94,13 +96,13 @@
 					"type": "string",
 					"minLength": 1,
 					"maxLength": 40,
-					"description": "Login button text",
+					"description": "Text of the button, 1 to 40 characters. Default: OIDC",
 					"example": "OIDC"
 				},
 				"color": {
 					"type": "string",
 					"pattern": "^#[0-9a-fA-F]{6}$",
-					"description": "Login button colour",
+					"description": "Background colour of the button as #rrggbb. Default: #206bc4",
 					"example": "#206bc4"
 				},
 				"icon": {
@@ -117,7 +119,8 @@
 									"type": "string",
 									"enum": [
 										"builtin"
-									]
+									],
+									"description": "builtin for an icon of the list, file for an uploaded or downloaded image"
 								},
 								"name": {
 									"type": "string",
@@ -139,7 +142,8 @@
 										"brand-openid",
 										"brand-gitea",
 										"cloud"
-									]
+									],
+									"description": "Name of the built-in icon"
 								}
 							}
 						},
@@ -156,7 +160,8 @@
 									"type": "string",
 									"enum": [
 										"file"
-									]
+									],
+									"description": "builtin for an icon of the list, file for an uploaded or downloaded image"
 								},
 								"ext": {
 									"type": "string",
@@ -165,21 +170,25 @@
 										"jpg",
 										"webp",
 										"svg"
-									]
+									],
+									"description": "File type of the saved image"
 								},
 								"updated_on": {
-									"type": "integer"
+									"type": "integer",
+									"description": "When the image was saved, as a Unix time in milliseconds"
 								}
 							}
 						}
-					]
+					],
+					"description": "The icon on the button: one of the built-in icons, or an image that was uploaded or downloaded"
 				}
 			},
 			"required": [
 				"label",
 				"color",
 				"icon"
-			]
+			],
+			"description": "How the OIDC button on the sign-in page looks"
 		},
 		"locked": {
 			"type": "array",
@@ -197,15 +206,15 @@
 		},
 		"active": {
 			"type": "boolean",
-			"description": "OIDC login is usable with the effective configuration"
+			"description": "Whether OIDC sign-in works with the effective settings"
 		},
 		"secret_error": {
 			"type": "boolean",
-			"description": "The saved client secret cannot be decrypted"
+			"description": "Whether the saved client secret cannot be decrypted and must be entered again"
 		},
 		"callback_url": {
 			"type": "string",
-			"description": "Redirect URI to register at the provider",
+			"description": "The redirect address to register at the provider; empty until the redirect domain is set",
 			"example": "https://npm.example.com/api/oidc/callback"
 		},
 		"session_auth_method": {
@@ -214,7 +223,7 @@
 				"oidc",
 				"password"
 			],
-			"description": "How the current session signed in"
+			"description": "How the session that made this request signed in: oidc or password"
 		}
 	}
 }

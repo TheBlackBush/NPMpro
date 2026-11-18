@@ -1,6 +1,6 @@
 {
 	"operationId": "previewLandingPageBuiltin",
-	"summary": "A built-in NPMpro page, as HTML",
+	"summary": "Preview a built-in landing page",
 	"tags": [
 		"Settings"
 	],
@@ -30,19 +30,20 @@
 				]
 			},
 			"required": true,
-			"description": "Which page",
+			"description": "Which built-in page",
 			"example": "ban"
 		}
 	],
 	"responses": {
 		"200": {
-			"description": "The page, with sample values",
+			"description": "The page as HTML (text/html), with sample values filled in",
 			"content": {
 				"text/html": {}
 			}
 		},
 		"404": {
-			"description": "The place shows no page of its own"
+			"description": "The place shows no page of its own, or the id does not exist"
 		}
-	}
+	},
+	"description": "Returns the built-in page of that kind as HTML with sample values, whatever is chosen.\nNeeds: an administrator (a token needs its Administrator switch)"
 }

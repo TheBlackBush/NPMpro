@@ -1,7 +1,7 @@
 {
 	"operationId": "updateLandingPages",
-	"summary": "Update Settings, Landing pages",
-	"description": "Admins only. An empty html with the custom choice keeps the saved page; another choice keeps the saved html for later. The files are written, nginx is tested and reloaded; a failure puts everything back. visit_time: how the built-in pages show the visit time.",
+	"summary": "Update the landing pages",
+	"description": "Saves the default site, any of the seven global pages and the visit time; send only what changes. A custom page needs its HTML: custom with an empty html keeps the saved page, another choice keeps the saved HTML for later. The page files are written, nginx is tested and reloaded, and a failure puts everything back and answers 400.\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Settings"
 	],
@@ -14,7 +14,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "Settings payload",
+		"description": "The landing page settings to change",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -29,7 +29,8 @@
 								"utc",
 								"local",
 								"local-utc"
-							]
+							],
+							"description": "How the built-in pages show the visit time: utc, local, or local-utc for both. Default: utc"
 						},
 						"default_site": {
 							"type": "object",
@@ -46,18 +47,21 @@
 										"444",
 										"redirect",
 										"html"
-									]
+									],
+									"description": "congratulations (the built-in page), 404 (the not found page), 444 (nginx closes the connection without an answer), redirect (a 302 to meta.redirect) or html (the page in meta.html)"
 								},
 								"meta": {
 									"type": "object",
 									"additionalProperties": false,
 									"properties": {
 										"redirect": {
-											"type": "string"
+											"type": "string",
+											"description": "Where the redirect value sends visitors: an absolute http or https address"
 										},
 										"html": {
 											"type": "string",
-											"maxLength": 1048576
+											"maxLength": 1048576,
+											"description": "The page the html value serves, at most 1 MiB of HTML"
 										},
 										"status": {
 											"type": [
@@ -65,11 +69,14 @@
 												"null"
 											],
 											"minimum": 400,
-											"maximum": 599
+											"maximum": 599,
+											"description": "HTTP status code the html page answers with (400 to 599); empty or null answers 200"
 										}
-									}
+									},
+									"description": "Extra values of the chosen value: redirect, html and status, as for the default site setting"
 								}
-							}
+							},
+							"description": "What a request for an unknown host gets (the default-site setting)"
 						},
 						"pages": {
 							"type": "object",
@@ -84,12 +91,14 @@
 											"enum": [
 												"npmpro",
 												"custom"
-											]
+											],
+											"description": "npmpro for the built-in page, custom for the HTML in html"
 										},
 										"html": {
 											"$ref": "../../../common.json#/properties/npmpro_page_html"
 										}
-									}
+									},
+									"description": "Shown when a page is not found: by a 404 host, and by a proxy host that chooses a 404 page"
 								},
 								"upstream_error": {
 									"type": "object",
@@ -100,12 +109,14 @@
 											"enum": [
 												"npmpro",
 												"custom"
-											]
+											],
+											"description": "npmpro for the built-in page, custom for the HTML in html"
 										},
 										"html": {
 											"$ref": "../../../common.json#/properties/npmpro_page_html"
 										}
-									}
+									},
+									"description": "Shown in place of an upstream 502, 503 or 504 answer, for example when the upstream cannot be reached"
 								},
 								"denied": {
 									"type": "object",
@@ -116,12 +127,14 @@
 											"enum": [
 												"npmpro",
 												"custom"
-											]
+											],
+											"description": "npmpro for the built-in page, custom for the HTML in html"
 										},
 										"html": {
 											"$ref": "../../../common.json#/properties/npmpro_page_html"
 										}
-									}
+									},
+									"description": "Shown when an access list refuses a visitor"
 								},
 								"maintenance": {
 									"type": "object",
@@ -132,12 +145,14 @@
 											"enum": [
 												"npmpro",
 												"custom"
-											]
+											],
+											"description": "npmpro for the built-in page, custom for the HTML in html"
 										},
 										"html": {
 											"$ref": "../../../common.json#/properties/npmpro_page_html"
 										}
-									}
+									},
+									"description": "Shown by a proxy host in maintenance mode (503)"
 								},
 								"certificate": {
 									"type": "object",
@@ -148,12 +163,14 @@
 											"enum": [
 												"npmpro",
 												"custom"
-											]
+											],
+											"description": "npmpro for the built-in page, custom for the HTML in html"
 										},
 										"html": {
 											"$ref": "../../../common.json#/properties/npmpro_page_html"
 										}
-									}
+									},
+									"description": "Shown for plain HTTP to a host that forces HTTPS while its certificate files are missing"
 								},
 								"ban": {
 									"type": "object",
@@ -164,12 +181,14 @@
 											"enum": [
 												"npmpro",
 												"custom"
-											]
+											],
+											"description": "npmpro for the built-in page, custom for the HTML in html"
 										},
 										"html": {
 											"$ref": "../../../common.json#/properties/npmpro_page_html"
 										}
-									}
+									},
+									"description": "Shown to a visitor CrowdSec bans"
 								},
 								"captcha": {
 									"type": "object",
@@ -180,14 +199,17 @@
 											"enum": [
 												"npmpro",
 												"custom"
-											]
+											],
+											"description": "npmpro for the built-in page, custom for the HTML in html"
 										},
 										"html": {
 											"$ref": "../../../common.json#/properties/npmpro_page_html"
 										}
-									}
+									},
+									"description": "Shown to a visitor CrowdSec sends to a captcha"
 								}
-							}
+							},
+							"description": "The seven global pages, one per kind. A host or access list can use them or its own page"
 						}
 					}
 				},
@@ -204,11 +226,52 @@
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The landing page settings as they are now",
 			"content": {
 				"application/json": {
 					"schema": {
 						"$ref": "../../../components/landing-pages-setting-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"visit_time": "utc",
+								"default_site": {
+									"value": "congratulations",
+									"meta": {}
+								},
+								"pages": {
+									"not_found": {
+										"choice": "npmpro",
+										"html": ""
+									},
+									"upstream_error": {
+										"choice": "npmpro",
+										"html": ""
+									},
+									"denied": {
+										"choice": "npmpro",
+										"html": ""
+									},
+									"maintenance": {
+										"choice": "custom",
+										"html": "<h1>Back soon</h1>"
+									},
+									"certificate": {
+										"choice": "npmpro",
+										"html": ""
+									},
+									"ban": {
+										"choice": "npmpro",
+										"html": ""
+									},
+									"captcha": {
+										"choice": "npmpro",
+										"html": ""
+									}
+								}
+							}
+						}
 					}
 				}
 			}

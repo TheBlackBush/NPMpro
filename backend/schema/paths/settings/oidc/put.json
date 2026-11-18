@@ -1,7 +1,7 @@
 {
 	"operationId": "updateOidcSettings",
 	"summary": "Update the OIDC settings",
-	"description": "Fields set by environment variables are ignored. An empty or omitted client_secret keeps the saved one. disable_password can only be set to true from a session that signed in with OIDC.",
+	"description": "Saves the OIDC settings; send only what changes. Fields set by environment variables are ignored. An empty or omitted client_secret keeps the saved one. disable_password can only be switched on from a session that signed in with OIDC, otherwise the answer is 400. The settings decide who can sign in, so a session is required.\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
 		"Settings"
 	],
@@ -11,7 +11,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "OIDC settings payload",
+		"description": "The OIDC settings to change",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -41,7 +41,7 @@
 							"type": "string",
 							"maxLength": 1024,
 							"description": "Client secret, empty keeps the saved one",
-							"example": "s3cr3t"
+							"example": "YOUR_CLIENT_SECRET"
 						},
 						"redirect_domain": {
 							"type": "string",
@@ -88,9 +88,11 @@
 									"description": "Email domains allowed to be created, empty allows any"
 								},
 								"permissions": {
-									"$ref": "../../../components/permission-object.json"
+									"$ref": "../../../components/permission-object.json",
+									"description": "The permissions a created account gets, in the shape of a user's permissions"
 								}
-							}
+							},
+							"description": "What happens when someone signs in with OIDC and has no account yet"
 						},
 						"button": {
 							"type": "object",
@@ -121,7 +123,8 @@
 											"type": "string",
 											"enum": [
 												"builtin"
-											]
+											],
+											"description": "builtin for an icon of the list, file for an uploaded or downloaded image"
 										},
 										"name": {
 											"type": "string",
@@ -143,11 +146,14 @@
 												"brand-openid",
 												"brand-gitea",
 												"cloud"
-											]
+											],
+											"description": "Name of the built-in icon"
 										}
-									}
+									},
+									"description": "The icon on the button: one of the built-in icons, or an image that was uploaded or downloaded"
 								}
-							}
+							},
+							"description": "How the OIDC button on the sign-in page looks"
 						}
 					}
 				},
@@ -155,7 +161,7 @@
 					"enabled": true,
 					"issuer_url": "https://id.example.com/application/o/npmpro/",
 					"client_id": "npmpro",
-					"client_secret": "s3cr3t",
+					"client_secret": "YOUR_CLIENT_SECRET",
 					"redirect_domain": "npm.example.com",
 					"button": {
 						"label": "Sign in with SSO",
@@ -171,7 +177,7 @@
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The OIDC settings as they are now, without the client secret",
 			"content": {
 				"application/json": {
 					"examples": {

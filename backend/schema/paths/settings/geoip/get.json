@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The GeoIP settings as they are now",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -29,7 +29,7 @@
 								"locked": [],
 								"locked_by": {},
 								"secret_error": false,
-								"last_update": "2026-10-24T10:00:00.000Z",
+								"last_update": "2026-11-17T09:30:00.000Z",
 								"last_error": null
 							}
 						}
@@ -40,5 +40,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns the MaxMind GeoLite2 settings and the outcome of the last update. The license key is never returned; license_key_set says whether one exists.\nNeeds: an administrator (a token needs its Administrator switch)"
 }

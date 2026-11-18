@@ -1,6 +1,6 @@
 {
 	"operationId": "getEnvironment",
-	"summary": "Get the startup environment variables (admin only, secret values are never returned)",
+	"summary": "Get the startup environment",
 	"tags": [
 		"Settings"
 	],
@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The startup environment and the locked settings",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -70,5 +70,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns the environment variables the container started with, by group, and the settings they lock. A secret variable only says whether it is set: its value is never returned, nor is a default.\nNeeds: an administrator (a token needs its Administrator switch)"
 }

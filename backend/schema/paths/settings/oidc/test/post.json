@@ -1,7 +1,7 @@
 {
 	"operationId": "testOidcSettings",
 	"summary": "Test the OIDC connection",
-	"description": "Runs discovery with the effective configuration, or with the submitted (unsaved) issuer, client ID and secret. Fields set by environment variables always use the environment value.",
+	"description": "Runs OIDC discovery against the provider with the effective settings, or with the issuer URL, client ID and client secret sent in the body (not saved). Fields set by environment variables always use the environment value. A failed test still answers 200, with ok false and the reason in message.\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
 		"Settings"
 	],
@@ -36,7 +36,7 @@
 							"type": "string",
 							"maxLength": 1024,
 							"description": "Client secret, empty uses the saved value",
-							"example": "s3cr3t"
+							"example": "YOUR_CLIENT_SECRET"
 						}
 					}
 				},
@@ -49,7 +49,7 @@
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The test result: ok, then the issuer and its authorization endpoint, or message when ok is false",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -76,17 +76,19 @@
 						"properties": {
 							"ok": {
 								"type": "boolean",
-								"description": "Discovery succeeded"
+								"description": "Whether discovery succeeded"
 							},
 							"issuer": {
-								"type": "string"
+								"type": "string",
+								"description": "The issuer the provider reported"
 							},
 							"authorization_endpoint": {
-								"type": "string"
+								"type": "string",
+								"description": "The provider's authorization endpoint"
 							},
 							"message": {
 								"type": "string",
-								"description": "Error message when ok is false"
+								"description": "Why the test failed; only when ok is false"
 							}
 						}
 					}

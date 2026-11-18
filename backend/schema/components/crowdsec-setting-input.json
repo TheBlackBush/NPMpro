@@ -3,12 +3,14 @@
 	"additionalProperties": false,
 	"properties": {
 		"enabled": {
-			"type": "boolean"
+			"type": "boolean",
+			"description": "Whether the bouncer checks every request. Default: off"
 		},
 		"api_url": {
 			"type": "string",
 			"maxLength": 2048,
-			"pattern": "^$|^https?://[^\\s/?#@]+(/[^\\s#]*)?$"
+			"pattern": "^$|^https?://[^\\s/?#@]+(/[^\\s#]*)?$",
+			"description": "Address of the CrowdSec Local API (LAPI). Default: http://127.0.0.1:8080"
 		},
 		"api_key": {
 			"type": [
@@ -20,22 +22,26 @@
 			"description": "Empty or missing keeps the saved key, null removes it"
 		},
 		"use_tls_auth": {
-			"type": "boolean"
+			"type": "boolean",
+			"description": "Whether a TLS client certificate is used instead of the API key. Needs an https address and both files. Default: off"
 		},
 		"tls_client_cert": {
 			"type": "string",
 			"maxLength": 255,
-			"pattern": "^$|^/data/crowdsec/[^\\s#]+$"
+			"pattern": "^$|^/data/crowdsec/[^\\s#]+$",
+			"description": "Path of the TLS client certificate, a PEM file under /data/crowdsec/; empty when not set"
 		},
 		"tls_client_key": {
 			"type": "string",
 			"maxLength": 255,
-			"pattern": "^$|^/data/crowdsec/[^\\s#]+$"
+			"pattern": "^$|^/data/crowdsec/[^\\s#]+$",
+			"description": "Path of the TLS client key, an unencrypted PEM file under /data/crowdsec/; empty when not set"
 		},
 		"cache_expiration": {
 			"type": "integer",
 			"minimum": 1,
-			"maximum": 86400
+			"maximum": 86400,
+			"description": "Seconds an answer of the LAPI is cached in live mode, 1 to 86400. Default: 1"
 		},
 		"bouncing_on_type": {
 			"type": "string",
@@ -43,49 +49,58 @@
 				"all",
 				"ban",
 				"captcha"
-			]
+			],
+			"description": "Which decision types are enforced: all, ban only or captcha only. Default: all"
 		},
 		"fallback_remediation": {
 			"type": "string",
 			"enum": [
 				"ban",
 				"captcha"
-			]
+			],
+			"description": "What is done with a decision type the bouncer does not know: ban or captcha. Default: ban"
 		},
 		"request_timeout": {
 			"type": "integer",
 			"minimum": 100,
-			"maximum": 60000
+			"maximum": 60000,
+			"description": "Timeout of a LAPI request in milliseconds, 100 to 60000. Default: 3000"
 		},
 		"update_frequency": {
 			"type": "integer",
 			"minimum": 1,
-			"maximum": 86400
+			"maximum": 86400,
+			"description": "Seconds between downloads of all decisions in stream mode, 1 to 86400. Default: 10"
 		},
 		"enable_internal": {
-			"type": "boolean"
+			"type": "boolean",
+			"description": "Whether internal requests (for example after a rewrite) are checked too. Default: off"
 		},
 		"mode": {
 			"type": "string",
 			"enum": [
 				"live",
 				"stream"
-			]
+			],
+			"description": "live asks the LAPI per client IP and caches the answer, stream downloads all decisions regularly and answers from memory. Default: live"
 		},
 		"scenarios_containing": {
 			"type": "string",
 			"maxLength": 1024,
-			"pattern": "^[^\\r\\n#]*$"
+			"pattern": "^[^\\r\\n#]*$",
+			"description": "Comma separated strings: only decisions whose scenario contains one of them are enforced; empty enforces all"
 		},
 		"scenarios_not_containing": {
 			"type": "string",
 			"maxLength": 1024,
-			"pattern": "^[^\\r\\n#]*$"
+			"pattern": "^[^\\r\\n#]*$",
+			"description": "Comma separated strings: decisions whose scenario contains one of them are ignored; empty ignores none"
 		},
 		"exclude_location": {
 			"type": "string",
 			"maxLength": 1024,
-			"pattern": "^$|^/[^\\s,#]*(,/[^\\s,#]*)*$"
+			"pattern": "^$|^/[^\\s,#]*(,/[^\\s,#]*)*$",
+			"description": "Comma separated paths that are never checked, each starting with /; empty checks all"
 		},
 		"ban_response": {
 			"type": "string",
@@ -93,7 +108,8 @@
 				"page",
 				"redirect",
 				"status"
-			]
+			],
+			"description": "How a banned visitor is answered: page (the ban page of Landing pages), redirect (to redirect_location) or status (a status code and no page). Default: page"
 		},
 		"ban_template_path": {
 			"description": "Ignored: the page is chosen in Settings, Landing pages",
@@ -104,7 +120,8 @@
 		"redirect_location": {
 			"type": "string",
 			"maxLength": 2048,
-			"pattern": "^$|^(https?://[^\\s/?#@]+(/[^\\s#]*)?|/[^\\s#]+)$"
+			"pattern": "^$|^(https?://[^\\s/?#@]+(/[^\\s#]*)?|/[^\\s#]+)$",
+			"description": "Where banned visitors are sent when ban_response is redirect: an http or https address or a path of the same host"
 		},
 		"ret_code": {
 			"type": [
@@ -126,7 +143,8 @@
 				444,
 				500,
 				null
-			]
+			],
+			"description": "Status code a ban answers with (page or status); null uses the default, 403 for the page"
 		},
 		"captcha_provider": {
 			"type": "string",
@@ -135,12 +153,14 @@
 				"recaptcha",
 				"hcaptcha",
 				"turnstile"
-			]
+			],
+			"description": "The captcha service: recaptcha, hcaptcha or turnstile; empty for none"
 		},
 		"captcha_site_key": {
 			"type": "string",
 			"maxLength": 1024,
-			"pattern": "^[^\\r\\n#]*$"
+			"pattern": "^[^\\r\\n#]*$",
+			"description": "The site key from the captcha provider; empty when not set"
 		},
 		"captcha_secret_key": {
 			"type": [
@@ -160,19 +180,22 @@
 		"captcha_expiration": {
 			"type": "integer",
 			"minimum": 60,
-			"maximum": 2592000
+			"maximum": 2592000,
+			"description": "Seconds a solved captcha stays valid, 60 to 2592000. Default: 3600"
 		},
 		"appsec_url": {
 			"type": "string",
 			"maxLength": 2048,
-			"pattern": "^$|^https?://[^\\s/?#@]+(/[^\\s#]*)?$"
+			"pattern": "^$|^https?://[^\\s/?#@]+(/[^\\s#]*)?$",
+			"description": "Address of the CrowdSec AppSec listener; empty turns AppSec off"
 		},
 		"appsec_failure_action": {
 			"type": "string",
 			"enum": [
 				"deny",
 				"passthrough"
-			]
+			],
+			"description": "deny blocks every checked request while AppSec cannot be reached, passthrough lets them through. Default: deny"
 		},
 		"appsec_connect_timeout": {
 			"type": [
@@ -180,7 +203,8 @@
 				"null"
 			],
 			"minimum": 1,
-			"maximum": 60000
+			"maximum": 60000,
+			"description": "AppSec connect timeout in milliseconds, 1 to 60000; null uses the bouncer's default"
 		},
 		"appsec_send_timeout": {
 			"type": [
@@ -188,7 +212,8 @@
 				"null"
 			],
 			"minimum": 1,
-			"maximum": 60000
+			"maximum": 60000,
+			"description": "AppSec send timeout in milliseconds, 1 to 60000; null uses the bouncer's default"
 		},
 		"appsec_process_timeout": {
 			"type": [
@@ -196,24 +221,34 @@
 				"null"
 			],
 			"minimum": 1,
-			"maximum": 60000
+			"maximum": 60000,
+			"description": "AppSec processing timeout in milliseconds, 1 to 60000; null uses the bouncer's default"
 		},
 		"always_send_to_appsec": {
-			"type": "boolean"
+			"type": "boolean",
+			"description": "Whether requests of IPs that already have a decision are also sent to AppSec. Default: off"
 		},
 		"appsec_drop_unreadable_body": {
-			"type": "boolean"
+			"type": "boolean",
+			"description": "Whether requests whose body cannot be read are dropped instead of sent to AppSec without a body. Default: on"
 		},
 		"ssl_verify": {
-			"type": "boolean"
+			"type": "boolean",
+			"description": "Whether the certificate of an https LAPI or AppSec address is verified. Default: on"
 		},
 		"admin_ui": {
 			"type": "string",
-			"enum": ["checked", "bans", "out"]
+			"enum": [
+				"checked",
+				"bans",
+				"out"
+			],
+			"description": "How the admin interface meets CrowdSec: checked (bans, captchas and AppSec, like every host), bans (bans and captchas, no AppSec) or out (not checked). Default: checked"
 		},
 		"force": {
 			"type": "boolean",
 			"description": "Save although the connection test fails (Save anyway)"
 		}
-	}
+	},
+	"description": "CrowdSec bouncer settings to change; send only what changes. Fields set by environment variables are ignored"
 }

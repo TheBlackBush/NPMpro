@@ -1,6 +1,6 @@
 {
 	"operationId": "updateSetting",
-	"summary": "Update a setting",
+	"summary": "Update the default site",
 	"tags": [
 		"Settings"
 	],
@@ -24,12 +24,12 @@
 				]
 			},
 			"required": true,
-			"description": "Setting ID",
+			"description": "Id of the setting row; only default-site is accepted",
 			"example": "default-site"
 		}
 	],
 	"requestBody": {
-		"description": "Setting Payload",
+		"description": "The new default site; send only what changes",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -48,7 +48,8 @@
 								"redirect",
 								"html"
 							],
-							"example": "html"
+							"example": "html",
+							"description": "What a request for an unknown host gets: congratulations (the built-in page), 404 (the not found page), 444 (nginx closes the connection without an answer), redirect (a 302 to meta.redirect) or html (the page in meta.html)"
 						},
 						"meta": {
 							"type": "object",
@@ -57,20 +58,24 @@
 								"redirect": {
 									"type": "string",
 									"maxLength": 255,
-									"pattern": "^\\S*$"
+									"pattern": "^\\S*$",
+									"description": "Where the redirect value sends visitors: an absolute http or https address"
 								},
 								"html": {
-									"type": "string"
+									"type": "string",
+									"description": "The page the html value serves, at most 1 MiB of HTML"
 								},
 								"status": {
 									"type": "integer",
 									"minimum": 400,
-									"maximum": 599
+									"maximum": 599,
+									"description": "HTTP status code the html page answers with (400 to 599); without it the page answers 200"
 								}
 							},
 							"example": {
 								"html": "<p>hello world</p>"
-							}
+							},
+							"description": "Extra values for the chosen value. It replaces the saved meta as a whole, so send every field the choice needs"
 						}
 					}
 				},
@@ -83,7 +88,7 @@
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The setting after the change",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -103,5 +108,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Changes the default site, the only row this accepts: the others answer 400 because they have their own endpoints. The new config is written and tested with nginx -t, the HTML page is written in html mode, nginx is reloaded and the row is saved. A config nginx refuses puts the previous config and page back, answers 400 and saves nothing. The html value needs meta.html and the redirect value needs meta.redirect. The change is recorded in the audit log.\nNeeds: an administrator (a token needs its Administrator switch)"
 }

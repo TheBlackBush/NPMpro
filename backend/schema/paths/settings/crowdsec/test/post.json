@@ -1,7 +1,7 @@
 {
 	"operationId": "testCrowdsecSettings",
 	"summary": "Test the connection to the CrowdSec LAPI and AppSec",
-	"description": "Uses the submitted (unsaved) values over the saved ones; an empty secret uses the saved one. Fields set by environment variables always use the environment value. force is ignored.",
+	"description": "Checks the LAPI, and AppSec when its address is set, with the values in the body (not saved) over the saved ones; an empty secret uses the saved one. Fields set by environment variables always use the environment value. force is ignored. A failed check still answers 200 with ok false.\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Settings"
 	],
@@ -14,31 +14,25 @@
 		}
 	],
 	"requestBody": {
-		"description": "Optional unsaved values",
+		"description": "Optional unsaved values to test with",
 		"required": false,
 		"content": {
 			"application/json": {
 				"schema": {
 					"$ref": "../../../../components/crowdsec-setting-input.json"
+				},
+				"example": {
+					"api_url": "http://192.168.1.20:8080",
+					"api_key": "YOUR_BOUNCER_KEY"
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The result: ok, and one check per service",
 			"content": {
 				"application/json": {
-					"example": {
-						"ok": false,
-						"checks": [
-							{
-								"name": "lapi",
-								"result": "unreachable",
-								"message": "CrowdSec request failed: ECONNREFUSED"
-							}
-						]
-					},
 					"schema": {
 						"type": "object",
 						"additionalProperties": false,
@@ -48,7 +42,8 @@
 						],
 						"properties": {
 							"ok": {
-								"type": "boolean"
+								"type": "boolean",
+								"description": "Whether every check passed"
 							},
 							"checks": {
 								"type": "array",
@@ -66,7 +61,8 @@
 											"enum": [
 												"lapi",
 												"appsec"
-											]
+											],
+											"description": "The service checked: lapi or appsec"
 										},
 										"result": {
 											"type": "string",
@@ -78,13 +74,42 @@
 												"unreachable",
 												"tls_error",
 												"status"
-											]
+											],
+											"description": "ok, or why the check failed: no_key, key_refused, refused, unreachable, tls_error or status"
 										},
 										"message": {
-											"type": "string"
+											"type": "string",
+											"description": "Details such as an HTTP status or a network error; empty when there is nothing to add"
 										}
 									}
-								}
+								},
+								"description": "One check per service, never carrying a key"
+							}
+						}
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"ok": true,
+								"checks": [
+									{
+										"name": "lapi",
+										"result": "ok",
+										"message": ""
+									}
+								]
+							}
+						},
+						"failed": {
+							"value": {
+								"ok": false,
+								"checks": [
+									{
+										"name": "lapi",
+										"result": "unreachable",
+										"message": "CrowdSec request failed: ECONNREFUSED"
+									}
+								]
 							}
 						}
 					}

@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The traffic statistics settings as they are now",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -36,5 +36,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns the effective settings of the traffic statistics: the saved values with the ones set by environment variables on top (listed in locked and locked_by).\nNeeds: an administrator (a token needs its Administrator switch)"
 }

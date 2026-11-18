@@ -1,6 +1,6 @@
 {
 	"operationId": "previewCrowdsecPage",
-	"summary": "The configured ban or captcha page, as HTML",
+	"summary": "Preview the CrowdSec ban or captcha page",
 	"tags": [
 		"Settings"
 	],
@@ -24,16 +24,20 @@
 				]
 			},
 			"required": true,
-			"description": "Which page",
+			"description": "Which page: ban or captcha",
 			"example": "ban"
 		}
 	],
 	"responses": {
 		"200": {
-			"description": "The page",
+			"description": "The page as HTML (text/html)",
 			"content": {
 				"text/html": {}
 			}
+		},
+		"404": {
+			"description": "The page is not ban or captcha"
 		}
-	}
+	},
+	"description": "Returns the ban or captcha page the bouncer is set to show, as HTML with sample values.\nNeeds: an administrator (a token needs its Administrator switch)"
 }

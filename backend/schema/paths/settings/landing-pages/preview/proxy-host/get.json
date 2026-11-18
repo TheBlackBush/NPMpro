@@ -1,6 +1,6 @@
 {
 	"operationId": "previewLandingPageProxyHost",
-	"summary": "The page a proxy host shows, as HTML",
+	"summary": "Preview a proxy host page",
 	"tags": [
 		"Settings"
 	],
@@ -21,7 +21,7 @@
 				"minimum": 1
 			},
 			"required": true,
-			"description": "Proxy host id",
+			"description": "Identifier of the proxy host",
 			"example": 1
 		},
 		{
@@ -36,19 +36,20 @@
 				]
 			},
 			"required": true,
-			"description": "Which page",
+			"description": "Which page: not_found, upstream_error or maintenance",
 			"example": "maintenance"
 		}
 	],
 	"responses": {
 		"200": {
-			"description": "The page, with sample values",
+			"description": "The page as HTML (text/html), with sample values filled in",
 			"content": {
 				"text/html": {}
 			}
 		},
 		"404": {
-			"description": "The place shows no page of its own"
+			"description": "The place shows no page of its own, or the id does not exist"
 		}
-	}
+	},
+	"description": "Returns the page a proxy host shows for that kind, as HTML with sample values: its own, the global one or the built-in one, as the host is set. The answer is 404 when the host shows no page of its own (the upstream's answer or nginx's plain page) or does not exist.\nNeeds: an administrator (a token needs its Administrator switch)"
 }
