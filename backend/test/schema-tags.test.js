@@ -4,6 +4,8 @@ import { it } from "node:test";
 import { getCompiledSchema } from "../schema/index.js";
 
 // the order of the UI menu, then the Settings sections, then the technical groups (item 27 PR 4)
+const EM_DASH = /\u2014/u;
+const WHOLE_TOKEN = /npmpro_[0-9a-f]{16}_[\w-]{43}/u;
 const TAG_ORDER = [
 	"Dashboard",
 	"Proxy Hosts",
@@ -80,6 +82,6 @@ it("starts with the Getting started intro from getting-started.md", async () => 
 	]) {
 		assert.ok(text.includes(`\n${heading}\n`), heading);
 	}
-	assert.doesNotMatch(text, /\u2014/u);
-	assert.doesNotMatch(text, /npmpro_[0-9a-f]{16}_[\w-]{43}/u, "no whole token");
+	assert.doesNotMatch(text, EM_DASH);
+	assert.doesNotMatch(text, WHOLE_TOKEN, "no whole token");
 });
