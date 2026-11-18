@@ -183,6 +183,7 @@ try {
 				if (step.seedAccessLists) await seedAccessLists(step.seedAccessLists);
 				if (step.reload) await page.reload();
 				if (step.viewport) await page.setViewportSize({ width: step.viewport[0], height: step.viewport[1] });
+				if (step.colorScheme) await page.emulateMedia({ colorScheme: step.colorScheme });
 				if (step.click) await page.locator(step.click).first().click();
 				if (step.hover) {
 					// stepped pointer moves: a teleported pointer does not open a second tooltip while the first is open
@@ -211,6 +212,8 @@ try {
 			await removeSeeded();
 			// a phone action changes the size: every action starts on the desktop size again
 			await page.setViewportSize(options.viewport);
+			// a dark action leaves the system theme to the next one
+			await page.emulateMedia({ colorScheme: null });
 		}
 		await checkErrorPage(page, `on ${action.route} (after ${action.name})`);
 	}
