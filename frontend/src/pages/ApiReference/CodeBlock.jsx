@@ -40,11 +40,10 @@ export function CodeBlock({ text, language, className }) {
 			<pre
 				// biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region needs the focus for keyboard scrolling
 				tabIndex={0}
-				className="m-0 overflow-auto rounded-lg border bg-code-bg p-4 pr-12 font-mono text-[12.5px] text-code-fg leading-relaxed"
+				className="m-0 overflow-auto rounded-lg border bg-code-bg p-4 pt-10 font-mono text-[12.5px] text-code-fg leading-relaxed"
 			>
 				<code>
 					{tokens.map((token, index) => (
-						// biome-ignore lint/suspicious/noArrayIndexKey: the tokens are static text in a fixed order
 						<span key={index} className={KIND_CLASS[token.kind]}>
 							{token.text}
 						</span>

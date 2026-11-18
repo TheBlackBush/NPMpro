@@ -12,11 +12,13 @@ import { ApiNav } from "./ApiNav";
 import { CodeLanguageContext } from "./CodePanel";
 import { GuideSheet } from "./GuideSheet";
 import { QuickStart } from "./QuickStart";
-import { useScrollSpy } from "./useScrollSpy";
+import { elementById, useScrollSpy } from "./useScrollSpy";
+
+const HASH_MARK = /^#/u;
 
 const decodeHash = (hash) => {
 	try {
-		return decodeURIComponent(hash.replace(/^#/u, ""));
+		return decodeURIComponent(hash.replace(HASH_MARK, ""));
 	} catch {
 		return "";
 	}
@@ -25,12 +27,12 @@ const decodeHash = (hash) => {
 // Scrolls to the element a hash names; an old Swagger hash is rewritten to its new anchor first
 const goToHash = (reference) => {
 	const { hash } = window.location;
-	let element = hash ? document.getElementById(decodeHash(hash)) : null;
+	let element = hash ? elementById(decodeHash(hash)) : null;
 	if (!element && hash) {
 		const anchor = legacyAnchor(decodeHash(hash) ? `#${decodeHash(hash)}` : hash, reference);
 		if (anchor) {
 			window.history.replaceState(null, "", `#${anchor}`);
-			element = document.getElementById(anchor);
+			element = elementById(anchor);
 		}
 	}
 	element?.scrollIntoView({ block: "start" });

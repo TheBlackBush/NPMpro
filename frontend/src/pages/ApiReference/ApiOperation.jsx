@@ -8,23 +8,23 @@ import { ResponseTable } from "./ResponseTable";
 
 const HEADING = "m-0 mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide";
 
-// The path with its {params} in the muted colour
+const PARAM_SPLIT = /(?<param>\{[^}]+\})/u;
+
+// The path with its {params} in the muted colour (a part's offset in the path is its key)
 const PathText = ({ path }) => {
-	const parts = path.split(/(\{[^}]+\})/u);
-	return (
-		<code className="break-all font-mono text-[13px]">
-			{parts.map((part, index) =>
-				part.startsWith("{") ? (
-					// biome-ignore lint/suspicious/noArrayIndexKey: the parts are static text in a fixed order
-					<span key={index} className="text-muted-foreground">
-						{part}
-					</span>
-				) : (
-					part
-				),
-			)}
-		</code>
-	);
+	let offset = 0;
+	const parts = path.split(PARAM_SPLIT).map((part) => {
+		const key = offset;
+		offset += part.length;
+		return part.startsWith("{") ? (
+			<span key={key} className="text-muted-foreground">
+				{part}
+			</span>
+		) : (
+			part
+		);
+	});
+	return <code className="break-all font-mono text-[13px]">{parts}</code>;
 };
 
 function Needs({ value }) {

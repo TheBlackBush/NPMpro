@@ -49,8 +49,8 @@ export function QuickStart({ reference, onOpenGuide }) {
 
 	return (
 		<section id="getting-started" className="scroll-mt-20 border-b p-6">
-			<div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-				<div>
+			<div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+				<div className="min-w-0">
 					<h2 className="m-0 mb-1 font-semibold text-xl">
 						<T id="api-reference.title" />
 					</h2>
@@ -84,7 +84,7 @@ export function QuickStart({ reference, onOpenGuide }) {
 					</Button>
 				</div>
 				{first ? (
-					<div>
+					<div className="min-w-0">
 						<h3 className="m-0 mb-2 font-medium text-sm">
 							<T id="api-reference.first-request" />
 						</h3>

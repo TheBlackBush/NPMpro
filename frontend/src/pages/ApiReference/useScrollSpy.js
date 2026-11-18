@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 
+/** The element with an id, found by selector so an id never needs special handling */
+export const elementById = (id) => document.querySelector(`#${CSS.escape(id)}`);
+
 /**
  * The id of the section or article the reader is at: of the elements that enter the band under the header, the last
  * one wins. It only updates the nav; the address stays as it is.
@@ -23,7 +26,7 @@ export function useScrollSpy(ids) {
 			{ rootMargin: "-80px 0px -70% 0px" },
 		);
 		for (const id of ids) {
-			const element = document.getElementById(id);
+			const element = elementById(id);
 			if (element) {
 				observer.observe(element);
 			}
