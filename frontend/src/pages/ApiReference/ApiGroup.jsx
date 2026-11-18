@@ -10,7 +10,7 @@ import { InlineMarkdown } from "./InlineMarkdown";
  */
 export function ApiGroup({ group, onOpenGuide }) {
 	return (
-		<section id={group.name} className="scroll-mt-20">
+		<section id={group.name} className="scroll-mt-[76px]">
 			<div className="border-b px-6 pt-10 pb-6 lg:px-10">
 				<h2 className="m-0 mb-2 border-primary border-l-[3px] pl-3 font-mono font-semibold text-2xl">
 					{group.name}

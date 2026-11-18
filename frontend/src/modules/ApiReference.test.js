@@ -8,6 +8,7 @@ import {
 	fieldRows,
 	filterReference,
 	legacyAnchor,
+	scrollToSettled,
 	slugOf,
 	splitNeeds,
 	typeLabel,
@@ -275,4 +276,60 @@ it("fieldRows stops at the depth limit and reads anyOf", () => {
 	assert.deepEqual(fieldRows({ anyOf: [{ properties: { z: { description: "Z" } } }] })[0].description, "Z");
 	assert.equal(typeLabel({ anyOf: [{ type: "string" }, { type: "null" }] }), "string | null");
 	assert.equal(typeLabel({ type: ["string", "integer"] }), "string | integer");
+});
+
+it("scrollToSettled corrects a target that moves, then stops when it is calm", () => {
+	let offset = 394;
+	let scrolls = 0;
+	const queue = [];
+	const element = {
+		scrollIntoView: () => {
+			scrolls += 1;
+			offset = 0;
+		},
+	};
+	scrollToSettled(element, { frame: (cb) => queue.push(cb), top: () => offset });
+	assert.equal(scrolls, 1);
+	offset = 120; // an article above rendered and moved the target
+	while (queue.length > 0) {
+		queue.shift()();
+	}
+	assert.equal(scrolls, 2);
+	assert.equal(offset, 0);
+});
+
+it("scrollToSettled stops at its limit", () => {
+	let scrolls = 0;
+	const queue = [];
+	scrollToSettled(
+		{
+			scrollIntoView: () => {
+				scrolls += 1;
+			},
+		},
+		{ frame: (cb) => queue.push(cb), top: () => 50, limit: 4, calmFrames: 9 },
+	);
+	while (queue.length > 0) {
+		queue.shift()();
+	}
+	assert.equal(scrolls, 4);
+});
+
+it("scrollToSettled leaves the page alone once the reader takes over", () => {
+	let scrolls = 0;
+	let reading = false;
+	const queue = [];
+	scrollToSettled(
+		{
+			scrollIntoView: () => {
+				scrolls += 1;
+			},
+		},
+		{ frame: (cb) => queue.push(cb), top: () => 50, stop: () => reading },
+	);
+	reading = true;
+	while (queue.length > 0) {
+		queue.shift()();
+	}
+	assert.equal(scrolls, 1);
 });

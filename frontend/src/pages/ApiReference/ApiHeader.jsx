@@ -63,7 +63,7 @@ export function ApiHeader({ version, query, onQuery, searchRef, onOpenNav }) {
 	return (
 		<>
 			<div className="h-[3px] bg-linear-to-r from-[#ff8a00] via-[#d91aff] to-[#00d1ff]" aria-hidden="true" />
-			<header className="sticky top-0 z-30 flex h-14 min-w-0 items-center gap-2 border-b sm:gap-3 bg-background/90 px-4 backdrop-blur">
+			<header className="sticky top-0 z-30 flex h-14 min-w-0 items-center gap-2 border-b sm:gap-3 bg-background px-4">
 				<Button
 					type="button"
 					variant="ghost"

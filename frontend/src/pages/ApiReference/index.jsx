@@ -5,7 +5,7 @@ import { Button } from "src/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "src/components/ui/sheet";
 import { useApiSchema } from "src/hooks";
 import { intl, T } from "src/locale";
-import { buildReference, filterReference, legacyAnchor } from "src/modules/ApiReference";
+import { buildReference, filterReference, legacyAnchor, scrollToSettled } from "src/modules/ApiReference";
 import { ApiGroup } from "./ApiGroup";
 import { ApiHeader, SearchInput } from "./ApiHeader";
 import { ApiNav } from "./ApiNav";
@@ -36,7 +36,22 @@ const goToHash = (reference) => {
 			element = elementById(anchor);
 		}
 	}
-	element?.scrollIntoView({ block: "start" });
+	if (element) {
+		// the target sits under the sticky header: its scroll-margin-top is where it should land
+		const margin = Number.parseFloat(getComputedStyle(element).scrollMarginTop) || 0;
+		let reading = false;
+		const take = () => {
+			reading = true;
+		};
+		for (const name of ["wheel", "touchstart", "keydown", "pointerdown"]) {
+			window.addEventListener(name, take, { once: true, passive: true });
+		}
+		scrollToSettled(element, {
+			stop: () => reading,
+			frame: (cb) => window.requestAnimationFrame(cb),
+			top: () => element.getBoundingClientRect().top - margin,
+		});
+	}
 };
 
 const isTyping = (target) =>

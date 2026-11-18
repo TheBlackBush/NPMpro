@@ -13,7 +13,11 @@ rules. Requests and answers are JSON. Every address starts with `/api` on the ad
    curl -H "Authorization: Bearer $NPMPRO_TOKEN" https://npm.example.com:81/api/nginx/proxy-hosts
    ```
 
-   The admin port often has a self-signed certificate: give curl that certificate with `--cacert`.
+   The admin port often has a self-signed certificate: give curl that certificate with `--cacert`. Python's
+   `requests` needs `verify="/path/to/ca.pem"`, and Node needs `NODE_EXTRA_CA_CERTS=/path/to/ca.pem`. The
+   certificate must name the address you call. Switching the check off (`verify=False`,
+   `NODE_TLS_REJECT_UNAUTHORIZED=0`) is for a quick test only. The Node example uses top-level `await`: save it as
+   an `.mjs` file.
 3. **Try it on this page.** Every route has a **Try it** button that runs the request on this instance as you,
    signed in. To run it as a token instead, choose **Use a token** at the top of the page and paste the token; the
    page keeps it only until you reload, and never stores it.

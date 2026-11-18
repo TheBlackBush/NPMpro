@@ -276,6 +276,35 @@ const legacyAnchor = (hash, reference) => {
 	return null;
 };
 
+/**
+ * Scrolls to an element and keeps correcting for a few frames: articles above it that render late (content-visibility)
+ * change their height and move the target, so one scroll can stop short.
+ *
+ * @param {{ scrollIntoView: Function }} element
+ * @param {{ frame: (cb: () => void) => void, top: () => number, limit?: number, calmFrames?: number, tolerance?: number, stop?: () => boolean }} env
+ *   frame schedules the next frame; stop says the reader took over; top is the element's distance from where it should sit
+ */
+const scrollToSettled = (element, { frame, top, limit = 120, calmFrames = 30, tolerance = 2, stop = () => false }) => {
+	let left = limit;
+	let calm = 0;
+	const step = () => {
+		if (stop()) {
+			return;
+		}
+		if (Math.abs(top()) > tolerance) {
+			calm = 0;
+			element.scrollIntoView({ block: "start" });
+		} else {
+			calm += 1;
+		}
+		left -= 1;
+		if (left > 0 && calm < calmFrames && !stop()) {
+			frame(step);
+		}
+	};
+	step();
+};
+
 export {
 	anchorOf,
 	authOf,
@@ -284,6 +313,7 @@ export {
 	fieldRows,
 	filterReference,
 	legacyAnchor,
+	scrollToSettled,
 	slugOf,
 	splitNeeds,
 	typeLabel,
