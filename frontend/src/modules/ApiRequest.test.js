@@ -34,6 +34,14 @@ it("buildCurl writes a GET with the token variable", () => {
 	);
 });
 
+it("buildCurl quotes a URL that holds characters the shell would read", () => {
+	const named = { name: "name", in: "path", required: true, example: "it(s)" };
+	assert.equal(
+		buildCurl({ origin: ORIGIN, operation: op({ path: "/backups/{name}", params: [named] }) }),
+		`curl "${ORIGIN}/api/backups/it(s)" \\\n  -H "Authorization: Bearer ${TOKEN_VAR}"`,
+	);
+});
+
 it("buildCurl writes a POST with its JSON example, escaping single quotes", () => {
 	const operation = op({
 		method: "POST",

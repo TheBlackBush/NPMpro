@@ -47,6 +47,8 @@ const exampleUrl = (origin, operation, values) => {
 	return { url: `${origin}/api${path}`, query: query.join("&") };
 };
 
+const SHELL_SAFE_URL = /^[\w\-./:~%@+,=]+$/u;
+
 const fullUrl = (origin, operation, values) => {
 	const { url, query } = exampleUrl(origin, operation, values);
 	return query ? `${url}?${query}` : url;
@@ -56,7 +58,8 @@ const isJsonBody = (body) => body?.mediaType === "application/json";
 
 export const buildCurl = ({ origin, operation, values = {} }) => {
 	const { url, query } = exampleUrl(origin, operation, values);
-	const target = query ? `"${url}?${query}"` : url;
+	// a plain URL stays bare; anything the shell would read (a query, brackets, spaces) goes in double quotes
+	const target = query || !SHELL_SAFE_URL.test(url) ? `"${query ? `${url}?${query}` : url}"` : url;
 	const first = operation.method === "GET" ? `curl ${target}` : `curl -X ${operation.method} ${target}`;
 	const lines = [first];
 	if (operation.auth === "token") {
