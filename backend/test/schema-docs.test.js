@@ -40,6 +40,12 @@ const SHARED = [
 
 const ajv = new Ajv({ strict: false, allowUnionTypes: true, validateFormats: false });
 const PLACEHOLDER = /^\d{3} response$/u;
+const NEEDS_LINE = /(?:^|\n)Needs: \S/u;
+const EM_DASH = /—/u;
+const API_TOKEN = /npmpro_[0-9a-f]{16}_[\w-]{43}/u;
+const PRIVATE_KEY = /PRIVATE KEY-----\\n[A-Za-z0-9+/=]{40}/u;
+const PASSWORD_HASH = /\$2[aby]\$\d\d\$|\$argon2id?\$/u;
+const JWT = /eyJ[\w-]{10,}\.eyJ[\w-]{10,}/u;
 const ANNOTATIONS = new Set(["description", "summary", "example", "examples", "title"]);
 
 const operations = (schema) =>
@@ -87,7 +93,7 @@ function operationGaps({ key, op }) {
 	const gaps = [];
 	if (!described(op.summary) || op.summary.length > 80) gaps.push(`${key}: summary missing or over 80 characters`);
 	if (!described(op.description) || op.description === op.summary) gaps.push(`${key}: no description`);
-	else if (!/(^|\n)Needs: \S/u.test(op.description)) gaps.push(`${key}: the description has no Needs line`);
+	else if (!NEEDS_LINE.test(op.description)) gaps.push(`${key}: the description has no Needs line`);
 	for (const parameter of op.parameters ?? []) {
 		if (!described(parameter.description)) gaps.push(`${key}: parameter ${parameter.name}`);
 	}
@@ -115,11 +121,23 @@ it("documents every operation that is not pending: summary, description, example
 it("documents every field of the shared parts", async () => {
 	const gaps = [];
 	for (const file of SHARED) {
-		// biome-ignore lint/performance/noAwaitInLoops: one file after another
 		const schema = await $RefParser.dereference(`${import.meta.dirname}/../schema/${file}`);
 		gaps.push(...fieldGaps(schema, file));
 	}
 	assert.deepEqual(gaps, []);
+});
+
+it("lists no pending tag or path that is already complete", async () => {
+	const schema = await getCompiledSchema();
+	const ops = operations(schema);
+	const complete = (match) => ops.filter(match).flatMap(operationGaps).length === 0;
+	const stale = [
+		...[...PENDING_TAGS].filter((tag) => complete(({ op }) => op.tags?.[0] === tag)).map((tag) => `tag ${tag}`),
+		...PENDING_PATHS.filter((prefix) => complete(({ path }) => path.startsWith(prefix))).map(
+			(prefix) => `path ${prefix}`,
+		),
+	];
+	assert.deepEqual(stale, [], `complete, remove from the pending lists: ${stale.join(", ")}`);
 });
 
 it("names only pending tags and paths that exist", async () => {
@@ -162,9 +180,9 @@ it("keeps the request schemas: only descriptions and examples change", async () 
 
 it("has no secret and no em dash anywhere in the reference", async () => {
 	const text = JSON.stringify(await getCompiledSchema());
-	assert.doesNotMatch(text, /—/u);
-	assert.doesNotMatch(text, /npmpro_[0-9a-f]{16}_[\w-]{43}/u, "a whole API token");
-	assert.doesNotMatch(text, /PRIVATE KEY-----\\n[A-Za-z0-9+/=]{40}/u, "a private key");
-	assert.doesNotMatch(text, /\$2[aby]\$\d\d\$|\$argon2id?\$/u, "a password hash");
-	assert.doesNotMatch(text, /eyJ[\w-]{10,}\.eyJ[\w-]{10,}/u, "a JWT");
+	assert.doesNotMatch(text, EM_DASH);
+	assert.doesNotMatch(text, API_TOKEN, "a whole API token");
+	assert.doesNotMatch(text, PRIVATE_KEY, "a private key");
+	assert.doesNotMatch(text, PASSWORD_HASH, "a password hash");
+	assert.doesNotMatch(text, JWT, "a JWT");
 });
