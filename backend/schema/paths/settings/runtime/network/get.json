@@ -14,19 +14,25 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The network settings as they are now",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"trusted_ips": [],
+								"trusted_ips": [
+									"10.0.0.5",
+									"192.168.0.0/16"
+								],
 								"trust_cloudflare": false,
 								"locked": [],
+								"locked_by": {},
+								"locked_reason": {},
 								"applies": {
 									"trusted_ips": "reload",
 									"trust_cloudflare": "reload"
-								}
+								},
+								"restart_pending": []
 							}
 						}
 					},
@@ -36,5 +42,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns the network settings: the trusted proxy addresses and whether the Cloudflare ranges are trusted. A value an environment variable sets is shown as locked.\nNeeds: an administrator (a token needs its Administrator switch)"
 }

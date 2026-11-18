@@ -1,7 +1,7 @@
 {
 	"operationId": "updateRuntimeForwardAuthSettings",
 	"summary": "Update the forward authentication settings",
-	"description": "Fields set by environment variables are ignored. The change is applied before it is saved: when applying fails, nothing is saved.",
+	"description": "Saves the forward authentication settings; send only what changes. Fields set by environment variables are ignored. An upstream is empty (none) or scheme://host:port or scheme://cu_name without a path, otherwise the answer is 400. The settings decide who can sign in to protected hosts, so a session is required and an API token gets 403. The change reloads nginx and is applied before it is saved: when applying fails, nothing is saved.\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
 		"Settings"
 	],
@@ -11,7 +11,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "Settings payload",
+		"description": "The settings to change; fields you leave out keep their value",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -24,37 +24,37 @@
 							"type": "string",
 							"maxLength": 255,
 							"description": "Default Anubis upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)",
-							"example": "http://127.0.0.1:8080"
+							"example": "http://192.168.1.20:8080"
 						},
 						"tinyauth_upstream": {
 							"type": "string",
 							"maxLength": 255,
 							"description": "Default Tinyauth upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)",
-							"example": "http://127.0.0.1:8080"
+							"example": "http://192.168.1.20:8080"
 						},
 						"oauth2proxy_upstream": {
 							"type": "string",
 							"maxLength": 255,
 							"description": "Default OAuth2 Proxy upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)",
-							"example": "http://127.0.0.1:8080"
+							"example": "http://192.168.1.20:8080"
 						},
 						"voidauth_upstream": {
 							"type": "string",
 							"maxLength": 255,
 							"description": "Default VoidAuth upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)",
-							"example": "http://127.0.0.1:8080"
+							"example": "http://192.168.1.20:8080"
 						},
 						"authelia_upstream": {
 							"type": "string",
 							"maxLength": 255,
 							"description": "Default Authelia upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)",
-							"example": "http://127.0.0.1:8080"
+							"example": "http://192.168.1.20:8080"
 						},
 						"authentik_upstream": {
 							"type": "string",
 							"maxLength": 255,
 							"description": "Default Authentik upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)",
-							"example": "http://127.0.0.1:8080"
+							"example": "http://192.168.1.20:8080"
 						},
 						"anubis_custom_images": {
 							"type": "boolean",
@@ -63,14 +63,14 @@
 					}
 				},
 				"example": {
-					"anubis_upstream": ""
+					"authelia_upstream": "http://192.168.1.20:8080"
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The forward authentication settings after the save, in the same form as the GET answer",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -80,10 +80,12 @@
 								"tinyauth_upstream": "",
 								"oauth2proxy_upstream": "",
 								"voidauth_upstream": "",
-								"authelia_upstream": "",
+								"authelia_upstream": "http://192.168.1.20:8080",
 								"authentik_upstream": "",
 								"anubis_custom_images": false,
 								"locked": [],
+								"locked_by": {},
+								"locked_reason": {},
 								"applies": {
 									"anubis_upstream": "reload",
 									"tinyauth_upstream": "reload",
@@ -92,7 +94,8 @@
 									"authelia_upstream": "reload",
 									"authentik_upstream": "reload",
 									"anubis_custom_images": "reload"
-								}
+								},
+								"restart_pending": []
 							}
 						}
 					},

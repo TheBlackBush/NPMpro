@@ -21,7 +21,7 @@ const PENDING_TAGS = new Set([
 	"System",
 	"Admin Port Checks",
 ]);
-const PENDING_PATHS = ["/settings/runtime/"];
+const PENDING_PATHS = [];
 
 // the parts several tags reach, always checked
 const SHARED = [

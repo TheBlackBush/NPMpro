@@ -1,6 +1,6 @@
 {
 	"type": "object",
-	"description": "Effective advanced runtime settings",
+	"description": "The effective advanced settings: each value, the fields an environment variable sets, and when a change takes effect",
 	"additionalProperties": false,
 	"required": [
 		"config_beautifier",
@@ -37,30 +37,33 @@
 					"time_zone"
 				]
 			},
-			"description": "Fields set by environment variables (read only)"
+			"description": "Fields that cannot be changed because an environment variable sets them, or forces them (see locked_by and locked_reason). A save ignores them (read only)"
 		},
 		"locked_by": {
 			"type": "object",
-			"description": "The environment variable that sets each locked field (read only)",
+			"description": "For each locked field, the environment variable that sets it. A field locked by its own variable names that variable; a field another setting forces names the variable of that setting (read only)",
 			"additionalProperties": false,
 			"properties": {
 				"config_beautifier": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the config beautifier: DISABLE_NGINX_BEAUTIFIER"
 				},
 				"gravatar": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the gravatar: DISABLE_GRAVATAR"
 				},
 				"time_zone": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the time zone: TZ"
 				}
 			}
 		},
 		"locked_reason": {
 			"type": "object",
-			"description": "Fields locked by the environment variable of another setting (an indirect lock), with the reason: key-size (the key type follows ACME_KEY_SIZE), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns OCSP stapling off), must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess reads the log files). Fields locked by their own variable are not listed.",
+			"description": "Always empty: no field of this section is locked by the variable of another setting",
 			"additionalProperties": false,
 			"properties": {}
 		},
@@ -80,7 +83,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the config beautifier takes effect: on save"
 				},
 				"gravatar": {
 					"type": "string",
@@ -88,7 +92,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the gravatar takes effect: on save"
 				},
 				"time_zone": {
 					"type": "string",
@@ -97,7 +102,8 @@
 						"reload",
 						"immediately",
 						"restart"
-					]
+					],
+					"description": "When a change of the time zone takes effect: after a container restart"
 				}
 			}
 		},

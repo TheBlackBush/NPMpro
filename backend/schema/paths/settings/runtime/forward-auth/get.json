@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The forward authentication settings as they are now",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -28,6 +28,8 @@
 								"authentik_upstream": "",
 								"anubis_custom_images": false,
 								"locked": [],
+								"locked_by": {},
+								"locked_reason": {},
 								"applies": {
 									"anubis_upstream": "reload",
 									"tinyauth_upstream": "reload",
@@ -36,7 +38,8 @@
 									"authelia_upstream": "reload",
 									"authentik_upstream": "reload",
 									"anubis_custom_images": "reload"
-								}
+								},
+								"restart_pending": []
 							}
 						}
 					},
@@ -46,5 +49,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns the default upstreams of the forward authentication providers (Anubis, Tinyauth, OAuth2 Proxy, VoidAuth, Authelia, Authentik) and the Anubis custom images switch. A value an environment variable sets is shown as locked.\nNeeds: an administrator (a token needs its Administrator switch)"
 }

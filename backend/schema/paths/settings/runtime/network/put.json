@@ -1,7 +1,7 @@
 {
 	"operationId": "updateRuntimeNetworkSettings",
 	"summary": "Update the network settings",
-	"description": "Fields set by environment variables are ignored. The change is applied before it is saved: when applying fails, nothing is saved.",
+	"description": "Saves the network settings; send only what changes. Fields set by environment variables are ignored. Every trusted_ips entry must be an IPv4 or IPv6 address or a CIDR range, otherwise the answer is 400. The change reloads nginx and is applied before it is saved: when applying fails, nothing is saved.\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Settings"
 	],
@@ -14,7 +14,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "Settings payload",
+		"description": "The settings to change; fields you leave out keep their value",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -44,26 +44,36 @@
 					}
 				},
 				"example": {
-					"trusted_ips": []
+					"trusted_ips": [
+						"10.0.0.5",
+						"192.168.0.0/16"
+					],
+					"trust_cloudflare": false
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The network settings after the save, in the same form as the GET answer",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"trusted_ips": [],
+								"trusted_ips": [
+									"10.0.0.5",
+									"192.168.0.0/16"
+								],
 								"trust_cloudflare": false,
 								"locked": [],
+								"locked_by": {},
+								"locked_reason": {},
 								"applies": {
 									"trusted_ips": "reload",
 									"trust_cloudflare": "reload"
-								}
+								},
+								"restart_pending": []
 							}
 						}
 					},

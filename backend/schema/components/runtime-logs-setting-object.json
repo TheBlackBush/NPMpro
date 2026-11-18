@@ -1,6 +1,6 @@
 {
 	"type": "object",
-	"description": "Effective log files runtime settings",
+	"description": "The effective log files and GoAccess settings: each value, the fields an environment variable sets, and when a change takes effect",
 	"additionalProperties": false,
 	"required": [
 		"write_log_files",
@@ -92,52 +92,62 @@
 					"goaccess_resolve_hosts"
 				]
 			},
-			"description": "Fields set by environment variables (read only)"
+			"description": "Fields that cannot be changed because an environment variable sets them, or forces them (see locked_by and locked_reason). A save ignores them (read only)"
 		},
 		"locked_by": {
 			"type": "object",
-			"description": "The environment variable that sets each locked field (read only)",
+			"description": "For each locked field, the environment variable that sets it. A field locked by its own variable names that variable; a field another setting forces names the variable of that setting (read only)",
 			"additionalProperties": false,
 			"properties": {
 				"write_log_files": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the write log files: LOGROTATE, or GOA or CROWDSEC_ENABLED when it forces the field"
 				},
 				"log_format": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the log format: NGINX_LOG_FORMAT"
 				},
 				"tls_handshake_log": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the tls handshake log: NGINX_TLS_HANDSHAKE_LOG, or LISTEN_PROXY_PROTOCOL_HTTPS when it forces the field"
 				},
 				"log_rotations": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the log rotations: LOGROTATIONS"
 				},
 				"goaccess": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the goaccess: GOA"
 				},
 				"goaccess_keep_days": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the goaccess keep days: GOACLA"
 				},
 				"goaccess_anonymize": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the goaccess anonymize: GOACLA"
 				},
 				"goaccess_drop_query_strings": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the goaccess drop query strings: GOACLA"
 				},
 				"goaccess_real_os": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the goaccess real os: GOACLA"
 				},
 				"goaccess_resolve_hosts": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the goaccess resolve hosts: GOACLA"
 				}
 			}
 		},
@@ -153,13 +163,15 @@
 						"goaccess-setting",
 						"crowdsec",
 						"crowdsec-setting"
-					]
+					],
+					"description": "Why the write log files is locked by another setting's variable: goaccess or goaccess-setting (GoAccess is on) or crowdsec or crowdsec-setting (CrowdSec is on)"
 				},
 				"tls_handshake_log": {
 					"type": "string",
 					"enum": [
 						"proxy-protocol"
-					]
+					],
+					"description": "Why the tls handshake log is locked by another setting's variable: proxy-protocol, when LISTEN_PROXY_PROTOCOL_HTTPS is on"
 				}
 			}
 		},
@@ -186,7 +198,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the write log files takes effect: on save, with an nginx reload"
 				},
 				"log_format": {
 					"type": "string",
@@ -194,7 +207,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the log format takes effect: on save, with an nginx reload"
 				},
 				"tls_handshake_log": {
 					"type": "string",
@@ -202,7 +216,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the tls handshake log takes effect: on save, with an nginx reload"
 				},
 				"log_rotations": {
 					"type": "string",
@@ -210,7 +225,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the log rotations takes effect: on save"
 				},
 				"goaccess": {
 					"type": "string",
@@ -219,7 +235,8 @@
 						"reload",
 						"immediately",
 						"restart"
-					]
+					],
+					"description": "When a change of the goaccess takes effect: after a container restart"
 				},
 				"goaccess_keep_days": {
 					"type": "string",
@@ -228,7 +245,8 @@
 						"reload",
 						"immediately",
 						"restart"
-					]
+					],
+					"description": "When a change of the goaccess keep days takes effect: after a container restart"
 				},
 				"goaccess_anonymize": {
 					"type": "string",
@@ -237,7 +255,8 @@
 						"reload",
 						"immediately",
 						"restart"
-					]
+					],
+					"description": "When a change of the goaccess anonymize takes effect: after a container restart"
 				},
 				"goaccess_drop_query_strings": {
 					"type": "string",
@@ -246,7 +265,8 @@
 						"reload",
 						"immediately",
 						"restart"
-					]
+					],
+					"description": "When a change of the goaccess drop query strings takes effect: after a container restart"
 				},
 				"goaccess_real_os": {
 					"type": "string",
@@ -255,7 +275,8 @@
 						"reload",
 						"immediately",
 						"restart"
-					]
+					],
+					"description": "When a change of the goaccess real os takes effect: after a container restart"
 				},
 				"goaccess_resolve_hosts": {
 					"type": "string",
@@ -264,7 +285,8 @@
 						"reload",
 						"immediately",
 						"restart"
-					]
+					],
+					"description": "When a change of the goaccess resolve hosts takes effect: after a container restart"
 				}
 			}
 		},
