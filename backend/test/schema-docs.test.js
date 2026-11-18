@@ -20,7 +20,7 @@ const SHARED = [
 const ajv = new Ajv({ strict: false, allowUnionTypes: true, validateFormats: false });
 const PLACEHOLDER = /^\d{3} response$/u;
 const NEEDS_LINE = /(?:^|\n)Needs: \S/u;
-const EM_DASH = /—/u;
+const EM_DASH = /\u2014/u;
 const API_TOKEN = /npmpro_[0-9a-f]{16}_[\w-]{43}/u;
 const PRIVATE_KEY = /PRIVATE KEY-----\\n[A-Za-z0-9+/=]{40}/u;
 const PASSWORD_HASH = /\$2[aby]\$\d\d\$|\$argon2id?\$/u;
