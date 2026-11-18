@@ -6,6 +6,7 @@ import { useHealth } from "src/hooks";
 import { adminRedirect } from "src/modules/AdminRoutes";
 import { AppShell } from "src/shell";
 
+const ApiReference = lazy(() => import("src/pages/ApiReference"));
 const Setup = lazy(() => import("src/pages/Setup"));
 const Login = lazy(() => import("src/pages/Login"));
 const Dashboard = lazy(() => import("src/pages/Dashboard"));
@@ -56,32 +57,50 @@ function Router() {
 
 	return (
 		<BrowserRouter>
-			<AppShell>
-				<Suspense fallback={<LoadingPage noLogo delay={300} />}>
-					<Routes>
-						<Route path="*" element={<ErrorNotFound />} />
-						<Route path="/certificates" element={<Certificates />} />
-						<Route path="/certificates/dns-credentials" element={<DnsCredentials />} />
-						<Route path="/access" element={<Access />} />
-						<Route path="/audit-log" element={<MovedToSettings />} />
-						<Route path="/settings" element={<Navigate to="/settings/landing-pages" replace />} />
-						<Route
-							path="/settings/default-site"
-							element={<Navigate to="/settings/landing-pages" replace />}
-						/>
-						<Route path="/settings/:section" element={<Settings />} />
-						<Route path="/users" element={<MovedToSettings />} />
-						<Route path="/monitoring" element={<Navigate to="/monitoring/traffic" replace />} />
-						<Route path="/monitoring/:tab" element={<Monitoring />} />
-						<Route path="/nginx/proxy" element={<ProxyHosts />} />
-						<Route path="/nginx/redirection" element={<RedirectionHosts />} />
-						<Route path="/nginx/404" element={<DeadHosts />} />
-						<Route path="/nginx/stream" element={<Streams />} />
-						<Route path="/login" element={<Navigate to="/" replace />} />
-						<Route path="/" element={<Dashboard />} />
-					</Routes>
-				</Suspense>
-			</AppShell>
+			<Routes>
+				<Route
+					path="/api-reference"
+					element={
+						<Suspense fallback={<LoadingPage fullScreen />}>
+							<ApiReference />
+						</Suspense>
+					}
+				/>
+				<Route
+					path="*"
+					element={
+						<AppShell>
+							<Suspense fallback={<LoadingPage noLogo delay={300} />}>
+								<Routes>
+									<Route path="*" element={<ErrorNotFound />} />
+									<Route path="/certificates" element={<Certificates />} />
+									<Route path="/certificates/dns-credentials" element={<DnsCredentials />} />
+									<Route path="/access" element={<Access />} />
+									<Route path="/audit-log" element={<MovedToSettings />} />
+									<Route
+										path="/settings"
+										element={<Navigate to="/settings/landing-pages" replace />}
+									/>
+									<Route
+										path="/settings/default-site"
+										element={<Navigate to="/settings/landing-pages" replace />}
+									/>
+									<Route path="/settings/:section" element={<Settings />} />
+									<Route path="/users" element={<MovedToSettings />} />
+									<Route path="/monitoring" element={<Navigate to="/monitoring/traffic" replace />} />
+									<Route path="/monitoring/:tab" element={<Monitoring />} />
+									<Route path="/nginx/proxy" element={<ProxyHosts />} />
+									<Route path="/nginx/redirection" element={<RedirectionHosts />} />
+									<Route path="/nginx/404" element={<DeadHosts />} />
+									<Route path="/nginx/stream" element={<Streams />} />
+									<Route path="/login" element={<Navigate to="/" replace />} />
+									<Route path="/" element={<Dashboard />} />
+								</Routes>
+							</Suspense>
+						</AppShell>
+					}
+				/>
+			</Routes>
 		</BrowserRouter>
 	);
 }
