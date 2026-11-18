@@ -1,6 +1,6 @@
 {
 	"operationId": "getProxyHosts",
-	"summary": "Get all proxy hosts",
+	"summary": "List proxy hosts",
 	"tags": [
 		"Proxy Hosts"
 	],
@@ -16,7 +16,7 @@
 		{
 			"in": "query",
 			"name": "expand",
-			"description": "Expansions",
+			"description": "Relations to add to each proxy host of the answer: one or several of `owner` (the user who created the host), `certificate` (its certificate) and `access_lists` (proxy hosts always carry their access lists already), separated by commas.",
 			"schema": {
 				"type": "string",
 				"enum": [
@@ -29,32 +29,32 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The proxy hosts, ordered by domain name",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": [
 								{
-									"id": 1,
-									"created_on": "2025-10-28T01:10:26.000Z",
-									"modified_on": "2025-10-28T04:07:16.000Z",
+									"id": 12,
+									"created_on": "2026-11-17T09:30:00.000Z",
+									"modified_on": "2026-11-17T09:30:00.000Z",
 									"owner_user_id": 1,
 									"domain_names": [
-										"test.jc21com"
+										"app.example.com"
 									],
-									"forward_host": "127.0.0.1",
-									"forward_port": 8081,
-									"npmpro_access_list_type": "public",
-									"certificate_id": 1,
-									"ssl_forced": false,
+									"forward_host": "192.168.1.20",
+									"forward_port": 8080,
+									"npmpro_access_list_type": "custom",
+									"certificate_id": 5,
+									"ssl_forced": true,
 									"npmpro_noindex": false,
 									"npmpro_crowdsec_appsec": false,
 									"npmpro_proxy_request_buffering": false,
 									"npmpro_proxy_response_buffering": false,
 									"npmpro_upstream_compression": false,
 									"npmpro_fancyindex": false,
-									"npmpro_x_frame_options": "DENY",
+									"npmpro_x_frame_options": "SAMEORIGIN",
 									"npmpro_auth_request": "none",
 									"npmpro_auth_request_upstream": "",
 									"advanced_config": "",
@@ -62,21 +62,36 @@
 									"npmpro_nginx_online": true,
 									"npmpro_nginx_err": "",
 									"npmpro_directory": "",
-									"npmpro_tags": [],
-									"npmpro_description": "",
+									"npmpro_tags": [
+										"Production"
+									],
+									"npmpro_description": "Internal app",
 									"npmpro_mtls_certificate_id": 0,
 									"npmpro_mtls_verify_client_optional": false,
 									"npmpro_mtls_bypass_auth_request": false,
-									"npmpro_http3_support": false,
+									"npmpro_http3_support": true,
 									"forward_scheme": "http",
 									"enabled": true,
 									"locations": [],
-									"hsts_enabled": false,
+									"hsts_enabled": true,
 									"hsts_subdomains": false,
 									"npmpro_maintenance": false,
 									"npmpro_page_not_found": "upstream",
 									"npmpro_page_upstream": "global",
-									"npmpro_page_maintenance": "global"
+									"npmpro_page_maintenance": "global",
+									"access_lists": [
+										{
+											"id": 3,
+											"created_on": "2026-11-17T09:30:00.000Z",
+											"modified_on": "2026-11-17T09:30:00.000Z",
+											"owner_user_id": 1,
+											"name": "Office only",
+											"satisfy_any": false,
+											"pass_auth": false,
+											"proxy_host_count": 1,
+											"npmpro_denied_page": "global"
+										}
+									]
 								}
 							]
 						}
@@ -87,5 +102,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Lists the proxy hosts, ordered by domain name. A user limited to their own items sees only theirs. The `query` query parameter searches domain names, descriptions and tags.\nNeeds: Proxy Hosts view"
 }

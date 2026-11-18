@@ -50,36 +50,45 @@
 			"minLength": 1,
 			"maxLength": 253,
 			"pattern": "^[^\\s;{}\"'\\\\#]+$",
-			"example": "127.0.0.1"
+			"example": "127.0.0.1",
+			"description": "Address of the upstream server: a host name or IP address. A name starting with `cu_` refers to a custom upstream block (leave the port empty then)."
 		},
 		"forwarding_port": {
 			"type": "string",
 			"pattern": "^([0-9]{0,5}|\\$server_port)$",
 			"maxLength": 12,
 			"default": "",
-			"example": 80
+			"example": 80,
+			"description": "Port of the upstream server. `$server_port` forwards to the port the visitor connected to (the way to forward a range). Empty leaves the port out of the upstream address."
 		},
 		"tcp_forwarding": {
 			"type": "boolean",
 			"default": false,
-			"example": true
+			"example": true,
+			"description": "Whether TCP connections to the incoming port are forwarded."
 		},
 		"udp_forwarding": {
 			"type": "boolean",
 			"default": false,
-			"example": false
+			"example": false,
+			"description": "Whether UDP datagrams to the incoming port are forwarded."
 		},
 		"npmpro_proxy_protocol_forwarding": {
 			"description": "PROXY protocol to the upstream: 0 off, 1 v1, 2 v2. UDP only sends v2, so with UDP forwarding 1 is saved as 2, and a stream with TCP and UDP forwarding then sends v2 on TCP too",
 			"type": "integer",
-			"enum": [0, 1, 2],
+			"enum": [
+				0,
+				1,
+				2
+			],
 			"default": 0,
 			"example": 0
 		},
 		"npmpro_proxy_tls": {
 			"type": "boolean",
 			"default": false,
-			"example": false
+			"example": false,
+			"description": "Whether nginx connects to the upstream over TLS."
 		},
 		"enabled": {
 			"$ref": "../common.json#/properties/enabled"
@@ -123,10 +132,12 @@
 					"$ref": "./certificate-object.json"
 				}
 			],
-			"example": null
+			"example": null,
+			"description": "The host's certificate, null when it has none. Only the list answer carries it, and only with `expand=certificate`."
 		},
 		"owner": {
-			"$ref": "./user-object.json"
+			"$ref": "./user-object.json",
+			"description": "The user who created the host. Only the list answer carries it, and only with `expand=owner`."
 		}
 	}
 }

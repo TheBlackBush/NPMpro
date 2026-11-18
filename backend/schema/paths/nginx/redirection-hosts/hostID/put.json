@@ -1,6 +1,6 @@
 {
 	"operationId": "updateRedirectionHost",
-	"summary": "Update a Redirection Host",
+	"summary": "Update a redirection host",
 	"tags": [
 		"Redirection Hosts"
 	],
@@ -16,7 +16,7 @@
 		{
 			"in": "path",
 			"name": "hostID",
-			"description": "The ID of the Redirection Host",
+			"description": "ID of the redirection host, as the list shows it",
 			"schema": {
 				"type": "integer",
 				"minimum": 1
@@ -26,7 +26,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "Redirection Host       Payload",
+		"description": "Redirection Host fields",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -185,43 +185,51 @@
 							"$ref": "../../../../components/certificate-object.json#/properties/npmpro_propagation_seconds"
 						}
 					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"forward_domain_name": "app.example.org",
+							"forward_http_code": 308
+						}
+					}
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The updated redirection host",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"id": 1,
-								"created_on": "2024-10-09T01:13:12.000Z",
-								"modified_on": "2024-10-09T01:18:11.000Z",
+								"id": 8,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T10:15:00.000Z",
 								"owner_user_id": 1,
 								"domain_names": [
-									"test.example.com"
+									"www.example.com"
 								],
-								"forward_domain_name": "something-else.com",
-								"preserve_path": false,
-								"certificate_id": 0,
-								"ssl_forced": false,
+								"forward_domain_name": "app.example.org",
+								"preserve_path": true,
+								"certificate_id": 5,
+								"ssl_forced": true,
 								"advanced_config": "",
 								"npmpro_nginx_online": true,
 								"npmpro_nginx_err": "",
 								"npmpro_directory": "",
 								"npmpro_tags": [],
-								"npmpro_description": "",
+								"npmpro_description": "Old www address",
 								"npmpro_mtls_certificate_id": 0,
 								"npmpro_mtls_verify_client_optional": false,
 								"npmpro_http3_support": false,
 								"enabled": true,
-								"hsts_enabled": false,
+								"hsts_enabled": true,
 								"hsts_subdomains": false,
-								"forward_scheme": "http",
-								"forward_http_code": 301
+								"forward_scheme": "https",
+								"forward_http_code": 308
 							}
 						}
 					},
@@ -231,5 +239,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Changes a redirection host: send only the fields to change. It rewrites the nginx config and reloads nginx like a create, and `certificate_id` `new` requests a certificate the same way. A config nginx refuses is still stored: the answer then has `npmpro_nginx_online` false and the nginx message in `npmpro_nginx_err`, and the config stays out of nginx until it is fixed.\nNeeds: Redirection Hosts manage"
 }

@@ -44,7 +44,7 @@
 			"$ref": "../common.json#/properties/domain_names"
 		},
 		"forward_http_code": {
-			"description": "Redirect HTTP Status Code",
+			"description": "Status code of the redirect: 301 and 308 are permanent, 302, 303 and 307 temporary. 307 and 308 keep the request method.",
 			"type": "integer",
 			"enum": [
 				301,
@@ -64,10 +64,11 @@
 				"https"
 			],
 			"default": "$scheme",
-			"example": "http"
+			"example": "http",
+			"description": "Scheme of the address visitors are sent to: `$scheme` keeps the scheme of the request, `http` and `https` force one."
 		},
 		"forward_domain_name": {
-			"description": "Domain Name",
+			"description": "Domain name visitors are sent to, without scheme or path.",
 			"type": "string",
 			"minLength": 1,
 			"maxLength": 253,
@@ -75,7 +76,7 @@
 			"example": "jc21.com"
 		},
 		"preserve_path": {
-			"description": "Should the path be preserved",
+			"description": "Whether the path and query string of the request are appended to the redirect address.",
 			"type": "boolean",
 			"default": false,
 			"example": true
@@ -135,10 +136,12 @@
 					"$ref": "./certificate-object.json"
 				}
 			],
-			"example": null
+			"example": null,
+			"description": "The host's certificate, null when it has none. Only the list answer carries it, and only with `expand=certificate`."
 		},
 		"owner": {
-			"$ref": "./user-object.json"
+			"$ref": "./user-object.json",
+			"description": "The user who created the host. Only the list answer carries it, and only with `expand=owner`."
 		}
 	}
 }

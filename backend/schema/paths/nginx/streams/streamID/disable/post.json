@@ -1,6 +1,6 @@
 {
 	"operationId": "disableStream",
-	"summary": "Disable a Stream",
+	"summary": "Disable a stream",
 	"tags": [
 		"Streams"
 	],
@@ -16,7 +16,7 @@
 		{
 			"in": "path",
 			"name": "streamID",
-			"description": "The ID of the Stream",
+			"description": "ID of the stream, as the list shows it",
 			"schema": {
 				"type": "integer",
 				"minimum": 1
@@ -27,19 +27,19 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The stream after it was disabled",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"id": 1,
-								"created_on": "2024-10-09T02:33:45.000Z",
-								"modified_on": "2024-10-09T02:33:45.000Z",
+								"id": 3,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T10:15:00.000Z",
 								"owner_user_id": 1,
-								"incoming_port": 9090,
-								"forwarding_host": "router.internal",
-								"forwarding_port": 80,
+								"incoming_port": "5432",
+								"forwarding_host": "10.0.0.5",
+								"forwarding_port": "5432",
 								"tcp_forwarding": true,
 								"udp_forwarding": false,
 								"npmpro_proxy_protocol_forwarding": 0,
@@ -48,11 +48,14 @@
 								"npmpro_nginx_online": true,
 								"npmpro_nginx_err": "",
 								"npmpro_directory": "",
-								"npmpro_tags": [],
+								"npmpro_tags": [
+									"Production"
+								],
 								"npmpro_mtls_certificate_id": 0,
 								"npmpro_mtls_verify_client_optional": false,
 								"enabled": false,
-								"certificate_id": 0
+								"certificate_id": 0,
+								"npmpro_description": "Database"
 							}
 						}
 					},
@@ -63,7 +66,7 @@
 			}
 		},
 		"400": {
-			"description": "400 response",
+			"description": "The stream is already disabled",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -71,7 +74,7 @@
 							"value": {
 								"error": {
 									"code": 400,
-									"message": "Host is already disabled"
+									"message": "Stream is already disabled"
 								}
 							}
 						}
@@ -82,5 +85,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Turns a stream off: removes its nginx config and reloads nginx, keeping the stream stored. It is refused with a 400 when the stream is already disabled.\nNeeds: Streams manage"
 }

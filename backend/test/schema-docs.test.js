@@ -10,10 +10,6 @@ import { getCompiledSchema } from "../schema/index.js";
 // writing task removes its part; the last one removes both lists.
 const PENDING_TAGS = new Set([
 	"Dashboard",
-	"Proxy Hosts",
-	"Redirection Hosts",
-	"404 Hosts",
-	"Streams",
 	"Certificates",
 	"DNS Credentials",
 	"Access Lists",

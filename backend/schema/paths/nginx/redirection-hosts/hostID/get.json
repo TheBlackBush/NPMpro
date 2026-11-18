@@ -1,6 +1,6 @@
 {
 	"operationId": "getRedirectionHost",
-	"summary": "Get a Redirection Host",
+	"summary": "Get a redirection host",
 	"tags": [
 		"Redirection Hosts"
 	],
@@ -16,7 +16,7 @@
 		{
 			"in": "path",
 			"name": "hostID",
-			"description": "The ID of the Redirection Host",
+			"description": "ID of the redirection host, as the list shows it",
 			"schema": {
 				"type": "integer",
 				"minimum": 1
@@ -27,36 +27,36 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The redirection host",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"id": 1,
-								"created_on": "2024-10-09T01:13:12.000Z",
-								"modified_on": "2024-10-09T01:13:13.000Z",
+								"id": 8,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T09:30:00.000Z",
 								"owner_user_id": 1,
 								"domain_names": [
-									"test.example.com"
+									"www.example.com"
 								],
-								"forward_domain_name": "something-else.com",
-								"preserve_path": false,
-								"certificate_id": 0,
-								"ssl_forced": false,
+								"forward_domain_name": "app.example.com",
+								"preserve_path": true,
+								"certificate_id": 5,
+								"ssl_forced": true,
 								"advanced_config": "",
 								"npmpro_nginx_online": true,
 								"npmpro_nginx_err": "",
 								"npmpro_directory": "",
 								"npmpro_tags": [],
-								"npmpro_description": "",
+								"npmpro_description": "Old www address",
 								"npmpro_mtls_certificate_id": 0,
 								"npmpro_mtls_verify_client_optional": false,
 								"npmpro_http3_support": false,
 								"enabled": true,
-								"hsts_enabled": false,
+								"hsts_enabled": true,
 								"hsts_subdomains": false,
-								"forward_scheme": "http",
+								"forward_scheme": "https",
 								"forward_http_code": 301
 							}
 						}
@@ -67,5 +67,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns one redirection host. The answer carries no owner or certificate object; use the list with `expand` for those.\nNeeds: Redirection Hosts view"
 }
