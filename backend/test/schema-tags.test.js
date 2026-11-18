@@ -99,3 +99,23 @@ it("starts with the Getting started intro from getting-started.md", async () => 
 	assert.doesNotMatch(text, EM_DASH);
 	assert.doesNotMatch(text, WHOLE_TOKEN, "no whole token");
 });
+
+// the API reference page builds its view model from this schema: every route needs its own anchor and a group
+it("the API reference view model of the real schema has one anchor per route, in a group", async () => {
+	const { buildReference, legacyAnchor } = await import("../../frontend/src/modules/ApiReference.js");
+	const schema = await getCompiledSchema();
+	const operationIds = Object.values(schema.paths).flatMap((item) =>
+		["get", "post", "put", "patch", "delete"].filter((m) => item[m]).map((m) => item[m].operationId),
+	);
+	const reference = buildReference(schema);
+	const routes = reference.groups.flatMap((group) => group.operations);
+	assert.equal(routes.length, operationIds.length, "every route lands in a group");
+	assert.equal(new Set(routes.map((route) => route.anchor)).size, routes.length, "unique anchors");
+	for (const route of routes) {
+		assert.ok(route.needs, `${route.method} ${route.path} has a Needs line`);
+		assert.equal(route.auth === "session", route.needs.includes("(API tokens are refused)"), route.anchor);
+		assert.equal(route.auth === "public", route.needs.startsWith("nothing (public"), route.anchor);
+		assert.equal(legacyAnchor(`#/${route.tag}/${route.operationId}`, reference), route.anchor);
+	}
+	assert.equal(new Set(operationIds).size, operationIds.length, "unique operationIds");
+});
