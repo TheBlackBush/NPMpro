@@ -67,3 +67,8 @@ it("every operation with the cookie accepts a bearer, except the session-only on
 		);
 	}
 });
+
+it("the MCP endpoint takes a bearer only", async () => {
+	const schema = await getCompiledSchema();
+	assert.deepEqual(schema.paths["/mcp"].post.security, [{ bearerAuth: [] }]);
+});

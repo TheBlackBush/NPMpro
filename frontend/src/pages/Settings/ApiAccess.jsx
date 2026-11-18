@@ -13,6 +13,7 @@ import { useAllApiTokens, usePaging } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
 import { showSuccess } from "src/notifications";
+import { McpCard } from "./McpCard";
 import { SettingsCard } from "./SettingsCard";
 import { SettingsHeading } from "./SettingsHeading";
 import { SettingsLead } from "./SettingsLead";
@@ -189,6 +190,7 @@ export default function ApiAccess() {
 			<SettingsLead id="settings.api-access.intro" />
 			<TokensCard />
 			<DocsCard />
+			<McpCard />
 		</section>
 	);
 }

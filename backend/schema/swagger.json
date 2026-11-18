@@ -29,6 +29,10 @@
 			"description": "API tokens of the signed-in user, and all tokens for administrators (signed-in session only)"
 		},
 		{
+			"name": "mcp",
+			"description": "The MCP endpoint for AI agents (API token only) and the list of its tools"
+		},
+		{
 			"name": "audit-log",
 			"description": "Endpoints related to Audit Logs"
 		},
@@ -137,6 +141,16 @@
 		"/api-tokens/{tokenID}": {
 			"delete": {
 				"$ref": "./paths/api-tokens/tokenID/delete.json"
+			}
+		},
+		"/mcp": {
+			"post": {
+				"$ref": "./paths/mcp/post.json"
+			}
+		},
+		"/mcp/tools": {
+			"get": {
+				"$ref": "./paths/mcp/tools/get.json"
 			}
 		},
 		"/audit-log": {
