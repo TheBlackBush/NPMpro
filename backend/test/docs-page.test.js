@@ -58,9 +58,25 @@ it("serves only the four Latin font files, from the fontsource packages", () => 
 	for (const file of FONT_FILES.values()) assert.ok(readFileSync(file).length > 1000, file);
 });
 
+const HEX_COLOUR = /#(?<hex>[0-9a-f]{6})\b/giu;
+const SPACES = /\s+/gu;
+const OPEN_SPACE = /\(\s/gu;
+const SPACE_CLOSE = /\s\)/gu;
 const block = (css, selector) => css.slice(css.indexOf(`${selector} {`)).split("}")[0];
+// one form for a colour value: hex as rgb() and the spacing of a multi-line value collapsed, so the docs page may
+// write the app's colours as rgb() (Biome refuses hex there) and still be compared with globals.css
+const normalised = (value) =>
+	value
+		.replace(
+			HEX_COLOUR,
+			(_, hex) => `rgb(${[0, 2, 4].map((at) => Number.parseInt(hex.slice(at, at + 2), 16)).join(" ")})`,
+		)
+		.replace(SPACES, " ")
+		.replace(OPEN_SPACE, "(")
+		.replace(SPACE_CLOSE, ")")
+		.trim();
 const tokens = (text) =>
-	Object.fromEntries([...text.matchAll(TOKEN)].map(({ groups }) => [groups.name, groups.value.trim()]));
+	Object.fromEntries([...text.matchAll(TOKEN)].map(({ groups }) => [groups.name, normalised(groups.value)]));
 const SHARED = [
 	"background",
 	"foreground",
