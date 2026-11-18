@@ -80,13 +80,13 @@ someone else. The section links to the API documentation.
 
 ## API reference
 
-The API reference is at `https://<admin address>/api-reference`
-(signed in; `/api/docs` leads there too). It opens from the API tokens window and from Settings, API access. The
-left column lists the groups and routes and has a search (press `/`); the middle shows what a route does, what it
-needs (the Needs line), its parameters, request fields and answers; the right shows the request as curl, Node or Python
-(one choice for the whole page), an example answer and **Try it**, which runs the request on this instance as you. To run it as a token, choose **Use a
-token** at the top and paste it: the page keeps it only until you reload. Every route has its own link, for
-example `/api-reference#proxy-hosts/post-nginx-proxy-hosts`. The page follows the app's light or dark theme.
+The API reference is at `https://<admin address>/api-reference` (signed in; `/api/docs` leads there too). It opens from
+the API tokens window and from Settings, API access. The left column lists the groups and routes and has a search (press
+`/`); the middle shows what a route does, what it needs (the Needs line), its parameters, request fields and answers;
+the right shows the request as curl, Node or Python (one choice for the whole page), an example answer and **Try it**,
+which runs the request on this instance as you. To run it as a token, choose **Use a token** at the top and paste it:
+the page keeps it only until you reload. Every route has its own link, for example
+`/api-reference#proxy-hosts/post-nginx-proxy-hosts`. The page follows the app's light or dark theme.
 
 ## MCP server
 
