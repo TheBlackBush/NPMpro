@@ -216,7 +216,7 @@
 			}
 		},
 		"409": {
-			"description": "409 plan-changed: the instance changed since the plan was made; the error carries the new plan",
+			"description": "Plan changed: the instance changed since the plan was made; the error carries the new plan",
 			"content": {
 				"application/json": {
 					"schema": {
