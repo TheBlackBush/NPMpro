@@ -50,7 +50,14 @@ function Field({ id, label, required, error, children }) {
 	);
 }
 
-function Result({ result, token }) {
+const MERGE_MODE = /"mode"\s*:\s*"merge"/u;
+
+// A DELETE, or a restore that replaces (the default mode), needs the token's Allow delete switch
+const needsAllowDelete = (operation, bodyText) =>
+	operation.method === "DELETE" ||
+	(operation.method === "POST" && operation.path === "/backups/restore/{token}" && !MERGE_MODE.test(bodyText));
+
+function Result({ result, token, operation, bodyText }) {
 	if (result.failure) {
 		return <p className="m-0 text-destructive text-sm">{result.failure}</p>;
 	}
@@ -78,7 +85,13 @@ function Result({ result, token }) {
 			) : null}
 			{result.status === 403 && token ? (
 				<p className="m-0 text-muted-foreground text-xs">
-					<T id="api-reference.try-forbidden" />
+					<T
+						id={
+							needsAllowDelete(operation, bodyText)
+								? "api-reference.try-forbidden-delete"
+								: "api-reference.try-forbidden"
+						}
+					/>
 				</p>
 			) : null}
 			{result.answer ? (
@@ -308,7 +321,11 @@ export function TryIt({ operation }) {
 							<T id="api-reference.cancel" />
 						</Button>
 					</div>
-					<div aria-live="polite">{result ? <Result result={result} token={token} /> : null}</div>
+					<div aria-live="polite">
+						{result ? (
+							<Result result={result} token={token} operation={operation} bodyText={bodyText} />
+						) : null}
+					</div>
 				</div>
 			) : null}
 		</div>

@@ -15,10 +15,10 @@ const STATUS_CLASS = { 2: "text-method-post", 3: "text-method-put", 4: "text-met
 export function ResponseTable({ responses, onOpenGuide }) {
 	return (
 		<>
-			<Table>
+			<Table className="min-w-[24rem] table-fixed">
 				<TableHeader>
 					<TableRow>
-						<TableHead>
+						<TableHead className="w-20">
 							<T id="api-reference.code" />
 						</TableHead>
 						<TableHead>
@@ -29,10 +29,12 @@ export function ResponseTable({ responses, onOpenGuide }) {
 				<TableBody>
 					{responses.map((response) => (
 						<TableRow key={response.status}>
-							<TableCell className={`font-mono font-semibold ${STATUS_CLASS[response.status[0]] ?? ""}`}>
+							<TableCell
+								className={`align-top font-mono font-semibold ${STATUS_CLASS[response.status[0]] ?? ""}`}
+							>
 								{response.status}
 							</TableCell>
-							<TableCell className="whitespace-normal">
+							<TableCell className="whitespace-normal break-words align-top [overflow-wrap:anywhere]">
 								<InlineMarkdown text={response.description} />
 							</TableCell>
 						</TableRow>

@@ -63,7 +63,7 @@ export function ApiHeader({ version, query, onQuery, searchRef, onOpenNav }) {
 	return (
 		<>
 			<div className="h-[3px] bg-linear-to-r from-[#ff8a00] via-[#d91aff] to-[#00d1ff]" aria-hidden="true" />
-			<header className="sticky top-0 z-30 flex h-14 min-w-0 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur">
+			<header className="sticky top-0 z-30 flex h-14 min-w-0 items-center gap-2 border-b sm:gap-3 bg-background/90 px-4 backdrop-blur">
 				<Button
 					type="button"
 					variant="ghost"
@@ -75,15 +75,15 @@ export function ApiHeader({ version, query, onQuery, searchRef, onOpenNav }) {
 					<Menu aria-hidden="true" />
 				</Button>
 				<Logo alt={intl.formatMessage({ id: "api-reference.back" })} />
-				<h1 className="m-0 whitespace-nowrap font-semibold text-base">
+				<h1 className="m-0 min-w-0 truncate font-semibold text-base">
 					<T id="api-reference.title" />
 				</h1>
 				{version ? (
-					<span className="whitespace-nowrap rounded-full border bg-muted px-2 py-0.5 font-mono text-muted-foreground text-xs">
+					<span className="hidden whitespace-nowrap rounded-full md:inline border bg-muted px-2 py-0.5 font-mono text-muted-foreground text-xs">
 						{version}
 					</span>
 				) : null}
-				<div className="min-w-0 flex-1" />
+				<div className="flex-1" />
 				<SearchInput
 					value={query}
 					onChange={onQuery}

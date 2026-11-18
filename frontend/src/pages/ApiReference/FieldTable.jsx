@@ -2,6 +2,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "s
 import { T } from "src/locale";
 import { InlineMarkdown } from "./InlineMarkdown";
 
+// fixed column widths so a long type or description wraps inside its cell; a phone scrolls the table in its box
+const TABLE = "min-w-[32rem] table-fixed";
+const WRAP = "whitespace-normal break-words [overflow-wrap:anywhere]";
+
 const DEPTH_CLASS = "data-[depth=1]:pl-4 data-[depth=2]:pl-8 data-[depth=3]:pl-12";
 
 const Required = () => (
@@ -18,13 +22,13 @@ const Required = () => (
  */
 export function FieldTable({ rows }) {
 	return (
-		<Table>
+		<Table className={TABLE}>
 			<TableHeader>
 				<TableRow>
-					<TableHead>
+					<TableHead className="w-[30%]">
 						<T id="api-reference.field" />
 					</TableHead>
-					<TableHead>
+					<TableHead className="w-[25%]">
 						<T id="api-reference.type" />
 					</TableHead>
 					<TableHead>
@@ -35,12 +39,12 @@ export function FieldTable({ rows }) {
 			<TableBody>
 				{rows.map((row) => (
 					<TableRow key={row.name}>
-						<TableCell data-depth={row.depth} className={DEPTH_CLASS}>
+						<TableCell data-depth={row.depth} className={`${WRAP} align-top ${DEPTH_CLASS}`}>
 							<code className="font-mono text-[12.5px]">{row.name}</code>
 							{row.required ? <Required /> : null}
 						</TableCell>
-						<TableCell className="text-muted-foreground">{row.type}</TableCell>
-						<TableCell className="whitespace-normal">
+						<TableCell className={`${WRAP} align-top text-muted-foreground`}>{row.type}</TableCell>
+						<TableCell className={`${WRAP} align-top`}>
 							<InlineMarkdown text={row.description} />
 						</TableCell>
 					</TableRow>
@@ -58,16 +62,16 @@ export function FieldTable({ rows }) {
  */
 export function ParamTable({ params }) {
 	return (
-		<Table>
+		<Table className={TABLE}>
 			<TableHeader>
 				<TableRow>
-					<TableHead>
+					<TableHead className="w-[25%]">
 						<T id="api-reference.name" />
 					</TableHead>
-					<TableHead>
+					<TableHead className="w-[10%]">
 						<T id="api-reference.in" />
 					</TableHead>
-					<TableHead>
+					<TableHead className="w-[20%]">
 						<T id="api-reference.type" />
 					</TableHead>
 					<TableHead>
@@ -78,13 +82,13 @@ export function ParamTable({ params }) {
 			<TableBody>
 				{params.map((param) => (
 					<TableRow key={`${param.in}-${param.name}`}>
-						<TableCell>
+						<TableCell className={`${WRAP} align-top`}>
 							<code className="font-mono text-[12.5px]">{param.name}</code>
 							{param.required ? <Required /> : null}
 						</TableCell>
-						<TableCell className="text-muted-foreground">{param.in}</TableCell>
-						<TableCell className="text-muted-foreground">{param.type}</TableCell>
-						<TableCell className="whitespace-normal">
+						<TableCell className="align-top text-muted-foreground">{param.in}</TableCell>
+						<TableCell className={`${WRAP} align-top text-muted-foreground`}>{param.type}</TableCell>
+						<TableCell className={`${WRAP} align-top`}>
 							<InlineMarkdown text={param.description} />
 						</TableCell>
 					</TableRow>
