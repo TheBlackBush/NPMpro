@@ -2,7 +2,7 @@
 	"operationId": "previewLandingPageBuiltin",
 	"summary": "Preview a built-in landing page",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

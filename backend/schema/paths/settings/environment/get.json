@@ -2,7 +2,7 @@
 	"operationId": "getEnvironment",
 	"summary": "Get the startup environment",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

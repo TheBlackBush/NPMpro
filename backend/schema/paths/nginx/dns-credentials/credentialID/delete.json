@@ -2,7 +2,7 @@
 	"operationId": "deleteDnsCredential",
 	"summary": "Delete a DNS credential",
 	"tags": [
-		"DNS Credentials"
+		"certificates"
 	],
 	"security": [
 		{

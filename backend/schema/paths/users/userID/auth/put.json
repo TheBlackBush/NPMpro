@@ -2,7 +2,7 @@
 	"operationId": "updateUserAuth",
 	"summary": "Change a user's password",
 	"tags": [
-		"Users"
+		"users"
 	],
 	"security": [
 		{

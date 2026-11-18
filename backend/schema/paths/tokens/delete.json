@@ -2,7 +2,7 @@
 	"operationId": "deleteToken",
 	"summary": "Sign out",
 	"tags": [
-		"Sign-in"
+		"tokens"
 	],
 	"responses": {
 		"200": {

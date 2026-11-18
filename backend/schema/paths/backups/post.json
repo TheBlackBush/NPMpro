@@ -3,7 +3,7 @@
 	"summary": "Create a backup",
 	"description": "Writes a backup of the chosen parts. With keep it is stored in the backups folder and returned as entry; without keep it is returned as a pending download (GET /backups/pending/{id}), which can be fetched once within 30 minutes. With secrets the file holds private keys, password hashes and credentials and is encrypted with the passphrase (at least 12 characters, never stored); without secrets it is not encrypted. API tokens are never part of a backup. busy (409) while another backup or restore runs. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, busy.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Backups"
+		"backups"
 	],
 	"security": [
 		{

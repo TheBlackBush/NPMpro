@@ -3,7 +3,7 @@
 	"summary": "Update the network settings",
 	"description": "Saves the network settings; send only what changes. Fields set by environment variables are ignored. Every trusted_ips entry must be an IPv4 or IPv6 address or a CIDR range, otherwise the answer is 400. The change reloads nginx and is applied before it is saved: when applying fails, nothing is saved.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

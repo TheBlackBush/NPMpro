@@ -2,7 +2,7 @@
 	"operationId": "updateAccessList",
 	"summary": "Update an access list",
 	"tags": [
-		"Access Lists"
+		"access-lists"
 	],
 	"security": [
 		{

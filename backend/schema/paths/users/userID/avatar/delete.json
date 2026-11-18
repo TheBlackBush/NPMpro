@@ -2,7 +2,7 @@
 	"operationId": "deleteUserAvatar",
 	"summary": "Remove the custom avatar",
 	"tags": [
-		"Users"
+		"users"
 	],
 	"security": [
 		{

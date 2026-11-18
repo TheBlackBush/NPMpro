@@ -2,7 +2,7 @@
 	"operationId": "createApiToken",
 	"summary": "Create an API token",
 	"tags": [
-		"API Tokens"
+		"api-tokens"
 	],
 	"security": [
 		{

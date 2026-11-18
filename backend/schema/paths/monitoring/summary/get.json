@@ -2,7 +2,7 @@
 	"operationId": "getMonitoringSummary",
 	"summary": "Get the dashboard monitoring summary",
 	"tags": [
-		"Monitoring"
+		"monitoring"
 	],
 	"security": [
 		{

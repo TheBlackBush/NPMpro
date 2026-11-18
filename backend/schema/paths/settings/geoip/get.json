@@ -2,7 +2,7 @@
 	"operationId": "getGeoipSettings",
 	"summary": "Get the GeoIP settings",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

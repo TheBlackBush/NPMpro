@@ -2,7 +2,7 @@
 	"operationId": "previewCrowdsecPage",
 	"summary": "Preview the CrowdSec ban or captcha page",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

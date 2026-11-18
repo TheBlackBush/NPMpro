@@ -2,7 +2,7 @@
 	"operationId": "createProxyHost",
 	"summary": "Create a proxy host",
 	"tags": [
-		"Proxy Hosts"
+		"proxy-hosts"
 	],
 	"security": [
 		{

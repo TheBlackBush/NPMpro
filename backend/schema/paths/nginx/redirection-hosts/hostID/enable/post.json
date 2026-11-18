@@ -2,7 +2,7 @@
 	"operationId": "enableRedirectionHost",
 	"summary": "Enable a redirection host",
 	"tags": [
-		"Redirection Hosts"
+		"redirection-hosts"
 	],
 	"security": [
 		{

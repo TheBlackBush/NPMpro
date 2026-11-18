@@ -2,7 +2,7 @@
 	"operationId": "getProxyHosts",
 	"summary": "List proxy hosts",
 	"tags": [
-		"Proxy Hosts"
+		"proxy-hosts"
 	],
 	"security": [
 		{

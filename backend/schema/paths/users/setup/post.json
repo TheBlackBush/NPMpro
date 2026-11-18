@@ -2,7 +2,7 @@
 	"operationId": "createSetupUser",
 	"summary": "Create the first administrator",
 	"tags": [
-		"Sign-in"
+		"public"
 	],
 	"requestBody": {
 		"description": "User Payload",

@@ -2,7 +2,7 @@
 	"operationId": "unlinkUserOidc",
 	"summary": "Unlink a user's OIDC identity",
 	"tags": [
-		"Users"
+		"users"
 	],
 	"security": [
 		{

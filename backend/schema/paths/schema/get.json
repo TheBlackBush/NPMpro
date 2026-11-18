@@ -2,7 +2,7 @@
 	"operationId": "schema",
 	"summary": "Get the OpenAPI schema",
 	"tags": [
-		"System"
+		"docs"
 	],
 	"security": [
 		{

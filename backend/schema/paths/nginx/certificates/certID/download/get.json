@@ -2,7 +2,7 @@
 	"operationId": "downloadCertificate",
 	"summary": "Download a certificate",
 	"tags": [
-		"Certificates"
+		"certificates"
 	],
 	"security": [
 		{

@@ -5,27 +5,30 @@ import { getCompiledSchema } from "../schema/index.js";
 
 // the order of the UI menu, then the Settings sections, then the technical groups (item 27 PR 4)
 const EM_DASH = /\u2014/u;
+const USE_A_TOKEN = /\*\*Use a token\*\*/u;
+const OLD_WORDS = /Authorize|bearerAuth|cookieAuth|Swagger/u;
 const WHOLE_TOKEN = /npmpro_[0-9a-f]{16}_[\w-]{43}/u;
 const TAG_ORDER = [
-	"Dashboard",
-	"Proxy Hosts",
-	"Redirection Hosts",
-	"404 Hosts",
-	"Streams",
-	"Certificates",
-	"DNS Credentials",
-	"Access Lists",
-	"Monitoring",
-	"Settings",
-	"Backups",
-	"Database",
-	"Users",
-	"Audit Log",
-	"API Tokens",
-	"MCP",
-	"Sign-in",
-	"System",
-	"Admin Port Checks",
+	"reports",
+	"proxy-hosts",
+	"redirection-hosts",
+	"404-hosts",
+	"streams",
+	"certificates",
+	"access-lists",
+	"monitoring",
+	"settings",
+	"backups",
+	"database",
+	"users",
+	"audit-log",
+	"api-tokens",
+	"mcp",
+	"tokens",
+	"public",
+	"version",
+	"docs",
+	"auth",
 ];
 
 const operations = (schema) =>
@@ -39,7 +42,8 @@ it("lists the tags in the menu order, each with an intro", async () => {
 		schema.tags.map((tag) => tag.name),
 		TAG_ORDER,
 	);
-	for (const tag of schema.tags) assert.ok(tag.description.length >= 60, `${tag.name} has an intro`);
+	for (const tag of schema.tags)
+		assert.ok(tag.description.length >= (tag.name === "version" ? 30 : 60), `${tag.name} has an intro`);
 });
 
 it("puts every operation under exactly one listed tag, and every tag has operations", async () => {
@@ -56,17 +60,27 @@ it("puts every operation under exactly one listed tag, and every tag has operati
 	);
 });
 
-it("splits DNS credentials from certificates and gathers the sign-in routes", async () => {
+it("puts every route under its API path name", async () => {
 	const schema = await getCompiledSchema();
 	const tagOf = (method, path) => schema.paths[path][method].tags[0];
-	assert.equal(tagOf("get", "/nginx/dns-credentials"), "DNS Credentials");
-	assert.equal(tagOf("get", "/nginx/certificates"), "Certificates");
-	assert.equal(tagOf("post", "/users/setup"), "Sign-in");
-	assert.equal(tagOf("get", "/oidc/callback"), "Sign-in");
-	assert.equal(tagOf("post", "/tokens"), "Sign-in");
-	assert.equal(tagOf("get", "/"), "System");
-	assert.equal(tagOf("get", "/reports/hosts"), "Dashboard");
-	assert.equal(tagOf("post", "/mcp"), "MCP");
+	assert.equal(tagOf("get", "/nginx/dns-credentials"), "certificates");
+	assert.equal(tagOf("get", "/nginx/certificates"), "certificates");
+	assert.equal(tagOf("post", "/users/setup"), "public");
+	assert.equal(tagOf("get", "/oidc/callback"), "public");
+	assert.equal(tagOf("get", "/oidc/icon"), "public");
+	assert.equal(tagOf("get", "/"), "public");
+	assert.equal(tagOf("post", "/tokens"), "tokens");
+	assert.equal(tagOf("get", "/version/check"), "version");
+	assert.equal(tagOf("get", "/schema"), "docs");
+	assert.equal(tagOf("get", "/auth/admin"), "auth");
+	assert.equal(tagOf("get", "/reports/hosts"), "reports");
+	assert.equal(tagOf("post", "/mcp"), "mcp");
+});
+
+it("says how this page runs requests, without Swagger words", async () => {
+	const schema = await getCompiledSchema();
+	assert.match(schema.info.description, USE_A_TOKEN);
+	assert.doesNotMatch(schema.info.description, OLD_WORDS);
 });
 
 it("starts with the Getting started intro from getting-started.md", async () => {

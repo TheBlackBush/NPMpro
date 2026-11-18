@@ -2,7 +2,7 @@
 	"operationId": "oidcCallback",
 	"summary": "Finish an OIDC sign-in",
 	"tags": [
-		"Sign-in"
+		"public"
 	],
 	"responses": {
 		"302": {

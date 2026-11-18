@@ -2,7 +2,7 @@
 	"operationId": "getMonitoringSettings",
 	"summary": "Get the traffic statistics settings",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

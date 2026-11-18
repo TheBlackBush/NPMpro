@@ -2,7 +2,7 @@
 	"operationId": "requestToken",
 	"summary": "Sign in with email and password",
 	"tags": [
-		"Sign-in"
+		"tokens"
 	],
 	"requestBody": {
 		"description": "Credentials Payload",

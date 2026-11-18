@@ -2,7 +2,7 @@
 	"operationId": "disableProxyHost",
 	"summary": "Disable a proxy host",
 	"tags": [
-		"Proxy Hosts"
+		"proxy-hosts"
 	],
 	"security": [
 		{

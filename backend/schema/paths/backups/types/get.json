@@ -3,7 +3,7 @@
 	"summary": "List the backup parts with their counts",
 	"description": "The parts a backup can hold, grouped as the backup window shows them, with how many rows or files each has now and how many certificates each provider has. Also the container time zone that schedules use.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Backups"
+		"backups"
 	],
 	"security": [
 		{

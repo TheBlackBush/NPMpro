@@ -2,7 +2,7 @@
 	"operationId": "renewCertificate",
 	"summary": "Renew a certificate",
 	"tags": [
-		"Certificates"
+		"certificates"
 	],
 	"security": [
 		{

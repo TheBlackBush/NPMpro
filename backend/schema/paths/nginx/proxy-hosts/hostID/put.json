@@ -2,7 +2,7 @@
 	"operationId": "updateProxyHost",
 	"summary": "Update a proxy host",
 	"tags": [
-		"Proxy Hosts"
+		"proxy-hosts"
 	],
 	"security": [
 		{

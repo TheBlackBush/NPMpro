@@ -2,7 +2,7 @@
 	"operationId": "getOidcSettings",
 	"summary": "Get the OIDC settings",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

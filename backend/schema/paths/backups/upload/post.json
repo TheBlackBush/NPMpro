@@ -3,7 +3,7 @@
 	"summary": "Upload a backup file",
 	"description": "The raw file is the request body (application/octet-stream, streamed, at most 2 GiB); there is no JSON body. The name query parameter sets the stored file name when it is a valid backup name, else one is made from the backup. A name that is taken gets a suffix, and an uploaded file is never kept as an automatic or scheduled one. The header is checked, the contents are not: open the file with POST /backups/{name}/inspect. Errors carry a backup.error.<code> message id: not-a-backup, invalid-archive, newer-format, too-large (413).\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Backups"
+		"backups"
 	],
 	"security": [
 		{

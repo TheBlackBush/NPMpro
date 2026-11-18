@@ -2,7 +2,7 @@
 	"operationId": "createCertificate",
 	"summary": "Create a certificate",
 	"tags": [
-		"Certificates"
+		"certificates"
 	],
 	"security": [
 		{

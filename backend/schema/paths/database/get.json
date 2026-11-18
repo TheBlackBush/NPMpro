@@ -3,7 +3,7 @@
 	"summary": "Get the database in use",
 	"description": "The engine, version, size and tables of the database NPMpro runs on, where its connection comes from, when and from where it was moved, and the current or last move. A connection from the DB_* environment variables cannot be moved.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Database"
+		"database"
 	],
 	"security": [
 		{

@@ -2,7 +2,7 @@
 	"operationId": "createDnsCredential",
 	"summary": "Create a DNS credential",
 	"tags": [
-		"DNS Credentials"
+		"certificates"
 	],
 	"security": [
 		{

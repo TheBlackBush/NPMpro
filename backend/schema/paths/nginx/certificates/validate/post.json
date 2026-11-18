@@ -2,7 +2,7 @@
 	"operationId": "validateCertificates",
 	"summary": "Validate certificate files",
 	"tags": [
-		"Certificates"
+		"certificates"
 	],
 	"security": [
 		{

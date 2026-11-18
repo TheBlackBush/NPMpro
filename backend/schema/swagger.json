@@ -17,79 +17,83 @@
 	},
 	"tags": [
 		{
-			"name": "Dashboard",
+			"name": "reports",
 			"description": "The counts the dashboard shows: hosts per type and their state, and the backup schedules that failed."
 		},
 		{
-			"name": "Proxy Hosts",
+			"name": "proxy-hosts",
 			"description": "Proxy hosts send the requests for their domains to an upstream server. Saving one writes its nginx config and reloads nginx; a config nginx refuses is stored, shown with its error (`npmpro_nginx_online` false, `npmpro_nginx_err`) and left out until it is fixed."
 		},
 		{
-			"name": "Redirection Hosts",
+			"name": "redirection-hosts",
 			"description": "Redirection hosts answer the requests for their domains with a redirect to another address, keeping the path when asked. Saving one reloads nginx like a proxy host."
 		},
 		{
-			"name": "404 Hosts",
+			"name": "404-hosts",
 			"description": "404 hosts answer every request for their domains with a not found page: the built-in one, a global landing page or their own HTML."
 		},
 		{
-			"name": "Streams",
+			"name": "streams",
 			"description": "Streams forward TCP or UDP ports to an upstream server, outside HTTP. Each one listens on its own incoming port of the container."
 		},
 		{
-			"name": "Certificates",
-			"description": "TLS certificates: requested from Let's Encrypt or another ACME server (HTTP or DNS challenge), or uploaded. NPMpro renews ACME certificates on its own; the answers never contain a private key."
+			"name": "certificates",
+			"description": "TLS certificates: requested from Let's Encrypt or another ACME server (HTTP or DNS challenge), or uploaded. NPMpro renews ACME certificates on its own; the answers never contain a private key. Saved DNS provider credentials for DNS challenges, shared by several certificates, are under this group too (`/nginx/dns-credentials`); the answers never contain the credential values."
 		},
 		{
-			"name": "DNS Credentials",
-			"description": "Saved credentials of a DNS provider for DNS challenges, shared by several certificates. The answers never contain the credential values."
-		},
-		{
-			"name": "Access Lists",
+			"name": "access-lists",
 			"description": "Access lists protect proxy hosts with HTTP basic authentication, client address rules or both. The answers never contain password hashes."
 		},
 		{
-			"name": "Monitoring",
+			"name": "monitoring",
 			"description": "Traffic statistics and the active CrowdSec decisions, as the Monitoring pages show them. Administrators only."
 		},
 		{
-			"name": "Settings",
+			"name": "settings",
 			"description": "The settings of every Settings section: the default site and landing pages, network, nginx, sign-in (OIDC), forward authentication, CrowdSec, certificates and TLS, monitoring, GeoIP, logs and the startup environment. Administrators only; a value set by an environment variable is reported as locked and cannot be saved."
 		},
 		{
-			"name": "Backups",
+			"name": "backups",
 			"description": "Backups of the NPMpro data: create, download, upload, schedule, and restore (replace or merge, chosen per part). Administrators only; API tokens are never part of a backup."
 		},
 		{
-			"name": "Database",
+			"name": "database",
 			"description": "The database in use and a move of NPMpro to another database (SQLite, MySQL or PostgreSQL). Administrators only."
 		},
 		{
-			"name": "Users",
+			"name": "users",
 			"description": "User accounts, their permissions, MFA and sign-in links. Managing users needs a signed-in session: no API token can create, list, change or delete users."
 		},
 		{
-			"name": "Audit Log",
+			"name": "audit-log",
 			"description": "Every change made in NPMpro, with who made it and, for a request made with an API token, the token's name. Administrators only."
 		},
 		{
-			"name": "API Tokens",
+			"name": "api-tokens",
 			"description": "API tokens of the signed-in user, and every user's tokens for administrators. These routes need a signed-in session: a token cannot create, list or revoke tokens."
 		},
 		{
-			"name": "MCP",
+			"name": "mcp",
 			"description": "The MCP endpoint for AI assistants and the list of its tools. It takes an API token as a bearer, never a session cookie; see MCP for AI assistants above."
 		},
 		{
-			"name": "Sign-in",
-			"description": "Signing in to the web interface: with email and password (and a second factor), with OIDC, and the first administrator of a new instance. Scripts use API tokens instead."
+			"name": "tokens",
+			"description": "Signing in to the web interface with email and password (and a second factor): the session token routes. Scripts use API tokens instead."
 		},
 		{
-			"name": "System",
-			"description": "The health check, the version check and this reference itself."
+			"name": "public",
+			"description": "Routes that need no sign-in: the health check, the first administrator of a new instance, and the OIDC sign-in redirect, callback and icon."
 		},
 		{
-			"name": "Admin Port Checks",
+			"name": "version",
+			"description": "The check for a newer NPMpro version."
+		},
+		{
+			"name": "docs",
+			"description": "This reference itself: the interactive page and the OpenAPI schema it is built from."
+		},
+		{
+			"name": "auth",
 			"description": "The checks nginx runs (auth_request) before it serves admin pages such as GoAccess and avatars. They need a signed-in session and are not meant for scripts."
 		}
 	],

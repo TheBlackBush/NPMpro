@@ -2,7 +2,7 @@
 	"operationId": "updateStream",
 	"summary": "Update a stream",
 	"tags": [
-		"Streams"
+		"streams"
 	],
 	"security": [
 		{

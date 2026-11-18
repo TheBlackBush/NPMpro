@@ -2,7 +2,7 @@
 	"operationId": "setCertificateDnsCredential",
 	"summary": "Change the DNS credential of a certificate",
 	"tags": [
-		"Certificates"
+		"certificates"
 	],
 	"security": [
 		{

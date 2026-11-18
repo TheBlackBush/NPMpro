@@ -2,7 +2,7 @@
 	"operationId": "health",
 	"summary": "Check that NPMpro is running",
 	"tags": [
-		"System"
+		"public"
 	],
 	"responses": {
 		"200": {

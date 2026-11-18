@@ -2,7 +2,7 @@
 	"operationId": "getApiTokens",
 	"summary": "List every user's API tokens",
 	"tags": [
-		"API Tokens"
+		"api-tokens"
 	],
 	"security": [
 		{

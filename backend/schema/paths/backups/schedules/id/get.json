@@ -3,7 +3,7 @@
 	"summary": "Get a backup schedule",
 	"description": "One schedule with its timing, protection and last run. The passphrase is never returned.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Backups"
+		"backups"
 	],
 	"security": [
 		{

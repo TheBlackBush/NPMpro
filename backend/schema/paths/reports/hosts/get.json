@@ -2,7 +2,7 @@
 	"operationId": "reportsHosts",
 	"summary": "Get the dashboard host counts",
 	"tags": [
-		"Dashboard"
+		"reports"
 	],
 	"security": [
 		{

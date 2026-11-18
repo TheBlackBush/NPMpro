@@ -2,7 +2,7 @@
 	"operationId": "revokeUserSessions",
 	"summary": "Sign a user out everywhere",
 	"tags": [
-		"Users"
+		"users"
 	],
 	"security": [
 		{

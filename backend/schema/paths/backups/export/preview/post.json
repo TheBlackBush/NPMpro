@@ -3,7 +3,7 @@
 	"summary": "Preview an export of items",
 	"description": "Lists the items an export of a page kind would hold: the visible ones (all, or those with the given ids) and the linked certificates, access lists and DNS credentials they need, of the kinds the user can view. A user whose permission covers only their own items sees only those. secrets_allowed tells whether the user may include secrets (manage on every included kind). Errors carry a backup.error.<code> message id: invalid-types.\n\nNeeds: view on the section of the chosen kind (Proxy Hosts, Redirection Hosts, 404 Hosts, Streams, Access Lists or Certificates; DNS credentials use Certificates)",
 	"tags": [
-		"Backups"
+		"backups"
 	],
 	"security": [
 		{

@@ -3,7 +3,7 @@
 	"summary": "Update the certificates and TLS settings",
 	"description": "Saves the certificate and TLS settings; send only what changes. Fields set by environment variables are ignored. The key size is checked against the key type (ecdsa: secp256r1, secp384r1 or secp521r1; rsa: 2048, 3072 or 4096), a profile against the ACME server, and default_certificate_id must be 0 or an existing certificate that is not an mTLS CA. A refused value answers 400 with the field name. Key, profile, must-staple and TLS check changes apply to the next certificate; OCSP stapling and default certificate changes reload nginx. The change is applied before it is saved: when applying fails, nothing is saved.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

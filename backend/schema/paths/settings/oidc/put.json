@@ -3,7 +3,7 @@
 	"summary": "Update the OIDC settings",
 	"description": "Saves the OIDC settings; send only what changes. Fields set by environment variables are ignored. An empty or omitted client_secret keeps the saved one. disable_password can only be switched on from a session that signed in with OIDC, otherwise the answer is 400. The settings decide who can sign in, so a session is required.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

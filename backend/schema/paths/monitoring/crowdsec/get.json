@@ -2,7 +2,7 @@
 	"operationId": "getMonitoringCrowdsec",
 	"summary": "Get the active CrowdSec decisions",
 	"tags": [
-		"Monitoring"
+		"monitoring"
 	],
 	"security": [
 		{

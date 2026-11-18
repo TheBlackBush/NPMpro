@@ -2,7 +2,7 @@
 	"operationId": "refreshToken",
 	"summary": "Renew the session",
 	"tags": [
-		"Sign-in"
+		"tokens"
 	],
 	"security": [
 		{

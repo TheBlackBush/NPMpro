@@ -2,7 +2,7 @@
 	"operationId": "getCertificates",
 	"summary": "List certificates",
 	"tags": [
-		"Certificates"
+		"certificates"
 	],
 	"security": [
 		{

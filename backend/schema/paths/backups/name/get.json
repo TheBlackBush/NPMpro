@@ -3,7 +3,7 @@
 	"summary": "Download a stored backup",
 	"description": "Sends the file of a stored backup as application/octet-stream. Automatic backups can be downloaded too, but only restore on this instance.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Backups"
+		"backups"
 	],
 	"security": [
 		{

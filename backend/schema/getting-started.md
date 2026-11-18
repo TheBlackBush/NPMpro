@@ -14,8 +14,9 @@ rules. Requests and answers are JSON. Every address starts with `/api` on the ad
    ```
 
    The admin port often has a self-signed certificate: give curl that certificate with `--cacert`.
-3. **Try it on this page.** The requests of this page run as you, signed in. To run them as a token, choose
-   **Authorize** and paste the token under `bearerAuth`; the page keeps it until you reload.
+3. **Try it on this page.** Every route has a **Try it** button that runs the request on this instance as you,
+   signed in. To run it as a token instead, choose **Use a token** at the top of the page and paste the token; the
+   page keeps it only until you reload, and never stores it.
 
 ## What a token may do
 
@@ -27,8 +28,7 @@ rules. Requests and answers are JSON. Every address starts with `/api` on the ad
   with 403.
 - Some routes need a signed-in session and refuse every token with 403: your own account (password, MFA, sessions,
   picture, OIDC link, name and email), API tokens, user management, changes to the sign-in settings (OIDC and forward
-  authentication), the session refresh and the admin port checks. In this reference they show only the `cookieAuth`
-  lock.
+  authentication), the session refresh and the admin port checks. In this reference their Needs line says so.
 - A token stops working when it is revoked or expires, or when its owner is disabled or deleted: the answer is 401.
 - When a request carries a token, the token acts and a session cookie sent with it is ignored. Only a bearer that
   starts with `npmpro_` is a token: any other `Authorization: Bearer` header is ignored.

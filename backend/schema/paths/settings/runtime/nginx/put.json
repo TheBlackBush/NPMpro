@@ -3,7 +3,7 @@
 	"summary": "Update the nginx settings",
 	"description": "Saves the nginx settings; send only what changes. Fields set by environment variables are ignored, and tls12 and secp_curves are locked while force_mlkem is on. worker_processes must be auto or from 1 to cpu_count, and a new cpu_affinity list may only name CPUs the container may use; a refused value answers 400 with the field name. nginx -t runs on the new core config and nginx is reloaded: when applying fails, nothing is saved.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

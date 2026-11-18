@@ -2,7 +2,7 @@
 	"operationId": "getOidcIcon",
 	"summary": "Get the OIDC sign-in button icon",
 	"tags": [
-		"Sign-in"
+		"public"
 	],
 	"responses": {
 		"200": {

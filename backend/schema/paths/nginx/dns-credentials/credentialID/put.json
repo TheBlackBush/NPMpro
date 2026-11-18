@@ -2,7 +2,7 @@
 	"operationId": "updateDnsCredential",
 	"summary": "Update a DNS credential",
 	"tags": [
-		"DNS Credentials"
+		"certificates"
 	],
 	"security": [
 		{

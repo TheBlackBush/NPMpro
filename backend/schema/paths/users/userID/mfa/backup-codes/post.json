@@ -2,7 +2,7 @@
 	"operationId": "regenUserMfaBackupCodes",
 	"summary": "Create new backup codes",
 	"tags": [
-		"Users"
+		"users"
 	],
 	"security": [
 		{

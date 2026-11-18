@@ -3,7 +3,7 @@
 	"summary": "Update the traffic statistics settings",
 	"description": "Saves the traffic statistics settings; send only what changes. Fields set by environment variables are ignored. Switching traffic_enabled changes the nginx access log; if that fails nothing is saved. delete_stats removes the stored statistics and is refused with 400 unless the same request switches traffic_enabled from true to false.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

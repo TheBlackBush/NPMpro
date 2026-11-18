@@ -2,7 +2,7 @@
 	"operationId": "authCheck",
 	"summary": "Check that a user is signed in",
 	"tags": [
-		"Admin Port Checks"
+		"auth"
 	],
 	"security": [
 		{

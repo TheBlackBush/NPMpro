@@ -2,7 +2,7 @@
 	"operationId": "testHttpReach",
 	"summary": "Test the HTTP challenge",
 	"tags": [
-		"Certificates"
+		"certificates"
 	],
 	"security": [
 		{

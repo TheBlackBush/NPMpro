@@ -2,7 +2,7 @@
 	"operationId": "getCrowdsecSettings",
 	"summary": "Get the CrowdSec bouncer settings",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

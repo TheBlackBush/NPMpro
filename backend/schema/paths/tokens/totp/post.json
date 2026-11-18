@@ -2,7 +2,7 @@
 	"operationId": "loginWithTotp",
 	"summary": "Finish an MFA sign-in",
 	"tags": [
-		"Sign-in"
+		"tokens"
 	],
 	"requestBody": {
 		"description": "totp Challenge Payload",

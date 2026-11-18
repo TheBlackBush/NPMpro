@@ -3,7 +3,7 @@
 	"summary": "Test the OIDC connection",
 	"description": "Runs OIDC discovery against the provider with the effective settings, or with the issuer URL, client ID and client secret sent in the body (not saved). Fields set by environment variables always use the environment value. A failed test still answers 200, with ok false and the reason in message.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

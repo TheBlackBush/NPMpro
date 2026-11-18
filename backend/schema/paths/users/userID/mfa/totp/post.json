@@ -2,7 +2,7 @@
 	"operationId": "setupUserTotp",
 	"summary": "Start TOTP setup",
 	"tags": [
-		"Users"
+		"users"
 	],
 	"security": [
 		{

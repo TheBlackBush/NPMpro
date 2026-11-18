@@ -2,7 +2,7 @@
 	"operationId": "updateSetting",
 	"summary": "Update the default site",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

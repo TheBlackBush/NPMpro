@@ -3,7 +3,7 @@
 	"summary": "Get the progress of a database move",
 	"description": "The current or last move with its step, per-table progress and error. It is kept in memory: empty (move null) after the backend restarts, which a successful move ends with.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Database"
+		"database"
 	],
 	"security": [
 		{

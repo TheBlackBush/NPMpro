@@ -2,7 +2,7 @@
 	"operationId": "previewLandingPageAccessList",
 	"summary": "Preview an access list denied page",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

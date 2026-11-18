@@ -3,7 +3,7 @@
 	"summary": "Delete a stored backup",
 	"description": "Removes the file from the backups folder and writes an audit log entry. The file can be an automatic one or a scheduled one.\n\nNeeds: an administrator (a token needs its Administrator switch) and the token's Allow delete switch",
 	"tags": [
-		"Backups"
+		"backups"
 	],
 	"security": [
 		{

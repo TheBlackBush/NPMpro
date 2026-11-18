@@ -2,7 +2,7 @@
 	"operationId": "oidcAuthorize",
 	"summary": "Start an OIDC sign-in",
 	"tags": [
-		"Sign-in"
+		"public"
 	],
 	"responses": {
 		"302": {

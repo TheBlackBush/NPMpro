@@ -2,7 +2,7 @@
 	"operationId": "disableUserTotp",
 	"summary": "Turn off TOTP",
 	"tags": [
-		"Users"
+		"users"
 	],
 	"security": [
 		{

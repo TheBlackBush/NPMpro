@@ -2,7 +2,7 @@
 	"operationId": "checkVersion",
 	"summary": "Check for a newer version",
 	"tags": [
-		"System"
+		"version"
 	],
 	"security": [
 		{

@@ -2,7 +2,7 @@
 	"operationId": "getOwnApiTokens",
 	"summary": "List your API tokens",
 	"tags": [
-		"API Tokens"
+		"api-tokens"
 	],
 	"security": [
 		{

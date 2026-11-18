@@ -2,7 +2,7 @@
 	"operationId": "mcp",
 	"summary": "Send an MCP message",
 	"tags": [
-		"MCP"
+		"mcp"
 	],
 	"security": [
 		{

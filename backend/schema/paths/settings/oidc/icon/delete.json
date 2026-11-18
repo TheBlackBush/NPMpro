@@ -3,7 +3,7 @@
 	"summary": "Remove the OIDC button icon",
 	"description": "Deletes the uploaded icon file; the button goes back to the default built-in icon.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

@@ -3,7 +3,7 @@
 	"summary": "Open a stored backup for a restore",
 	"description": "Decrypts and unpacks the backup into a restore session and returns its token (valid 30 minutes) with what a restore would change. Use the token with POST /backups/restore/{token}/check, /plan and the restore itself, or cancel it with DELETE /backups/restore/{token}. A file encrypted with the passphrase needs it here; one encrypted with this instance's key does not. Errors carry a backup.error.<code> message id: wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, busy.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Backups"
+		"backups"
 	],
 	"security": [
 		{

@@ -2,7 +2,7 @@
 	"operationId": "docs",
 	"summary": "Open the API reference page",
 	"tags": [
-		"System"
+		"docs"
 	],
 	"security": [
 		{

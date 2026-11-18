@@ -2,7 +2,7 @@
 	"operationId": "getRuntimeLogsSettings",
 	"summary": "Get the log files settings",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

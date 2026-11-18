@@ -2,7 +2,7 @@
 	"operationId": "authAdminCheck",
 	"summary": "Check that an administrator is signed in",
 	"tags": [
-		"Admin Port Checks"
+		"auth"
 	],
 	"security": [
 		{

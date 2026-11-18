@@ -3,7 +3,7 @@
 	"summary": "Update the advanced settings",
 	"description": "Saves the advanced settings; send only what changes. Fields set by environment variables are ignored. time_zone must be one of time_zones, otherwise the answer is 400, and it applies after a container restart (it shows in restart_pending until then). The other two apply on save.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Settings"
+		"settings"
 	],
 	"security": [
 		{

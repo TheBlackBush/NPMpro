@@ -2,7 +2,7 @@
 	"operationId": "enableProxyHost",
 	"summary": "Enable a proxy host",
 	"tags": [
-		"Proxy Hosts"
+		"proxy-hosts"
 	],
 	"security": [
 		{

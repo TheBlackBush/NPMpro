@@ -2,7 +2,7 @@
 	"operationId": "getAccessLists",
 	"summary": "List access lists",
 	"tags": [
-		"Access Lists"
+		"access-lists"
 	],
 	"security": [
 		{

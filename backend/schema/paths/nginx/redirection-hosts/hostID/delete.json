@@ -2,7 +2,7 @@
 	"operationId": "deleteRedirectionHost",
 	"summary": "Delete a redirection host",
 	"tags": [
-		"Redirection Hosts"
+		"redirection-hosts"
 	],
 	"security": [
 		{

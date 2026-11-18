@@ -3,7 +3,7 @@
 	"summary": "Update a backup schedule",
 	"description": "Changes the fields sent; the next run is worked out again. Sending only enabled pauses or resumes the schedule. Leave the passphrase out or empty to keep the stored one. Errors carry a backup.schedule.error.<code> message id: name, name-taken, frequency, every-hours, time, weekday, month-day, types, protection, keep, passphrase, passphrase-required.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
-		"Backups"
+		"backups"
 	],
 	"security": [
 		{

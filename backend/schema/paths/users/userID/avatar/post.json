@@ -2,7 +2,7 @@
 	"operationId": "setUserAvatar",
 	"summary": "Upload a custom avatar",
 	"tags": [
-		"Users"
+		"users"
 	],
 	"security": [
 		{

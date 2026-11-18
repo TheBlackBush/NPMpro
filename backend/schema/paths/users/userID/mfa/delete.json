@@ -2,7 +2,7 @@
 	"operationId": "adminDisableUserMfa",
 	"summary": "Reset the MFA of a user",
 	"tags": [
-		"Users"
+		"users"
 	],
 	"security": [
 		{
