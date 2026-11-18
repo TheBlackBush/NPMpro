@@ -78,6 +78,11 @@ html.dark-mode .swagger-ui {
 }
 body,
 .swagger-ui,
+/* Swagger sets sans-serif on these itself, so inheriting from .swagger-ui is not enough */
+.swagger-ui :is(h1, h2, h3, h4, h5),
+.swagger-ui .info :is(p, li, a, td, th),
+.swagger-ui .markdown :is(p, li, td, th),
+.swagger-ui .renderedMarkdown :is(p, li),
 .swagger-ui .info .title,
 .swagger-ui .opblock-tag,
 .swagger-ui .opblock .opblock-summary-description,
