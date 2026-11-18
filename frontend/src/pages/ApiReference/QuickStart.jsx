@@ -79,7 +79,7 @@ export function QuickStart({ reference, onOpenGuide }) {
 							</li>
 						))}
 					</ul>
-					<Button type="button" variant="outline" size="sm" onClick={onOpenGuide}>
+					<Button type="button" variant="outline" size="sm" data-guide-open="" onClick={onOpenGuide}>
 						<T id="api-reference.full-guide" />
 					</Button>
 				</div>

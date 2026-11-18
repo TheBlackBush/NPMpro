@@ -56,13 +56,14 @@ export function TokenControl() {
 					size="sm"
 					aria-label={label}
 					title={label}
+					data-token-open=""
 					className="max-md:size-8 max-md:p-0"
 				>
 					<KeyRound aria-hidden="true" />
 					<span className="hidden font-mono md:inline">{label}</span>
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent align="end" className="w-80">
+			<PopoverContent align="end" className="w-80" data-token-popover="">
 				{token ? (
 					<Button type="button" variant="outline" size="sm" onClick={clear}>
 						<T id="api-reference.token-clear" />

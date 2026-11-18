@@ -37,6 +37,7 @@ export function GuideSheet({ open, onOpenChange, text }) {
 		<Sheet open={open} onOpenChange={onOpenChange}>
 			<SheetContent
 				side="right"
+				data-guide-sheet=""
 				className="w-full data-[side=right]:w-full data-[side=right]:sm:max-w-2xl"
 				aria-describedby={undefined}
 			>

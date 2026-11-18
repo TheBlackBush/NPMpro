@@ -51,6 +51,7 @@ export function ApiOperation({ operation, onOpenGuide }) {
 	return (
 		<article
 			id={operation.anchor}
+			data-api-op=""
 			className="scroll-mt-20 border-b px-6 py-8 [contain-intrinsic-size:auto_480px] [content-visibility:auto] lg:px-10 xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] xl:gap-10"
 		>
 			<div className="min-w-0">

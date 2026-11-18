@@ -241,13 +241,13 @@ export function TryIt({ operation }) {
 					<T id={token ? "api-reference.try-as-token" : "api-reference.try-as-session"} />
 				</span>
 				{open ? null : (
-					<Button type="button" size="sm" onClick={() => setOpen(true)}>
+					<Button type="button" size="sm" data-try-open="" onClick={() => setOpen(true)}>
 						<T id="api-reference.try" />
 					</Button>
 				)}
 			</div>
 			{open ? (
-				<div className="flex flex-col gap-3">
+				<div className="flex flex-col gap-3" data-try-panel="">
 					{pathParams.map((param) => (
 						<Field
 							key={param.name}
@@ -311,17 +311,18 @@ export function TryIt({ operation }) {
 							size="sm"
 							variant={confirm ? "destructive" : "default"}
 							disabled={busy}
+							data-try-send=""
 							onClick={send}
 						>
 							{busy ? <T id="api-reference.sending" /> : null}
 							{!busy && confirm ? <T id="api-reference.send-method" data={{ method }} /> : null}
 							{!busy && !confirm ? <T id="api-reference.send" /> : null}
 						</Button>
-						<Button type="button" size="sm" variant="ghost" onClick={close}>
+						<Button type="button" size="sm" variant="ghost" data-try-cancel="" onClick={close}>
 							<T id="api-reference.cancel" />
 						</Button>
 					</div>
-					<div aria-live="polite">
+					<div aria-live="polite" data-try-result={result ? "" : undefined}>
 						{result ? (
 							<Result result={result} token={token} operation={operation} bodyText={bodyText} />
 						) : null}

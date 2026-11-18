@@ -708,7 +708,114 @@ async function tagFilter({ admin }) {
 	}
 }
 
+const API_REFERENCE_URL = /\/api-reference#proxy-hosts\/get-nginx-proxy-hosts$/u;
+const GET_PROXY_HOSTS = "proxy-hosts/get-nginx-proxy-hosts";
+const FAKE_TOKEN = `npmpro_0000000000000000_${"A".repeat(43)}`;
+const apiOperation = (page, anchor) => page.locator(`[data-api-op][id="${anchor}"]`);
+// every request the page sends to the API from now on
+const apiRequests = (page) => {
+	const seen = [];
+	page.on("request", (sent) => {
+		if (sent.url().includes("/api/")) seen.push(`${sent.method()} ${sent.url()}`);
+	});
+	return seen;
+};
+const tryOpenAndSend = async (operation) => {
+	await operation.locator("[data-try-open]").click();
+	await operation.locator("[data-try-send]").click();
+	return operation.locator("[data-try-result]");
+};
+const inViewport = (anchor) => {
+	const box = document.querySelector(`[id="${anchor}"]`)?.getBoundingClientRect();
+	return box !== undefined && box.top < window.innerHeight && box.bottom > 0;
+};
+
+async function apiReference({ admin, base }) {
+	const { page } = admin;
+	await page.setViewportSize({ width: 1440, height: 900 });
+	// an old Swagger link lands on its route
+	await page.goto(`${base}/api/docs/#/Proxy%20Hosts/getProxyHosts`);
+	await page.waitForURL(API_REFERENCE_URL);
+	const operation = apiOperation(page, GET_PROXY_HOSTS);
+	await operation.waitFor();
+	await page.waitForFunction(inViewport, GET_PROXY_HOSTS);
+	await page.locator(`a[href="#${GET_PROXY_HOSTS}"][aria-current]`).waitFor();
+
+	// the search keeps the routes that match, Escape clears it
+	const search = page.getByRole("searchbox", { name: "Search routes", exact: true }).first();
+	await search.fill("proxy");
+	await page.locator("[data-api-op]").first().waitFor();
+	const heads = await page
+		.locator("[data-api-op]")
+		.evaluateAll((els) =>
+			els.map(
+				(el) => `${el.querySelector(":scope > div > div")?.textContent} ${el.querySelector("h3")?.textContent}`,
+			),
+		);
+	if (heads.length === 0) throw new Error("the search shows no route");
+	const stray = heads.find((head) => !head.toLowerCase().includes("proxy"));
+	if (stray !== undefined) throw new Error(`the search shows a route without the word: ${stray}`);
+	await search.press("Escape");
+	if ((await search.inputValue()) !== "") throw new Error("Escape did not clear the search");
+	await operation.waitFor();
+
+	// the code tabs
+	for (const [tab, text] of [
+		["curl", "curl"],
+		["Node", "fetch("],
+		["Python", "requests."],
+	]) {
+		// biome-ignore lint/performance/noAwaitInLoops: one tab after another
+		await operation.getByRole("tab", { name: tab, exact: true }).click();
+		const shown = operation.locator(`[data-code-tab=${tab.toLowerCase()}]`);
+		await shown.waitFor();
+		if (!(await shown.textContent()).includes(text)) throw new Error(`the ${tab} tab does not show ${text}`);
+	}
+	await operation.getByRole("tab", { name: "curl", exact: true }).click();
+
+	// Try it as the session
+	await operation.scrollIntoViewIfNeeded();
+	const result = await tryOpenAndSend(operation);
+	await result.waitFor();
+	if (!(await result.textContent()).includes("200")) throw new Error(`Try it shows ${await result.textContent()}`);
+	await operation.locator("[data-try-cancel]").click();
+
+	// opening Try it on a DELETE and cancelling sends nothing
+	const seen = apiRequests(page);
+	const del = page.locator("[data-api-op]").filter({ hasText: "DELETE" }).first();
+	await del.scrollIntoViewIfNeeded();
+	await del.locator("[data-try-open]").click();
+	await del.locator("[data-try-panel]").waitFor();
+	await del.locator("[data-try-cancel]").click();
+	await del.locator("[data-try-panel]").waitFor({ state: "detached" });
+	if (seen.length > 0) throw new Error(`opening and cancelling sent ${seen.join(", ")}`);
+
+	// a pasted token: Try it runs as that token, and nothing keeps it
+	await page.locator("[data-token-open]").click();
+	await page.locator("#api-reference-token").fill(FAKE_TOKEN);
+	await page.getByRole("button", { name: "Use", exact: true }).click();
+	await operation.scrollIntoViewIfNeeded();
+	const asToken = await tryOpenAndSend(operation);
+	await asToken.waitFor();
+	if (!(await asToken.textContent()).includes("401"))
+		throw new Error(`the token shows ${await asToken.textContent()}`);
+	const kept = await page.evaluate(() =>
+		[JSON.stringify(localStorage), JSON.stringify(sessionStorage), location.href].some((v) =>
+			v.includes("npmpro_0000"),
+		),
+	);
+	if (kept) throw new Error("the token is kept in the page storage or the address");
+	if (!(await operation.locator("[data-code-tab=curl]").textContent()).includes("$NPMPRO_TOKEN"))
+		throw new Error("the curl text lost $NPMPRO_TOKEN");
+	await page.reload();
+	await page.locator("[data-api-op]").first().waitFor();
+	if (!((await page.locator("[data-token-open]").getAttribute("aria-label")) ?? "").includes("Use a token"))
+		throw new Error("the token is still set after a reload");
+	if (admin.errors.length > 0) throw new Error(`page error: ${admin.errors[0]}`);
+}
+
 export const appFlows = [
+	{ name: "api reference", run: apiReference },
 	{ name: "settings save", run: settingsSave },
 	{ name: "log format", run: logFormat },
 	{ name: "tls handshake log", run: tlsHandshakeLog },
