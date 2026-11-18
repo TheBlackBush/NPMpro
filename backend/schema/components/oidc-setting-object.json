@@ -223,7 +223,7 @@
 				"oidc",
 				"password"
 			],
-			"description": "How the session that made this request signed in: oidc or password"
+			"description": "How the session that made this request signed in: oidc or password. A request made with an API token reads password"
 		}
 	}
 }
