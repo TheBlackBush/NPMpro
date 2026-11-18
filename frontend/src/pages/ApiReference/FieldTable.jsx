@@ -9,7 +9,7 @@ const WRAP = "whitespace-normal break-words [overflow-wrap:anywhere]";
 const DEPTH_CLASS = "data-[depth=1]:pl-4 data-[depth=2]:pl-8 data-[depth=3]:pl-12";
 
 const Required = () => (
-	<span className="ms-1.5 font-semibold text-[10.5px] text-method-delete uppercase tracking-wide">
+	<span className="ms-1.5 inline-block whitespace-nowrap font-semibold text-[10.5px] text-method-delete uppercase tracking-wide">
 		<T id="api-reference.required" />
 	</span>
 );
