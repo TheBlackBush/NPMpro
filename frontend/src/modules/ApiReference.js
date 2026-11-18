@@ -51,6 +51,9 @@ const typeLabel = (schema) => {
 	if (schema.enum) {
 		return schema.enum.map((value) => (typeof value === "string" ? `"${value}"` : String(value))).join(" | ");
 	}
+	if (Object.hasOwn(schema, "const")) {
+		return typeof schema.const === "string" ? `"${schema.const}"` : String(schema.const);
+	}
 	const branches = schema.oneOf ?? schema.anyOf;
 	if (branches) {
 		return branches.map(typeLabel).join(" | ");

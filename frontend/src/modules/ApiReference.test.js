@@ -115,6 +115,9 @@ it("typeLabel names the type the way the reference shows it", () => {
 	assert.equal(typeLabel({ oneOf: [{ type: "integer" }, { type: "string", enum: ["new"] }] }), 'integer | "new"');
 	assert.equal(typeLabel({ type: ["null", "string"] }), "string | null");
 	assert.equal(typeLabel({ type: "array", items: { type: "string" } }), "array of string");
+	// const, as the schema writes certificate_id: "new"
+	assert.equal(typeLabel({ oneOf: [{ type: "integer" }, { const: "new" }] }), 'integer | "new"');
+	assert.equal(typeLabel({ const: 0 }), "0");
 	assert.equal(typeLabel({ properties: { a: {} } }), "object");
 	assert.equal(typeLabel({}), "any");
 	assert.equal(typeLabel(undefined), "any");
