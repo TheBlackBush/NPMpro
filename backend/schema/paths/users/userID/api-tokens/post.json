@@ -194,10 +194,10 @@
 			}
 		},
 		"400": {
-			"description": "400 response"
+			"description": "Refused: the name is empty, longer than 100 characters or already used, the expiry is not a future date, the body is invalid, or a level or visibility is above the owner's"
 		},
 		"403": {
-			"description": "403 response"
+			"description": "Not allowed: the request was made with an API token, the user in the path is not the signed-in user, or an Administrator token was asked for by a non-administrator"
 		}
 	},
 	"description": "Creates a token for the signed-in user. The answer holds the token text once in `token`; it is never shown again, so copy it now. A token never has more than its owner: a level or visibility above the owner's is refused with 400, `admin` only for administrators. `expires_on` left out gives 90 days (the web interface offers 30, 90 or 365 days, a date or none); a name that you already use is refused with 400.\n\nNeeds: a signed-in session (API tokens are refused)"

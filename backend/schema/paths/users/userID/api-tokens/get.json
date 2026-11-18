@@ -60,7 +60,7 @@
 			}
 		},
 		"403": {
-			"description": "403 response"
+			"description": "Not allowed: the request was made with an API token, or the user in the path is not the signed-in user"
 		}
 	},
 	"description": "Lists the API tokens of the signed-in user, newest first, with their permissions, expiry and last use. The token text is never in the list: only its `prefix` identifies it.\n\nNeeds: a signed-in session (API tokens are refused)"

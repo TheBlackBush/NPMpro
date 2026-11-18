@@ -50,13 +50,13 @@
 			}
 		},
 		"400": {
-			"description": "400 response"
+			"description": "The token id in the path is not a positive integer"
 		},
 		"403": {
-			"description": "403 response"
+			"description": "Not allowed: the request was made with an API token, or the user in the path is not the signed-in user"
 		},
 		"404": {
-			"description": "404 response"
+			"description": "The signed-in user has no token with this id"
 		}
 	},
 	"description": "Deletes one of the signed-in user's tokens. It stops working at once and the revocation is in the audit log. A token that is not yours gives 404.\n\nNeeds: a signed-in session (API tokens are refused)"

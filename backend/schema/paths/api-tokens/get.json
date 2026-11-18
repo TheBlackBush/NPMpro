@@ -55,7 +55,7 @@
 			}
 		},
 		"403": {
-			"description": "403 response"
+			"description": "Not allowed: the request was made with an API token, or the user is not an administrator"
 		}
 	},
 	"description": "Lists the API tokens of all users, newest first, each with its owner. The token text is never in the list.\n\nNeeds: a signed-in session of an administrator (API tokens are refused)"

@@ -84,10 +84,10 @@ function operationGaps({ key, op }) {
 	const body = op.requestBody?.content?.["application/json"];
 	if (body) gaps.push(...mediaGaps(body, `${key} request`));
 	for (const [code, response] of Object.entries(op.responses ?? {})) {
-		if (!code.startsWith("2")) continue;
 		if (!described(response.description) || PLACEHOLDER.test(response.description)) {
 			gaps.push(`${key} ${code}: response description`);
 		}
+		if (!code.startsWith("2")) continue;
 		const media = response.content?.["application/json"];
 		if (media) gaps.push(...mediaGaps(media, `${key} ${code}`));
 	}
