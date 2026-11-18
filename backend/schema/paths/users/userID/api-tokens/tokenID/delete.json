@@ -1,6 +1,6 @@
 {
 	"operationId": "revokeOwnApiToken",
-	"summary": "Revoke an API token of the signed-in user",
+	"summary": "Revoke your API token",
 	"tags": [
 		"API Tokens"
 	],
@@ -18,7 +18,7 @@
 				"minimum": 1
 			},
 			"required": true,
-			"description": "User ID (the signed-in user)",
+			"description": "ID of the signed-in user. `me` is also accepted; another user's ID is refused with 403",
 			"example": 2
 		},
 		{
@@ -29,13 +29,13 @@
 				"minimum": 1
 			},
 			"required": true,
-			"description": "API token ID",
+			"description": "ID of the API token, from the list",
 			"example": 1
 		}
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "true when the token was revoked",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -58,5 +58,6 @@
 		"404": {
 			"description": "404 response"
 		}
-	}
+	},
+	"description": "Deletes one of the signed-in user's tokens. It stops working at once and the revocation is in the audit log. A token that is not yours gives 404.\n\nNeeds: a signed-in session (API tokens are refused)"
 }

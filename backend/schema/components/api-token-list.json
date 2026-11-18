@@ -1,6 +1,6 @@
 {
 	"type": "array",
-	"description": "API token list",
+	"description": "API tokens of one user",
 	"items": {
 		"$ref": "./api-token-object.json"
 	}

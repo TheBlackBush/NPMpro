@@ -1,6 +1,6 @@
 {
 	"operationId": "updateUser",
-	"summary": "Update a User",
+	"summary": "Update a user",
 	"tags": [
 		"Users"
 	],
@@ -26,7 +26,7 @@
 				]
 			},
 			"required": true,
-			"description": "User ID or 'me' for yourself",
+			"description": "ID of the user. `me` is also accepted for the signed-in user",
 			"example": 2
 		}
 	],
@@ -53,28 +53,34 @@
 							"$ref": "../../../components/user-object.json#/properties/is_disabled"
 						}
 					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"name": "Jane Roe",
+							"email": "jane@example.com"
+						}
+					}
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The updated user",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
 								"id": 2,
-								"created_on": "2020-01-30T09:36:08.000Z",
-								"modified_on": "2020-01-30T09:41:04.000Z",
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T09:30:00.000Z",
 								"is_disabled": false,
-								"email": "jc@jc21.com",
-								"name": "Jamie Curnow",
-								"avatar": "//www.gravatar.com/avatar/6193176330f8d38747f038c170ddb193?default=mm",
-								"roles": [
-									"admin"
-								]
+								"email": "jane@example.com",
+								"name": "Jane Roe",
+								"avatar": "//www.gravatar.com/avatar/0f3a8c5d9e1b4a7c2d6e8f0a1b3c5d7e?default=mm",
+								"roles": []
 							}
 						}
 					},
@@ -84,5 +90,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Changes the name, email, roles or disabled state of a user; only the fields sent change. Changing roles needs an administrator, and nobody can change their own roles or disable themselves (403). Disabling a user ends their sessions and stops their API tokens.\n\nNeeds: a signed-in session as that user or as an administrator (API tokens are refused)"
 }

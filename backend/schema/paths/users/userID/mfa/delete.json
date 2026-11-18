@@ -1,7 +1,9 @@
 {
 	"operationId": "adminDisableUserMfa",
-	"summary": "Reset MFA for a user (disables all second factors and backup codes)",
-	"tags": ["Users"],
+	"summary": "Reset the MFA of a user",
+	"tags": [
+		"Users"
+	],
 	"security": [
 		{
 			"cookieAuth": []
@@ -16,7 +18,7 @@
 				"minimum": 1
 			},
 			"required": true,
-			"description": "User ID",
+			"description": "ID of the user, not the signed-in one",
 			"example": 2
 		}
 	],
@@ -34,7 +36,8 @@
 					}
 				}
 			},
-			"description": "200 response"
+			"description": "true when MFA was reset"
 		}
-	}
+	},
+	"description": "Turns off every second factor and deletes the backup codes of another user, for someone who lost their device. It works for other users only (400 for your own account) and 400 when MFA is not on. The change is in the audit log.\n\nNeeds: a signed-in session of an administrator (API tokens are refused)"
 }

@@ -1,6 +1,6 @@
 {
 	"operationId": "getApiTokens",
-	"summary": "List the API tokens of every user (administrators)",
+	"summary": "List every user's API tokens",
 	"tags": [
 		"API Tokens"
 	],
@@ -11,7 +11,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "Every API token with its owner, newest first",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -19,27 +19,27 @@
 							"value": [
 								{
 									"id": 1,
-									"name": "ci",
-									"prefix": "npmpro_0123456789abcdef",
+									"name": "deploy script",
+									"prefix": "npmpro_3f9c2a7d1b4e8f60",
 									"visibility": "user",
 									"permissions": {
-										"proxy_hosts": "view",
+										"proxy_hosts": "manage",
 										"redirection_hosts": "view",
-										"dead_hosts": "view",
-										"streams": "view",
+										"dead_hosts": "hidden",
+										"streams": "hidden",
 										"access_lists": "view",
 										"certificates": "view"
 									},
 									"admin": false,
 									"allow_delete": false,
-									"expires_on": "2027-02-15T12:00:00.000Z",
+									"expires_on": "2027-02-15T09:30:00.000Z",
 									"last_used_on": null,
-									"created_on": "2026-11-17T12:00:00.000Z",
+									"created_on": "2026-11-17T09:30:00.000Z",
 									"expired": false,
 									"owner": {
-										"id": 1,
-										"name": "Admin",
-										"email": "admin@example.com"
+										"id": 2,
+										"name": "Jane Doe",
+										"email": "jane@example.com"
 									}
 								}
 							]
@@ -57,5 +57,6 @@
 		"403": {
 			"description": "403 response"
 		}
-	}
+	},
+	"description": "Lists the API tokens of all users, newest first, each with its owner. The token text is never in the list.\n\nNeeds: a signed-in session of an administrator (API tokens are refused)"
 }

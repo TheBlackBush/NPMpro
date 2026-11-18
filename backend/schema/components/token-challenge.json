@@ -1,17 +1,20 @@
 {
 	"type": "object",
-	"description": "Token object",
-	"required": ["requiresTotp", "expires"],
+	"description": "An MFA challenge: the password was right but a second factor is needed",
+	"required": [
+		"requiresTotp",
+		"expires"
+	],
 	"additionalProperties": false,
 	"properties": {
 		"requiresTotp": {
-			"description": "Whether TOTP is enabled for this user",
+			"description": "Whether the user must send a TOTP code to POST /tokens/totp",
 			"example": true,
 			"type": "boolean"
 		},
 		"expires": {
-			"description": "Token Expiry ISO Time String",
-			"example": "2025-02-04T20:40:46.340Z",
+			"description": "When the challenge cookie expires, ISO time in UTC (3 minutes after the password check)",
+			"example": "2026-11-17T09:33:00.000Z",
 			"type": "string"
 		}
 	}

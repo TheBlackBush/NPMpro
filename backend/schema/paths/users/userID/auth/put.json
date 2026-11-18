@@ -1,6 +1,6 @@
 {
 	"operationId": "updateUserAuth",
-	"summary": "Update a User's Authentication",
+	"summary": "Change a user's password",
 	"tags": [
 		"Users"
 	],
@@ -26,7 +26,7 @@
 				]
 			},
 			"required": true,
-			"description": "User ID or 'me' for yourself",
+			"description": "ID of the user. `me` is also accepted for the signed-in user",
 			"example": 2
 		}
 	],
@@ -46,19 +46,31 @@
 						"type": {
 							"type": "string",
 							"pattern": "^password$",
-							"example": "password"
+							"example": "password",
+							"description": "Always `password`"
 						},
 						"current": {
 							"type": "string",
 							"minLength": 1,
 							"maxLength": 255,
-							"example": "changeme"
+							"example": "your-password",
+							"description": "The present password, required when you change your own password, ignored for another user"
 						},
 						"secret": {
 							"type": "string",
 							"minLength": 8,
 							"maxLength": 255,
-							"example": "mySuperN3wP@ssword!"
+							"example": "your-new-password",
+							"description": "The new password, 8 to 255 characters"
+						}
+					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"type": "password",
+							"current": "your-password",
+							"secret": "your-new-password"
 						}
 					}
 				}
@@ -67,7 +79,7 @@
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "true when the password was changed",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -81,5 +93,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Sets a password. For your own account `current` (the present password) is required and the answer sets a fresh session cookie; an administrator sets another user's password without it. Every other session of that user ends; API tokens keep working.\n\nNeeds: a signed-in session as that user or as an administrator (API tokens are refused)"
 }

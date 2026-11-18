@@ -1,12 +1,13 @@
 {
 	"operationId": "oidcAuthorize",
-	"summary": "Start the OIDC authorization code flow (redirects to /login?oidc_error=not_configured when OIDC is not active)",
+	"summary": "Start an OIDC sign-in",
 	"tags": [
 		"Sign-in"
 	],
 	"responses": {
 		"302": {
-			"description": "Redirect to the OIDC provider"
+			"description": "Redirect to the OIDC provider, or to the login page with an `oidc_error` code"
 		}
-	}
+	},
+	"description": "Redirects the browser to the OIDC provider with a new state, nonce and PKCE challenge. When OIDC is not active or the provider is not reachable, it redirects to the login page with `oidc_error` instead. 10 requests per address in 5 minutes.\n\nNeeds: nothing (public)"
 }

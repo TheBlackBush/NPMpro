@@ -1,6 +1,6 @@
 {
 	"operationId": "refreshToken",
-	"summary": "Refresh your access token",
+	"summary": "Renew the session",
 	"tags": [
 		"Sign-in"
 	],
@@ -11,13 +11,13 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The new session cookie is set and its expiry returned",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"expires": "2025-02-04T20:40:46.340Z"
+								"expires": "2026-11-17T10:30:00.000Z"
 							}
 						}
 					},
@@ -27,5 +27,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Sets a new session cookie that is valid 1 hour from now, for a signed-in user who is still active. The web interface calls it before the session ends. A signed-in session is needed: API tokens are refused with 403.\n\nNeeds: a signed-in session (API tokens are refused)"
 }

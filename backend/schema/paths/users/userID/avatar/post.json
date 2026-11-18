@@ -1,6 +1,6 @@
 {
 	"operationId": "setUserAvatar",
-	"summary": "Upload a custom avatar for a user",
+	"summary": "Upload a custom avatar",
 	"tags": [
 		"Users"
 	],
@@ -26,7 +26,7 @@
 				]
 			},
 			"required": true,
-			"description": "User ID or 'me' for yourself",
+			"description": "ID of the user. `me` is also accepted for the signed-in user",
 			"example": 2
 		}
 	],
@@ -53,14 +53,29 @@
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The user with the new avatar address",
 			"content": {
 				"application/json": {
 					"schema": {
 						"$ref": "../../../../components/user-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"id": 2,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T09:35:00.000Z",
+								"is_disabled": false,
+								"email": "jane@example.com",
+								"name": "Jane Doe",
+								"roles": [],
+								"avatar": "/images/avatar/2.png?v=1789637700000"
+							}
+						}
 					}
 				}
 			}
 		}
-	}
+	},
+	"description": "Replaces the avatar of a user with an uploaded image (a multipart form with the file in `avatar`, at most 1 MiB, PNG, JPEG, WebP or GIF as detected from the file). Anything else is refused with 400.\n\nNeeds: a signed-in session as that user or as an administrator (API tokens are refused)"
 }

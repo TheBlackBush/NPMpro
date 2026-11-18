@@ -1,7 +1,9 @@
 {
 	"operationId": "unlinkUserOidc",
-	"summary": "Remove a user's OIDC identity link",
-	"tags": ["Users"],
+	"summary": "Unlink a user's OIDC identity",
+	"tags": [
+		"Users"
+	],
 	"security": [
 		{
 			"cookieAuth": []
@@ -24,7 +26,7 @@
 				]
 			},
 			"required": true,
-			"description": "User ID or 'me' for yourself",
+			"description": "ID of the user. `me` is also accepted for the signed-in user",
 			"example": 2
 		}
 	],
@@ -42,7 +44,8 @@
 					}
 				}
 			},
-			"description": "200 response"
+			"description": "true when the link was removed or there was none"
 		}
-	}
+	},
+	"description": "Removes the link between a user and their OIDC identity. The next OIDC sign-in with the same email links it again. The change is in the audit log.\n\nNeeds: a signed-in session of an administrator (API tokens are refused)"
 }

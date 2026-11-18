@@ -8,17 +8,7 @@ import { getCompiledSchema } from "../schema/index.js";
 
 // Item 27 PR 4 writes the reference part by part: operations of a pending tag or path are not checked yet. Each
 // writing task removes its part; the last one removes both lists.
-const PENDING_TAGS = new Set([
-	"Dashboard",
-	"Monitoring",
-	"Users",
-	"Audit Log",
-	"API Tokens",
-	"MCP",
-	"Sign-in",
-	"System",
-	"Admin Port Checks",
-]);
+const PENDING_TAGS = new Set(["Dashboard", "Monitoring", "Audit Log", "MCP", "System", "Admin Port Checks"]);
 const PENDING_PATHS = [];
 
 // the parts several tags reach, always checked

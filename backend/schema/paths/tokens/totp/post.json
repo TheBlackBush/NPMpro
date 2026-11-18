@@ -1,7 +1,9 @@
 {
 	"operationId": "loginWithTotp",
-	"summary": "Verify TOTP code and get full token",
-	"tags": ["Sign-in"],
+	"summary": "Finish an MFA sign-in",
+	"tags": [
+		"Sign-in"
+	],
 	"requestBody": {
 		"description": "totp Challenge Payload",
 		"required": true,
@@ -14,14 +16,21 @@
 							"minLength": 6,
 							"maxLength": 8,
 							"type": "string",
-							"example": "012345"
+							"example": "123456",
+							"description": "A current TOTP code (6 digits) or an unused backup code"
 						}
 					},
-					"required": ["code"],
+					"required": [
+						"code"
+					],
 					"type": "object"
 				},
-				"example": {
-					"code": "012345"
+				"examples": {
+					"default": {
+						"value": {
+							"code": "123456"
+						}
+					}
 				}
 			}
 		}
@@ -33,7 +42,7 @@
 					"examples": {
 						"default": {
 							"value": {
-								"expires": "2025-02-04T20:40:46.340Z"
+								"expires": "2026-11-17T10:30:00.000Z"
 							}
 						}
 					},
@@ -42,7 +51,8 @@
 					}
 				}
 			},
-			"description": "200 response"
+			"description": "The session cookie is set and its expiry returned"
 		}
-	}
+	},
+	"description": "Checks the TOTP or backup code against the challenge cookie of POST /tokens and sets the session cookie (valid 1 hour). Without a valid challenge cookie (it lasts 3 minutes and works once) the answer is 401. Failed requests count toward the same limit as POST /tokens.\n\nNeeds: nothing (public, with the challenge cookie of a password sign-in)"
 }

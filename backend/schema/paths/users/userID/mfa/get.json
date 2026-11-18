@@ -1,7 +1,9 @@
 {
 	"operationId": "getUserMfaStatus",
-	"summary": "Get user MFA status (all factors and backup codes)",
-	"tags": ["Users"],
+	"summary": "Get the MFA state of a user",
+	"tags": [
+		"Users"
+	],
 	"security": [
 		{
 			"cookieAuth": []
@@ -16,27 +18,30 @@
 				"minimum": 1
 			},
 			"required": true,
-			"description": "User ID",
+			"description": "ID of the user",
 			"example": 2
 		}
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The MFA state",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"totp_enabled": false,
-								"backup_codes_remaining": 0
+								"totp_enabled": true,
+								"backup_codes_remaining": 8
 							}
 						}
 					},
 					"schema": {
 						"type": "object",
 						"additionalProperties": false,
-						"required": ["totp_enabled", "backup_codes_remaining"],
+						"required": [
+							"totp_enabled",
+							"backup_codes_remaining"
+						],
 						"properties": {
 							"totp_enabled": {
 								"type": "boolean",
@@ -53,5 +58,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Says whether TOTP is on for a user and how many backup codes are left. The codes themselves are never returned.\n\nNeeds: a signed-in session as that user or as an administrator (API tokens are refused)"
 }

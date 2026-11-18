@@ -1,6 +1,6 @@
 {
 	"operationId": "revokeApiToken",
-	"summary": "Revoke any API token (administrators)",
+	"summary": "Revoke any API token",
 	"tags": [
 		"API Tokens"
 	],
@@ -18,13 +18,13 @@
 				"minimum": 1
 			},
 			"required": true,
-			"description": "API token ID",
+			"description": "ID of the API token, from the list of every token",
 			"example": 1
 		}
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "true when the token was revoked",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -47,5 +47,6 @@
 		"404": {
 			"description": "404 response"
 		}
-	}
+	},
+	"description": "Deletes a token of any user. It stops working at once and the revocation is in the audit log. Administrators cannot create or edit tokens for others.\n\nNeeds: a signed-in session of an administrator (API tokens are refused)"
 }

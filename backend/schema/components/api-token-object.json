@@ -1,6 +1,6 @@
 {
 	"type": "object",
-	"description": "API token object",
+	"description": "An API token without its secret",
 	"additionalProperties": false,
 	"required": [
 		"id",
@@ -19,23 +19,26 @@
 		"id": {
 			"type": "integer",
 			"minimum": 1,
-			"example": 1
+			"example": 1,
+			"description": "Token ID, used to revoke it"
 		},
 		"name": {
 			"type": "string",
-			"example": "ci"
+			"example": "deploy script",
+			"description": "Name the owner gave the token; unique among the owner's tokens, ignoring case"
 		},
 		"prefix": {
 			"type": "string",
 			"description": "npmpro_ and the token's lookup id, shown to tell tokens apart",
-			"example": "npmpro_0123456789abcdef"
+			"example": "npmpro_3f9c2a7d1b4e8f60"
 		},
 		"visibility": {
 			"type": "string",
 			"enum": [
 				"all",
 				"user"
-			]
+			],
+			"description": "Which items the token sees: `user` only the items its owner created, `all` every item"
 		},
 		"permissions": {
 			"type": "object",
@@ -55,7 +58,8 @@
 						"manage",
 						"view",
 						"hidden"
-					]
+					],
+					"description": "Level for Proxy Hosts: manage, view or hidden"
 				},
 				"redirection_hosts": {
 					"type": "string",
@@ -63,7 +67,8 @@
 						"manage",
 						"view",
 						"hidden"
-					]
+					],
+					"description": "Level for Redirection Hosts: manage, view or hidden"
 				},
 				"dead_hosts": {
 					"type": "string",
@@ -71,7 +76,8 @@
 						"manage",
 						"view",
 						"hidden"
-					]
+					],
+					"description": "Level for 404 Hosts: manage, view or hidden"
 				},
 				"streams": {
 					"type": "string",
@@ -79,7 +85,8 @@
 						"manage",
 						"view",
 						"hidden"
-					]
+					],
+					"description": "Level for Streams: manage, view or hidden"
 				},
 				"access_lists": {
 					"type": "string",
@@ -87,7 +94,8 @@
 						"manage",
 						"view",
 						"hidden"
-					]
+					],
+					"description": "Level for Access Lists: manage, view or hidden"
 				},
 				"certificates": {
 					"type": "string",
@@ -95,43 +103,51 @@
 						"manage",
 						"view",
 						"hidden"
-					]
+					],
+					"description": "Level for Certificates: manage, view or hidden"
 				}
-			}
+			},
+			"description": "Access level of the token for each section; never above its owner's current level"
 		},
 		"admin": {
-			"type": "boolean"
+			"type": "boolean",
+			"description": "Whether the token acts as an administrator for the admin areas (settings, audit log, backups, monitoring); never for user management or the sign-in settings"
 		},
 		"allow_delete": {
-			"type": "boolean"
+			"type": "boolean",
+			"description": "Whether the token may delete: DELETE requests, replace restores and the MCP delete tools"
 		},
 		"expires_on": {
 			"type": [
 				"string",
 				"null"
 			],
-			"format": "date-time"
+			"format": "date-time",
+			"description": "When the token stops working, ISO time in UTC; null for a token that never expires"
 		},
 		"last_used_on": {
 			"type": [
 				"string",
 				"null"
 			],
-			"format": "date-time"
+			"format": "date-time",
+			"description": "When the token was last used, ISO time in UTC, updated at most once a minute; null while it was never used"
 		},
 		"created_on": {
 			"type": [
 				"string",
 				"null"
 			],
-			"format": "date-time"
+			"format": "date-time",
+			"description": "When the token was created, ISO time in UTC"
 		},
 		"expired": {
-			"type": "boolean"
+			"type": "boolean",
+			"description": "Whether the expiry time has passed"
 		},
 		"token": {
 			"type": "string",
-			"description": "Only in the answer of the create request"
+			"description": "The token text, only in the answer of the create request and never shown again"
 		},
 		"owner": {
 			"type": "object",
@@ -143,15 +159,19 @@
 			],
 			"properties": {
 				"id": {
-					"type": "integer"
+					"type": "integer",
+					"description": "User ID of the owner"
 				},
 				"name": {
-					"type": "string"
+					"type": "string",
+					"description": "Name of the owner"
 				},
 				"email": {
-					"type": "string"
+					"type": "string",
+					"description": "Email address of the owner"
 				}
-			}
+			},
+			"description": "The user the token belongs to, only in the list of every token"
 		}
 	}
 }
