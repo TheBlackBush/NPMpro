@@ -31,8 +31,7 @@ export function TokenControl() {
 		setInvalid(false);
 	};
 
-	const apply = (event) => {
-		event.preventDefault();
+	const apply = () => {
 		const value = draft.trim();
 		if (!value.startsWith(TOKEN_PREFIX)) {
 			setInvalid(true);
@@ -69,7 +68,8 @@ export function TokenControl() {
 						<T id="api-reference.token-clear" />
 					</Button>
 				) : (
-					<form className="flex flex-col gap-2.5" onSubmit={apply}>
+					// no <form> and no submit: a password field in a submitted form looks like a sign-in to password managers
+					<div className="flex flex-col gap-2.5">
 						<Label htmlFor="api-reference-token">
 							<T id="api-reference.token-label" />
 						</Label>
@@ -78,12 +78,22 @@ export function TokenControl() {
 							type="password"
 							value={draft}
 							autoComplete="off"
+							data-1p-ignore=""
+							data-lpignore="true"
+							data-bwignore=""
+							data-form-type="other"
 							spellCheck={false}
 							aria-invalid={invalid}
 							aria-describedby="api-reference-token-help"
 							onChange={(event) => {
 								setDraft(event.target.value);
 								setInvalid(false);
+							}}
+							onKeyDown={(event) => {
+								if (event.key === "Enter") {
+									event.preventDefault();
+									apply();
+								}
 							}}
 						/>
 						{invalid ? (
@@ -94,10 +104,10 @@ export function TokenControl() {
 						<p id="api-reference-token-help" className="m-0 text-muted-foreground text-xs">
 							<T id="api-reference.token-help" />
 						</p>
-						<Button type="submit" size="sm">
+						<Button type="button" size="sm" onClick={apply}>
 							<T id="api-reference.token-apply" />
 						</Button>
-					</form>
+					</div>
 				)}
 			</PopoverContent>
 		</Popover>

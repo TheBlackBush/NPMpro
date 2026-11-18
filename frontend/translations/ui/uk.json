@@ -101,6 +101,7 @@
 	"api-reference.try-as-token": "Виконується на цьому екземплярі від імені токена",
 	"api-reference.try-body": "Тіло (JSON)",
 	"api-reference.try-confirm": "Це змінить дані на цьому екземплярі.",
+	"api-reference.try-dot-path": "{name} не може бути . або ..",
 	"api-reference.try-forbidden": "Відмовлено. Токену може бракувати дозволу, потрібного для цього маршруту.",
 	"api-reference.try-forbidden-delete": "Відмовлено. Токену може бракувати прав, а DELETE або відновлення із заміною потребує дозволу на видалення в токена.",
 	"api-reference.try-invalid-json": "Тіло не є коректним JSON",

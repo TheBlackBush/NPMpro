@@ -101,6 +101,7 @@
 	"api-reference.try-as-token": "Se ejecuta en esta instancia como el token",
 	"api-reference.try-body": "Cuerpo (JSON)",
 	"api-reference.try-confirm": "Esto cambia datos en esta instancia.",
+	"api-reference.try-dot-path": "{name} no puede ser . ni ..",
 	"api-reference.try-forbidden": "Rechazado. Puede que al token le falte el permiso que necesita esta ruta.",
 	"api-reference.try-forbidden-delete": "Rechazado. Puede que al token le falte el permiso, y DELETE o una restauración con reemplazo exige Permitir eliminar en el token.",
 	"api-reference.try-invalid-json": "El cuerpo no es un JSON válido",

@@ -138,16 +138,20 @@ const exampleOf = (media) => {
 	return media?.example;
 };
 
+const SESSION_NEEDS = "a signed-in session";
+
 /**
- * Who can call an operation
+ * Who can call an operation; a route without security that still names a session in its Needs line (sign out, which
+ * answers without one but only acts on one) counts as session-only
  *
  * @param {object} operation
+ * @param {string | null} needs
  * @returns {"public" | "session" | "token"}
  */
-const authOf = (operation) => {
+const authOf = (operation, needs) => {
 	const entries = operation.security ?? [];
 	if (entries.length === 0) {
-		return "public";
+		return needs?.startsWith(SESSION_NEEDS) ? "session" : "public";
 	}
 	return entries.some((entry) => "bearerAuth" in entry) ? "token" : "session";
 };
@@ -190,7 +194,7 @@ const buildOperation = (tag, method, path, operation) => {
 		summary: operation.summary ?? "",
 		text,
 		needs,
-		auth: authOf(operation),
+		auth: authOf(operation, needs),
 		params: (operation.parameters ?? [])
 			.filter((param) => param.in === "path" || param.in === "query")
 			.map((param) => ({
@@ -256,7 +260,8 @@ const filterReference = (reference, query) => {
 };
 
 /**
- * The anchor for an old Swagger link "#/<tag>/<operationId>" (the tag is ignored)
+ * The anchor for an old Swagger link: "#/<tag>/<operationId>" (the tag is ignored) or a whole group "#/<tag>", where
+ * the tag may be the old name with spaces ("Proxy Hosts")
  *
  * @param {string} hash
  * @param {object} reference
@@ -264,6 +269,13 @@ const filterReference = (reference, query) => {
  */
 const legacyAnchor = (hash, reference) => {
 	const parts = hash.startsWith("#/") ? hash.slice(2).split("/") : [];
+	if (parts.at(-1) === "") {
+		parts.pop();
+	}
+	if (parts.length === 1) {
+		const name = parts[0].replaceAll("%20", " ").trim().toLowerCase().replace(/\s+/gu, "-");
+		return reference.groups.some((group) => group.name === name) ? name : null;
+	}
 	if (parts.length !== 2) {
 		return null;
 	}

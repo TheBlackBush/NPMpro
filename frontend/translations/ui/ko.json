@@ -101,6 +101,7 @@
 	"api-reference.try-as-token": "이 인스턴스에서 토큰으로 실행됩니다",
 	"api-reference.try-body": "본문(JSON)",
 	"api-reference.try-confirm": "이 인스턴스의 데이터가 변경됩니다.",
+	"api-reference.try-dot-path": "{name}에는 . 또는 ..을 사용할 수 없습니다",
 	"api-reference.try-forbidden": "거부되었습니다. 토큰에 이 경로에 필요한 권한이 없을 수 있습니다.",
 	"api-reference.try-forbidden-delete": "거부되었습니다. 토큰에 권한이 없을 수 있으며, DELETE 또는 교체 복원에는 토큰의 삭제 허용이 필요합니다.",
 	"api-reference.try-invalid-json": "본문이 올바른 JSON이 아닙니다",

@@ -780,20 +780,31 @@ async function apiReference({ admin, base }) {
 	if (!(await result.textContent()).includes("200")) throw new Error(`Try it shows ${await result.textContent()}`);
 	await operation.locator("[data-try-cancel]").click();
 
-	// opening Try it on a DELETE and cancelling sends nothing
+	// on a DELETE, opening Try it and the first Send click send nothing: the first click asks for a confirmation
 	const seen = apiRequests(page);
 	const del = page.locator("[data-api-op]").filter({ hasText: "DELETE" }).first();
 	await del.scrollIntoViewIfNeeded();
 	await del.locator("[data-try-open]").click();
 	await del.locator("[data-try-panel]").waitFor();
+	const send = del.locator("[data-try-send]");
+	await send.click();
+	await del.getByRole("alert").filter({ hasText: "This changes data on this instance." }).waitFor();
+	if ((await send.textContent()).trim() !== "Send DELETE")
+		throw new Error(`the confirm button reads ${await send.textContent()}`);
+	if (seen.length > 0) throw new Error(`the first Send click sent ${seen.join(", ")}`);
 	await del.locator("[data-try-cancel]").click();
 	await del.locator("[data-try-panel]").waitFor({ state: "detached" });
 	if (seen.length > 0) throw new Error(`opening and cancelling sent ${seen.join(", ")}`);
 
 	// a pasted token: Try it runs as that token, and nothing keeps it
 	await page.locator("[data-token-open]").click();
-	await page.locator("#api-reference-token").fill(FAKE_TOKEN);
-	await page.getByRole("button", { name: "Use", exact: true }).click();
+	const tokenField = page.locator("#api-reference-token");
+	await tokenField.fill(FAKE_TOKEN);
+	// no form around the field, so password managers do not take it for a sign-in; Enter applies it
+	if ((await tokenField.evaluate((el) => el.closest("form") !== null)) === true)
+		throw new Error("the token field is inside a form");
+	await tokenField.press("Enter");
+	await page.locator("[data-token-popover]").waitFor({ state: "detached" });
 	await operation.scrollIntoViewIfNeeded();
 	const asToken = await tryOpenAndSend(operation);
 	await asToken.waitFor();

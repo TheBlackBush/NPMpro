@@ -11,11 +11,17 @@ const DIGIT_START = /^-?\d/u;
 // The Node snippet reads the token from the environment through a template string.
 const NODE_TOKEN = ["Bearer $", "{process.env.NPMPRO_TOKEN}"].join("");
 
+// "." and ".." are dot segments: the browser resolves them, even percent-encoded, so the request would reach another route
+const isDotSegment = (value) => value === "." || value === "..";
+
 export const fillPath = (path, values) =>
 	path.replace(PATH_PARAM, (_match, name) => {
 		const value = values?.[name];
 		if (value === undefined || value === null || value === "") {
 			throw new Error(`missing-path:${name}`);
+		}
+		if (isDotSegment(String(value))) {
+			throw new Error(`dot-path:${name}`);
 		}
 		return encodeURIComponent(value);
 	});
@@ -39,7 +45,7 @@ const exampleUrl = (origin, operation, values) => {
 	const known = pathValues(operation, values);
 	const path = operation.path.replace(PATH_PARAM, (match, name) => {
 		const value = known[name];
-		return value === undefined || value === "" ? match : encodeURIComponent(value);
+		return value === undefined || value === "" || isDotSegment(String(value)) ? match : encodeURIComponent(value);
 	});
 	const query = (operation.params ?? [])
 		.filter((param) => param.in === "query" && param.required && param.example !== undefined)
@@ -146,18 +152,24 @@ export const highlightJson = (text) => {
 };
 
 const SHELL_TOKEN = /(?<=^[ \t]*)#[^\n]*|"(?:[^"\\\n]|\\.)*"|'[^'\n]*'/gmu;
+const JS_TOKEN = /\/\/[^\n]*|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`/gu;
 
-export const highlightShell = (text) => {
+// Comments and strings only: what a reader needs to tell the parts of a short example apart
+const highlightCode = (text, pattern, commentMark) => {
 	const tokens = [];
 	let at = 0;
-	for (const match of text.matchAll(SHELL_TOKEN)) {
+	for (const match of text.matchAll(pattern)) {
 		pushPlain(tokens, text.slice(at, match.index));
 		at = match.index + match[0].length;
-		tokens.push({ kind: match[0].startsWith("#") ? "comment" : "string", text: match[0] });
+		tokens.push({ kind: match[0].startsWith(commentMark) ? "comment" : "string", text: match[0] });
 	}
 	pushPlain(tokens, text.slice(at));
 	return tokens;
 };
+
+export const highlightShell = (text) => highlightCode(text, SHELL_TOKEN, "#");
+
+export const highlightJs = (text) => highlightCode(text, JS_TOKEN, "//");
 
 const cut = (text) => (text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}\n...` : text);
 

@@ -3,7 +3,9 @@ import { useState } from "react";
 import { Button } from "src/components/ui/button";
 import { cn } from "src/lib/utils";
 import { intl } from "src/locale";
-import { highlightJson, highlightShell } from "src/modules/ApiRequest";
+import { highlightJs, highlightJson, highlightShell } from "src/modules/ApiRequest";
+
+const HIGHLIGHT = { json: highlightJson, js: highlightJs, shell: highlightShell };
 
 const KIND_CLASS = {
 	key: "text-code-key",
@@ -18,12 +20,12 @@ const KIND_CLASS = {
  *
  * @param {Object} props
  * @param {string} props.text
- * @param {"json"|"shell"} props.language
+ * @param {"json"|"js"|"shell"} props.language
  * @param {string} [props.className]
  */
 export function CodeBlock({ text, language, className }) {
 	const [copied, setCopied] = useState(false);
-	const tokens = language === "json" ? highlightJson(text) : highlightShell(text);
+	const tokens = (HIGHLIGHT[language] ?? highlightShell)(text);
 
 	const copy = async () => {
 		try {
@@ -55,12 +57,15 @@ export function CodeBlock({ text, language, className }) {
 				variant="ghost"
 				size="icon-sm"
 				className="absolute top-2 right-2 text-code-fg hover:bg-white/10 hover:text-code-fg"
-				aria-label={intl.formatMessage({ id: "api-reference.copy" })}
+				aria-label={intl.formatMessage({ id: copied ? "api-reference.copied" : "api-reference.copy" })}
 				title={intl.formatMessage({ id: copied ? "api-reference.copied" : "api-reference.copy" })}
 				onClick={copy}
 			>
 				{copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
 			</Button>
+			<span className="sr-only" aria-live="polite" data-copy-status="">
+				{copied ? intl.formatMessage({ id: "api-reference.copied" }) : ""}
+			</span>
 		</div>
 	);
 }

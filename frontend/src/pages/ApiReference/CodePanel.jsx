@@ -44,7 +44,10 @@ export function CodePanel({ operation }) {
 					</div>
 					{LANGUAGES.map((name) => (
 						<TabsContent key={name} value={name} data-code-tab={name}>
-							<CodeBlock text={BUILDERS[name]({ origin, operation })} language="shell" />
+							<CodeBlock
+								text={BUILDERS[name]({ origin, operation })}
+								language={name === "node" ? "js" : "shell"}
+							/>
 						</TabsContent>
 					))}
 				</Tabs>

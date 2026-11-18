@@ -101,6 +101,7 @@
 	"api-reference.try-as-token": "このインスタンスでトークンとして実行します",
 	"api-reference.try-body": "ボディ（JSON）",
 	"api-reference.try-confirm": "このインスタンスのデータが変更されます。",
+	"api-reference.try-dot-path": "{name} に . や .. は使えません",
 	"api-reference.try-forbidden": "拒否されました。トークンにこのルートに必要な権限がない可能性があります。",
 	"api-reference.try-forbidden-delete": "拒否されました。トークンに権限がない可能性があり、DELETE や置き換え復元にはトークンの削除許可が必要です。",
 	"api-reference.try-invalid-json": "ボディが有効な JSON ではありません",

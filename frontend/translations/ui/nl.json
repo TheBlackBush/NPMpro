@@ -101,6 +101,7 @@
 	"api-reference.try-as-token": "Draait op deze instantie als het token",
 	"api-reference.try-body": "Body (JSON)",
 	"api-reference.try-confirm": "Dit wijzigt gegevens op deze instantie.",
+	"api-reference.try-dot-path": "{name} mag niet . of .. zijn",
 	"api-reference.try-forbidden": "Geweigerd. Het token mist mogelijk de rechten die deze route nodig heeft.",
 	"api-reference.try-forbidden-delete": "Geweigerd. Het token mist mogelijk de rechten, en DELETE of een vervangende herstelactie vereist Verwijderen toestaan op het token.",
 	"api-reference.try-invalid-json": "De body is geen geldige JSON",

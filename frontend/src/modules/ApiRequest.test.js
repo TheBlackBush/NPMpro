@@ -7,12 +7,14 @@ import {
 	buildTryRequest,
 	fillPath,
 	formatAnswer,
+	highlightJs,
 	highlightJson,
 	highlightShell,
 	TOKEN_VAR,
 } from "./ApiRequest.js";
 
 const RE_MISSING = /missing-path:hostID/u;
+const RE_DOT = /dot-path:hostID/u;
 const RE_MULTIPART = /-F "file=@file" \\\n {2}-F "note=x"$/u;
 const RE_INVALID = /invalid-json/u;
 const RE_BINARY = /-H "Content-Type: application\/octet-stream" \\\n {2}--data-binary @file$/u;
@@ -25,6 +27,18 @@ it("fillPath encodes the values and refuses a missing one", () => {
 	assert.equal(fillPath("/nginx/proxy-hosts/{hostID}", { hostID: "1/2" }), "/nginx/proxy-hosts/1%2F2");
 	assert.throws(() => fillPath("/nginx/proxy-hosts/{hostID}", { hostID: "" }), RE_MISSING);
 	assert.throws(() => fillPath("/nginx/proxy-hosts/{hostID}", {}), RE_MISSING);
+});
+
+it("fillPath refuses a dot segment, which the browser would resolve to another route", () => {
+	assert.throws(() => fillPath("/users/{hostID}/auth", { hostID: ".." }), RE_DOT);
+	assert.throws(() => fillPath("/users/{hostID}/auth", { hostID: "." }), RE_DOT);
+	assert.equal(fillPath("/users/{hostID}/auth", { hostID: "..." }), "/users/.../auth");
+	assert.equal(fillPath("/users/{hostID}/auth", { hostID: "a.." }), "/users/a../auth");
+});
+
+it("the code examples keep {name} for a dot segment", () => {
+	const operation = op({ path: "/users/{hostID}/auth", params: [HOST_ID] });
+	assert.ok(buildCurl({ origin: ORIGIN, operation, values: { hostID: ".." } }).includes("/api/users/{hostID}/auth"));
 });
 
 it("buildCurl writes a GET with the token variable", () => {
@@ -141,6 +155,23 @@ it("highlightShell marks comments and quoted strings and keeps the text", () => 
 			["comment", "# note"],
 			["string", '"A: b"'],
 			["string", `'{"x":1}'`],
+		],
+	);
+});
+
+it("highlightJs marks // comments and the three kinds of strings, not a // inside a string", () => {
+	const template = ["`Bearer $", "{t}`"].join("");
+	const text = `// note\nawait fetch("https://a.example/x", { h: ${template}, m: 'x' }); // end`;
+	const tokens = highlightJs(text);
+	assert.equal(tokens.map((t) => t.text).join(""), text);
+	assert.deepEqual(
+		tokens.filter((t) => t.kind !== "plain").map((t) => [t.kind, t.text]),
+		[
+			["comment", "// note"],
+			["string", '"https://a.example/x"'],
+			["string", template],
+			["string", "'x'"],
+			["comment", "// end"],
 		],
 	);
 });

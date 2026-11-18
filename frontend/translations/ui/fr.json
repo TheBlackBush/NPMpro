@@ -101,6 +101,7 @@
 	"api-reference.try-as-token": "S'exécute sur cette instance en tant que le jeton",
 	"api-reference.try-body": "Corps (JSON)",
 	"api-reference.try-confirm": "Cela modifie des données sur cette instance.",
+	"api-reference.try-dot-path": "{name} ne peut pas valoir . ou ..",
 	"api-reference.try-forbidden": "Refusé. Le jeton n'a peut-être pas la permission dont cette route a besoin.",
 	"api-reference.try-forbidden-delete": "Refusé. Le jeton peut manquer de droits, et DELETE ou une restauration par remplacement exige Autoriser la suppression sur le jeton.",
 	"api-reference.try-invalid-json": "Le corps n'est pas du JSON valide",

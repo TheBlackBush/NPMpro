@@ -164,6 +164,10 @@ it("authOf tells public, session-only and token routes apart", () => {
 	assert.equal(authOf({ security: [] }), "public");
 	assert.equal(authOf({ security: [{ cookieAuth: [] }] }), "session");
 	assert.equal(authOf({ security: [{ cookieAuth: [] }, { bearerAuth: [] }] }), "token");
+	// sign out has no security (it answers without a session) but acts on a session only
+	assert.equal(authOf({}, "a signed-in session (API tokens are refused)"), "session");
+	assert.equal(authOf({}, "nothing (public)"), "public");
+	assert.equal(authOf({ security: [{ cookieAuth: [] }, { bearerAuth: [] }] }, "a signed-in session"), "token");
 });
 
 it("buildReference groups the routes in the tag order and drops empty groups", () => {
@@ -224,6 +228,18 @@ it("legacyAnchor turns an old Swagger link into the new anchor", () => {
 	assert.equal(legacyAnchor("#/proxy-hosts/nope", ref), null);
 	assert.equal(legacyAnchor("#proxy-hosts/get-nginx-proxy-hosts", ref), null);
 	assert.equal(legacyAnchor("", ref), null);
+});
+
+it("legacyAnchor turns an old Swagger link to a whole group into the group's anchor", () => {
+	const ref = buildReference(SCHEMA);
+	assert.equal(legacyAnchor("#/proxy-hosts", ref), "proxy-hosts");
+	assert.equal(legacyAnchor("#/proxy-hosts/", ref), "proxy-hosts");
+	assert.equal(legacyAnchor("#/Proxy%20Hosts", ref), "proxy-hosts");
+	assert.equal(legacyAnchor("#/Proxy Hosts", ref), "proxy-hosts");
+	// a group without routes is not on the page
+	assert.equal(legacyAnchor("#/empty", ref), null);
+	assert.equal(legacyAnchor("#/nope", ref), null);
+	assert.equal(legacyAnchor("#/", ref), null);
 });
 
 it("buildReference copes with a bare schema and sparse operations", () => {

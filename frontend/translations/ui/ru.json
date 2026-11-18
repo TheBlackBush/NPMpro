@@ -101,6 +101,7 @@
 	"api-reference.try-as-token": "Выполняется на этом экземпляре от имени токена",
 	"api-reference.try-body": "Тело (JSON)",
 	"api-reference.try-confirm": "Это изменит данные на этом экземпляре.",
+	"api-reference.try-dot-path": "{name} не может быть . или ..",
 	"api-reference.try-forbidden": "Отказано. У токена может не хватать разрешения, нужного для этого маршрута.",
 	"api-reference.try-forbidden-delete": "Отказано. У токена может не хватать прав, а DELETE или восстановление с заменой требует разрешения на удаление у токена.",
 	"api-reference.try-invalid-json": "Тело не является корректным JSON",

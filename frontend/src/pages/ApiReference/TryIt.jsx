@@ -10,6 +10,7 @@ import { CodeBlock } from "./CodeBlock";
 import { TryAuthContext } from "./TryAuthContext";
 
 const MISSING = "missing-path:";
+const DOT = "dot-path:";
 
 const initialValues = (operation, where) =>
 	Object.fromEntries(
@@ -184,6 +185,12 @@ export function TryIt({ operation }) {
 				setError({
 					field: `p-${name}`,
 					message: intl.formatMessage({ id: "api-reference.try-missing" }, { name }),
+				});
+			} else if (text.startsWith(DOT)) {
+				const name = text.slice(DOT.length);
+				setError({
+					field: `p-${name}`,
+					message: intl.formatMessage({ id: "api-reference.try-dot-path" }, { name }),
 				});
 			} else {
 				setError({ field: "body", message: intl.formatMessage({ id: "api-reference.try-invalid-json" }) });

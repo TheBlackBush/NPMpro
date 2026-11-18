@@ -101,6 +101,7 @@
 	"api-reference.try-as-token": "Executa nesta instância como o token",
 	"api-reference.try-body": "Corpo (JSON)",
 	"api-reference.try-confirm": "Isto altera dados nesta instância.",
+	"api-reference.try-dot-path": "{name} não pode ser . nem ..",
 	"api-reference.try-forbidden": "Recusado. O token pode não ter a permissão de que esta rota precisa.",
 	"api-reference.try-forbidden-delete": "Recusado. O token pode não ter a permissão, e DELETE ou uma restauração com substituição exige Permitir exclusão no token.",
 	"api-reference.try-invalid-json": "O corpo não é um JSON válido",
