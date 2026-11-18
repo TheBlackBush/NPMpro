@@ -22,7 +22,7 @@
 				"minimum": 1
 			},
 			"required": true,
-			"example": 1
+			"example": 8
 		}
 	],
 	"responses": {

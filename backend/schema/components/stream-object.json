@@ -88,13 +88,14 @@
 			"type": "boolean",
 			"default": false,
 			"example": false,
-			"description": "Whether nginx connects to the upstream over TLS."
+			"description": "Whether nginx connects to the upstream over TLS. A stream with UDP forwarding enabled is saved with this off."
 		},
 		"enabled": {
 			"$ref": "../common.json#/properties/enabled"
 		},
 		"certificate_id": {
-			"$ref": "../common.json#/properties/certificate_id"
+			"$ref": "../common.json#/properties/certificate_id",
+			"description": "The certificate id for TLS on the incoming port, 0 for none, or `new` in a request to request one. A stream with UDP forwarding enabled is saved with 0."
 		},
 		"npmpro_advanced_config": {
 			"description": "Raw nginx config. Only administrators can set or change it; other users can only keep the stored value.",
