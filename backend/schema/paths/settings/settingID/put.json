@@ -63,7 +63,7 @@
 								},
 								"html": {
 									"type": "string",
-									"description": "The page the html value serves, at most 1 MiB of HTML"
+									"description": "The page the html value serves. The whole JSON body of this route may have up to 100 kB, so a larger page is refused with 413: send it with `PUT /settings/landing-pages` (Settings, Landing pages) instead"
 								},
 								"status": {
 									"type": "integer",
@@ -109,5 +109,5 @@
 			}
 		}
 	},
-	"description": "Changes the default site, the only row this accepts: the others answer 400 because they have their own endpoints. The new config is written and tested with nginx -t, the HTML page is written in html mode, nginx is reloaded and the row is saved. A config nginx refuses puts the previous config and page back, answers 400 and saves nothing. The html value needs meta.html and the redirect value needs meta.redirect. The change is recorded in the audit log.\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Changes the default site, the only row this accepts: the others answer 400 because they have their own endpoints. The new config is written and tested with nginx -t, the HTML page is written in html mode, nginx is reloaded and the row is saved. A config nginx refuses puts the previous config and page back, answers 400 and saves nothing. The html value needs meta.html and the redirect value needs meta.redirect. The change is recorded in the audit log.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

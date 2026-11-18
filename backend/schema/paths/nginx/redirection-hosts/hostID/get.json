@@ -68,5 +68,5 @@
 			}
 		}
 	},
-	"description": "Returns one redirection host. The answer carries no owner or certificate object; use the list with `expand` for those.\nNeeds: Redirection Hosts view"
+	"description": "Returns one redirection host. The answer carries no owner or certificate object; use the list with `expand` for those.\n\nNeeds: Redirection Hosts view"
 }

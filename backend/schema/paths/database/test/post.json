@@ -1,7 +1,7 @@
 {
 	"operationId": "testDatabaseTarget",
 	"summary": "Test a database move target",
-	"description": "Connects to the target with a 10 second timeout and checks the version (MySQL 8.0, MariaDB 10.6 or PostgreSQL 13 or newer), that the database has no tables, that the user can create and drop a table, and that it is not the database in use. It changes nothing on the target. 409 while a move runs or when the connection comes from the DB_* environment variables. Errors carry a database.error.<code> message id: invalid-target, connect, timeout, version, not-empty, permission, same-database, env-locked, move-running.\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Connects to the target with a 10 second timeout and checks the version (MySQL 8.0, MariaDB 10.6 or PostgreSQL 13 or newer), that the database has no tables, that the user can create and drop a table, and that it is not the database in use. It changes nothing on the target. 409 while a move runs or when the connection comes from the DB_* environment variables. Errors carry a database.error.<code> message id: invalid-target, connect, timeout, version, not-empty, permission, same-database, env-locked, move-running.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Database"
 	],

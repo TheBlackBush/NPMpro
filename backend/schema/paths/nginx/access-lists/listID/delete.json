@@ -79,5 +79,5 @@
 			}
 		}
 	},
-	"description": "Deletes an access list for good with its users and rules, and removes it from every proxy host and location that used it: a host left with no list becomes public, a location left with none falls back to the host's. Those hosts are rewritten and nginx is reloaded. The answer is the list as it was, without password hashes.\nNeeds: Access Lists manage and the token's Allow delete switch"
+	"description": "Deletes an access list for good with its users and rules, and removes it from every proxy host and location that used it: a host left with no list becomes public, a location left with none falls back to the host's. Those hosts are rewritten and nginx is reloaded. The answer is the list as it was, without password hashes.\n\nNeeds: Access Lists manage and the token's Allow delete switch"
 }

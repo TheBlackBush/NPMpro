@@ -65,5 +65,5 @@
 			}
 		}
 	},
-	"description": "Deletes a DNS credential for good. A credential that certificates still use is refused with a 400; link those to another credential first. The answer is the credential as it was, without its values.\nNeeds: Certificates manage and the token's Allow delete switch"
+	"description": "Deletes a DNS credential for good. A credential that certificates still use is refused with a 400; link those to another credential first. The answer is the credential as it was, without its values.\n\nNeeds: Certificates manage and the token's Allow delete switch"
 }

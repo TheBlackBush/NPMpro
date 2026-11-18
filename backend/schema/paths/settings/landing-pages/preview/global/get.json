@@ -45,5 +45,5 @@
 			"description": "The place shows no page of its own, or the id does not exist"
 		}
 	},
-	"description": "Returns a global page as it is saved now, as HTML with sample values: the custom page when one is chosen, else the built-in one. default_site is the page the default site shows. The answer is 404 when the default site is a redirect or 444.\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Returns a global page as it is saved now, as HTML with sample values: the custom page when one is chosen, else the built-in one. default_site is the page the default site shows. The answer is 404 when the default site is a redirect or 444.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

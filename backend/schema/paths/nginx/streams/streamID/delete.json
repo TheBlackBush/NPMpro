@@ -66,5 +66,5 @@
 			}
 		}
 	},
-	"description": "Deletes a stream for good, removes its nginx config and reloads nginx. The answer is the stream as it was.\nNeeds: Streams manage and the token's Allow delete switch"
+	"description": "Deletes a stream for good, removes its nginx config and reloads nginx. The answer is the stream as it was.\n\nNeeds: Streams manage and the token's Allow delete switch"
 }

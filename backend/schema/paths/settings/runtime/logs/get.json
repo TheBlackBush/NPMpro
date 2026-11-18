@@ -95,5 +95,5 @@
 			}
 		}
 	},
-	"description": "Returns the log file settings (log files, format, TLS handshake log, rotations) and the GoAccess report settings. write_log_files is locked on while GoAccess or CrowdSec is on. restart_pending lists the GoAccess settings saved but not yet running.\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Returns the log file settings (log files, format, TLS handshake log, rotations) and the GoAccess report settings. write_log_files is locked on while GoAccess or CrowdSec is on. restart_pending lists the GoAccess settings saved but not yet running.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

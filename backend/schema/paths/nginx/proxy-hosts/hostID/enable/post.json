@@ -118,5 +118,5 @@
 			}
 		}
 	},
-	"description": "Turns a disabled proxy host on: writes its nginx config again and reloads nginx. It is refused with a 400 when the proxy host is already enabled or a domain name is now used by another enabled host.\nNeeds: Proxy Hosts manage"
+	"description": "Turns a disabled proxy host on: writes its nginx config again and reloads nginx. It is refused with a 400 when the proxy host is already enabled or a domain name is now used by another enabled host.\n\nNeeds: Proxy Hosts manage"
 }

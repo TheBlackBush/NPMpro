@@ -65,5 +65,5 @@
 			}
 		}
 	},
-	"description": "Returns one 404 host. The answer carries no owner or certificate object; use the list with `expand` for those.\nNeeds: 404 Hosts view"
+	"description": "Returns one 404 host. The answer carries no owner or certificate object; use the list with `expand` for those.\n\nNeeds: 404 Hosts view"
 }

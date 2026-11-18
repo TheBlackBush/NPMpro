@@ -58,5 +58,5 @@
 			}
 		}
 	},
-	"description": "Renews a Let's Encrypt certificate now and reloads nginx; NPMpro also renews them on its own before they expire. It waits for the ACME server, which can take minutes. A custom or mTLS certificate answers 400.\nNeeds: Certificates manage"
+	"description": "Renews a Let's Encrypt certificate now and reloads nginx; NPMpro also renews them on its own before they expire. It waits for the ACME server, which can take minutes. A custom or mTLS certificate answers 400.\n\nNeeds: Certificates manage"
 }

@@ -45,5 +45,5 @@
 			"description": "The place shows no page of its own, or the id does not exist"
 		}
 	},
-	"description": "Returns the built-in page of that kind as HTML with sample values, whatever is chosen.\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Returns the built-in page of that kind as HTML with sample values, whatever is chosen.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

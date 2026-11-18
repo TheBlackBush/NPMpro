@@ -1,7 +1,7 @@
 {
 	"operationId": "runBackupSchedule",
 	"summary": "Run a backup schedule now",
-	"description": "Makes the backup at once and stores the result on the schedule; the next planned run stays as it is. A failed run does not fail the request: it is stored as last_status failed with its last_error. busy (409) while another backup or restore runs.\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Makes the backup at once and stores the result on the schedule; the next planned run stays as it is. A failed run does not fail the request: it is stored as last_status failed with its last_error. busy (409) while another backup or restore runs.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Backups"
 	],

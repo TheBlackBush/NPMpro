@@ -1,7 +1,7 @@
 {
 	"operationId": "exportBackupItems",
 	"summary": "Export items of a page",
-	"description": "Writes a partial backup file with the chosen items and the linked items you pick as a pending download (GET /backups/pending/{id}), once; nothing is stored. Without secrets the file is not encrypted. With secrets (manage on every included kind, and a passphrase of at least 12 characters) private keys, access list passwords and DNS credential values are included, encrypted; ACME account keys only go into an administrator's export. The file can only be merged, on a list page import. Errors carry a backup.error.<code> message id: invalid-types (also when no item is chosen), weak-passphrase, busy.\nNeeds: view on the section of the chosen kind (Proxy Hosts, Redirection Hosts, 404 Hosts, Streams, Access Lists or Certificates; DNS credentials use Certificates); secrets also need manage on every included kind",
+	"description": "Writes a partial backup file with the chosen items and the linked items you pick as a pending download (GET /backups/pending/{id}), once; nothing is stored. Without secrets the file is not encrypted. With secrets (manage on every included kind, and a passphrase of at least 12 characters) private keys, access list passwords and DNS credential values are included, encrypted; ACME account keys only go into an administrator's export. The file can only be merged, on a list page import. Errors carry a backup.error.<code> message id: invalid-types (also when no item is chosen), weak-passphrase, busy.\n\nNeeds: view on the section of the chosen kind (Proxy Hosts, Redirection Hosts, 404 Hosts, Streams, Access Lists or Certificates; DNS credentials use Certificates); secrets also need manage on every included kind",
 	"tags": [
 		"Backups"
 	],

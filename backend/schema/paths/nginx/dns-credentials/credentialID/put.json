@@ -122,5 +122,5 @@
 			}
 		}
 	},
-	"description": "Changes a DNS credential: send only what changes. Secrets left out or empty keep their stored value, and a changed endpoint address needs its secrets sent again. The provider can change only while no certificate uses the credential, and then the new values are required. The files of the certificates that use it are rewritten for their next renewal.\nNeeds: Certificates manage"
+	"description": "Changes a DNS credential: send only what changes. Secrets left out or empty keep their stored value, and a changed endpoint address needs its secrets sent again. The provider can change only while no certificate uses the credential, and then the new values are required. The files of the certificates that use it are rewritten for their next renewal.\n\nNeeds: Certificates manage"
 }

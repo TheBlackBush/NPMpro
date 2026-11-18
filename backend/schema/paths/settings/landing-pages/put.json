@@ -1,7 +1,7 @@
 {
 	"operationId": "updateLandingPages",
 	"summary": "Update the landing pages",
-	"description": "Saves the default site, any of the seven global pages and the visit time; send only what changes. A custom page needs its HTML: custom with an empty html keeps the saved page, another choice keeps the saved HTML for later. The page files are written, nginx is tested and reloaded, and a failure puts everything back and answers 400.\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Saves the default site, any of the seven global pages and the visit time; send only what changes. A custom page needs its HTML: custom with an empty html keeps the saved page, another choice keeps the saved HTML for later. The page files are written, nginx is tested and reloaded, and a failure puts everything back and answers 400.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Settings"
 	],

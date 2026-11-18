@@ -1,7 +1,7 @@
 {
 	"operationId": "createBackupSchedule",
 	"summary": "Create a backup schedule",
-	"description": "Adds a schedule that writes a backup of the chosen parts into the backups folder and keeps the newest files of it. Its runs are logged under the creating administrator. Times use the container time zone (GET /backups/types, time_zone). passphrase protection needs a passphrase of at least 12 characters, stored encrypted so the schedule can use it. Errors carry a backup.schedule.error.<code> message id: name, name-taken, frequency, every-hours, time, weekday, month-day, types, protection, keep, passphrase, passphrase-required.\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Adds a schedule that writes a backup of the chosen parts into the backups folder and keeps the newest files of it. Its runs are logged under the creating administrator. Times use the container time zone (GET /backups/types, time_zone). passphrase protection needs a passphrase of at least 12 characters, stored encrypted so the schedule can use it. Errors carry a backup.schedule.error.<code> message id: name, name-taken, frequency, every-hours, time, weekday, month-day, types, protection, keep, passphrase, passphrase-required.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Backups"
 	],

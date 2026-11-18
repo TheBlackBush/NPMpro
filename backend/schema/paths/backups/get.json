@@ -1,7 +1,7 @@
 {
 	"operationId": "listBackups",
 	"summary": "List the stored backups",
-	"description": "The files in the backups folder with what each holds, newest first, automatic backups included. A file whose header cannot be read is listed with null summary and encrypted.\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "The files in the backups folder with what each holds, newest first, automatic backups included. A file whose header cannot be read is listed with null summary and encrypted.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Backups"
 	],

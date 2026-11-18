@@ -1,7 +1,7 @@
 {
 	"operationId": "deleteBackupSchedule",
 	"summary": "Delete a backup schedule",
-	"description": "Deletes the schedule. Its stored files stay as plain stored backups, unless files is true, which removes them too and fails with busy (409) while a backup or restore runs.\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Deletes the schedule. Its stored files stay as plain stored backups, unless files is true, which removes them too and fails with busy (409) while a backup or restore runs.\n\nNeeds: an administrator (a token needs its Administrator switch) and the token's Allow delete switch",
 	"tags": [
 		"Backups"
 	],

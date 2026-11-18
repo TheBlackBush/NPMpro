@@ -86,5 +86,5 @@
 			}
 		}
 	},
-	"description": "Turns a disabled stream on: writes its nginx config again and reloads nginx. It is refused with a 400 when the stream is already enabled or its incoming port is now used by another enabled stream.\nNeeds: Streams manage"
+	"description": "Turns a disabled stream on: writes its nginx config again and reloads nginx. It is refused with a 400 when the stream is already enabled or its incoming port is now used by another enabled stream.\n\nNeeds: Streams manage"
 }

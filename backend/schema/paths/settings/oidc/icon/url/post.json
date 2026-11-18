@@ -1,7 +1,7 @@
 {
 	"operationId": "downloadOidcIcon",
 	"summary": "Download the OIDC button icon from a URL",
-	"description": "NPMpro downloads the image and saves it as the button icon. Only http and https addresses work, with at most 3 redirects, 10 seconds and 256 KB. The same type checks as an upload apply, and a refused image answers 400.\nNeeds: a signed-in session (API tokens are refused). Administrators only",
+	"description": "NPMpro downloads the image and saves it as the button icon. Only http and https addresses work, with at most 3 redirects, 10 seconds and 256 KB. The same type checks as an upload apply, and a refused image answers 400.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
 		"Settings"
 	],

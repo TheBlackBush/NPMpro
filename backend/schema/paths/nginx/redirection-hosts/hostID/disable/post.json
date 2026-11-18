@@ -88,5 +88,5 @@
 			}
 		}
 	},
-	"description": "Turns a redirection host off: removes its nginx config and reloads nginx, keeping the redirection host stored. It is refused with a 400 when the redirection host is already disabled.\nNeeds: Redirection Hosts manage"
+	"description": "Turns a redirection host off: removes its nginx config and reloads nginx, keeping the redirection host stored. It is refused with a 400 when the redirection host is already disabled.\n\nNeeds: Redirection Hosts manage"
 }

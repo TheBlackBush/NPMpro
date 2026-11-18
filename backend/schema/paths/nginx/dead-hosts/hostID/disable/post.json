@@ -85,5 +85,5 @@
 			}
 		}
 	},
-	"description": "Turns a 404 host off: removes its nginx config and reloads nginx, keeping the 404 host stored. It is refused with a 400 when the 404 host is already disabled.\nNeeds: 404 Hosts manage"
+	"description": "Turns a 404 host off: removes its nginx config and reloads nginx, keeping the 404 host stored. It is refused with a 400 when the 404 host is already disabled.\n\nNeeds: 404 Hosts manage"
 }

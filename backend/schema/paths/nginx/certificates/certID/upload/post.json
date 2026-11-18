@@ -61,5 +61,5 @@
 			}
 		}
 	},
-	"description": "Stores the files of a custom certificate (certificate and private key) or of an mTLS client CA (certificate only), after the same checks as the validate operation, then reloads nginx. The expiry date and the domain names are read from the certificate. Send multipart form data. A Let's Encrypt certificate answers 400.\nNeeds: Certificates manage"
+	"description": "Stores the files of a custom certificate (certificate and private key) or of an mTLS client CA (certificate only), after the same checks as the validate operation, then reloads nginx. The expiry date and the domain names are read from the certificate. Send multipart form data. A Let's Encrypt certificate answers 400.\n\nNeeds: Certificates manage"
 }

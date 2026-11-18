@@ -36,5 +36,5 @@
 			"description": "The place shows no page of its own, or the id does not exist"
 		}
 	},
-	"description": "Returns the page an access list shows to a refused visitor, as HTML with sample values. The answer is 404 when the list does not exist or shows no page of its own.\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Returns the page an access list shows to a refused visitor, as HTML with sample values. The answer is 404 when the list does not exist or shows no page of its own.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

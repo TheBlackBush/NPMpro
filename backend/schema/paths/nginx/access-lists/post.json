@@ -126,5 +126,5 @@
 			}
 		}
 	},
-	"description": "Creates an access list: basic auth users, address rules or both. Every user needs a password (at most 72 bytes), usernames must be unique, an `all` rule can only be the last rule, and the list needs at least one user or one rule that is not `all`, otherwise the answer is 400. The password is stored only as a hash. The list protects nothing until a proxy host uses it.\nNeeds: Access Lists manage"
+	"description": "Creates an access list: basic auth users, address rules or both. Every user needs a password (at most 72 bytes), usernames must be unique, an `all` rule can only be the last rule, and the list needs at least one user or one rule that is not `all`, otherwise the answer is 400. The password is stored only as a hash. The list protects nothing until a proxy host uses it.\n\nNeeds: Access Lists manage"
 }

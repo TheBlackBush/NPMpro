@@ -92,5 +92,5 @@
 			}
 		}
 	},
-	"description": "Returns one access list. Without `expand` the answer has no users or rules. The answers never carry password hashes.\nNeeds: Access Lists view"
+	"description": "Returns one access list. Without `expand` the answer has no users or rules. The answers never carry password hashes.\n\nNeeds: Access Lists view"
 }

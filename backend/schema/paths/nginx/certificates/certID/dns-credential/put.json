@@ -85,5 +85,5 @@
 			}
 		}
 	},
-	"description": "Links another saved DNS credential to a Let's Encrypt certificate that uses the DNS challenge. It is used from the next renewal on, and it must belong to the same DNS provider as the certificate. Any other certificate answers 400.\nNeeds: Certificates manage"
+	"description": "Links another saved DNS credential to a Let's Encrypt certificate that uses the DNS challenge. It is used from the next renewal on, and it must belong to the same DNS provider as the certificate. Any other certificate answers 400.\n\nNeeds: Certificates manage"
 }

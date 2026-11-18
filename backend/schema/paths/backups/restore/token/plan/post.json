@@ -1,7 +1,7 @@
 {
 	"operationId": "planBackupMerge",
 	"summary": "Plan a merge restore (dry run)",
-	"description": "Shows what a merge of the chosen parts or items of the session would do with every item, and changes nothing. A Settings session (from inspect) is planned by an administrator, a page import session (from import open) by its importer. Send the plan's hash as plan_hash to POST /backups/restore/{token} to apply exactly this plan. An API token cannot plan the Users, settings_oidc or settings_runtime parts. Errors carry a backup.error.<code> message id: invalid-types, token-expired (410), invalid-item.\nNeeds: an administrator for a Settings session (a token needs its Administrator switch); manage on the section of the kind for a page import session",
+	"description": "Shows what a merge of the chosen parts or items of the session would do with every item, and changes nothing. A Settings session (from inspect) is planned by an administrator, a page import session (from import open) by its importer. Send the plan's hash as plan_hash to POST /backups/restore/{token} to apply exactly this plan. An API token cannot plan the Users, settings_oidc or settings_runtime parts. Errors carry a backup.error.<code> message id: invalid-types, token-expired (410), invalid-item.\n\nNeeds: an administrator for a Settings session (a token needs its Administrator switch); manage on the section of the kind for a page import session",
 	"tags": [
 		"Backups"
 	],

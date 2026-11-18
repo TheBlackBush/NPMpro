@@ -1,7 +1,7 @@
 {
 	"operationId": "updateCrowdsecSettings",
 	"summary": "Update and apply the CrowdSec bouncer settings",
-	"description": "Saves the bouncer settings; send only what changes. Fields set by environment variables are ignored. While the bouncer is on, the connection test runs first (up to 5 seconds) and a failure answers 409 with the checks, unless force is true. When AppSec would deny the admin interface and its check fails, the save is refused even with force and the 409 carries force_blocked. Then crowdsec.conf and the nginx includes are written, tested with nginx -t and reloaded; a failure puts everything back and answers 400.\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Saves the bouncer settings; send only what changes. Fields set by environment variables are ignored. While the bouncer is on, the connection test runs first (up to 5 seconds) and a failure answers 409 with the checks, unless force is true. When AppSec would deny the admin interface and its check fails, the save is refused even with force and the 409 carries force_blocked. Then crowdsec.conf and the nginx includes are written, tested with nginx -t and reloaded; a failure puts everything back and answers 400.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Settings"
 	],

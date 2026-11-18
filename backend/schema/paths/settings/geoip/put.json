@@ -1,7 +1,7 @@
 {
 	"operationId": "updateGeoipSettings",
 	"summary": "Update the GeoIP settings",
-	"description": "Saves the MaxMind account ID, license key and editions; send only what changes. Fields set by environment variables are ignored. An empty or omitted license_key keeps the saved one. A change of the account, key or editions starts a database download in the background; the answer does not wait for it, the outcome shows in last_update and last_error.\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Saves the MaxMind account ID, license key and editions; send only what changes. Fields set by environment variables are ignored. An empty or omitted license_key keeps the saved one. A change of the account, key or editions starts a database download in the background; the answer does not wait for it, the outcome shows in last_update and last_error.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Settings"
 	],

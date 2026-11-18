@@ -14,7 +14,7 @@
 	],
 	"requestBody": {
 		"$ref": "../../../../common.json#/properties/certificate_files",
-		"description": "The certificate in PEM form (`certificate`) and, for a custom certificate, its private key (`certificate_key`), as form fields holding files of at most 1 MiB each"
+		"description": "The certificate in PEM form (`certificate`) and, for a custom certificate, its private key (`certificate_key`), as form fields holding files; the whole request may have up to 1 MB"
 	},
 	"responses": {
 		"200": {
@@ -127,5 +127,5 @@
 			}
 		}
 	},
-	"description": "Checks an uploaded certificate and key without storing anything: the key must be readable, the certificate valid and not expired, and the two must match. Send multipart form data. Only the files you send are reported; a failed check answers 400 with the reason.\nNeeds: Certificates manage"
+	"description": "Checks an uploaded certificate and key without storing anything: the key must be readable, the certificate valid and not expired, and the two must match. Send multipart form data. Only the files you send are reported; a failed check answers 400 with the reason.\n\nNeeds: Certificates manage"
 }

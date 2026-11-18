@@ -50,5 +50,5 @@
 			}
 		}
 	},
-	"description": "Lists the DNS providers certificates and DNS credentials can use, ordered by name, with the fields each one takes. `fields` is null for a provider that takes only a raw credentials file, and `deprecated` providers are no longer offered for new certificates.\nNeeds: any signed-in user, no permission"
+	"description": "Lists the DNS providers certificates and DNS credentials can use, ordered by name, with the fields each one takes. `fields` is null for a provider that takes only a raw credentials file, and `deprecated` providers are no longer offered for new certificates.\n\nNeeds: any signed-in user, no permission"
 }

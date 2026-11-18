@@ -102,5 +102,5 @@
 			}
 		}
 	},
-	"description": "Lists the proxy hosts, ordered by domain name. A user limited to their own items sees only theirs. The `query` query parameter searches domain names, descriptions and tags.\nNeeds: Proxy Hosts view"
+	"description": "Lists the proxy hosts, ordered by domain name. A user limited to their own items sees only theirs. The `query` query parameter searches domain names, descriptions and tags.\n\nNeeds: Proxy Hosts view"
 }

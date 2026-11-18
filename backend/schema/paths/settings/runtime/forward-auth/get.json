@@ -50,5 +50,5 @@
 			}
 		}
 	},
-	"description": "Returns the default upstreams of the forward authentication providers (Anubis, Tinyauth, OAuth2 Proxy, VoidAuth, Authelia, Authentik) and the Anubis custom images switch. A value an environment variable sets is shown as locked.\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Returns the default upstreams of the forward authentication providers (Anubis, Tinyauth, OAuth2 Proxy, VoidAuth, Authelia, Authentik) and the Anubis custom images switch. A value an environment variable sets is shown as locked.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

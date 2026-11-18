@@ -61,5 +61,5 @@
 			}
 		}
 	},
-	"description": "Downloads the selected GeoLite2 databases from MaxMind now and waits for the result, which can take a while. A failure answers 200 with ok false and the reason in error; updated can still list editions that were replaced.\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Downloads the selected GeoLite2 databases from MaxMind now and waits for the result, which can take a while. A failure answers 200 with ok false and the reason in error; updated can still list editions that were replaced.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

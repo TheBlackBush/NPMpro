@@ -68,5 +68,5 @@
 			}
 		}
 	},
-	"description": "Lists the 404 hosts, ordered by domain name. A user limited to their own items sees only theirs. The `query` query parameter searches domain names, descriptions and tags.\nNeeds: 404 Hosts view"
+	"description": "Lists the 404 hosts, ordered by domain name. A user limited to their own items sees only theirs. The `query` query parameter searches domain names, descriptions and tags.\n\nNeeds: 404 Hosts view"
 }

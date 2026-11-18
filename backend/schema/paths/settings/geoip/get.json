@@ -41,5 +41,5 @@
 			}
 		}
 	},
-	"description": "Returns the MaxMind GeoLite2 settings and the outcome of the last update. The license key is never returned; license_key_set says whether one exists.\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Returns the MaxMind GeoLite2 settings and the outcome of the last update. The license key is never returned; license_key_set says whether one exists.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

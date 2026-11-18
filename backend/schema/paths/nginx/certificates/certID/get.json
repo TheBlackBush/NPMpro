@@ -58,5 +58,5 @@
 			}
 		}
 	},
-	"description": "Returns one certificate. The answer carries no owner or host objects; use the list with `expand` for those.\nNeeds: Certificates view"
+	"description": "Returns one certificate. The answer carries no owner or host objects; use the list with `expand` for those.\n\nNeeds: Certificates view"
 }

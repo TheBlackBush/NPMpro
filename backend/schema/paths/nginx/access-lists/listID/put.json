@@ -157,5 +157,5 @@
 			}
 		}
 	},
-	"description": "Changes an access list: send only what changes. `items` and `clients` replace the whole set: a user sent without a password keeps their password, a user left out is removed, a new user needs a password. The rules of the create operation apply. Saving rewrites the access file and the configs of the proxy hosts that use the list, and reloads nginx.\nNeeds: Access Lists manage"
+	"description": "Changes an access list: send only what changes. `items` and `clients` replace the whole set: a user sent without a password keeps their password, a user left out is removed, a new user needs a password. The rules of the create operation apply. Saving rewrites the access file and the configs of the proxy hosts that use the list, and reloads nginx.\n\nNeeds: Access Lists manage"
 }

@@ -86,5 +86,5 @@
 			}
 		}
 	},
-	"description": "Turns a stream off: removes its nginx config and reloads nginx, keeping the stream stored. It is refused with a 400 when the stream is already disabled.\nNeeds: Streams manage"
+	"description": "Turns a stream off: removes its nginx config and reloads nginx, keeping the stream stored. It is refused with a 400 when the stream is already disabled.\n\nNeeds: Streams manage"
 }

@@ -187,5 +187,5 @@
 			}
 		}
 	},
-	"description": "Creates a stream, writes its nginx config and reloads nginx. An incoming port already used by another enabled stream for the same protocol, or a port NPMpro itself listens on, is refused with a 400. Set `certificate_id` to `new` to request a Let's Encrypt certificate in the same call: a stream needs the DNS challenge fields (and Certificates manage). A config nginx refuses is still stored: the answer then has `npmpro_nginx_online` false and the nginx message in `npmpro_nginx_err`, and the config stays out of nginx until it is fixed.\nNeeds: Streams manage"
+	"description": "Creates a stream, writes its nginx config and reloads nginx. An incoming port already used by another enabled stream for the same protocol, or a port NPMpro itself listens on, is refused with a 400. Set `certificate_id` to `new` to request a Let's Encrypt certificate in the same call: a stream needs the DNS challenge fields (and Certificates manage). A config nginx refuses is still stored: the answer then has `npmpro_nginx_online` false and the nginx message in `npmpro_nginx_err`, and the config stays out of nginx until it is fixed.\n\nNeeds: Streams manage"
 }

@@ -51,5 +51,5 @@
 			"description": "The place shows no page of its own, or the id does not exist"
 		}
 	},
-	"description": "Returns the page a proxy host shows for that kind, as HTML with sample values: its own, the global one or the built-in one, as the host is set. The answer is 404 when the host shows no page of its own (the upstream's answer or nginx's plain page) or does not exist.\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Returns the page a proxy host shows for that kind, as HTML with sample values: its own, the global one or the built-in one, as the host is set. The answer is 404 when the host shows no page of its own (the upstream's answer or nginx's plain page) or does not exist.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

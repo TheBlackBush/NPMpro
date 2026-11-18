@@ -1,7 +1,7 @@
 {
 	"operationId": "uploadOidcIcon",
 	"summary": "Upload the OIDC button icon",
-	"description": "Saves an image as the icon of the OIDC button on the sign-in page, replacing any earlier icon. PNG, JPEG, WebP or SVG, recognized from the content, at most 256 KB. An SVG with scripts, event handlers or javascript: addresses is refused with 400. Send it as multipart/form-data with the file in the field file.\nNeeds: a signed-in session (API tokens are refused). Administrators only",
+	"description": "Saves an image as the icon of the OIDC button on the sign-in page, replacing any earlier icon. PNG, JPEG, WebP or SVG, recognized from the content, at most 256 KB. An SVG with scripts, event handlers or javascript: addresses is refused with 400. Send it as multipart/form-data with the file in the field file.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
 		"Settings"
 	],

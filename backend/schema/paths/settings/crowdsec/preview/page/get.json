@@ -39,5 +39,5 @@
 			"description": "The page is not ban or captcha"
 		}
 	},
-	"description": "Returns the ban or captcha page the bouncer is set to show, as HTML with sample values.\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Returns the ban or captcha page the bouncer is set to show, as HTML with sample values.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

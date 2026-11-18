@@ -103,5 +103,5 @@
 			}
 		}
 	},
-	"description": "Lists the certificates, ordered by name. A user limited to their own items sees only theirs. The `query` query parameter searches the names.\nNeeds: Certificates view"
+	"description": "Lists the certificates, ordered by name. A user limited to their own items sees only theirs. The `query` query parameter searches the names.\n\nNeeds: Certificates view"
 }

@@ -1,7 +1,7 @@
 {
 	"operationId": "listBackupSchedules",
 	"summary": "List the backup schedules",
-	"description": "Every schedule with its timing, protection, last run and the number of stored files, newest first by id. The passphrase is never returned.\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Every schedule with its timing, protection, last run and the number of stored files, newest first by id. The passphrase is never returned.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Backups"
 	],

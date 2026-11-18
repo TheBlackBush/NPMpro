@@ -1,7 +1,7 @@
 {
 	"operationId": "updateRuntimeLogsSettings",
 	"summary": "Update the log files settings",
-	"description": "Saves the log and GoAccess settings; send only what changes. Fields set by environment variables are ignored. tls_handshake_log can only be turned on while write_log_files is on, otherwise the answer is 400. Log file settings reload nginx; the GoAccess settings are stored and apply after a container restart. The change is applied before it is saved: when applying fails, nothing is saved.\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Saves the log and GoAccess settings; send only what changes. Fields set by environment variables are ignored. tls_handshake_log can only be turned on while write_log_files is on, otherwise the answer is 400. Log file settings reload nginx; the GoAccess settings are stored and apply after a container restart. The change is applied before it is saved: when applying fails, nothing is saved.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Settings"
 	],

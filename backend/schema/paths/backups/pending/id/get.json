@@ -1,7 +1,7 @@
 {
 	"operationId": "downloadPendingBackup",
 	"summary": "Download a pending backup or export",
-	"description": "Sends the file of a backup created without keep, or of a page export, as application/octet-stream. It works once: the file is removed after it is sent, and unfetched ones are removed after 30 minutes. Only the user who made it can fetch it. The name query parameter is the file name offered to the browser; an invalid one falls back to npmpro-backup.npmpro.\nNeeds: the signed-in user or token owner who created the backup or export",
+	"description": "Sends the file of a backup created without keep, or of a page export, as application/octet-stream. It works once: the file is removed after it is sent, and unfetched ones are removed after 30 minutes. Only the user who made it can fetch it. The name query parameter is the file name offered to the browser; an invalid one falls back to npmpro-backup.npmpro.\n\nNeeds: the signed-in user or token owner who created the backup or export",
 	"tags": [
 		"Backups"
 	],

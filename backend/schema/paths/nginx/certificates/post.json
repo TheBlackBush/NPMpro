@@ -246,5 +246,5 @@
 			}
 		}
 	},
-	"description": "Creates a certificate. With `provider` `letsencrypt` NPMpro requests it from the ACME server before it answers, which can take minutes: with the HTTP challenge (the default) the domains must reach this instance on port 80, with `npmpro_dns_challenge` it needs a saved DNS credential of the same provider (wildcards are allowed then). A request that fails leaves no certificate behind and answers 400. With `provider` `other` or `mtls` only the row is created: send the files to its upload operation next.\nNeeds: Certificates manage"
+	"description": "Creates a certificate. With `provider` `letsencrypt` NPMpro requests it from the ACME server before it answers, which can take minutes: with the HTTP challenge (the default) the domains must reach this instance on port 80, with `npmpro_dns_challenge` it needs a saved DNS credential of the same provider (wildcards are allowed then). A request that fails leaves no certificate behind and answers 400. With `provider` `other` or `mtls` only the row is created: send the files to its upload operation next.\n\nNeeds: Certificates manage"
 }

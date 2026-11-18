@@ -58,5 +58,5 @@
 			}
 		}
 	},
-	"description": "Deletes a certificate for good. A certificate a host uses (as its certificate or its client CA) or the default certificate is refused with a 400. A Let's Encrypt certificate is revoked and deleted from the ACME state too (best effort), and the files of any certificate are removed. The answer is the certificate as it was.\nNeeds: Certificates manage and the token's Allow delete switch"
+	"description": "Deletes a certificate for good. A certificate a host uses (as its certificate or its client CA) or the default certificate is refused with a 400. A Let's Encrypt certificate is revoked and deleted from the ACME state too (best effort), and the files of any certificate are removed. The answer is the certificate as it was.\n\nNeeds: Certificates manage and the token's Allow delete switch"
 }

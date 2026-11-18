@@ -73,5 +73,5 @@
 			}
 		}
 	},
-	"description": "Returns the effective bouncer settings: the saved values with the ones set by environment variables on top (listed in locked and locked_by), and the bouncer's status. The API key and the captcha secret are never returned; api_key_set and captcha_secret_set say whether they exist.\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Returns the effective bouncer settings: the saved values with the ones set by environment variables on top (listed in locked and locked_by), and the bouncer's status. The API key and the captcha secret are never returned; api_key_set and captcha_secret_set say whether they exist.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

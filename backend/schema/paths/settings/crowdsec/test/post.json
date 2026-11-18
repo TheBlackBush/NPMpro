@@ -1,7 +1,7 @@
 {
 	"operationId": "testCrowdsecSettings",
 	"summary": "Test the connection to the CrowdSec LAPI and AppSec",
-	"description": "Checks the LAPI, and AppSec when its address is set, with the values in the body (not saved) over the saved ones; an empty secret uses the saved one. Fields set by environment variables always use the environment value. force is ignored. A failed check still answers 200 with ok false.\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Checks the LAPI, and AppSec when its address is set, with the values in the body (not saved) over the saved ones; an empty secret uses the saved one. Fields set by environment variables always use the environment value. force is ignored. A failed check still answers 200 with ok false.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Settings"
 	],

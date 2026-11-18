@@ -77,5 +77,5 @@
 			}
 		}
 	},
-	"description": "Returns one DNS credential. The answer shows which fields are set (and the value of a field that is not secret), never a secret value or a raw credentials file.\nNeeds: Certificates view"
+	"description": "Returns one DNS credential. The answer shows which fields are set (and the value of a field that is not secret), never a secret value or a raw credentials file.\n\nNeeds: Certificates view"
 }

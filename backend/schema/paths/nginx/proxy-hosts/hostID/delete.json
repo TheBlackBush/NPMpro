@@ -98,5 +98,5 @@
 			}
 		}
 	},
-	"description": "Deletes a proxy host for good, removes its nginx config and reloads nginx. The answer is the proxy host as it was.\nNeeds: Proxy Hosts manage and the token's Allow delete switch"
+	"description": "Deletes a proxy host for good, removes its nginx config and reloads nginx. The answer is the proxy host as it was.\n\nNeeds: Proxy Hosts manage and the token's Allow delete switch"
 }

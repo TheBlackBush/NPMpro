@@ -1,7 +1,7 @@
 {
 	"operationId": "checkBackupRestore",
 	"summary": "Preview a replace restore of chosen parts",
-	"description": "Shows what a replace restore of the chosen parts of the session would change: references that would be cleared, users that are skipped and parts whose secrets the file lacks. It changes nothing. Errors carry a backup.error.<code> message id: invalid-types, token-expired (410).\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Shows what a replace restore of the chosen parts of the session would change: references that would be cleared, users that are skipped and parts whose secrets the file lacks. It changes nothing. Errors carry a backup.error.<code> message id: invalid-types, token-expired (410).\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Backups"
 	],

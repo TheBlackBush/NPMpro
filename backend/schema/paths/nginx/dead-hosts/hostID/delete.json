@@ -65,5 +65,5 @@
 			}
 		}
 	},
-	"description": "Deletes a 404 host for good, removes its nginx config and reloads nginx. The answer is the 404 host as it was.\nNeeds: 404 Hosts manage and the token's Allow delete switch"
+	"description": "Deletes a 404 host for good, removes its nginx config and reloads nginx. The answer is the 404 host as it was.\n\nNeeds: 404 Hosts manage and the token's Allow delete switch"
 }

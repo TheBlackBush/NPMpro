@@ -1,7 +1,7 @@
 {
 	"operationId": "updateRuntimeForwardAuthSettings",
 	"summary": "Update the forward authentication settings",
-	"description": "Saves the forward authentication settings; send only what changes. Fields set by environment variables are ignored. An upstream is empty (none) or scheme://host:port or scheme://cu_name without a path, otherwise the answer is 400. The settings decide who can sign in to protected hosts, so a session is required and an API token gets 403. The change reloads nginx and is applied before it is saved: when applying fails, nothing is saved.\nNeeds: a signed-in session (API tokens are refused). Administrators only",
+	"description": "Saves the forward authentication settings; send only what changes. Fields set by environment variables are ignored. An upstream is empty (none) or scheme://host:port or scheme://cu_name without a path, otherwise the answer is 400. The settings decide who can sign in to protected hosts, so a session is required and an API token gets 403. The change reloads nginx and is applied before it is saved: when applying fails, nothing is saved.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
 		"Settings"
 	],

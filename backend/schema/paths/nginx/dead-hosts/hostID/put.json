@@ -231,5 +231,5 @@
 			}
 		}
 	},
-	"description": "Changes a 404 host: send only the fields to change. When the host is enabled it rewrites the nginx config and reloads nginx like a create (a disabled host is only saved, nothing is written or reloaded), and `certificate_id` `new` requests a certificate the same way. A config nginx refuses is still stored: the answer then has `npmpro_nginx_online` false and the nginx message in `npmpro_nginx_err`, and the config stays out of nginx until it is fixed.\nNeeds: 404 Hosts manage"
+	"description": "Changes a 404 host: send only the fields to change. When the host is enabled it rewrites the nginx config and reloads nginx like a create (a disabled host is only saved, nothing is written or reloaded), and `certificate_id` `new` requests a certificate the same way. A config nginx refuses is still stored: the answer then has `npmpro_nginx_online` false and the nginx message in `npmpro_nginx_err`, and the config stays out of nginx until it is fixed.\n\nNeeds: 404 Hosts manage"
 }

@@ -1,7 +1,7 @@
 {
 	"operationId": "getLandingPages",
 	"summary": "Get the landing pages",
-	"description": "Returns the default site, the seven global pages (the built-in one or a custom HTML each) and the visit time. A page that was never customized answers with choice npmpro.\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Returns the default site, the seven global pages (the built-in one or a custom HTML each) and the visit time. A page that was never customized answers with choice npmpro.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Settings"
 	],

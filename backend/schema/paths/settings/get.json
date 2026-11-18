@@ -37,5 +37,5 @@
 			}
 		}
 	},
-	"description": "Lists the stored setting rows, ordered by description. The OIDC and GeoIP rows come without their secrets. CrowdSec, landing pages and the runtime sections are left out: they have their own endpoints.\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Lists the stored setting rows, ordered by description. The OIDC and GeoIP rows come without their secrets. CrowdSec, landing pages and the runtime sections are left out: they have their own endpoints.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

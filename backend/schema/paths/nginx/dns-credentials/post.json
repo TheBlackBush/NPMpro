@@ -126,5 +126,5 @@
 			}
 		}
 	},
-	"description": "Saves a DNS credential for a DNS provider, to use in the DNS challenge of certificates. The values are stored encrypted and never returned. The name must be unused among your credentials, and a deprecated provider is refused. Send the values as `fields` or, for a provider without a field list, as a raw credentials file in `ini`.\nNeeds: Certificates manage"
+	"description": "Saves a DNS credential for a DNS provider, to use in the DNS challenge of certificates. The values are stored encrypted and never returned. The name must be unused among your credentials, and a deprecated provider is refused. Send the values as `fields` or, for a provider without a field list, as a raw credentials file in `ini`.\n\nNeeds: Certificates manage"
 }

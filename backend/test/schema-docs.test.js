@@ -20,6 +20,10 @@ const SHARED = [
 const ajv = new Ajv({ strict: false, allowUnionTypes: true, validateFormats: false });
 const PLACEHOLDER = /^\d{3} response$/u;
 const NEEDS_LINE = /(?:^|\n)Needs: \S/u;
+// Needs stands as its own paragraph: one newline would join it to the text before it in the rendered page
+const NEEDS_JOINED = /(?:^|[^\n])\nNeeds:/u;
+const NEEDS_ALLOW_DELETE = /\nNeeds: [^\n]*Allow delete/u;
+const NEEDS_NO_TOKEN = /\nNeeds: [^\n]*\(API tokens are refused\)/u;
 const EM_DASH = /\u2014/u;
 const API_TOKEN = /npmpro_[0-9a-f]{16}_[\w-]{43}/u;
 const PRIVATE_KEY = /PRIVATE KEY-----\\n[A-Za-z0-9+/=]{40}/u;
@@ -99,6 +103,26 @@ it("documents every field of the shared parts", async () => {
 		const schema = await $RefParser.dereference(`${import.meta.dirname}/../schema/${file}`);
 		gaps.push(...fieldGaps(schema, file));
 	}
+	assert.deepEqual(gaps, []);
+});
+
+it("puts every Needs line after a blank line", async () => {
+	const schema = await getCompiledSchema();
+	const joined = operations(schema)
+		.filter(({ op }) => NEEDS_JOINED.test(op.description ?? ""))
+		.map(({ key }) => key);
+	assert.deepEqual(joined, [], `${joined.length} descriptions`);
+});
+
+it("names Allow delete on every DELETE a token may send, and refuses tokens on the others", async () => {
+	const schema = await getCompiledSchema();
+	const gaps = operations(schema)
+		.filter(({ key }) => key.startsWith("delete "))
+		.flatMap(({ key, op }) => {
+			const bearer = (op.security ?? []).some((entry) => "bearerAuth" in entry);
+			const pattern = bearer ? NEEDS_ALLOW_DELETE : NEEDS_NO_TOKEN;
+			return pattern.test(op.description ?? "") ? [] : [key];
+		});
 	assert.deepEqual(gaps, []);
 });
 

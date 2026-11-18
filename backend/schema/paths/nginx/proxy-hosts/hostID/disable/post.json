@@ -118,5 +118,5 @@
 			}
 		}
 	},
-	"description": "Turns a proxy host off: removes its nginx config and reloads nginx, keeping the proxy host stored. It is refused with a 400 when the proxy host is already disabled.\nNeeds: Proxy Hosts manage"
+	"description": "Turns a proxy host off: removes its nginx config and reloads nginx, keeping the proxy host stored. It is refused with a 400 when the proxy host is already disabled.\n\nNeeds: Proxy Hosts manage"
 }

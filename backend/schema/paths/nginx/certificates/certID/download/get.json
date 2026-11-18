@@ -38,5 +38,5 @@
 			}
 		}
 	},
-	"description": "Downloads the certificate as a zip file: `fullchain.pem` and `privkey.pem`, or only the CA file of an mTLS certificate. The zip holds the private key, so the download is written to the audit log and limited to 10 requests per 10 minutes for each address (429 after that). There is no JSON example: the answer is a zip file.\nNeeds: Certificates manage"
+	"description": "Downloads the certificate as a zip file: `fullchain.pem` and `privkey.pem`, or only the CA file of an mTLS certificate. The zip holds the private key, so the download is written to the audit log and limited to 10 requests per 10 minutes for each address (429 after that). There is no JSON example: the answer is a zip file.\n\nNeeds: Certificates manage"
 }

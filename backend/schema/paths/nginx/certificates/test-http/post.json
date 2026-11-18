@@ -85,5 +85,5 @@
 			}
 		}
 	},
-	"description": "Checks that each domain reaches this instance over HTTP on port 80, as the HTTP challenge needs: it writes a test file and asks an outside service (site24x7) to fetch it. The answer lists one result per domain; a domain that fails does not fail the request.\nNeeds: Certificates manage"
+	"description": "Checks that each domain reaches this instance over HTTP on port 80, as the HTTP challenge needs: it writes a test file and asks an outside service (site24x7) to fetch it. The answer lists one result per domain; a domain that fails does not fail the request.\n\nNeeds: Certificates manage"
 }

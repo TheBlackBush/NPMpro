@@ -26,8 +26,9 @@ rules. Requests and answers are JSON. Every address starts with `/api` on the ad
 - **Allow delete**: without it, every `DELETE` request and every restore that replaces parts of a backup is refused
   with 403.
 - Some routes need a signed-in session and refuse every token with 403: your own account (password, MFA, sessions,
-  picture, OIDC link, name and email), API tokens, user management, the sign-in settings (OIDC and forward
-  authentication) and the admin port checks. In this reference they show only the `cookieAuth` lock.
+  picture, OIDC link, name and email), API tokens, user management, changes to the sign-in settings (OIDC and forward
+  authentication), the session refresh and the admin port checks. In this reference they show only the `cookieAuth`
+  lock.
 - A token stops working when it is revoked or expires, or when its owner is disabled or deleted: the answer is 401.
 - When a request carries a token, the token acts and a session cookie sent with it is ignored. Only a bearer that
   starts with `npmpro_` is a token: any other `Authorization: Bearer` header is ignored.
@@ -69,11 +70,12 @@ claude mcp add --transport http npmpro https://npm.example.com:81/api/mcp --head
 ## Limits and errors
 
 - Five failed sign-ins or failed token attempts from one address (an IPv6 /48) in five minutes block that address
-  for the rest of the five minutes; the user routes count every refused request the same way. Certificate downloads
-  allow 10 in 10 minutes and the OIDC routes 10 in 5 minutes. A blocked request gets 429 with `RateLimit` and
-  `RateLimit-Policy` headers.
-- A request body may have up to 1 MB; up to 16 MB where custom page HTML travels (proxy hosts, 404 hosts, access
-  lists, Settings, Landing pages), 2 GB for a backup upload and 200 MB for an import file.
+  for the rest of the five minutes; the user routes count every refused request the same way, except a request
+  refused because it carries an API token. Certificate downloads allow 10 in 10 minutes and the OIDC routes 10 in 5
+  minutes. A blocked request gets 429 with `RateLimit` and `RateLimit-Policy` headers.
+- A JSON body may have up to 100 kB, and a file upload up to 1 MB (an OIDC icon up to 256 KiB); a JSON body may have
+  up to 16 MB where custom page HTML travels (proxy hosts, 404 hosts, access lists, Settings, Landing pages), a
+  backup upload up to 2 GiB and an import file up to 200 MB. A larger JSON body gets 413.
 - A request with an `Origin` header must come from the admin address itself: pages of other sites are refused with
   403 (that answer has a `message` but no `code`).
 - Errors have one shape. `message` is English; `message_i18n` is the key the web interface translates; some errors

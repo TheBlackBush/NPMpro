@@ -235,5 +235,5 @@
 			}
 		}
 	},
-	"description": "Creates a 404 host, writes its nginx config and reloads nginx. A domain name already used by another enabled host is refused with a 400. Set `certificate_id` to `new` to request a Let's Encrypt certificate for the domain names in the same call (HTTP challenge, or the DNS challenge fields; it also needs Certificates manage). A config nginx refuses is still stored: the answer then has `npmpro_nginx_online` false and the nginx message in `npmpro_nginx_err`, and the config stays out of nginx until it is fixed.\nNeeds: 404 Hosts manage"
+	"description": "Creates a 404 host, writes its nginx config and reloads nginx. A domain name already used by another enabled host is refused with a 400. Set `certificate_id` to `new` to request a Let's Encrypt certificate for the domain names in the same call (HTTP challenge, or the DNS challenge fields; it also needs Certificates manage). A config nginx refuses is still stored: the answer then has `npmpro_nginx_online` false and the nginx message in `npmpro_nginx_err`, and the config stays out of nginx until it is fixed.\n\nNeeds: 404 Hosts manage"
 }

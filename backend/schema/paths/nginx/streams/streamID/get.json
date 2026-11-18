@@ -66,5 +66,5 @@
 			}
 		}
 	},
-	"description": "Returns one stream. The answer carries no owner or certificate object; use the list with `expand` for those.\nNeeds: Streams view"
+	"description": "Returns one stream. The answer carries no owner or certificate object; use the list with `expand` for those.\n\nNeeds: Streams view"
 }

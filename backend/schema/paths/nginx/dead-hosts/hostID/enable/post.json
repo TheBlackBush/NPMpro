@@ -85,5 +85,5 @@
 			}
 		}
 	},
-	"description": "Turns a disabled 404 host on: writes its nginx config again and reloads nginx. It is refused with a 400 when the 404 host is already enabled or a domain name is now used by another enabled host.\nNeeds: 404 Hosts manage"
+	"description": "Turns a disabled 404 host on: writes its nginx config again and reloads nginx. It is refused with a 400 when the 404 host is already enabled or a domain name is now used by another enabled host.\n\nNeeds: 404 Hosts manage"
 }
