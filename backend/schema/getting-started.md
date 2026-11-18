@@ -75,7 +75,7 @@ claude mcp add --transport http npmpro https://npm.example.com:81/api/mcp --head
 - A request body may have up to 1 MB; up to 16 MB where custom page HTML travels (proxy hosts, 404 hosts, access
   lists, Settings, Landing pages), 2 GB for a backup upload and 200 MB for an import file.
 - A request with an `Origin` header must come from the admin address itself: pages of other sites are refused with
-  403.
+  403 (that answer has a `message` but no `code`).
 - Errors have one shape. `message` is English; `message_i18n` is the key the web interface translates; some errors
   add `output` (the nginx or certbot output) or `checks`:
 
@@ -89,5 +89,6 @@ claude mcp add --transport http npmpro https://npm.example.com:81/api/mcp --head
 | 401    | No valid session or token, or the token is revoked or expired, or its owner is disabled               |
 | 403    | Not allowed: a permission, a session-only route, a delete without Allow delete, or a foreign `Origin` |
 | 404    | The item does not exist or is not visible to you                                                      |
+| 413    | The request body is larger than its limit (see above)                                                 |
 | 429    | Too many requests (see above)                                                                         |
 | 500    | An internal error; the container log has the details                                                  |
