@@ -12,8 +12,9 @@ How NPMpro is hardened and the security options you can add. CrowdSec (with AppS
 - CrowdSec support, including AppSec (WAF) and bot detection: [CrowdSec](CrowdSec)
 - forward authentication in front of your services: [Forward authentication](Forward-Authentication)
 - API tokens for scripts: stored only as a SHA-256 hash, each permission capped at the owner's, failed attempts rate limited, see [API tokens and MCP](API-tokens-and-MCP)
-- the API reference at `/api/docs/` allows only NPMpro's own scripts, styles and fonts: no inline script and no other
-  origin, see [API reference](API-tokens-and-MCP#api-reference)
+- the API reference at `/api-reference` is a page of the web interface with its CSP (only NPMpro's own scripts, styles
+  and fonts); a token pasted there for Try it stays in the page's memory and is never stored, see
+  [API reference](API-tokens-and-MCP#api-reference)
 - HTTP/3: expose the https port over udp too (443/udp)
 - HSTS: add your domain to the [HSTS preload list](https://hstspreload.org) if you enabled HSTS for it
 - users who are not administrators cannot set raw nginx config, a request variable ($) or a unix socket (unix:) as a forward target, serve files from outside /var/www, or use a regular expression (a name starting with ~) as a domain name; values an administrator stored stay and can be kept

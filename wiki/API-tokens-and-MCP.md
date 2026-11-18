@@ -75,23 +75,18 @@ someone else. The section links to the API documentation.
 - Without the token's Allow delete switch, every DELETE request with the token is refused, and so is a restore that
   replaces parts of a backup (a merge is allowed); turn it on for scripts and MCP clients that should delete.
 - Five failed token attempts from one address in five minutes block that address for the rest of the five minutes.
-- The API reference is at `/api/docs/` on the admin port (signed in), see [API reference](#api-reference) below.
+- The API reference is at `/api-reference` on the admin port (signed in), see [API reference](#api-reference) below.
 - Expiry: 30, 90 or 365 days, a date, or none (default 90 days).
 
 ## API reference
 
-The API reference describes every route and field of the API, with examples. Open it at
-`https://<admin address>/api/docs/` (signed in; keep the trailing slash), from the API tokens window, or from Settings,
-API access.
-
-- It starts with a Getting started guide: tokens, permissions, limits, errors and MCP.
-- The routes are grouped like the menu (Dashboard, Proxy Hosts, Certificates and so on), then Settings and the
-  technical groups.
-- Each route has a **Needs** line that names the permission it needs, such as `Needs: Proxy Hosts manage`, or that
-  it needs a signed-in session (API tokens are refused).
-- The examples can be tried as yourself, or, after **Authorize**, as an API token. The token is kept until the page
-  reloads.
-- The page follows the app's light or dark theme.
+The API reference is at `https://<admin address>/api-reference`
+(signed in; `/api/docs` leads there too). It opens from the API tokens window and from Settings, API access. The
+left column lists the groups and routes and has a search (press `/`); the middle shows what a route does, what it
+needs (the Needs line), its parameters, request fields and answers; the right shows the curl command, an example
+answer and **Try it**, which runs the request on this instance as you. To run it as a token, choose **Use a
+token** at the top and paste it: the page keeps it only until you reload. Every route has its own link, for
+example `/api-reference#proxy-hosts/post-nginx-proxy-hosts`. The page follows the app's light or dark theme.
 
 ## MCP server
 
