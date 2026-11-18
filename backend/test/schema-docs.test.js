@@ -20,6 +20,7 @@ const SHARED = [
 const ajv = new Ajv({ strict: false, allowUnionTypes: true, validateFormats: false });
 const PLACEHOLDER = /^\d{3} response$/u;
 const NEEDS_LINE = /(?:^|\n)Needs: \S/u;
+const SUCCESS_CODE = /^[23]/u;
 // Needs stands as its own paragraph: one newline would join it to the text before it in the rendered page
 const NEEDS_JOINED = /(?:^|[^\n])\nNeeds:/u;
 const NEEDS_ALLOW_DELETE = /\nNeeds: [^\n]*Allow delete/u;
@@ -84,7 +85,7 @@ function operationGaps({ key, op }) {
 		if (!described(response.description) || PLACEHOLDER.test(response.description)) {
 			gaps.push(`${key} ${code}: response description`);
 		}
-		if (!code.startsWith("2")) continue;
+		if (!SUCCESS_CODE.test(code)) continue;
 		const media = response.content?.["application/json"];
 		if (media) gaps.push(...mediaGaps(media, `${key} ${code}`));
 	}

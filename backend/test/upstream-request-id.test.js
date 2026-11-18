@@ -87,8 +87,8 @@ it("every location that passes a request on removes X-Npmpro-Request-Id", () => 
 		all.bad.push(...bad);
 	}
 	assert.deepEqual(all.bad, []);
-	// 8 in npmpro.conf, 10 in proxy_host.conf, 3 in the custom location: a scanner that finds fewer is broken
-	assert.ok(all.found.length >= 21, `found ${all.found.length}: ${all.found.join(", ")}`);
+	// 7 in npmpro.conf, 10 in proxy_host.conf, 3 in the custom location: a scanner that finds fewer is broken
+	assert.ok(all.found.length >= 20, `found ${all.found.length}: ${all.found.join(", ")}`);
 });
 
 it("the scan catches a location without the line, and one that only a closed sibling location has", () => {

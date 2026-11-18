@@ -58,14 +58,7 @@ it("serves the compiled OpenAPI schema with the version of this build and the ad
 	assert.ok(done.body.components);
 });
 
-it("serves the interactive documentation to a signed-in user only", async () => {
-	for (const url of ["/docs", "/docs/"]) {
-		const done = await admin.get(url);
-		assert.equal(done.status, 200, url);
-		assert.match(done.headers.get("content-type"), /^text\/html/u);
-		assert.match(done.text, /swagger/iu);
-	}
-	assert.equal((await api.client().get("/docs/")).status, 401);
+it("keeps the schema for signed-in users only", async () => {
 	assert.equal((await api.client().get("/schema")).status, 401);
 });
 

@@ -16,7 +16,6 @@ import auditLogRoutes from "./audit-log.js";
 import backupSchedulesRoutes from "./backup-schedules.js";
 import backupsRoutes from "./backups.js";
 import databaseRoutes from "./database.js";
-import docsRoutes from "./docs.js";
 import mcpRoutes from "./mcp.js";
 import monitoringRoutes from "./monitoring.js";
 import accessListsRoutes from "./nginx/access_lists.js";
@@ -85,7 +84,8 @@ router.get("/api/auth/admin", requireLogin(), sessionOnly(), (_, res) => {
 	res.sendStatus(200);
 });
 
-router.use("/api/docs", docsRoutes);
+// the old Swagger UI address: the browser keeps a #/<group>/<operationId> anchor, the reference page rewrites it
+router.get(["/api/docs", "/api/docs/"], (_req, res) => res.redirect(302, "/api-reference"));
 router.use("/api/schema", schemaRoutes);
 router.use("/api/tokens", tokensRoutes);
 router.use("/api/oidc", oidcRoutes);

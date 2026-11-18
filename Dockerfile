@@ -202,9 +202,6 @@ RUN apk upgrade --no-cache -a && \
     find /app/node_modules -type f \( -name "*.d.ts" -o -name "*.d.mts" -o -name "*.d.cts" -o \( -iname "*.md" ! -iname "licen[cs]e*" \) \) -delete && \
     find /app/node_modules/.pnpm -maxdepth 1 -type d -name "@types+*" -exec rm -r {} + && \
     rm -vr /app/node_modules/better-sqlite3/deps/sqlite3 && \
-    # swagger-ui-express serves only the bundle, the standalone preset and the css
-    find /app/node_modules/.pnpm -path "*/node_modules/swagger-ui-dist/*" -type f \
-         \( -name "swagger-ui-es-bundle*.js" -o -name "swagger-ui.js" \) -delete && \
     case "$TARGETARCH" in \
       amd64) keep="linuxmusl-x64.node" ;; \
       arm64) keep="linuxmusl-arm64.node" ;; \

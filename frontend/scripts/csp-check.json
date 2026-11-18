@@ -31,7 +31,7 @@
 		"/monitoring/traffic",
 		"/monitoring/crowdsec",
 		"/api/docs",
-		"/api/docs/",
+		"/api-reference",
 		"/login",
 		"/no-such-page",
 		"/settings/nope",
@@ -537,31 +537,6 @@
 				{ "hover": "main a[href='/nginx/proxy']:has([data-slot=card])" },
 				{ "waitFor": "main a[href='/nginx/proxy']:hover [data-slot=card]" },
 				{ "press": "Tab" }
-			]
-		},
-		{
-			"name": "api docs: an operation and Authorize",
-			"route": "/api/docs/",
-			"steps": [
-				{ "waitFor": ".npmpro-docs-header" },
-				{ "click": ".swagger-ui .opblock-tag" },
-				{ "click": ".swagger-ui .opblock .opblock-summary" },
-				{ "waitFor": ".swagger-ui .opblock-body" },
-				{ "click": ".swagger-ui .btn.authorize" },
-				{ "waitFor": ".swagger-ui .dialog-ux .modal-ux" },
-				{ "click": ".swagger-ui .dialog-ux .close-modal" },
-				{ "gone": ".swagger-ui .dialog-ux .modal-ux" }
-			]
-		},
-		{
-			"name": "api docs: dark",
-			"route": "/api/docs/",
-			"steps": [
-				{ "colorScheme": "dark" },
-				{ "reload": true },
-				{ "waitFor": "html.dark-mode" },
-				{ "click": ".swagger-ui .opblock-tag" },
-				{ "waitFor": ".swagger-ui .opblock" }
 			]
 		}
 	]
