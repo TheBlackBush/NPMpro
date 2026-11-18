@@ -1,7 +1,7 @@
 {
 	"operationId": "importBackupUpload",
 	"summary": "Upload a file for a page import",
-	"description": "Needs manage permission on the page's items. The raw file is the request body (streamed, not buffered). It is kept until it is opened. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
+	"description": "The raw file is the request body (application/octet-stream, streamed, at most 200 MB); there is no JSON body. It is kept for 30 minutes, for the user who uploaded it, until POST /backups/import/{id}/open opens it. Automatic backups cannot be imported (not-importable). Errors carry a backup.error.<code> message id: invalid-types (unknown kind), not-a-backup, invalid-archive, newer-format, too-large (413), not-importable.\nNeeds: manage on the section of the chosen kind (Proxy Hosts, Redirection Hosts, 404 Hosts, Streams, Access Lists or Certificates; DNS credentials use Certificates)",
 	"tags": [
 		"Backups"
 	],
@@ -43,11 +43,12 @@
 					"format": "binary"
 				}
 			}
-		}
+		},
+		"description": "The exported file, as raw bytes"
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The upload id, what the file says it holds and whether it needs a passphrase",
 			"content": {
 				"application/json": {
 					"schema": {
@@ -59,18 +60,45 @@
 						],
 						"properties": {
 							"id": {
-								"type": "string"
+								"type": "string",
+								"description": "The upload id; use it with POST /backups/import/{id}/open."
 							},
 							"summary": {
 								"type": [
 									"object",
 									"null"
 								],
-								"additionalProperties": true
+								"additionalProperties": true,
+								"description": "What the file says it holds, read from its header; null when it has none."
 							},
 							"encrypted": {
 								"type": "boolean",
 								"description": "The file needs its passphrase to be opened"
+							}
+						}
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"id": "p4Hn8cV2sQ6dL1xA",
+								"summary": {
+									"format": 1,
+									"types": [
+										"proxy_hosts",
+										"certificates",
+										"access_lists"
+									],
+									"counts": {
+										"proxy_hosts": 12,
+										"certificates": 5,
+										"access_lists": 3
+									},
+									"created_at": "2026-11-17T09:30:00.000Z",
+									"npmpro_version": "1.0.0",
+									"secrets": true,
+									"partial": true
+								},
+								"encrypted": true
 							}
 						}
 					}

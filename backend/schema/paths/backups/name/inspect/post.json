@@ -1,7 +1,7 @@
 {
 	"operationId": "inspectBackup",
 	"summary": "Open a stored backup for a restore",
-	"description": "Admin only. Unpacks the backup and returns a restore token with what a restore would change. The token expires; cancel it with DELETE /backups/restore/{token}. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed.",
+	"description": "Decrypts and unpacks the backup into a restore session and returns its token (valid 30 minutes) with what a restore would change. Use the token with POST /backups/restore/{token}/check, /plan and the restore itself, or cancel it with DELETE /backups/restore/{token}. A file encrypted with the passphrase needs it here; one encrypted with this instance's key does not. Errors carry a backup.error.<code> message id: wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, busy.\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Backups"
 	],
@@ -40,7 +40,14 @@
 							"type": "string",
 							"minLength": 12,
 							"maxLength": 1024,
-							"description": "Passphrase, at least 12 characters, never stored"
+							"description": "The passphrase of a file encrypted with one; leave it out for the others."
+						}
+					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"passphrase": "YOUR_PASSPHRASE"
 						}
 					}
 				}
@@ -49,7 +56,7 @@
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The restore token, what the file holds and the preview of a replace restore of all its parts",
 			"content": {
 				"application/json": {
 					"schema": {
@@ -63,11 +70,13 @@
 						],
 						"properties": {
 							"token": {
-								"type": "string"
+								"type": "string",
+								"description": "The restore token (a short-lived session, not a secret to keep)."
 							},
 							"summary": {
 								"type": "object",
-								"additionalProperties": true
+								"additionalProperties": true,
+								"description": "What the file says it holds, read from its header."
 							},
 							"manifest": {
 								"type": "object",
@@ -82,54 +91,133 @@
 								],
 								"properties": {
 									"format": {
-										"type": "integer"
+										"type": "integer",
+										"description": "File format version."
 									},
 									"types": {
 										"type": "array",
 										"items": {
 											"type": "string"
-										}
+										},
+										"description": "The parts the file holds."
 									},
 									"counts": {
 										"type": "object",
 										"additionalProperties": {
 											"type": "integer"
-										}
+										},
+										"description": "Number of rows or files per part."
 									},
 									"secrets": {
-										"type": "boolean"
+										"type": "boolean",
+										"description": "Whether the file holds secrets."
 									},
 									"npmpro_version": {
-										"type": "string"
+										"type": "string",
+										"description": "The NPMpro version that made the file."
 									},
 									"created_at": {
-										"type": "string"
+										"type": "string",
+										"description": "When the file was made."
 									},
 									"created_by": {
 										"type": "object",
 										"additionalProperties": false,
 										"properties": {
 											"name": {
-												"type": "string"
+												"type": "string",
+												"description": "Their name."
 											},
 											"email": {
-												"type": "string"
+												"type": "string",
+												"description": "Their email."
 											}
-										}
+										},
+										"description": "The user who made the file."
 									},
 									"db_version": {
-										"type": "string"
+										"type": "string",
+										"description": "The latest database migration of the instance that made the file."
 									},
 									"db_migrations": {
 										"type": "array",
 										"items": {
 											"type": "string"
-										}
+										},
+										"description": "The migrations that instance had run."
 									}
-								}
+								},
+								"description": "The file's contents list."
 							},
 							"preview": {
 								"$ref": "../../../../components/backup-preview-object.json"
+							}
+						}
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"token": "Xk3p9Zr2QvT7mW1c",
+								"summary": {
+									"format": 1,
+									"types": [
+										"proxy_hosts",
+										"certificates",
+										"access_lists"
+									],
+									"counts": {
+										"proxy_hosts": 12,
+										"certificates": 5,
+										"access_lists": 3
+									},
+									"created_at": "2026-11-17T09:30:00.000Z",
+									"npmpro_version": "1.0.0",
+									"secrets": true
+								},
+								"manifest": {
+									"format": 1,
+									"types": [
+										"proxy_hosts",
+										"certificates",
+										"access_lists"
+									],
+									"counts": {
+										"proxy_hosts": 12,
+										"certificates": 5,
+										"access_lists": 3
+									},
+									"secrets": true,
+									"npmpro_version": "1.0.0",
+									"created_at": "2026-11-17T09:30:00.000Z",
+									"created_by": {
+										"name": "Jane Doe",
+										"email": "admin@example.com"
+									},
+									"db_version": "20261110120000_traffic_totals.js",
+									"db_migrations": [
+										"20261110120000_traffic_totals.js"
+									]
+								},
+								"preview": {
+									"references": [
+										{
+											"table": "proxy_host",
+											"id": 12,
+											"column": "certificate_id",
+											"from": 5,
+											"to": null,
+											"label": "app.example.com"
+										}
+									],
+									"skippedUsers": [
+										{
+											"id": 1,
+											"email": "admin@example.com",
+											"name": "Jane Doe"
+										}
+									],
+									"missingSecrets": []
+								}
 							}
 						}
 					}

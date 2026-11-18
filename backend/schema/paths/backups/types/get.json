@@ -1,7 +1,7 @@
 {
 	"operationId": "getBackupTypes",
-	"summary": "Get the backup types with their current counts",
-	"description": "Admin only.",
+	"summary": "List the backup parts with their counts",
+	"description": "The parts a backup can hold, grouped as the backup window shows them, with how many rows or files each has now and how many certificates each provider has. Also the container time zone that schedules use.\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Backups"
 	],
@@ -15,7 +15,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The categories of parts, the counts per part, the certificates per provider and the time zone",
 			"content": {
 				"application/json": {
 					"schema": {
@@ -39,7 +39,8 @@
 									],
 									"properties": {
 										"id": {
-											"type": "string"
+											"type": "string",
+											"description": "The group: hosts, certificates, access_lists, dns_credentials, users, settings or custom_files."
 										},
 										"types": {
 											"type": "array",
@@ -64,10 +65,12 @@
 													"crowdsec_files",
 													"backup_schedules"
 												]
-											}
+											},
+											"description": "The parts of the group."
 										}
 									}
-								}
+								},
+								"description": "The parts in the groups the backup window shows."
 							},
 							"counts": {
 								"type": "object",
@@ -86,6 +89,55 @@
 							"time_zone": {
 								"type": "string",
 								"description": "The container time zone schedules use"
+							}
+						}
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"categories": [
+									{
+										"id": "hosts",
+										"types": [
+											"proxy_hosts",
+											"redirection_hosts",
+											"dead_hosts",
+											"streams"
+										]
+									},
+									{
+										"id": "certificates",
+										"types": [
+											"certificates"
+										]
+									},
+									{
+										"id": "access_lists",
+										"types": [
+											"access_lists"
+										]
+									},
+									{
+										"id": "users",
+										"types": [
+											"users"
+										]
+									}
+								],
+								"counts": {
+									"proxy_hosts": 12,
+									"redirection_hosts": 2,
+									"dead_hosts": 1,
+									"streams": 0,
+									"certificates": 5,
+									"access_lists": 3,
+									"users": 2
+								},
+								"certificateKinds": {
+									"letsencrypt": 4,
+									"other": 1
+								},
+								"time_zone": "UTC"
 							}
 						}
 					}

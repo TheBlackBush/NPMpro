@@ -11,8 +11,6 @@ import { getCompiledSchema } from "../schema/index.js";
 const PENDING_TAGS = new Set([
 	"Dashboard",
 	"Monitoring",
-	"Backups",
-	"Database",
 	"Users",
 	"Audit Log",
 	"API Tokens",

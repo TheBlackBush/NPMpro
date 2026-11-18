@@ -1,7 +1,7 @@
 {
 	"operationId": "createBackupSchedule",
 	"summary": "Create a backup schedule",
-	"description": "Admin only. Errors carry a backup.schedule.error.<code> message id: name, name-taken, frequency, every-hours, time, weekday, month-day, types, protection, keep, passphrase, passphrase-required.",
+	"description": "Adds a schedule that writes a backup of the chosen parts into the backups folder and keeps the newest files of it. Its runs are logged under the creating administrator. Times use the container time zone (GET /backups/types, time_zone). passphrase protection needs a passphrase of at least 12 characters, stored encrypted so the schedule can use it. Errors carry a backup.schedule.error.<code> message id: name, name-taken, frequency, every-hours, time, weekday, month-day, types, protection, keep, passphrase, passphrase-required.\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Backups"
 	],
@@ -36,7 +36,8 @@
 							"description": "Unique, case insensitive"
 						},
 						"enabled": {
-							"type": "boolean"
+							"type": "boolean",
+							"description": "Whether the schedule makes backups; default true. A paused schedule keeps its settings and files."
 						},
 						"frequency": {
 							"type": "string",
@@ -45,12 +46,14 @@
 								"daily",
 								"weekly",
 								"monthly"
-							]
+							],
+							"description": "hours: every every_hours hours; daily: every day at time; weekly: on weekday at time; monthly: on month_day at time."
 						},
 						"every_hours": {
 							"type": "integer",
 							"minimum": 1,
-							"maximum": 24
+							"maximum": 24,
+							"description": "Hours between runs (1 to 24); for frequency hours."
 						},
 						"time": {
 							"type": "string",
@@ -66,7 +69,8 @@
 						"month_day": {
 							"type": "integer",
 							"minimum": 1,
-							"maximum": 28
+							"maximum": 28,
+							"description": "Day of the month (1 to 28); for frequency monthly."
 						},
 						"types": {
 							"type": "array",
@@ -93,7 +97,8 @@
 								]
 							},
 							"minItems": 1,
-							"uniqueItems": true
+							"uniqueItems": true,
+							"description": "The parts the schedule backs up, as in the types list of POST /backups."
 						},
 						"protection": {
 							"type": "string",
@@ -101,7 +106,8 @@
 								"passphrase",
 								"instance_key",
 								"none"
-							]
+							],
+							"description": "passphrase: secrets included, encrypted with the passphrase, which is stored encrypted on this instance; instance_key: secrets included, encrypted with this instance's key (restores only here); none: no secrets, not encrypted."
 						},
 						"passphrase": {
 							"type": "string",
@@ -115,17 +121,67 @@
 							"description": "Files to keep"
 						}
 					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"name": "Nightly",
+							"frequency": "daily",
+							"time": "03:30",
+							"types": [
+								"proxy_hosts",
+								"certificates",
+								"access_lists"
+							],
+							"protection": "passphrase",
+							"passphrase": "YOUR_PASSPHRASE",
+							"keep": 7
+						}
+					}
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The created schedule",
 			"content": {
 				"application/json": {
 					"schema": {
 						"$ref": "../../../components/backup-schedule-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"id": 1,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T09:30:00.000Z",
+								"owner_user_id": 1,
+								"name": "Nightly",
+								"enabled": true,
+								"frequency": "daily",
+								"every_hours": null,
+								"time": "03:30",
+								"weekday": null,
+								"month_day": null,
+								"types": [
+									"proxy_hosts",
+									"certificates",
+									"access_lists"
+								],
+								"protection": "passphrase",
+								"keep": 7,
+								"next_run_at": "2026-11-18T03:30:00.000Z",
+								"last_run_at": "2026-11-17T03:30:00.000Z",
+								"last_status": "success",
+								"last_error": null,
+								"last_file": "npmpro-backup-npmpro-20261117-033000-s1.npmpro",
+								"last_size": 482113,
+								"last_duration_ms": 840,
+								"passphrase_set": true,
+								"file_count": 7
+							}
+						}
 					}
 				}
 			}

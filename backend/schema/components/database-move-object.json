@@ -2,26 +2,98 @@
 	"type": "object",
 	"description": "A database move: running, failed or restarting (kept in memory until the backend restarts)",
 	"additionalProperties": false,
-	"required": ["id", "state", "step", "started_at", "finished_at", "target", "tables", "backup", "error"],
+	"required": [
+		"id",
+		"state",
+		"step",
+		"started_at",
+		"finished_at",
+		"target",
+		"tables",
+		"backup",
+		"error"
+	],
 	"properties": {
-		"id": { "type": "string", "example": "3f2a9c0d1e4b5a68" },
-		"state": { "type": "string", "enum": ["running", "failed", "restarting"] },
-		"step": { "type": "string", "enum": ["maintenance", "backup", "schema", "copy", "verify", "switch"] },
-		"started_at": { "type": "string", "format": "date-time" },
-		"finished_at": { "type": ["string", "null"], "format": "date-time" },
+		"id": {
+			"type": "string",
+			"example": "3f2a9c0d1e4b5a68",
+			"description": "Identifies the move."
+		},
+		"state": {
+			"type": "string",
+			"enum": [
+				"running",
+				"failed",
+				"restarting"
+			],
+			"description": "running: the steps run; restarting: the copy is switched and the backend restarts on the new database; failed: the move stopped and the database in use stays in use."
+		},
+		"step": {
+			"type": "string",
+			"enum": [
+				"maintenance",
+				"backup",
+				"schema",
+				"copy",
+				"verify",
+				"switch"
+			],
+			"description": "The step the move is in, or stopped at: maintenance, backup (the safety backup), schema (tables on the target), copy, verify, switch."
+		},
+		"started_at": {
+			"type": "string",
+			"format": "date-time",
+			"description": "When the move started."
+		},
+		"finished_at": {
+			"type": [
+				"string",
+				"null"
+			],
+			"format": "date-time",
+			"description": "When it failed or switched; null while it runs."
+		},
 		"target": {
 			"type": "object",
 			"description": "The target without its password",
 			"additionalProperties": false,
-			"required": ["engine"],
+			"required": [
+				"engine"
+			],
 			"properties": {
-				"engine": { "type": "string", "enum": ["sqlite", "mysql", "postgres"] },
-				"file": { "type": "string" },
-				"host": { "type": "string" },
-				"port": { "type": "integer" },
-				"name": { "type": "string" },
-				"user": { "type": "string" },
-				"ssl": { "type": "object" }
+				"engine": {
+					"type": "string",
+					"enum": [
+						"sqlite",
+						"mysql",
+						"postgres"
+					],
+					"description": "The target engine."
+				},
+				"file": {
+					"type": "string",
+					"description": "The new SQLite file (SQLite only)."
+				},
+				"host": {
+					"type": "string",
+					"description": "The target server."
+				},
+				"port": {
+					"type": "integer",
+					"description": "The target port."
+				},
+				"name": {
+					"type": "string",
+					"description": "The target database name."
+				},
+				"user": {
+					"type": "string",
+					"description": "The target database user."
+				},
+				"ssl": {
+					"type": "object",
+					"description": "The TLS settings of the target."
+				}
 			}
 		},
 		"tables": {
@@ -29,25 +101,101 @@
 			"items": {
 				"type": "object",
 				"additionalProperties": false,
-				"required": ["name", "rows", "copied"],
+				"required": [
+					"name",
+					"rows",
+					"copied"
+				],
 				"properties": {
-					"name": { "type": "string" },
-					"rows": { "type": "integer" },
-					"copied": { "type": "integer" }
+					"name": {
+						"type": "string",
+						"description": "The table name."
+					},
+					"rows": {
+						"type": "integer",
+						"description": "Rows in the table when the copy started."
+					},
+					"copied": {
+						"type": "integer",
+						"description": "Rows copied so far."
+					}
 				}
-			}
+			},
+			"description": "The tables to copy with their progress; empty until the copy starts."
 		},
-		"backup": { "type": ["string", "null"], "description": "The automatic backup made before the copy" },
+		"backup": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "The automatic backup made before the copy"
+		},
 		"error": {
-			"type": ["object", "null"],
+			"type": [
+				"object",
+				"null"
+			],
 			"additionalProperties": false,
 			"properties": {
-				"step": { "type": "string" },
-				"code": { "type": "string" },
-				"message": { "type": "string" },
-				"message_i18n": { "type": ["string", "null"] },
-				"details": { "type": ["string", "null"] }
-			}
+				"step": {
+					"type": "string",
+					"description": "The step that failed."
+				},
+				"code": {
+					"type": "string",
+					"description": "The error code, for example not-empty or connect; failed for an unknown error."
+				},
+				"message": {
+					"type": "string",
+					"description": "The error message, without the password."
+				},
+				"message_i18n": {
+					"type": [
+						"string",
+						"null"
+					],
+					"description": "Message id for translation, or null."
+				},
+				"details": {
+					"type": [
+						"string",
+						"null"
+					],
+					"description": "More detail, for example what was left on the target; null if none."
+				}
+			},
+			"description": "Why the move failed; null otherwise."
 		}
+	},
+	"example": {
+		"id": "3f2a9c0d1e4b5a68",
+		"state": "running",
+		"step": "copy",
+		"started_at": "2026-11-17T09:30:00.000Z",
+		"finished_at": null,
+		"target": {
+			"engine": "postgres",
+			"host": "db.lan",
+			"port": 5432,
+			"name": "npmpro",
+			"user": "npmpro",
+			"ssl": {
+				"enabled": false
+			}
+		},
+		"tables": [
+			{
+				"name": "proxy_host",
+				"rows": 12,
+				"copied": 12
+			},
+			{
+				"name": "certificate",
+				"rows": 5,
+				"copied": 0
+			}
+		],
+		"backup": "npmpro-backup-npmpro-20261117-093000-auto.npmpro",
+		"error": null
 	}
 }

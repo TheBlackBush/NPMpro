@@ -1,7 +1,7 @@
 {
 	"operationId": "deleteBackup",
 	"summary": "Delete a stored backup",
-	"description": "Admin only.",
+	"description": "Removes the file from the backups folder and writes an audit log entry. The file can be an automatic one or a scheduled one.\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Backups"
 	],
@@ -29,12 +29,17 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "true when the file was removed",
 			"content": {
 				"application/json": {
 					"schema": {
 						"type": "boolean",
 						"example": true
+					},
+					"examples": {
+						"default": {
+							"value": true
+						}
 					}
 				}
 			}

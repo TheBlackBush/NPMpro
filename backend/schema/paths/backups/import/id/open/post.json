@@ -1,7 +1,7 @@
 {
 	"operationId": "openBackupImport",
 	"summary": "Open an uploaded file for a page import",
-	"description": "Only the user who uploaded the file, with manage permission on the page's items. A user who is no administrator cannot import items holding settings only administrators may set (advanced nginx config, file serving outside /var/www, values outside the API patterns): invalid-item. Decrypts and checks the file and returns a restore token with the merge plan. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable, invalid-item.",
+	"description": "Decrypts and unpacks the upload and returns a restore token (valid 30 minutes) with the merge plan of the default choices. Use the token with POST /backups/restore/{token}/plan and POST /backups/restore/{token} (mode merge). A wrong or missing passphrase keeps the upload for another try; any other failure uses it up. A user who is no administrator cannot import items holding settings only administrators may set (advanced nginx config, file serving outside /var/www, values outside the API patterns): invalid-item. Errors carry a backup.error.<code> message id: wrong-passphrase, wrong-kind, invalid-item, token-expired (410), busy.\nNeeds: manage on the section of the chosen kind (Proxy Hosts, Redirection Hosts, 404 Hosts, Streams, Access Lists or Certificates; DNS credentials use Certificates), and the user who uploaded the file",
 	"tags": [
 		"Backups"
 	],
@@ -36,7 +36,15 @@
 						"passphrase": {
 							"type": "string",
 							"minLength": 1,
-							"maxLength": 1024
+							"maxLength": 1024,
+							"description": "The passphrase of an encrypted file; leave it out for one that is not."
+						}
+					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"passphrase": "YOUR_PASSPHRASE"
 						}
 					}
 				}
@@ -45,7 +53,7 @@
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The restore token, what the file holds and the merge plan",
 			"content": {
 				"application/json": {
 					"schema": {
@@ -59,21 +67,119 @@
 						],
 						"properties": {
 							"token": {
-								"type": "string"
+								"type": "string",
+								"description": "The restore token (a short-lived session, not a secret to keep)."
 							},
 							"summary": {
 								"type": [
 									"object",
 									"null"
 								],
-								"additionalProperties": true
+								"additionalProperties": true,
+								"description": "What the file says it holds, read from its header."
 							},
 							"manifest": {
 								"type": "object",
-								"additionalProperties": true
+								"additionalProperties": true,
+								"description": "The file's contents list: parts, counts, whether it has secrets, the version and user that made it."
 							},
 							"plan": {
 								"$ref": "../../../../../components/backup-plan-object.json"
+							}
+						}
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"token": "Xk3p9Zr2QvT7mW1c",
+								"summary": {
+									"format": 1,
+									"types": [
+										"proxy_hosts",
+										"certificates",
+										"access_lists"
+									],
+									"counts": {
+										"proxy_hosts": 12,
+										"certificates": 5,
+										"access_lists": 3
+									},
+									"created_at": "2026-11-17T09:30:00.000Z",
+									"npmpro_version": "1.0.0",
+									"secrets": true,
+									"partial": true
+								},
+								"manifest": {
+									"format": 1,
+									"types": [
+										"proxy_hosts",
+										"certificates",
+										"access_lists"
+									],
+									"counts": {
+										"proxy_hosts": 1,
+										"certificates": 1,
+										"access_lists": 1
+									},
+									"secrets": true,
+									"npmpro_version": "1.0.0",
+									"created_at": "2026-11-17T09:30:00.000Z",
+									"created_by": {
+										"name": "Jane Doe",
+										"email": "jane@example.com"
+									},
+									"partial": true
+								},
+								"plan": {
+									"items": [
+										{
+											"key": "proxy_hosts:12",
+											"type": "proxy_hosts",
+											"id": 12,
+											"label": "app.example.com",
+											"action": "add",
+											"reason": null,
+											"target": null,
+											"choices": [],
+											"default": "add",
+											"needed_by": [],
+											"linked": false
+										},
+										{
+											"key": "certificates:5",
+											"type": "certificates",
+											"id": 5,
+											"label": "app.example.com",
+											"action": "existing",
+											"reason": "same-certificate",
+											"target": {
+												"type": "certificates",
+												"id": 9,
+												"label": "app.example.com"
+											},
+											"choices": [
+												"existing",
+												"add"
+											],
+											"default": "existing",
+											"needed_by": [
+												"proxy_hosts:12"
+											],
+											"linked": true
+										}
+									],
+									"counts": {
+										"add": 1,
+										"replace": 0,
+										"skip": 0,
+										"existing": 1,
+										"take": 0,
+										"keep": 0
+									},
+									"cleared_links": [],
+									"needs_secrets": [],
+									"hash": "9f2b6c1d4e7a3085"
+								}
 							}
 						}
 					}

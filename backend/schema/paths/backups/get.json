@@ -1,7 +1,7 @@
 {
 	"operationId": "listBackups",
 	"summary": "List the stored backups",
-	"description": "Admin only. Newest first, automatic backups included.",
+	"description": "The files in the backups folder with what each holds, newest first, automatic backups included. A file whose header cannot be read is listed with null summary and encrypted.\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"Backups"
 	],
@@ -15,13 +15,44 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The stored backups, newest first",
 			"content": {
 				"application/json": {
 					"schema": {
 						"type": "array",
 						"items": {
 							"$ref": "../../components/backup-object.json"
+						}
+					},
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"name": "npmpro-backup-npmpro-20261117-093000.npmpro",
+									"size": 482113,
+									"modified": "2026-11-17T09:30:00.000Z",
+									"auto": false,
+									"summary": {
+										"format": 1,
+										"types": [
+											"proxy_hosts",
+											"certificates",
+											"access_lists"
+										],
+										"counts": {
+											"proxy_hosts": 12,
+											"certificates": 5,
+											"access_lists": 3
+										},
+										"created_at": "2026-11-17T09:30:00.000Z",
+										"npmpro_version": "1.0.0",
+										"secrets": true
+									},
+									"encrypted": true,
+									"schedule_id": null,
+									"instance_key": false
+								}
+							]
 						}
 					}
 				}
