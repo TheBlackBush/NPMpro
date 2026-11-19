@@ -226,6 +226,7 @@ export default function MfaPart() {
 									<T id="account.mfa.hint" />
 								)
 							}
+							layout="value"
 							control={
 								<StatusBadge tone={isEnabled ? "success" : "muted"}>
 									{isEnabled ? <T id="totp.enabled" /> : <T id="totp.disabled" />}
@@ -279,7 +280,12 @@ export default function MfaPart() {
 					</p>
 					<div className="grid gap-4 @md:grid-cols-[auto_minmax(0,1fr)] @md:items-start">
 						<div className="flex justify-center">
-							<QRCodeSVG value={setupData.otpauthUrl} size={192} marginSize={4} />
+							<QRCodeSVG
+								value={setupData.otpauthUrl}
+								size={192}
+								marginSize={4}
+								title={intl.formatMessage({ id: "totp.setup-instructions" })}
+							/>
 						</div>
 						<div className="min-w-0">
 							<SecretKey secret={setupData.secret} />

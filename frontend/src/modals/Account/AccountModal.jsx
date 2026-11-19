@@ -1,6 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight, CircleUser, KeyRound, Lock, LogIn, ShieldCheck, User, Users } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { getMfaStatus } from "src/api/backend";
 import { AppModal, Button, Loading } from "src/components";
+import { StatusBadge } from "src/components/StatusBadge";
 import { UserAvatar } from "src/components/UserAvatar";
 import { Button as UiButton } from "src/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "src/components/ui/tabs";
@@ -75,11 +78,22 @@ function UnsavedDot() {
 	);
 }
 
+// the MFA row's state, read when the list shows (the part may have changed it); nothing until it is known
+function MfaRowBadge() {
+	const { data } = useQuery({ queryKey: ["mfa-status", "me"], queryFn: () => getMfaStatus("me"), gcTime: 0 });
+	if (!data) return null;
+	return (
+		<StatusBadge tone={data.totpEnabled ? "success" : "muted"} className="shrink-0">
+			{data.totpEnabled ? <T id="totp.enabled" /> : <T id="totp.disabled" />}
+		</StatusBadge>
+	);
+}
+
 // the phone's first screen: the identity and one row per part, each with its dot; Close in the footer
 function PhoneList({ user, parts, frame, onChoose, firstRef, close }) {
 	return (
-		<div className="flex min-h-0 flex-1 flex-col">
-			<div className="min-h-0 flex-1 overflow-y-auto p-4">
+		<div className="flex min-h-0 min-w-0 flex-1 flex-col">
+			<div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4">
 				<Identity user={user} />
 				<ul className="m-0 mt-4 list-none divide-y rounded-lg border p-0">
 					{parts.map((part, index) => {
@@ -97,6 +111,7 @@ function PhoneList({ user, parts, frame, onChoose, firstRef, close }) {
 									<span className="min-w-0 flex-1 truncate">
 										<T id={part.labelId} />
 									</span>
+									{part.id === "mfa" ? <MfaRowBadge /> : null}
 									{frame.dirtyParts.includes(part.id) ? <UnsavedDot /> : null}
 									<ChevronRight
 										className="size-4 shrink-0 text-muted-foreground"

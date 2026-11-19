@@ -27,7 +27,7 @@ export function AvatarRow({ id, user, onError }) {
 	};
 	return (
 		<div className="mb-3 flex items-center gap-2" data-window-start-skip="">
-			<GravatarFormatter url={user?.avatar} name={user?.name} email={user?.email} size="lg" />
+			<GravatarFormatter url={user?.avatar} name={user?.name} email={user?.email} size="lg" decorative />
 			<input
 				ref={fileInput}
 				type="file"

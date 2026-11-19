@@ -29,7 +29,7 @@ function NewPasswordField() {
 
 // The own password. With password sign-in off (OIDC only) the form stays: the password is used again when password
 // sign-in is turned back on, and the notice says so. The health check (GET /api, polled) tells whether it is off.
-export function PasswordPart() {
+function PasswordForm({ onSaved }) {
 	const { data: health } = useHealth();
 	const [error, setError] = useState(null);
 	const methods = useAppForm({ defaultValues: EMPTY, validate });
@@ -39,7 +39,7 @@ export function PasswordPart() {
 		try {
 			await updateAuth("me", values.new, values.current);
 			showObjectSuccess("user", "updated");
-			methods.reset(EMPTY);
+			onSaved();
 		} catch (err) {
 			setError(<ApiErrorContent error={err} />);
 		}
@@ -89,4 +89,12 @@ export function PasswordPart() {
 			</AccountPart>
 		</HookForm>
 	);
+}
+
+// After a saved change the form starts again (a new instance): the fields are empty and the part has no unsaved
+// change, with nothing of the submitted state left (a reset inside the submit handler is undone by the form's own state
+// after the handler, and a reset after it kept the touched and submitted marks, so the first key showed a message)
+export function PasswordPart() {
+	const [generation, setGeneration] = useState(0);
+	return <PasswordForm key={generation} onSaved={() => setGeneration((current) => current + 1)} />;
 }
