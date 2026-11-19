@@ -14,7 +14,6 @@ import {
 	TextField,
 	useAppForm,
 } from "src/components";
-import { AvatarRow } from "src/components/AvatarRow";
 import { DirtyTracker, useSetUser, useUnsavedChangesGuard, useUser } from "src/hooks";
 import { T } from "src/locale";
 import { userValidate } from "src/modules/AccountForms";
@@ -100,7 +99,6 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 					</AppModal.Header>
 					<AppModal.Body>
 						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-						{id !== "new" && <AvatarRow id={id} user={data} onError={setErrorMsg} />}
 						<TextField name="name" label={<T id="user.full-name" />} autoComplete="off" required />
 						<TextField
 							name="email"

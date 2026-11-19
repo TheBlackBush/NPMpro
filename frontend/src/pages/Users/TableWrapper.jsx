@@ -2,19 +2,20 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { adminDisableMfa, deleteUser, revokeSessions, toggleUser, unlinkUserOidc } from "src/api/backend";
+import { deleteUser, toggleUser } from "src/api/backend";
 import { Button, ErrorAlert, ListToolbar, LoadingPage } from "src/components";
 import { useListFilters, useUser, useUsers, useUsersMfa } from "src/hooks";
-import { intl, T } from "src/locale";
+import { T } from "src/locale";
 import {
 	showAccountModal,
 	showDeleteConfirmModal,
 	showPermissionsModal,
-	showSetPasswordModal,
+	showUserAccountModal,
 	showUserModal,
+	showUserSignInAction,
 } from "src/modals";
 import { activeFilterCount } from "src/modules/ListFilters";
-import { showApiError, showObjectSuccess, showSuccess } from "src/notifications";
+import { showApiError, showObjectSuccess } from "src/notifications";
 import { SettingsHeading } from "../Settings/SettingsHeading";
 import { SettingsLead } from "../Settings/SettingsLead";
 import Table, { useColumns } from "./Table";
@@ -28,6 +29,8 @@ export default function TableWrapper() {
 	const { isFetching, isPending, isError, error, data } = useUsers();
 	const { data: currentUser } = useUser("me");
 	const mfaUserIds = useUsersMfa(data, currentUser?.id);
+
+	const userOf = (id) => data?.find((item) => item.id === id);
 
 	const handleDisableToggle = async (id, enabled) => {
 		try {
@@ -92,57 +95,15 @@ export default function TableWrapper() {
 							currentUserId={currentUser?.id}
 							mfaUserIds={mfaUserIds}
 							onEditUser={(id) =>
-								id === currentUser?.id ? showAccountModal("profile") : showUserModal(id)
+								id === currentUser?.id ? showAccountModal("profile") : showUserAccountModal(id)
 							}
 							onEditPermissions={(id) => showPermissionsModal(id)}
-							onSetPassword={(id) => showSetPasswordModal(id)}
-							onResetMfa={(id) => {
-								const user = data?.find((item) => item.id === id);
-								showDeleteConfirmModal({
-									tTitle: "user.reset-mfa",
-									children: <T id="user.reset-mfa.content" />,
-									subject: user?.name,
-									details: user?.email,
-									onConfirm: async () => {
-										await adminDisableMfa(id);
-										showObjectSuccess("user", "updated");
-									},
-									invalidations: [
-										["user", id],
-										["users-mfa", id],
-									],
-								});
-							}}
-							onRevokeSessions={(id) => {
-								const user = data?.find((item) => item.id === id);
-								showDeleteConfirmModal({
-									tTitle: "user.revoke-sessions",
-									children: <T id="user.revoke-sessions.content" />,
-									subject: user?.name,
-									details: user?.email,
-									onConfirm: async () => {
-										await revokeSessions(id);
-										showSuccess(intl.formatMessage({ id: "notification.user-sessions-revoked" }));
-									},
-									invalidations: [["users"], ["user", id]],
-								});
-							}}
-							onUnlinkOidc={(id) => {
-								const user = data?.find((item) => item.id === id);
-								showDeleteConfirmModal({
-									tTitle: "user.unlink-oidc",
-									children: <T id="user.unlink-oidc.content" />,
-									subject: user?.name,
-									details: user?.email,
-									onConfirm: async () => {
-										await unlinkUserOidc(id);
-										showObjectSuccess("user", "updated");
-									},
-									invalidations: [["users"], ["user", id]],
-								});
-							}}
+							onSetPassword={(id) => showUserSignInAction("set-password", userOf(id))}
+							onResetMfa={(id) => showUserSignInAction("reset-mfa", userOf(id))}
+							onRevokeSessions={(id) => showUserSignInAction("revoke-sessions", userOf(id))}
+							onUnlinkOidc={(id) => showUserSignInAction("unlink-oidc", userOf(id))}
 							onDeleteUser={(id) => {
-								const user = data?.find((item) => item.id === id);
+								const user = userOf(id);
 								showDeleteConfirmModal({
 									title: <T id="object.delete" tData={{ object: "user" }} />,
 									onConfirm: async () => {

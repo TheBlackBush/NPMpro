@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight, CircleUser, KeyRound, Lock, ShieldCheck, User } from "lucide-react";
+import { ArrowLeft, ChevronRight, CircleUser, KeyRound, Lock, LogIn, ShieldCheck, User, Users } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AppModal, Button, Loading } from "src/components";
 import { UserAvatar } from "src/components/UserAvatar";
@@ -9,14 +9,23 @@ import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { askDiscard } from "src/modals/DiscardChangesModal";
-import { ACCOUNT_PARTS, frameState, partOf, reportPart, startsOnHeading, visitPart } from "src/modules/AccountWindow";
+import {
+	frameState,
+	partOf,
+	partsFor,
+	reportPart,
+	startsOnHeading,
+	USER_PARTS,
+	visitPart,
+} from "src/modules/AccountWindow";
 import EasyModal from "src/modules/easyModal";
 import { AccountContext } from "./AccountPart";
 import { ApiTokensPart } from "./ApiTokensPart";
 import { PasswordPart } from "./PasswordPart";
 import { ProfilePart } from "./ProfilePart";
+import { SignInPart } from "./SignInPart";
 
-const ICONS = { profile: User, password: Lock, mfa: ShieldCheck, "api-tokens": KeyRound };
+const ICONS = { profile: User, password: Lock, mfa: ShieldCheck, "api-tokens": KeyRound, "sign-in": LogIn };
 // the MFA part and the QR code library are a chunk of their own, loaded on the part's first visit
 const MfaPart = lazy(() => import("./MfaPart"));
 function MfaView() {
@@ -26,11 +35,17 @@ function MfaView() {
 		</Suspense>
 	);
 }
-const VIEWS = { profile: ProfilePart, password: PasswordPart, mfa: MfaView, "api-tokens": ApiTokensPart };
+const SELF_VIEWS = { profile: ProfilePart, password: PasswordPart, mfa: MfaView, "api-tokens": ApiTokensPart };
+const USER_VIEWS = { profile: ProfilePart, "sign-in": SignInPart };
 
 /** Opens the Account window on a part ("profile", "password", "mfa" or "api-tokens") */
 const showAccountModal = (part) => {
 	EasyModal.show(AccountModal, { part: partOf(part) });
+};
+
+/** Opens another user's window (an administrator, Settings, Users): Profile with the switches, and Sign-in */
+const showUserAccountModal = (id, part) => {
+	EasyModal.show(AccountModal, { userId: id, part: partOf(part, USER_PARTS) });
 };
 
 // the signed-in user's picture, name and email, above the side list and the phone list: plain text, never focusable
@@ -61,13 +76,13 @@ function UnsavedDot() {
 }
 
 // the phone's first screen: the identity and one row per part, each with its dot; Close in the footer
-function PhoneList({ user, frame, onChoose, firstRef, close }) {
+function PhoneList({ user, parts, frame, onChoose, firstRef, close }) {
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
 			<div className="min-h-0 flex-1 overflow-y-auto p-4">
 				<Identity user={user} />
 				<ul className="m-0 mt-4 list-none divide-y rounded-lg border p-0">
-					{ACCOUNT_PARTS.map((part, index) => {
+					{parts.map((part, index) => {
 						const Icon = ICONS[part.id];
 						return (
 							<li key={part.id}>
@@ -102,18 +117,21 @@ function PhoneList({ user, frame, onChoose, firstRef, close }) {
 	);
 }
 
-const AccountModal = EasyModal.create(({ part: opened, visible, remove }) => {
+const AccountModal = EasyModal.create(({ part: opened, userId = "me", visible, remove }) => {
 	const isPhone = useIsMobile();
-	const { data: user } = useUser("me");
+	const self = userId === "me";
+	const parts = partsFor(self);
+	const views = self ? SELF_VIEWS : USER_VIEWS;
+	const { data: user } = useUser(userId);
 	const [part, setPart] = useState(opened);
 	const [visited, setVisited] = useState([opened]);
 	// a phone shows the opened part first; the back arrow shows the list
 	const [listOpen, setListOpen] = useState(false);
 	const [states, setStates] = useState({});
 	const report = useCallback((id, next) => setStates((current) => reportPart(current, id, next)), []);
-	const frame = frameState(states);
+	const frame = frameState(states, parts);
 	// decided once, when the window opens (as AppModal decides its start)
-	const [startHeading] = useState(() => (startsOnHeading({ part: opened, isPhone }) ? opened : null));
+	const [startHeading] = useState(() => (startsOnHeading({ part: opened, isPhone, parts }) ? opened : null));
 	const firstRow = useRef(null);
 	const moved = useRef(false);
 
@@ -139,7 +157,7 @@ const AccountModal = EasyModal.create(({ part: opened, visible, remove }) => {
 		target?.focus({ preventScroll: true });
 	}, [isPhone, listOpen, part]);
 
-	const context = { report, close, frame, startHeading };
+	const context = { report, close, frame, startHeading, parts };
 	const phoneList = isPhone && listOpen;
 
 	return (
@@ -166,8 +184,17 @@ const AccountModal = EasyModal.create(({ part: opened, visible, remove }) => {
 							</UiButton>
 						) : null}
 						<AppModal.Title className="flex items-center gap-2">
-							<CircleUser className="size-5 shrink-0" aria-hidden="true" />
-							<T id="account.title" />
+							{self ? (
+								<>
+									<CircleUser className="size-5 shrink-0" aria-hidden="true" />
+									<T id="account.title" />
+								</>
+							) : (
+								<>
+									<Users className="size-5 shrink-0" aria-hidden="true" />
+									<T id="object.edit" tData={{ object: "user" }} />
+								</>
+							)}
 						</AppModal.Title>
 					</div>
 				</AppModal.Header>
@@ -190,7 +217,7 @@ const AccountModal = EasyModal.create(({ part: opened, visible, remove }) => {
 								aria-label={intl.formatMessage({ id: "account.parts" })}
 								className="w-full gap-0.5 p-0"
 							>
-								{ACCOUNT_PARTS.map((entry) => {
+								{parts.map((entry) => {
 									const Icon = ICONS[entry.id];
 									const dirty = frame.dirtyParts.includes(entry.id);
 									return (
@@ -213,10 +240,17 @@ const AccountModal = EasyModal.create(({ part: opened, visible, remove }) => {
 							</TabsList>
 						</aside>
 						{phoneList ? (
-							<PhoneList user={user} frame={frame} onChoose={choose} firstRef={firstRow} close={close} />
+							<PhoneList
+								user={user}
+								parts={parts}
+								frame={frame}
+								onChoose={choose}
+								firstRef={firstRow}
+								close={close}
+							/>
 						) : null}
-						{ACCOUNT_PARTS.map((entry) => {
-							const View = VIEWS[entry.id];
+						{parts.map((entry) => {
+							const View = views[entry.id];
 							return (
 								<TabsContent
 									key={entry.id}
@@ -231,7 +265,7 @@ const AccountModal = EasyModal.create(({ part: opened, visible, remove }) => {
 										phoneList ? "hidden" : "flex",
 									)}
 								>
-									{visited.includes(entry.id) ? <View /> : null}
+									{visited.includes(entry.id) ? <View userId={userId} /> : null}
 								</TabsContent>
 							);
 						})}
@@ -242,4 +276,4 @@ const AccountModal = EasyModal.create(({ part: opened, visible, remove }) => {
 	);
 });
 
-export { showAccountModal };
+export { showAccountModal, showUserAccountModal };

@@ -3,11 +3,11 @@ import { useFormState } from "react-hook-form";
 import { AppModal, Button } from "src/components";
 import { usePendingEntries } from "src/components/Form/HookForm";
 import { intl, T } from "src/locale";
-import { ACCOUNT_PARTS, otherDirtyPart } from "src/modules/AccountWindow";
+import { otherDirtyPart } from "src/modules/AccountWindow";
 
 /**
  * What the Account frame gives its parts: report(id, state), close() (asks with unsaved changes), the frame state
- * (dirtyParts, locked, busy, closable), and the part whose heading starts the window (startHeading, or null)
+ * (dirtyParts, locked, busy, closable), the window's parts, and the part whose heading starts the window (startHeading, or null)
  */
 export const AccountContext = createContext(null);
 
@@ -31,9 +31,9 @@ export function PartFormReport({ id }) {
 // Close on the left (hidden while a step only Done ends, disabled while a request runs), the note naming another
 // part with unsaved changes, then the part's own buttons on the right
 function PartFooter({ id, children }) {
-	const { close, frame } = useContext(AccountContext);
+	const { close, frame, parts } = useContext(AccountContext);
 	const other = otherDirtyPart(frame.dirtyParts, id);
-	const otherLabel = ACCOUNT_PARTS.find((part) => part.id === other)?.labelId;
+	const otherLabel = parts.find((part) => part.id === other)?.labelId;
 	return (
 		<AppModal.Footer className="flex-nowrap">
 			{frame.locked ? null : (
