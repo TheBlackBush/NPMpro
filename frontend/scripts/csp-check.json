@@ -589,17 +589,6 @@
 			]
 		},
 		{
-			"name": "api access: permissions popover",
-			"route": "/settings/api-access",
-			"steps": [
-				{ "waitFor": "[data-mcp-clients]" },
-				{ "skipIfMissing": "role=button[name^='Permissions of'] >> visible=true" },
-				{ "click": "role=button[name^='Permissions of'] >> visible=true" },
-				{ "waitFor": "[data-token-permissions-list]" },
-				{ "press": "Escape" }
-			]
-		},
-		{
 			"name": "api tokens: new token",
 			"route": "/",
 			"steps": [
@@ -609,7 +598,30 @@
 				{ "waitFor": "[role=dialog] [data-account-part=api-tokens]" },
 				{ "click": "role=button[name='New token']" },
 				{ "click": "role=button[name='Set every section to View Only']" },
-				{ "press": "Escape" }
+				{ "fill": ["[role=dialog] [data-account-part=api-tokens] input[name=name]", "flow-csp-token"] },
+				{ "click": "[role=dialog] [data-account-part=api-tokens] button[type=submit]" },
+				{ "waitFor": "[role=dialog] [data-api-token-secret]" },
+				{ "click": "[role=dialog] >> role=button[name='Done' s]" },
+				{ "click": "[role=dialog] >> role=button[name='Permissions of flow-csp-token' s] >> visible=true" },
+				{ "waitFor": "[data-token-permissions-list] >> visible=true" },
+				{ "press": "Escape" },
+				{ "gone": "[data-token-permissions-list] >> visible=true" },
+				{ "press": "Escape" },
+				{ "gone": "[role=dialog]" }
+			]
+		},
+		{
+			"name": "api access: permissions popover",
+			"route": "/settings/api-access",
+			"steps": [
+				{ "waitFor": "[data-mcp-clients]" },
+				{ "click": "role=button[name='Permissions of flow-csp-token' s] >> visible=true" },
+				{ "waitFor": "[data-token-permissions-list] >> visible=true" },
+				{ "press": "Escape" },
+				{ "gone": "[data-token-permissions-list] >> visible=true" },
+				{ "click": "role=button[name='Revoke flow-csp-token' s] >> visible=true" },
+				{ "click": "role=alertdialog >> role=button[name='Revoke' s]" },
+				{ "gone": "role=button[name='Revoke flow-csp-token' s] >> visible=true" }
 			]
 		}
 	]
