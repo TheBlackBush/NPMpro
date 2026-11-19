@@ -74,7 +74,7 @@ function ListStep({ focus, onNew, onRevoke, onClose }) {
 	return (
 		<>
 			<AppModal.Header closeButton>
-				<AppModal.Title ref={title} tabIndex={-1} data-window-start="">
+				<AppModal.Title ref={title} tabIndex={-1} className="outline-none" data-window-start="">
 					<T id="api-tokens.title" />
 				</AppModal.Title>
 			</AppModal.Header>
@@ -187,7 +187,7 @@ function NewStep({ focus, user, onCancel, onCreated }) {
 	return (
 		<HookForm methods={methods} onSubmit={onSubmit}>
 			<AppModal.Header closeButton={!isSubmitting}>
-				<AppModal.Title ref={title} tabIndex={-1}>
+				<AppModal.Title ref={title} tabIndex={-1} className="outline-none">
 					<T id="api-tokens.new" />
 				</AppModal.Title>
 			</AppModal.Header>
@@ -326,7 +326,7 @@ function RevokeStep({ focus, token, onCancel, onRevoked }) {
 	return (
 		<>
 			<AppModal.Header closeButton={!revoke.isPending}>
-				<AppModal.Title ref={title} tabIndex={-1}>
+				<AppModal.Title ref={title} tabIndex={-1} className="outline-none">
 					<T id="api-tokens.revoke" />
 				</AppModal.Title>
 			</AppModal.Header>
