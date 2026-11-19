@@ -12,6 +12,8 @@ const CACHE_MS = 5 * 60_000;
 const BRACKETS = /^\[|\]$/gu;
 const PROFILE_NAME = /^[A-Za-z0-9._-]{1,64}$/u;
 const MAX_DESCRIPTION = 500;
+const MAX_BODY_BYTES = 1024 * 1024;
+const MAX_CACHE_ENTRIES = 32;
 
 const cache = new Map();
 const agents = new Map();
@@ -102,6 +104,42 @@ const directoryOf = (body) => {
 };
 
 /**
+ * The body as JSON, read as a stream and refused (null) beyond MAX_BODY_BYTES or when it is no JSON
+ *
+ * @param   {Response}  res
+ * @returns {Promise<{body: *, tooLarge: boolean}>}
+ */
+const readBody = async (res) => {
+	const reader = res.body?.getReader();
+	if (!reader) return { body: null, tooLarge: false };
+	const chunks = [];
+	let size = 0;
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		size += value.byteLength;
+		if (size > MAX_BODY_BYTES) {
+			await reader.cancel().catch(() => {});
+			return { body: null, tooLarge: true };
+		}
+		chunks.push(value);
+	}
+	try {
+		return { body: JSON.parse(Buffer.concat(chunks).toString("utf8")), tooLarge: false };
+	} catch {
+		return { body: null, tooLarge: false };
+	}
+};
+
+const remember = (key, result) => {
+	const now = Date.now();
+	for (const [name, entry] of cache) if (now - entry.at >= CACHE_MS) cache.delete(name);
+	cache.delete(key);
+	cache.set(key, { at: now, result });
+	while (cache.size > MAX_CACHE_ENTRIES) cache.delete(cache.keys().next().value);
+};
+
+/**
  * @param   {string}   url
  * @param   {Object}   [options]
  * @param   {boolean}  [options.verify]   false: the CA's TLS certificate is not verified (server_tls_verify)
@@ -133,7 +171,8 @@ const readAcmeDirectory = async (url, { verify = true, guarded = true, fresh = f
 			await res.body?.cancel().catch(() => {});
 			result = unreachable(`HTTP ${res.status}`);
 		} else if (res.ok) {
-			result = directoryOf(await res.json().catch(() => null));
+			const { body, tooLarge } = await readBody(res);
+			result = tooLarge ? unreachable("TOO_LARGE") : directoryOf(body);
 		} else {
 			await res.body?.cancel().catch(() => {});
 			result = directoryOf(null);
@@ -142,10 +181,11 @@ const readAcmeDirectory = async (url, { verify = true, guarded = true, fresh = f
 		if (isBlocked(err)) throw blockedValidation(url, err);
 		result = unreachable(err.cause?.code ?? err.name ?? "error");
 	}
-	if (result.reachable) cache.set(key, { at: Date.now(), result });
+	if (result.reachable) remember(key, result);
 	return structuredClone(result);
 };
 
 const clearAcmeDirectoryCache = () => cache.clear();
+const cacheSize = () => cache.size;
 
-export { assertAllowedHost, clearAcmeDirectoryCache, dispatcherFor, readAcmeDirectory };
+export { assertAllowedHost, cacheSize, clearAcmeDirectoryCache, dispatcherFor, readAcmeDirectory };

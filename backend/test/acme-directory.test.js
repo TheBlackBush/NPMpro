@@ -7,7 +7,7 @@ import { Agent, MockAgent, setGlobalDispatcher } from "undici";
 // the reads go through the global dispatcher only in the test root with NPMPRO_TEST_OUTBOUND=mock; the host check runs
 process.env.NPMPRO_TEST_ROOT = "/nonexistent-acme-directory-test";
 process.env.NPMPRO_TEST_OUTBOUND = "mock";
-const { assertAllowedHost, clearAcmeDirectoryCache, dispatcherFor, readAcmeDirectory } = await import(
+const { assertAllowedHost, cacheSize, clearAcmeDirectoryCache, dispatcherFor, readAcmeDirectory } = await import(
 	"../lib/acme-directory.js"
 );
 
@@ -29,11 +29,11 @@ syncBuiltinESMExports();
 const mock = new MockAgent();
 mock.disableNetConnect();
 setGlobalDispatcher(mock);
+beforeEach(() => clearAcmeDirectoryCache());
 after(() => {
 	dns.lookup = realLookup;
 	syncBuiltinESMExports();
 });
-beforeEach(() => clearAcmeDirectoryCache());
 
 const DIRECTORY = {
 	newNonce: "https://ca.lan/nonce",
@@ -119,4 +119,21 @@ it("uses a guarded agent per TLS choice outside the test root, and the default d
 	} finally {
 		process.env.NPMPRO_TEST_OUTBOUND = "mock";
 	}
+});
+
+it("refuses a body over 1 MiB as not reachable", async () => {
+	reply("https://ca.lan", "/big", 200, `{"newNonce":"${"x".repeat(1024 * 1024)}"}`);
+	const result = await readAcmeDirectory("https://ca.lan/big");
+	assert.equal(result.reachable, false);
+	assert.equal(result.error, "TOO_LARGE");
+});
+
+it("keeps at most 32 cached answers", async () => {
+	for (let i = 0; i < 40; i += 1) {
+		reply("https://ca.lan", `/n${i}`, 200, DIRECTORY);
+		await readAcmeDirectory(`https://ca.lan/n${i}`);
+	}
+	assert.equal(cacheSize(), 32);
+	reply("https://ca.lan", "/n0", 200, DIRECTORY);
+	assert.equal((await readAcmeDirectory("https://ca.lan/n0")).directory, true);
 });
