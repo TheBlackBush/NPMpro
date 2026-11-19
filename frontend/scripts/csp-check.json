@@ -317,7 +317,7 @@
 			"name": "account window: every part",
 			"route": "/",
 			"steps": [
-				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=button[name='Open user menu'] >> visible=true" },
 				{ "click": "role=menuitem[name='Edit Profile']" },
 				{ "waitFor": "[role=dialog] [data-account-part=profile]" },
 				{ "click": "[role=dialog] [data-account-tab=password]" },
@@ -333,7 +333,7 @@
 			"name": "account window: mfa entry",
 			"route": "/",
 			"steps": [
-				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=button[name='Open user menu'] >> visible=true" },
 				{ "click": "role=menuitem[name='MFA']" },
 				{ "waitFor": "[role=dialog] [data-account-part=mfa]" },
 				{ "press": "Escape" }
