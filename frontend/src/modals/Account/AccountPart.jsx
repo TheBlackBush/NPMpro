@@ -36,8 +36,9 @@ function PartFooter({ id, children }) {
 	const otherLabel = parts.find((part) => part.id === other)?.labelId;
 	return (
 		<AppModal.Footer className="flex-nowrap">
+			{/* Close is never the window's start: a part whose fields load later (another user's Profile) starts on them */}
 			{frame.locked ? null : (
-				<Button onClick={close} disabled={frame.busy}>
+				<Button onClick={close} disabled={frame.busy} data-window-start-skip="">
 					<T id="action.close" />
 				</Button>
 			)}
