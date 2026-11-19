@@ -1,0 +1,87 @@
+{
+	"operationId": "getAcmeSettings",
+	"summary": "Get the ACME settings",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The instance CA, its account and every stored account, without any EAB value",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"server": "https://acme-v02.api.letsencrypt.org/directory",
+								"server_source": "default",
+								"email": "ops@example.com",
+								"eab_kid_set": false,
+								"eab_hmac_key_set": false,
+								"account": {
+									"id": 1,
+									"server": "https://acme-v02.api.letsencrypt.org/directory",
+									"email": "ops@example.com",
+									"eab_kid_set": false,
+									"eab_hmac_key_set": false,
+									"state": "registered",
+									"error": null,
+									"registered_on": "2026-11-19 10:00:00",
+									"modified_on": "2026-11-19 10:00:00"
+								},
+								"locked": [],
+								"locked_by": {},
+								"presets": [
+									{
+										"id": "letsencrypt",
+										"server": "https://acme-v02.api.letsencrypt.org/directory",
+										"eab": false
+									},
+									{
+										"id": "letsencrypt-staging",
+										"server": "https://acme-staging-v02.api.letsencrypt.org/directory",
+										"eab": false
+									},
+									{
+										"id": "zerossl",
+										"server": "https://acme.zerossl.com/v2/DV90",
+										"eab": true
+									},
+									{
+										"id": "google",
+										"server": "https://dv.acme-v02.api.pki.goog/directory",
+										"eab": true
+									}
+								],
+								"accounts": [
+									{
+										"id": 1,
+										"server": "https://acme-v02.api.letsencrypt.org/directory",
+										"email": "ops@example.com",
+										"eab_kid_set": false,
+										"eab_hmac_key_set": false,
+										"state": "registered",
+										"error": null,
+										"registered_on": "2026-11-19 10:00:00",
+										"modified_on": "2026-11-19 10:00:00"
+									}
+								]
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/acme-settings-object.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Returns the CA certificates are requested from, its account and every stored account. Fields set by ACME_SERVER, ACME_EMAIL, ACME_EAB_KID and ACME_EAB_HMAC_KEY are listed in locked and locked_by; the EAB values are never returned.\n\nNeeds: an administrator (a token needs its Administrator switch)"
+}

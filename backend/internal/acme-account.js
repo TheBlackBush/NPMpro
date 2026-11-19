@@ -3,12 +3,16 @@ import path from "node:path";
 import dayjs from "dayjs";
 import { dispatcherFor, readAcmeDirectory } from "../lib/acme-directory.js";
 import {
+	ACME_PRESETS,
 	acmeEnvSet,
+	isDirectoryUrl,
 	isTrustedServer,
 	isZeroSsl,
+	LETSENCRYPT_SERVER,
 	resolveAcmeServer,
 	serverKey,
 	setStoredAcmeServer,
+	storedAcmeServer,
 } from "../lib/acme-server.js";
 import { runCertbot } from "../lib/certbot.js";
 import {
@@ -24,9 +28,10 @@ import {
 	updateEmailArgs,
 	writeFileAtomic,
 } from "../lib/certbot-account.js";
-import { CERTBOT_INI, CERTBOT_INI_BASE } from "../lib/certbot-ini.js";
+import { CERTBOT_INI, CERTBOT_INI_BASE, renewalOptionEdits } from "../lib/certbot-ini.js";
 import errs from "../lib/error.js";
 import { rooted } from "../lib/paths.js";
+import { withFiles, writeStartupSettings } from "../lib/runtime-apply.js";
 import { getRuntimeConfig } from "../lib/runtime-config.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { ssl as logger } from "../logger.js";
@@ -34,6 +39,8 @@ import acmeAccountModel from "../models/acme_account.js";
 import now from "../models/now_helper.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
+import { pickEditable } from "./monitoring-update.js";
+import { reapplyRuntimeGroup } from "./runtime-setting.js";
 
 // The ACME accounts: NPMpro's record per CA (npmpro_acme_account) next to certbot's account folders. Every
 // registration, email update and replace of a CA runs under that CA's lock; nothing here runs at the start but file
@@ -492,6 +499,218 @@ const syncEnvEmail = async () => {
 	}
 };
 
+const ACME_KEYS = ["server", "email", "eab_kid", "eab_hmac_key"];
+const LOCK_ENV = {
+	server: "ACME_SERVER",
+	email: "ACME_EMAIL",
+	eab_kid: "ACME_EAB_KID",
+	eab_hmac_key: "ACME_EAB_HMAC_KEY",
+};
+const EMAIL = /^[^\s@]+@[^\s@]+$/u;
+const EAB_VALUE = /^\S{1,1024}$/u;
+const MAX_EMAIL = 255;
+
+/** The keys an env var locks (D5): its own, and the EAB pair together */
+const lockedKeys = (env = process.env) => {
+	const set = acmeEnvSet(env);
+	const locked = ACME_KEYS.filter((key) => set.has(LOCK_ENV[key]));
+	if (locked.includes("eab_kid") !== locked.includes("eab_hmac_key")) {
+		return [...new Set([...locked, "eab_kid", "eab_hmac_key"])];
+	}
+	return locked;
+};
+
+const serverSource = () => {
+	if (acmeEnvSet(process.env).has("ACME_SERVER")) return "env";
+	return storedAcmeServer() ? "setting" : "default";
+};
+
+const isRegistered = async (row) => row?.state === "registered" && (await accountExists(row.server, row.account_id));
+
+const refuseValue = (key, message, i18n) => {
+	throw new errs.ValidationError(`${key}: ${message}`, i18n);
+};
+
+/**
+ * GET /settings/acme: the instance CA, its account and every stored account (no EAB value, only whether one is set)
+ *
+ * @param   {Access}  access
+ * @returns {Promise<Object>}
+ */
+const getSettings = async (access) => {
+	access.canAdmin();
+	const server = instanceServer();
+	const locked = lockedKeys();
+	const rows = await acmeAccountModel.query().orderBy("server");
+	const own = rows.find((row) => row.server === server);
+	return {
+		server,
+		server_source: serverSource(),
+		email: locked.includes("email") ? process.env.ACME_EMAIL : (own?.email ?? ""),
+		eab_kid_set: locked.includes("eab_kid") || Boolean(own?.eab_kid),
+		eab_hmac_key_set: locked.includes("eab_hmac_key") || Boolean(own?.eab_hmac_key),
+		account: own ? accountView(own) : null,
+		locked,
+		locked_by: Object.fromEntries(locked.map((key) => [key, LOCK_ENV[key]])),
+		presets: ACME_PRESETS,
+		accounts: rows.map(accountView),
+	};
+};
+
+/** The instance CA's renewal confs with the instance profile and must-staple (fact 5) */
+const syncRenewalOptions = async () => {
+	const { values } = await getRuntimeConfig("certificates");
+	const edits = await renewalOptionEdits({
+		server: instanceServer(),
+		profile: values.profile,
+		mustStaple: values.must_staple,
+	});
+	if (edits.length > 0) await withFiles(edits, async () => {}, { log: logger });
+};
+
+/**
+ * Stores a new instance CA: the setting row, the startup settings for envs.sh, the runtime defaults that follow it
+ * (D8: applied now, an OCSP stapling change reloads nginx) and the options of its certificates' renewal confs
+ */
+const setInstanceServer = async (access, server, prevValues) => {
+	const stored = server === LETSENCRYPT_SERVER ? null : server;
+	await saveAcmeSetting(stored);
+	setStoredAcmeServer(stored);
+	await writeStartupSettings();
+	await reapplyRuntimeGroup("certificates", prevValues);
+	await syncRenewalOptions();
+	await internalAuditLog.add(access, { action: "updated", object_type: "setting", meta: { id: "acme", server } });
+};
+
+/** The email of a PUT: null removes it; a changed one must look like an address */
+const checkedEmail = (changes, row) => {
+	const given = "email" in changes;
+	const email = given ? changes.email.trim() || null : (row?.email ?? null);
+	const changed = given && email !== (row?.email ?? null);
+	if (changed && email !== null && !(email.length <= MAX_EMAIL && EMAIL.test(email))) {
+		refuseValue("email", "must be an email address", "error.acme-email");
+	}
+	return { given, email, changed };
+};
+
+/** The EAB pair of a PUT: only while the account is not registered (fact 10), both values or none */
+const checkedEab = (changes, row, registered) => {
+	const kid = changes.eab_kid || open(row?.eab_kid);
+	const hmac = changes.eab_hmac_key || open(row?.eab_hmac_key);
+	const entered = !registered && Boolean(changes.eab_kid || changes.eab_hmac_key);
+	if (entered && !(kid && hmac)) refuseValue("eab", "enter both the key ID and the HMAC key", "error.acme-eab-pair");
+	if (entered && !(EAB_VALUE.test(kid) && EAB_VALUE.test(hmac))) {
+		refuseValue("eab", "the key ID and the HMAC key cannot hold spaces", "error.acme-eab-pair");
+	}
+	return { kid, hmac, entered };
+};
+
+/**
+ * PUT /settings/acme: locked keys are dropped; only changed values are checked (rule 2). A changed CA without an
+ * account, or new account values, register now: not reachable stores them as pending with a warning (D4), a refusal
+ * stores nothing. An email change of a registered account needs its CA (D13). EAB values only count while the account
+ * is not registered (fact 10).
+ *
+ * @param   {Access}  access
+ * @param   {Object}  body  server, email, eab_kid, eab_hmac_key (all optional)
+ * @returns {Promise<Object>}  the GET answer, plus warning "unreachable" when the account was stored as pending
+ */
+const saveSettings = async (access, body) => {
+	access.canAdmin();
+	const changes = pickEditable(body ?? {}, lockedKeys(), ACME_KEYS);
+	const before = instanceServer();
+	const target = changes.server ?? before;
+	const serverChanged = target !== before;
+	if (serverChanged && !isDirectoryUrl(target)) {
+		refuseValue("server", "must be an https ACME directory URL", "error.acme-url");
+	}
+	const prevValues = (await getRuntimeConfig("certificates")).values;
+	let warning;
+	await withAccountLock(target, async () => {
+		const row = await accountRow(target);
+		const registered = await isRegistered(row);
+		const mail = checkedEmail(changes, row);
+		const eab = checkedEab(changes, row, registered);
+		if (registered) {
+			if (mail.changed) await updateEmailLocked(target, mail.email, { access });
+		} else if (serverChanged || mail.changed || eab.entered) {
+			const values = registrationValues(target, row);
+			if (mail.given) values.email = mail.email;
+			if (eab.entered) values.eab = { kid: eab.kid, hmac: eab.hmac };
+			const result = await attemptRegistration(target, values, { blockedIsUnreachable: !serverChanged });
+			if (result.outcome === "unreachable") {
+				warning = "unreachable";
+				await upsertRow(target, row, {
+					email: mail.email,
+					...(eab.entered ? { eab_kid: seal(eab.kid), eab_hmac_key: seal(eab.hmac) } : {}),
+					state: "pending",
+					error: result.message,
+				});
+			} else {
+				await storeRegistered(target, row, { email: values.email, accountId: result.accountId, access });
+			}
+		}
+		if (serverChanged || mail.changed || eab.entered) {
+			await audit(access, "updated", await accountRow(target), {
+				server: target,
+				email_changed: mail.changed,
+				eab_entered: eab.entered,
+			});
+		}
+	});
+	if (serverChanged) await setInstanceServer(access, target, prevValues);
+	return { ...(await getSettings(access)), ...(warning ? { warning } : {}) };
+};
+
+/**
+ * POST /settings/acme/register: a pending, failed or missing account registers now
+ *
+ * @param   {Access}  access
+ * @param   {Object}  [options]
+ * @param   {string}  [options.server]  default the instance CA
+ * @returns {Promise<Object>}  the GET answer, plus warning "unreachable" when the CA still cannot be reached
+ */
+const registerNow = async (access, { server } = {}) => {
+	access.canAdmin();
+	const target = server ?? instanceServer();
+	if (target !== instanceServer() && !(await accountRow(target))) {
+		throw new errs.ValidationError("This CA has no account in Settings", "error.acme-unknown-ca");
+	}
+	let warning;
+	try {
+		await ensureAccount(target, { access });
+	} catch (err) {
+		if (err.message_i18n !== "error.acme-unreachable") throw err;
+		warning = "unreachable";
+	}
+	return { ...(await getSettings(access)), ...(warning ? { warning } : {}) };
+};
+
+/**
+ * GET /settings/acme/profiles: the CA's profiles (5 minute cache), for the Settings profile list (D9)
+ *
+ * @param   {Access}  access
+ * @param   {Object}  [options]
+ * @param   {string}  [options.server]  default the instance CA
+ * @returns {Promise<Object>}
+ */
+const listProfiles = async (access, { server } = {}) => {
+	access.canAdmin();
+	const target = server ?? instanceServer();
+	if (!(isDirectoryUrl(target) || isTrustedServer(target, process.env))) {
+		refuseValue("server", "must be an https ACME directory URL", "error.acme-url");
+	}
+	const result = await readDirectory(target);
+	return {
+		reachable: result.reachable,
+		directory: result.directory,
+		external_account_required: result.external_account_required,
+		profiles: Object.entries(result.profiles).map(([name, description]) => ({ name, description })),
+	};
+};
+
+const internalAcmeAccount = { getSettings, listProfiles, registerNow, saveSettings };
+
 export {
 	accountRow,
 	accountView,
@@ -499,24 +718,33 @@ export {
 	audit,
 	baseIni,
 	ensureAccount,
+	getSettings,
 	inRunFolder,
 	instanceServer,
+	listProfiles,
 	loadAcmeServer,
+	lockedKeys,
 	open,
 	readAcmeSetting,
 	readDirectory,
 	refused,
+	registerNow,
 	registrationValues,
 	saveAcmeSetting,
+	saveSettings,
 	scrub,
 	seal,
+	setInstanceServer,
 	storeRegistered,
 	sweepRunFolders,
 	syncAccountsWithFiles,
 	syncEnvEmail,
+	syncRenewalOptions,
 	updateEmail,
 	updateEmailLocked,
 	upsertRow,
 	withAccountLock,
 	writeRunConfig,
 };
+
+export default internalAcmeAccount;

@@ -1,0 +1,133 @@
+{
+	"operationId": "updateAcmeSettings",
+	"summary": "Update the ACME settings",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "The ACME settings to change; send only what changes",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"server": {
+							"type": "string",
+							"maxLength": 255,
+							"pattern": "^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~/-]*)?$",
+							"description": "The ACME directory URL of the instance CA (https). Let's Encrypt switches back to the default",
+							"example": "https://acme.example.com/directory"
+						},
+						"email": {
+							"type": "string",
+							"maxLength": 255,
+							"description": "Contact email of the account, empty removes it",
+							"example": "ops@example.com"
+						},
+						"eab_kid": {
+							"type": "string",
+							"maxLength": 1024,
+							"description": "EAB key ID, write-only; empty keeps the stored one",
+							"example": "YOUR_EAB_KEY_ID"
+						},
+						"eab_hmac_key": {
+							"type": "string",
+							"maxLength": 1024,
+							"description": "EAB HMAC key, write-only; empty keeps the stored one",
+							"example": "YOUR_EAB_HMAC_KEY"
+						}
+					}
+				},
+				"example": {
+					"server": "https://acme.example.com/directory",
+					"email": "ops@example.com",
+					"eab_kid": "YOUR_EAB_KEY_ID",
+					"eab_hmac_key": "YOUR_EAB_HMAC_KEY"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "The ACME settings as they are now; warning unreachable means the account is stored as pending",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"server": "https://acme-v02.api.letsencrypt.org/directory",
+								"server_source": "default",
+								"email": "ops@example.com",
+								"eab_kid_set": false,
+								"eab_hmac_key_set": false,
+								"account": {
+									"id": 1,
+									"server": "https://acme-v02.api.letsencrypt.org/directory",
+									"email": "ops@example.com",
+									"eab_kid_set": false,
+									"eab_hmac_key_set": false,
+									"state": "registered",
+									"error": null,
+									"registered_on": "2026-11-19 10:00:00",
+									"modified_on": "2026-11-19 10:00:00"
+								},
+								"locked": [],
+								"locked_by": {},
+								"presets": [
+									{
+										"id": "letsencrypt",
+										"server": "https://acme-v02.api.letsencrypt.org/directory",
+										"eab": false
+									},
+									{
+										"id": "letsencrypt-staging",
+										"server": "https://acme-staging-v02.api.letsencrypt.org/directory",
+										"eab": false
+									},
+									{
+										"id": "zerossl",
+										"server": "https://acme.zerossl.com/v2/DV90",
+										"eab": true
+									},
+									{
+										"id": "google",
+										"server": "https://dv.acme-v02.api.pki.goog/directory",
+										"eab": true
+									}
+								],
+								"accounts": [
+									{
+										"id": 1,
+										"server": "https://acme-v02.api.letsencrypt.org/directory",
+										"email": "ops@example.com",
+										"eab_kid_set": false,
+										"eab_hmac_key_set": false,
+										"state": "registered",
+										"error": null,
+										"registered_on": "2026-11-19 10:00:00",
+										"modified_on": "2026-11-19 10:00:00"
+									}
+								],
+								"warning": "unreachable"
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/acme-settings-object.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Saves the instance CA and the account values. Fields set by environment variables are ignored. A new CA, a changed email or new EAB values register the account at once: when the CA cannot be reached the account is stored as pending and the answer carries warning unreachable; when the CA or the guard refuses, the answer is 400 and nothing is stored. Changing the email of a registered account needs its CA to answer. EAB values only count while the account is not registered.\n\nNeeds: an administrator (a token needs its Administrator switch)"
+}

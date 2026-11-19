@@ -409,6 +409,24 @@
 				"$ref": "./paths/settings/oidc/test/post.json"
 			}
 		},
+		"/settings/acme": {
+			"get": {
+				"$ref": "./paths/settings/acme/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/acme/put.json"
+			}
+		},
+		"/settings/acme/register": {
+			"post": {
+				"$ref": "./paths/settings/acme/register/post.json"
+			}
+		},
+		"/settings/acme/profiles": {
+			"get": {
+				"$ref": "./paths/settings/acme/profiles/get.json"
+			}
+		},
 		"/monitoring/traffic": {
 			"get": {
 				"$ref": "./paths/monitoring/traffic/get.json"

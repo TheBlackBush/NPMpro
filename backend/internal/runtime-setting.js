@@ -1,5 +1,5 @@
 import errs from "../lib/error.js";
-import { getRuntimeConfig, prime } from "../lib/runtime-config.js";
+import { getRuntimeConfig, invalidate, prime } from "../lib/runtime-config.js";
 import { isRuntimeGroup } from "../lib/runtime-rules.js";
 import { listTimeZones } from "../lib/time-zones.js";
 import certificateModel from "../models/certificate.js";
@@ -116,5 +116,19 @@ const internalRuntimeSetting = {
 	},
 };
 
-export { applyAllRuntime, setRuntimeApply, setRuntimeApplyAll };
+/**
+ * Applies a group again after something its defaults depend on changed (the instance CA): the cached values are
+ * dropped, the group is read again and applied against prevValues, in the runtime settings queue
+ *
+ * @param {string} group
+ * @param {Object} prevValues  the values before the change
+ */
+const reapplyRuntimeGroup = (group, prevValues) =>
+	runtimeQueue(async () => {
+		invalidate(group);
+		const { values } = await getRuntimeConfig(group);
+		await applyHook(group, values, prevValues);
+	});
+
+export { applyAllRuntime, reapplyRuntimeGroup, setRuntimeApply, setRuntimeApplyAll };
 export default internalRuntimeSetting;

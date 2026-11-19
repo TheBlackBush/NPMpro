@@ -1,0 +1,77 @@
+{
+	"type": "object",
+	"description": "The account of one ACME CA (the EAB values are never returned)",
+	"additionalProperties": false,
+	"required": [
+		"id",
+		"server",
+		"email",
+		"eab_kid_set",
+		"eab_hmac_key_set",
+		"state",
+		"error",
+		"registered_on",
+		"modified_on"
+	],
+	"properties": {
+		"id": {
+			"type": "integer",
+			"description": "Account record ID",
+			"example": 1
+		},
+		"server": {
+			"type": "string",
+			"description": "The CA's ACME directory URL",
+			"example": "https://acme-v02.api.letsencrypt.org/directory"
+		},
+		"email": {
+			"type": "string",
+			"description": "The contact email, empty when none or not recorded",
+			"example": "ops@example.com"
+		},
+		"eab_kid_set": {
+			"type": "boolean",
+			"description": "Whether an EAB key ID is stored; the value is never returned",
+			"example": false
+		},
+		"eab_hmac_key_set": {
+			"type": "boolean",
+			"description": "Whether an EAB HMAC key is stored; the value is never returned",
+			"example": false
+		},
+		"state": {
+			"type": "string",
+			"enum": [
+				"registered",
+				"pending",
+				"failed"
+			],
+			"description": "registered: the CA has the account; pending: it could not be reached yet; failed: the CA or certbot refused it",
+			"example": "registered"
+		},
+		"error": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "The CA's or certbot's last message, null when there is none",
+			"example": null
+		},
+		"registered_on": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "When the account was registered, null before",
+			"example": "2026-11-19 10:00:00"
+		},
+		"modified_on": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "When the record last changed",
+			"example": "2026-11-19 10:00:00"
+		}
+	}
+}
