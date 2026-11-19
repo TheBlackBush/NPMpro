@@ -173,6 +173,8 @@ const startApi = async ({ env = {}, files = {} } = {}) => {
 			DISABLE_NGINX_BEAUTIFIER: "true",
 			// a cheap argon2 cost for the passwords and backup codes of the tests (lib/argon2.js hashParams)
 			NPMPRO_TEST_ARGON2: "fast",
+			// ACME directory reads go through the undici MockAgent (lib/acme-directory.js)
+			NPMPRO_TEST_OUTBOUND: "mock",
 			...env,
 		});
 		controlSocket = await startControlSocket(path.join(root, "run/nginx-control.sock"));

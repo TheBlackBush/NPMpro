@@ -1,0 +1,122 @@
+import assert from "node:assert/strict";
+import dns from "node:dns";
+import { syncBuiltinESMExports } from "node:module";
+import { after, beforeEach, it } from "node:test";
+import { Agent, MockAgent, setGlobalDispatcher } from "undici";
+
+// the reads go through the global dispatcher only in the test root with NPMPRO_TEST_OUTBOUND=mock; the host check runs
+process.env.NPMPRO_TEST_ROOT = "/nonexistent-acme-directory-test";
+process.env.NPMPRO_TEST_OUTBOUND = "mock";
+const { assertAllowedHost, clearAcmeDirectoryCache, dispatcherFor, readAcmeDirectory } = await import(
+	"../lib/acme-directory.js"
+);
+
+const names = new Map([
+	["ca.lan", "192.168.1.10"],
+	["loop.test", "127.0.0.1"],
+	["meta.test", "169.254.169.254"],
+	["six.test", "::1"],
+]);
+const realLookup = dns.lookup;
+dns.lookup = (hostname, options, callback) => {
+	const done = typeof options === "function" ? options : callback;
+	const address = names.get(hostname);
+	if (!address) return done(Object.assign(new Error(`getaddrinfo ENOTFOUND ${hostname}`), { code: "ENOTFOUND" }));
+	const family = address.includes(":") ? 6 : 4;
+	return options?.all ? done(null, [{ address, family }]) : done(null, address, family);
+};
+syncBuiltinESMExports();
+const mock = new MockAgent();
+mock.disableNetConnect();
+setGlobalDispatcher(mock);
+after(() => {
+	dns.lookup = realLookup;
+	syncBuiltinESMExports();
+});
+beforeEach(() => clearAcmeDirectoryCache());
+
+const DIRECTORY = {
+	newNonce: "https://ca.lan/nonce",
+	meta: {
+		externalAccountRequired: true,
+		profiles: { classic: "The classic profile", tlsserver: 7, "bad name": "x" },
+	},
+};
+const reply = (origin, path, status, body) =>
+	mock
+		.get(origin)
+		.intercept({ path, method: "GET" })
+		.reply(status, body, { headers: { "content-type": "application/json" } });
+
+it("refuses blocked hosts before any request: IP literals and names that resolve to one", async () => {
+	for (const url of [
+		"https://127.0.0.1/dir",
+		"https://169.254.169.254/directory",
+		"https://[::1]/dir",
+		"https://loop.test/dir",
+		"https://meta.test/dir",
+		"https://six.test/dir",
+	]) {
+		await assert.rejects(
+			readAcmeDirectory(url),
+			(err) => err.name === "ValidationError" && err.message_i18n === "error.acme-blocked",
+			url,
+		);
+	}
+	await assert.doesNotReject(assertAllowedHost("https://ca.lan/dir"));
+});
+
+it("reads a LAN CA: profiles with their descriptions, the EAB requirement, an ACME directory", async () => {
+	reply("https://ca.lan", "/dir", 200, DIRECTORY);
+	assert.deepEqual(await readAcmeDirectory("https://ca.lan/dir"), {
+		reachable: true,
+		directory: true,
+		external_account_required: true,
+		profiles: { classic: "The classic profile", tlsserver: "" },
+	});
+});
+
+it("reads a trusted (env) URL on this host without the guard", async () => {
+	reply("https://127.0.0.1:14000", "/dir", 200, { newNonce: "x" });
+	const result = await readAcmeDirectory("https://127.0.0.1:14000/dir", { guarded: false });
+	assert.equal(result.directory, true);
+	assert.equal(result.external_account_required, false);
+});
+
+it("tells an unreachable CA (network error, timeout, 5xx) from one that is no ACME directory (4xx, no newNonce)", async () => {
+	reply("https://ca.lan", "/down", 503, "down");
+	assert.equal((await readAcmeDirectory("https://ca.lan/down")).reachable, false);
+	assert.equal((await readAcmeDirectory("https://ca.lan/nothing-intercepted")).reachable, false);
+	reply("https://ca.lan", "/404", 404, "no");
+	assert.deepEqual(await readAcmeDirectory("https://ca.lan/404"), {
+		reachable: true,
+		directory: false,
+		external_account_required: false,
+		profiles: {},
+	});
+	reply("https://ca.lan", "/html", 200, "<html>");
+	assert.equal((await readAcmeDirectory("https://ca.lan/html")).directory, false);
+});
+
+it("caches a reachable answer for 5 minutes unless fresh is asked", async () => {
+	reply("https://ca.lan", "/cached", 200, DIRECTORY);
+	await readAcmeDirectory("https://ca.lan/cached");
+	assert.equal((await readAcmeDirectory("https://ca.lan/cached")).directory, true);
+	assert.equal((await readAcmeDirectory("https://ca.lan/cached", { fresh: true })).reachable, false);
+});
+
+it("uses a guarded agent per TLS choice outside the test root, and the default dispatcher for a verified trusted read", () => {
+	process.env.NPMPRO_TEST_OUTBOUND = "";
+	try {
+		const verified = dispatcherFor({ guarded: true, verify: true });
+		const insecure = dispatcherFor({ guarded: true, verify: false });
+		assert.ok(verified instanceof Agent);
+		assert.ok(insecure instanceof Agent);
+		assert.notEqual(verified, insecure);
+		assert.equal(dispatcherFor({ guarded: true, verify: true }), verified);
+		assert.equal(dispatcherFor({ guarded: false, verify: true }), undefined);
+		assert.ok(dispatcherFor({ guarded: false, verify: false }) instanceof Agent);
+	} finally {
+		process.env.NPMPRO_TEST_OUTBOUND = "mock";
+	}
+});

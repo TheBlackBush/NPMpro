@@ -110,7 +110,7 @@ const applier = (paths, overrides = {}) => {
 		fetchDirectory: (server, options) => {
 			fetched.push(server);
 			verifies.push(options?.verify);
-			return Promise.resolve({ directory: true, profiles: { classic: {}, shortlived: {} } });
+			return Promise.resolve({ reachable: true, directory: true, profiles: { classic: {}, shortlived: {} } });
 		},
 		...overrides,
 	});
@@ -273,9 +273,16 @@ it("reports an unreachable ACME server", async () => {
 	const err = await down.applyGroup("certificates", { ...prev, profile: "classic" }, prev).catch((e) => e);
 	assert.equal(err.message, "profile: Could not check the ACME server profiles");
 	assert.equal(err.public, true);
-	const notAcme = applier(paths, { fetchDirectory: async () => ({ directory: false, profiles: {} }) });
+	const notAcme = applier(paths, {
+		fetchDirectory: async () => ({ reachable: true, directory: false, profiles: {} }),
+	});
 	const err2 = await notAcme.applyGroup("certificates", { ...prev, profile: "classic" }, prev).catch((e) => e);
 	assert.equal(err2.message, "profile: Could not check the ACME server profiles");
+	const silent = applier(paths, {
+		fetchDirectory: async () => ({ reachable: false, directory: false, profiles: {} }),
+	});
+	const err3 = await silent.applyGroup("certificates", { ...prev, profile: "classic" }, prev).catch((e) => e);
+	assert.equal(err3.message, "profile: Could not check the ACME server profiles");
 });
 
 it("does not check an empty profile and removes stale renewal profile lines", async () => {

@@ -1,8 +1,9 @@
 import nodeFs from "node:fs/promises";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { Agent, fetch as undiciFetch } from "undici";
 import { global as logger } from "../logger.js";
+import { readAcmeDirectory } from "./acme-directory.js";
+import { isTrustedServer } from "./acme-server.js";
 import { CERTBOT_INI, RENEWAL_DIR, renderCertbotIni, renewalProfileEdits } from "./certbot-ini.js";
 import { DEFAULT_CERT_CONF, defaultCertificatePaths, renderDefaultCertConf, TLS_DIR } from "./default-cert.js";
 import errs from "./error.js";
@@ -50,7 +51,6 @@ const OCSP_KINDS = [
 	{ key: "custom_ocsp_stapling", kind: "custom", env: "CUSTOM_OCSP_STAPLING" },
 ];
 const ECH_LINE = /^\S+ \S+ \S+ \S+ \S+ cron-ech\.sh$/u;
-const PROFILE_TIMEOUT = 10_000;
 
 const readOrNull = async (fs, file) => {
 	try {
@@ -158,29 +158,6 @@ const testAndReload = async (nginx, { reload = true } = {}) => {
 	}
 };
 
-let insecureAgent;
-
-/**
- * meta.profiles (and whether it is an ACME directory) of the ACME server directory, 10 s timeout
- *
- * @param   {string}   server            the directory URL
- * @param   {Object}   [options]
- * @param   {boolean}  [options.verify]  false: the server's TLS certificate is not verified (server_tls_verify)
- * @returns {Promise<{directory: boolean, profiles: Object}>}
- */
-const fetchAcmeDirectory = async (server, { verify = true } = {}) => {
-	const init = { headers: { accept: "application/json" }, signal: AbortSignal.timeout(PROFILE_TIMEOUT) };
-	if (!verify) insecureAgent ??= new Agent({ connect: { rejectUnauthorized: false } });
-	const res = verify ? await fetch(server, init) : await undiciFetch(server, { ...init, dispatcher: insecureAgent });
-	if (!res.ok) throw new Error(`HTTP ${res.status}`);
-	const body = await res.json();
-	const profiles = body?.meta?.profiles;
-	return {
-		directory: typeof body?.newNonce === "string",
-		profiles: profiles !== null && typeof profiles === "object" ? profiles : {},
-	};
-};
-
 const changedKeys = (next, prev) =>
 	Object.keys(next).filter((key) => prev === undefined || !isDeepStrictEqual(next[key], prev[key]));
 
@@ -199,7 +176,7 @@ const changedKeys = (next, prev) =>
  * @param   {Function}  [deps.env]           () => process env, for ACME_SERVER
  * @param   {Function}  [deps.effectiveEnv]
  * @param   {Function}  [deps.getConfig]
- * @param   {Function}  [deps.fetchDirectory] (server) => { directory, profiles }
+ * @param   {Function}  [deps.fetchDirectory] (server, { verify }) => { reachable, directory, profiles }
  * @param   {Function}  [deps.listCertificates] () => [{ id }]
  * @param   {Object}    [deps.ocsp]          { fetch(kind) }
  * @param   {Object}    [deps.ipRanges]      lib/ip-ranges instance; without it the network settings are only stored
@@ -216,7 +193,8 @@ const createRuntimeApplier = ({
 	env = () => process.env,
 	effectiveEnv = defaultEffectiveEnv,
 	getConfig = defaultGetRuntimeConfig,
-	fetchDirectory = fetchAcmeDirectory,
+	fetchDirectory = (server, { verify }) =>
+		readAcmeDirectory(server, { verify, guarded: !isTrustedServer(server, process.env), fresh: true }),
 	listCertificates = async () => [],
 	ocsp = { fetch: async () => {} },
 	ipRanges = null,
@@ -240,6 +218,9 @@ const createRuntimeApplier = ({
 			throw new errs.ValidationError("profile: Could not check the ACME server profiles", undefined, {
 				cause: err,
 			});
+		}
+		if (result.reachable === false) {
+			throw new errs.ValidationError("profile: Could not check the ACME server profiles");
 		}
 		if (Object.hasOwn(result.profiles, profile)) return;
 		if (!result.directory) throw new errs.ValidationError("profile: Could not check the ACME server profiles");
