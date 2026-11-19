@@ -169,7 +169,9 @@ function NewStep({ focus, user, onCancel, onCreated }) {
 	const admin = isAdmin(user.roles);
 	const [error, setError] = useState(null);
 	const create = useCreateApiToken();
-	const methods = useAppForm({ defaultValues: newTokenValues(), validate });
+	// the window opens with the focus in the empty Name: an error on leaving it would move the form under the pointer
+	// (a first click on Set all or a section was lost), so errors show from the first Create on
+	const methods = useAppForm({ defaultValues: newTokenValues(), validate, mode: "onSubmit" });
 	const { register } = methods;
 	const { isSubmitting } = methods.formState;
 	const onSubmit = async (values) => {
