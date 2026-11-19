@@ -18,16 +18,31 @@ const NOT_IN_SCHEMA = {
 	"ALL /api/{path}": "the catch-all that answers 404 for every other address under /api",
 };
 
+// Routes whose parameter also covers literal paths of the schema, the one place where the shapes need not be equal.
+// Every other route must have a schema path of its own shape, so a new `/:id` route is never taken as documented by a
+// literal path such as /users/me. Each entry must exist and must still cover a literal path: the test fails otherwise.
+const COVERS_LITERALS = {
+	"GET /api/settings/runtime/{group}":
+		"one route for every runtime settings group; the schema documents each group as its own path with its own answer",
+	"PUT /api/settings/runtime/{group}":
+		"one route for every runtime settings group; the schema documents each group as its own path with its own body",
+	"GET /api/settings/landing-pages/preview/{source}/{type}":
+		"one route for the global pages and the default site; the schema documents each source as its own path",
+};
+
 const TRAILING_SLASHES = /\/+$/u;
 const PARAM = /:(?<name>[A-Za-z_]\w*)/gu;
 const ANY_PARAM = /:[A-Za-z_]\w*|\{[^}]+\}/gu;
 const MOUNT = /router\.use\(\s*"(?<prefix>\/[^"]*)"/gu;
 
 // Compare path templates by shape: {userID} and {id} are the same route, only the parameter name differs.
-// A parameter of the route also covers a literal segment of the schema: the runtime settings are one route,
-// /settings/runtime/:group, and the schema documents each group as its own path with its own body.
 const shape = (route) => route.replace(TRAILING_SLASHES, "").replace(ANY_PARAM, "{}").split("/");
 const sameShape = (route, operation) =>
+	route.method === operation.method &&
+	route.shape.length === operation.shape.length &&
+	route.shape.every((part, index) => part === operation.shape[index]);
+// a parameter of the route also takes a literal segment of the schema (only for the routes in COVERS_LITERALS)
+const coversShape = (route, operation) =>
 	route.method === operation.method &&
 	route.shape.length === operation.shape.length &&
 	route.shape.every((part, index) => part === operation.shape[index] || part === "{}");
@@ -44,7 +59,8 @@ const mountCandidates = async () => {
 		const source = await readFile(path.join(dir, file), "utf8");
 		found.push(...[...source.matchAll(MOUNT)].map((match) => match.groups.prefix));
 	}
-	return found;
+	// two routers mounted at the same prefix in different files are one candidate, not two
+	return [...new Set(found)];
 };
 
 const prefixOf = (layer, candidates) => {
@@ -115,10 +131,20 @@ it("has a schema operation for every route and a route for every schema operatio
 	const withShape = (item) => ({ ...item, shape: shape(item.path) });
 	const served = routes.map(withShape);
 	const documented = operations.map(withShape);
+	const covering = new Set(Object.keys(COVERS_LITERALS));
+	const matches = (route, op) => sameShape(route, op) || (covering.has(label(route)) && coversShape(route, op));
+	for (const entry of covering) {
+		const route = served.find((item) => label(item) === entry);
+		assert.ok(route, `the route ${entry} in COVERS_LITERALS no longer exists, remove it`);
+		assert.ok(
+			documented.some((op) => !sameShape(route, op) && coversShape(route, op)),
+			`the route ${entry} in COVERS_LITERALS covers no literal schema path any more, remove it`,
+		);
+	}
 	const missingInSchema = served.filter(
-		(route) => !allowed.has(label(route)) && !documented.some((op) => sameShape(route, op)),
+		(route) => !allowed.has(label(route)) && !documented.some((op) => matches(route, op)),
 	);
-	const missingRoute = documented.filter((op) => !served.some((route) => sameShape(route, op)));
+	const missingRoute = documented.filter((op) => !served.some((route) => matches(route, op)));
 
 	const hint = "add backend/schema/paths/... and its reference in swagger.json";
 	assert.deepEqual(
