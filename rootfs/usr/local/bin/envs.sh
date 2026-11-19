@@ -144,6 +144,22 @@ fi
 
 export ACME_SERVER="${ACME_SERVER:-https://acme-v02.api.letsencrypt.org/directory}"
 
+# the start log shows which CA is used, where the value came from and whether certbot has an account for it
+# shellcheck source=/dev/null
+. /usr/local/bin/acme-status.sh
+acme_source="default"
+case " $NPMPRO_USER_ENV " in
+    *\ ACME_SERVER\ *) acme_source="env" ;;
+    *)
+        [ "$acme_server_stored" = true ] && acme_source="settings"
+        ;;
+esac
+acme_email_set=false
+[ -n "$ACME_EMAIL" ] && acme_email_set=true
+acme_eab_set=false
+[ -n "$ACME_EAB_KID" ] && [ -n "$ACME_EAB_HMAC_KEY" ] && acme_eab_set=true
+acme_status "$ACME_SERVER" "$acme_source" /data/tls/certbot/accounts "$acme_email_set" "$acme_eab_set"
+
 case "$ACME_SERVER" in
     "https://acme-v02.api.letsencrypt.org/directory")
         export ACME_PROFILE="${ACME_PROFILE:-shortlived}"
