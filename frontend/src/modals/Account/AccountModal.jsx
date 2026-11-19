@@ -1,0 +1,233 @@
+import { ArrowLeft, ChevronRight, CircleUser, KeyRound, Lock, ShieldCheck, User } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AppModal, Button } from "src/components";
+import { UserAvatar } from "src/components/UserAvatar";
+import { Button as UiButton } from "src/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "src/components/ui/tabs";
+import { useUser } from "src/hooks";
+import { useIsMobile } from "src/hooks/use-mobile";
+import { cn } from "src/lib/utils";
+import { intl, T } from "src/locale";
+import { askDiscard } from "src/modals/DiscardChangesModal";
+import { ACCOUNT_PARTS, frameState, partOf, reportPart, startsOnHeading, visitPart } from "src/modules/AccountWindow";
+import EasyModal from "src/modules/easyModal";
+import { AccountContext } from "./AccountPart";
+import { ProfilePart } from "./ProfilePart";
+
+const ICONS = { profile: User, password: Lock, mfa: ShieldCheck, "api-tokens": KeyRound };
+// the parts built so far (6.3 to 6.5 add the others; 6.5 removes this filter and uses ACCOUNT_PARTS)
+const VIEWS = { profile: ProfilePart };
+const PARTS = ACCOUNT_PARTS.filter((part) => VIEWS[part.id]);
+
+/** Opens the Account window on a part ("profile", "password", "mfa" or "api-tokens") */
+const showAccountModal = (part) => {
+	EasyModal.show(AccountModal, { part: partOf(part) });
+};
+
+// the signed-in user's picture, name and email, above the side list and the phone list: plain text, never focusable
+function Identity({ user }) {
+	return (
+		<div className="flex min-w-0 items-center gap-2.5 px-1">
+			<UserAvatar user={user} className="size-9" />
+			<div className="min-w-0 leading-tight">
+				<p className="m-0 truncate font-medium text-sm">{user?.name}</p>
+				<p className="m-0 truncate text-muted-foreground text-xs" title={user?.email}>
+					{user?.email}
+				</p>
+			</div>
+		</div>
+	);
+}
+
+// the dot of a part with unsaved changes, with its words for screen readers
+function UnsavedDot() {
+	return (
+		<>
+			<span className="ms-auto size-2 shrink-0 rounded-full bg-primary" aria-hidden="true" />
+			<span className="sr-only">
+				<T id="account.unsaved" />
+			</span>
+		</>
+	);
+}
+
+// the phone's first screen: the identity and one row per part, each with its dot; Close in the footer
+function PhoneList({ user, frame, onChoose, firstRef, close }) {
+	return (
+		<div className="flex min-h-0 flex-1 flex-col">
+			<div className="min-h-0 flex-1 overflow-y-auto p-4">
+				<Identity user={user} />
+				<ul className="m-0 mt-4 list-none divide-y rounded-lg border p-0">
+					{PARTS.map((part, index) => {
+						const Icon = ICONS[part.id];
+						return (
+							<li key={part.id}>
+								<button
+									type="button"
+									ref={index === 0 ? firstRef : undefined}
+									className="flex w-full items-center gap-3 px-3 py-3 text-left text-sm outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+									onClick={() => onChoose(part.id)}
+									data-account-row={part.id}
+								>
+									<Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+									<span className="min-w-0 flex-1 truncate">
+										<T id={part.labelId} />
+									</span>
+									{frame.dirtyParts.includes(part.id) ? <UnsavedDot /> : null}
+									<ChevronRight
+										className="size-4 shrink-0 text-muted-foreground"
+										aria-hidden="true"
+									/>
+								</button>
+							</li>
+						);
+					})}
+				</ul>
+			</div>
+			<AppModal.Footer>
+				<Button onClick={close}>
+					<T id="action.close" />
+				</Button>
+			</AppModal.Footer>
+		</div>
+	);
+}
+
+const AccountModal = EasyModal.create(({ part: opened, visible, remove }) => {
+	const isPhone = useIsMobile();
+	const { data: user } = useUser("me");
+	const [part, setPart] = useState(opened);
+	const [visited, setVisited] = useState([opened]);
+	// a phone shows the opened part first; the back arrow shows the list
+	const [listOpen, setListOpen] = useState(false);
+	const [states, setStates] = useState({});
+	const report = useCallback((id, next) => setStates((current) => reportPart(current, id, next)), []);
+	const frame = frameState(states);
+	// decided once, when the window opens (as AppModal decides its start)
+	const [startHeading] = useState(() => (startsOnHeading({ part: opened, isPhone }) ? opened : null));
+	const firstRow = useRef(null);
+	const moved = useRef(false);
+
+	const close = async () => {
+		if (!frame.closable) return;
+		if (frame.dirtyParts.length > 0 && !(await askDiscard("unsaved-changes.confirm"))) return;
+		remove();
+	};
+	const choose = (next) => {
+		moved.current = true;
+		setVisited((current) => visitPart(current, next));
+		setPart(next);
+		setListOpen(false);
+	};
+	const showList = () => {
+		moved.current = true;
+		setListOpen(true);
+	};
+	// a phone screen that replaced another takes the focus: the first row of the list, or the chosen part's heading
+	useEffect(() => {
+		if (!(isPhone && moved.current)) return;
+		const target = listOpen ? firstRow.current : document.querySelector(`[data-account-part="${part}"] h3`);
+		target?.focus({ preventScroll: true });
+	}, [isPhone, listOpen, part]);
+
+	const context = { report, close, frame, startHeading };
+	const phoneList = isPhone && listOpen;
+
+	return (
+		<AccountContext.Provider value={context}>
+			<AppModal
+				size="lg"
+				show={visible}
+				onHide={frame.closable ? close : undefined}
+				backdrop="static"
+				keyboard={frame.closable}
+			>
+				<AppModal.Header closeButton={frame.closable}>
+					<div className="flex min-w-0 items-center gap-1">
+						{isPhone && !listOpen && !frame.locked ? (
+							<UiButton
+								type="button"
+								variant="ghost"
+								size="icon-sm"
+								aria-label={intl.formatMessage({ id: "account.back" })}
+								onClick={showList}
+								data-account-back=""
+							>
+								<ArrowLeft aria-hidden="true" />
+							</UiButton>
+						) : null}
+						<AppModal.Title className="flex items-center gap-2">
+							<CircleUser className="size-5 shrink-0" aria-hidden="true" />
+							<T id="account.title" />
+						</AppModal.Title>
+					</div>
+				</AppModal.Header>
+				<AppModal.Body className="flex overflow-hidden p-0 md:min-h-[min(36rem,calc(100dvh-10rem))]">
+					<Tabs
+						orientation="vertical"
+						value={part}
+						onValueChange={choose}
+						className="min-h-0 min-w-0 flex-1 gap-0"
+					>
+						<aside
+							className={cn(
+								"w-[204px] shrink-0 flex-col gap-3 border-e bg-muted/30 p-3",
+								isPhone ? "hidden" : "flex",
+							)}
+						>
+							<Identity user={user} />
+							<TabsList
+								variant="line"
+								aria-label={intl.formatMessage({ id: "account.parts" })}
+								className="w-full gap-0.5 p-0"
+							>
+								{PARTS.map((entry) => {
+									const Icon = ICONS[entry.id];
+									const dirty = frame.dirtyParts.includes(entry.id);
+									return (
+										<TabsTrigger
+											key={entry.id}
+											value={entry.id}
+											disabled={frame.locked && entry.id !== part}
+											data-account-tab={entry.id}
+											{...(dirty ? { "data-dirty": "" } : {})}
+											className="h-9 w-full flex-none justify-start rounded-md px-2.5 data-[state=active]:bg-background"
+										>
+											<Icon aria-hidden="true" />
+											<span className="min-w-0 truncate">
+												<T id={entry.labelId} />
+											</span>
+											{dirty ? <UnsavedDot /> : null}
+										</TabsTrigger>
+									);
+								})}
+							</TabsList>
+						</aside>
+						{phoneList ? (
+							<PhoneList user={user} frame={frame} onChoose={choose} firstRef={firstRow} close={close} />
+						) : null}
+						{PARTS.map((entry) => {
+							const View = VIEWS[entry.id];
+							return (
+								<TabsContent
+									key={entry.id}
+									value={entry.id}
+									forceMount
+									// forceMount keeps a visited part mounted (its edits stay); Radix then never sets hidden
+									className={cn(
+										"min-h-0 min-w-0 flex-1 flex-col data-[state=inactive]:hidden",
+										phoneList ? "hidden" : "flex",
+									)}
+								>
+									{visited.includes(entry.id) ? <View /> : null}
+								</TabsContent>
+							);
+						})}
+					</Tabs>
+				</AppModal.Body>
+			</AppModal>
+		</AccountContext.Provider>
+	);
+});
+
+export { showAccountModal };

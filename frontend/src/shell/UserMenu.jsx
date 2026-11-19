@@ -1,7 +1,7 @@
 import { ChevronsUpDown, KeyRound, Lock, LogOut, MonitorSmartphone, ShieldCheck, User } from "lucide-react";
 import { useRef } from "react";
 import { TruncatedText } from "src/components/TruncatedText";
-import { Avatar, AvatarFallback, AvatarImage } from "src/components/ui/avatar";
+import { UserAvatar } from "src/components/UserAvatar";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -20,8 +20,7 @@ import { useUser } from "src/hooks";
 import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
-import { showApiTokensModal, showChangePasswordModal, showMfaModal, showUserModal } from "src/modals";
-import { avatarColor, defaultAvatar, hasNoPicture, initials } from "src/modules/Avatar";
+import { showAccountModal, showApiTokensModal, showChangePasswordModal, showMfaModal } from "src/modals";
 import { returnFocusOnlyForKeyboard } from "src/modules/InputModality";
 import { isAdmin } from "src/modules/Permissions";
 import { showApiError } from "src/notifications";
@@ -73,10 +72,12 @@ export function UserMenu({ variant = "topbar" }) {
 	// The windows are not Radix: they open once the menu has closed and returned focus to its button (in
 	// onCloseAutoFocus), so the menu's pointer lock is gone and each window returns focus to the button (as RowActions)
 	const pendingWindow = useRef(null);
-	const openModal = (show) => () => {
-		pendingWindow.current = show;
+	const openPart = (part) => () => {
+		pendingWindow.current = () => showAccountModal(part);
 	};
-	const letters = initials(user?.name, user?.email);
+	const openOld = (show) => () => {
+		pendingWindow.current = () => show("me");
+	};
 	const role = isAdmin(user?.roles) ? "role.admin" : "role.standard-user";
 
 	const signOut = (action) => async () => {
@@ -96,18 +97,7 @@ export function UserMenu({ variant = "topbar" }) {
 					sidebar && "w-full",
 				)}
 			>
-				<Avatar>
-					{hasNoPicture(user?.avatar) ? null : <AvatarImage src={user.avatar} alt="" />}
-					{letters ? (
-						<AvatarFallback className={cn("font-bold", avatarColor(user?.name, user?.email).className)}>
-							{letters}
-						</AvatarFallback>
-					) : (
-						<AvatarFallback>
-							<img src={defaultAvatar} alt="" className="size-full rounded-full object-cover" />
-						</AvatarFallback>
-					)}
-				</Avatar>
+				<UserAvatar user={user} />
 				<span
 					className={cn(
 						"min-w-0 flex-col leading-tight",
@@ -140,22 +130,22 @@ export function UserMenu({ variant = "topbar" }) {
 					// leaves the focus alone (no keyboard focus ring on a clicked button)
 					if (!show) returnFocusOnlyForKeyboard(event);
 					pendingWindow.current = null;
-					if (show) setTimeout(() => show("me"), 0);
+					if (show) setTimeout(show, 0);
 				}}
 			>
-				<DropdownMenuItem onSelect={openModal(showUserModal)}>
+				<DropdownMenuItem onSelect={openPart("profile")}>
 					<User aria-hidden="true" />
 					<T id="user.edit-profile" />
 				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={openModal(showChangePasswordModal)}>
+				<DropdownMenuItem onSelect={openOld(showChangePasswordModal)}>
 					<Lock aria-hidden="true" />
 					<T id="user.change-password" />
 				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={openModal(showMfaModal)}>
+				<DropdownMenuItem onSelect={openOld(showMfaModal)}>
 					<ShieldCheck aria-hidden="true" />
 					<T id="user.mfa" />
 				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={openModal(showApiTokensModal)}>
+				<DropdownMenuItem onSelect={openOld(showApiTokensModal)}>
 					<KeyRound aria-hidden="true" />
 					<T id="user.api-tokens" />
 				</DropdownMenuItem>
