@@ -32,7 +32,7 @@ import { CERTBOT_INI, CERTBOT_INI_BASE, renewalOptionEdits } from "../lib/certbo
 import errs from "../lib/error.js";
 import { rooted } from "../lib/paths.js";
 import { withFiles, writeStartupSettings } from "../lib/runtime-apply.js";
-import { getRuntimeConfig } from "../lib/runtime-config.js";
+import { getRuntimeConfig, invalidate } from "../lib/runtime-config.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { ssl as logger } from "../logger.js";
 import acmeAccountModel from "../models/acme_account.js";
@@ -40,7 +40,7 @@ import now from "../models/now_helper.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
 import { pickEditable } from "./monitoring-update.js";
-import { reapplyRuntimeGroup } from "./runtime-setting.js";
+import internalRuntimeSetting, { reapplyRuntimeGroup } from "./runtime-setting.js";
 
 // The ACME accounts: NPMpro's record per CA (npmpro_acme_account) next to certbot's account folders. Every
 // registration, email update and replace of a CA runs under that CA's lock; nothing here runs at the start but file
@@ -541,14 +541,15 @@ const getSettings = async (access) => {
 	access.canAdmin();
 	const server = instanceServer();
 	const locked = lockedKeys();
+	const envSet = acmeEnvSet(process.env);
 	const rows = await acmeAccountModel.query().orderBy("server");
 	const own = rows.find((row) => row.server === server);
 	return {
 		server,
 		server_source: serverSource(),
 		email: locked.includes("email") ? process.env.ACME_EMAIL : (own?.email ?? ""),
-		eab_kid_set: locked.includes("eab_kid") || Boolean(own?.eab_kid),
-		eab_hmac_key_set: locked.includes("eab_hmac_key") || Boolean(own?.eab_hmac_key),
+		eab_kid_set: envSet.has("ACME_EAB_KID") || Boolean(own?.eab_kid),
+		eab_hmac_key_set: envSet.has("ACME_EAB_HMAC_KEY") || Boolean(own?.eab_hmac_key),
 		account: own ? accountView(own) : null,
 		locked,
 		locked_by: Object.fromEntries(locked.map((key) => [key, LOCK_ENV[key]])),
@@ -568,17 +569,45 @@ const syncRenewalOptions = async () => {
 	if (edits.length > 0) await withFiles(edits, async () => {}, { log: logger });
 };
 
+/** After a CA switch: a profile the new CA lists no more is dropped to none (reachable CA only), never refused */
+const dropUnlistedProfile = async (access, server) => {
+	const { values, locked } = await getRuntimeConfig("certificates");
+	if (!values.profile || locked.includes("profile")) return;
+	let result;
+	try {
+		result = await readDirectory(server);
+	} catch {
+		return;
+	}
+	if (result.reachable && result.directory && !Object.hasOwn(result.profiles, values.profile)) {
+		logger.warn(`The ACME server ${server} does not offer the profile ${values.profile}: the profile is now none`);
+		await internalRuntimeSetting.updateRuntime(access, "certificates", { profile: "" });
+	}
+};
+
 /**
  * Stores a new instance CA: the setting row, the startup settings for envs.sh, the runtime defaults that follow it
- * (D8: applied now, an OCSP stapling change reloads nginx) and the options of its certificates' renewal confs
+ * (D8: applied now, an OCSP stapling change reloads nginx, no profile check) and the options of its certificates'
+ * renewal confs. All or nothing: a failure puts the previous CA back and is rethrown.
  */
 const setInstanceServer = async (access, server, prevValues) => {
+	const previous = await readAcmeSetting();
+	const previousMemory = storedAcmeServer();
 	const stored = server === LETSENCRYPT_SERVER ? null : server;
-	await saveAcmeSetting(stored);
-	setStoredAcmeServer(stored);
-	await writeStartupSettings();
-	await reapplyRuntimeGroup("certificates", prevValues);
-	await syncRenewalOptions();
+	try {
+		await saveAcmeSetting(stored);
+		setStoredAcmeServer(stored);
+		await writeStartupSettings();
+		await reapplyRuntimeGroup("certificates", prevValues);
+		await dropUnlistedProfile(access, server);
+		await syncRenewalOptions();
+	} catch (err) {
+		await saveAcmeSetting(previous);
+		setStoredAcmeServer(previousMemory);
+		invalidate("certificates");
+		await writeStartupSettings();
+		throw err;
+	}
 	await internalAuditLog.add(access, { action: "updated", object_type: "setting", meta: { id: "acme", server } });
 };
 
@@ -631,6 +660,8 @@ const saveSettings = async (access, body) => {
 		const registered = await isRegistered(row);
 		const mail = checkedEmail(changes, row);
 		const eab = checkedEab(changes, row, registered);
+		// a typed URL passes the guard also when its account exists (D6)
+		if (serverChanged && registered) await readDirectory(target);
 		if (registered) {
 			if (mail.changed) await updateEmailLocked(target, mail.email, { access });
 		} else if (serverChanged || mail.changed || eab.entered) {

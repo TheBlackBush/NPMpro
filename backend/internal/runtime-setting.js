@@ -120,6 +120,8 @@ const internalRuntimeSetting = {
  * Applies a group again after something its defaults depend on changed (the instance CA): the cached values are
  * dropped, the group is read again and applied against prevValues, in the runtime settings queue
  *
+ * The apply runs with skipCheck: a change the CA drove is never refused for a CA that cannot be asked.
+ *
  * @param {string} group
  * @param {Object} prevValues  the values before the change
  */
@@ -127,7 +129,7 @@ const reapplyRuntimeGroup = (group, prevValues) =>
 	runtimeQueue(async () => {
 		invalidate(group);
 		const { values } = await getRuntimeConfig(group);
-		await applyHook(group, values, prevValues);
+		await applyHook(group, values, prevValues, { skipCheck: true });
 	});
 
 export { applyAllRuntime, reapplyRuntimeGroup, setRuntimeApply, setRuntimeApplyAll };

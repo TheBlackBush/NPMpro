@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { startApi } from "./support/api.js";
@@ -42,6 +42,7 @@ beforeEach(async () => {
 	const { default: settingModel } = await import("../models/setting.js");
 	await settingModel.query().where("id", "acme").delete();
 	acmeServer.setStoredAcmeServer(null);
+	await (await import("../lib/runtime-apply.js")).writeStartupSettings();
 	await rm(path.join(api.root, "data/tls/certbot/accounts"), { recursive: true, force: true });
 	for (const name of await readdir(path.join(api.root, "fake"))) {
 		if (FAKE_FILES.some((end) => name.endsWith(end))) await rm(path.join(api.root, "fake", name));
@@ -106,6 +107,7 @@ it("refuses a CA that answers but refuses the account, and leaves everything as 
 	const got = await admin.get(SETTINGS);
 	assert.equal(got.body.server, LE);
 	assert.equal(await account(REFUSE), undefined);
+	assert.ok(!hasServerLine(await startup()));
 });
 
 it("registers a new CA with EAB on save and keeps every secret out of answers, audit and argv", async () => {
@@ -232,18 +234,138 @@ it("lists the profiles of a CA, cached", async () => {
 	assert.deepEqual(second.body, want);
 });
 
-it("goes back to Let's Encrypt", async () => {
+// a registered account of server, under the test root
+const seedRegistered = async (server, id) => {
+	await seedAccount(api, server, id);
+	await model.query().insert({ server, state: "registered", account_id: id });
+};
+
+it("goes back to Let's Encrypt and is not refused when Let's Encrypt cannot be reached", async () => {
 	await registeredCa();
 	const { default: settingModel } = await import("../models/setting.js");
-	await seedAccount(api, LE, `${"0".repeat(31)}9`);
-	await model.query().insert({ server: LE, state: "registered", account_id: `${"0".repeat(31)}9` });
-	acmeDirectory(api, LE, { body: { newNonce: "n", meta: { profiles: { shortlived: "Six days" } } }, persist: false });
+	await seedRegistered(LE, `${"0".repeat(31)}9`);
+	acmeDirectory(api, LE, { status: 503, body: "down", persist: false });
 	const res = await admin.put(SETTINGS, { server: LE });
 	assert.equal(res.status, 200, res.text);
 	assert.equal(res.body.server, LE);
 	assert.equal(res.body.server_source, "default");
 	assert.equal((await settingModel.query().where("id", "acme").first()).meta.server, null);
 	assert.ok(!hasServerLine(await startup()));
+	assert.equal((await admin.get("/settings/runtime/certificates")).body.profile, "shortlived");
+});
+
+it("drops a default profile the reachable new CA does not list, and still saves", async () => {
+	await registeredCa();
+	await seedRegistered(LE, `${"0".repeat(31)}9`);
+	acmeDirectory(api, LE, { persist: false });
+	const res = await admin.put(SETTINGS, { server: LE });
+	assert.equal(res.status, 200, res.text);
+	assert.equal(res.body.server, LE);
+	assert.equal((await admin.get("/settings/runtime/certificates")).body.profile, "");
+});
+
+it("puts the previous CA back when applying the switch fails", async () => {
+	await registeredCa();
+	const { default: settingModel } = await import("../models/setting.js");
+	await (await import("../lib/runtime-apply.js")).writeStartupSettings();
+	const startupBefore = await startup();
+	await seedRegistered(ZEROSSL, `${"0".repeat(31)}8`);
+	acmeDirectory(api, ZEROSSL, { persist: false });
+	api.outside.control.failNext = "nginx: forced failure";
+	try {
+		const res = await admin.put(SETTINGS, { server: ZEROSSL });
+		assert.notEqual(res.status, 200, res.text);
+	} finally {
+		api.outside.control.failNext = null;
+	}
+	assert.equal((await settingModel.query().where("id", "acme").first()).meta.server, CA);
+	assert.equal(await startup(), startupBefore);
+	assert.equal(acmeServer.storedAcmeServer(), CA);
+	assert.equal((await admin.get(SETTINGS)).body.server, CA);
+	assert.equal(
+		(await api.db("audit_log").where({ object_type: "setting" })).filter((entry) => entry.meta.includes(ZEROSSL))
+			.length,
+		0,
+	);
+});
+
+it("applies the guard to a typed URL whose account already exists", async () => {
+	api.outside.dns.set("loop.lan", "::1");
+	await seedRegistered("https://loop.lan/dir", `${"0".repeat(31)}6`);
+	const res = await admin.put(SETTINGS, { server: "https://loop.lan/dir" });
+	assert.equal(res.status, 400, res.text);
+	assert.equal(res.body.error.message_i18n, "error.acme-blocked");
+	assert.equal((await admin.get(SETTINGS)).body.server, LE);
+	assert.ok(!hasServerLine(await startup()));
+});
+
+it("stores failed when Register now is refused", async () => {
+	acmeDirectory(api, CA, { status: 503, body: "down", persist: false });
+	assert.equal((await admin.put(SETTINGS, { server: CA })).body.warning, "unreachable");
+	acmeDirectory(api, CA, { persist: false });
+	await writeFile(path.join(api.root, "fake/register.fail"), "refused by the CA");
+	const res = await admin.post(`${SETTINGS}/register`, {});
+	assert.equal(res.status, 400, res.text);
+	assert.equal(res.body.error.message_i18n, "error.acme-refused");
+	assert.equal((await account(CA)).state, "failed");
+});
+
+it("rewrites the renewal options of the new CA's certificates", async () => {
+	const dir = path.join(api.root, "data/tls/certbot/renewal");
+	await mkdir(dir, { recursive: true });
+	const conf = path.join(dir, "npm-1.conf");
+	await writeFile(conf, `[renewalparams]\naccount = abc\nserver = ${ZEROSSL}\n`);
+	await seedRegistered(ZEROSSL, `${"0".repeat(31)}8`);
+	acmeDirectory(api, ZEROSSL, { persist: false });
+	const res = await admin.put(SETTINGS, { server: ZEROSSL });
+	assert.equal(res.status, 200, res.text);
+	const text = await readFile(conf, "utf8");
+	assert.ok(text.split("\n").includes("must_staple = True"), text);
+});
+
+it("refuses an http or malformed profiles server", async () => {
+	const http = await admin.get(`${SETTINGS}/profiles?server=http://good.lan/dir`);
+	assert.equal(http.status, 400);
+	assert.equal(http.body.error.message_i18n, "error.acme-url");
+	assert.equal((await admin.get(`${SETTINGS}/profiles?server=${GOOD}&server=${CA}`)).status, 400);
+	assert.equal((await admin.get(`${SETTINGS}/profiles?server=not-a-url`)).status, 400);
+});
+
+const SECTIONS = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams", "access_lists", "certificates"];
+const tokenOf = async (isAdmin) => {
+	const made = await admin.post("/users/me/api-tokens", {
+		name: `acme ${isAdmin}`,
+		admin: isAdmin,
+		visibility: "all",
+		permissions: Object.fromEntries(SECTIONS.map((name) => [name, "manage"])),
+	});
+	if (made.status !== 201) throw new Error(`creating a token answered ${made.status}: ${made.text}`);
+	const client = api.client();
+	const headers = { authorization: `Bearer ${made.body.token}` };
+	return {
+		get: (url) => client.get(url, { headers }),
+		put: (url, body) => client.put(url, body, { headers }),
+		post: (url, body) => client.post(url, body, { headers }),
+	};
+};
+
+it("lets an Administrator API token read, save and register (D14), and refuses a token without the switch", async () => {
+	const token = await tokenOf(true);
+	assert.equal((await token.get(SETTINGS)).status, 200);
+	acmeDirectory(api, CA, { status: 503, body: "down", persist: false });
+	const saved = await token.put(SETTINGS, { server: CA, email: "t@example.com" });
+	assert.equal(saved.status, 200, saved.text);
+	acmeDirectory(api, CA, { persist: false });
+	const registered = await token.post(`${SETTINGS}/register`, {});
+	assert.equal(registered.status, 200, registered.text);
+	assert.equal(registered.body.account.state, "registered");
+	assert.equal((await token.get(`${SETTINGS}/profiles`)).status, 200);
+	const plain = await tokenOf(false);
+	assert.equal((await plain.get(SETTINGS)).status, 403);
+	assert.equal((await plain.put(SETTINGS, { email: "a@example.com" })).status, 403);
+	assert.equal((await plain.post(`${SETTINGS}/register`, {})).status, 403);
+	assert.equal((await plain.get(`${SETTINGS}/profiles`)).status, 403);
+	assert.equal((await admin.get(SETTINGS)).status, 200);
 });
 
 it("makes the runtime defaults follow the CA without a restart", async () => {

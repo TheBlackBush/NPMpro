@@ -457,12 +457,12 @@ const createRuntimeApplier = ({
 			}
 			return plan;
 		},
-		certificates: async ({ next, prev, changed, startup, revert }) => {
+		certificates: async ({ next, prev, changed, startup, revert, skipCheck }) => {
 			const plan = { files: [], after: [] };
 			if (CERTBOT_KEYS.some((key) => changed.includes(key))) {
 				plan.files.push({ path: paths.certbotIni, content: renderCertbotIni(next) });
 			}
-			if (changed.includes("profile") && next.profile && !startup) {
+			if (changed.includes("profile") && next.profile && !startup && !skipCheck) {
 				plan.check = () => checkProfile(next.profile, next.server_tls_verify);
 			}
 			// the instance CA's certificates renew with these (at startup every key counts as changed)
@@ -512,14 +512,16 @@ const createRuntimeApplier = ({
 	 * @param   {Object}  [options]
 	 * @param   {boolean} [options.revert]  putting the stored values back after a failed save: no checks, no strict
 	 *                                      default certificate check, no Cloudflare fetch
+	 * @param   {boolean} [options.skipCheck]  a change the instance CA drove (its default profile): the ACME server
+	 *                                      profile check is not run, an unreachable CA never refuses it
 	 * @returns {Promise<{changed: string[], reloaded: boolean}>}
 	 */
-	const applyGroup = async (group, next, prev, { revert = false } = {}) => {
+	const applyGroup = async (group, next, prev, { revert = false, skipCheck = false } = {}) => {
 		const startup = prev === undefined;
 		const changed = changedKeys(next, prev);
 		if (changed.length === 0) return { changed, reloaded: false };
 
-		const plan = (await planners[group]?.({ next, prev, changed, startup, revert })) ?? {};
+		const plan = (await planners[group]?.({ next, prev, changed, startup, revert, skipCheck })) ?? {};
 		if (plan.check && !revert) await plan.check();
 
 		const applies = appliesOf(group);

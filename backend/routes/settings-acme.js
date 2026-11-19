@@ -52,10 +52,7 @@ router
 	.route("/profiles")
 	.all(jwtdecode())
 	.get(async (req, res) => {
-		const query = validator(
-			profilesSchema,
-			typeof req.query.server === "string" ? { server: req.query.server } : {},
-		);
+		const query = validator(profilesSchema, "server" in req.query ? { server: req.query.server } : {});
 		res.status(200).send(await internalAcmeAccount.listProfiles(res.locals.access, query));
 	});
 
