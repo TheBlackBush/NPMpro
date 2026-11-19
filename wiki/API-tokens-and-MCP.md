@@ -120,7 +120,7 @@ shows the same setup with your address under **Connect a client**, one tab for *
 Desktop and other clients**; the token window copies the Claude Code command with a new token already in it.
 
 ```sh
-claude mcp add --transport http npmpro https://npm.example.com:81/api/mcp --header "Authorization: Bearer YOUR_TOKEN"
+claude mcp add --transport http npmpro "https://npm.example.com:81/api/mcp" --header "Authorization: Bearer YOUR_TOKEN"
 ```
 
 For clients that start a local command (a desktop app, for example), add this to the client's configuration:

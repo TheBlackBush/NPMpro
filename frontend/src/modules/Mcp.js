@@ -11,14 +11,15 @@ const NEEDS = ["view", "manage", "delete", "admin"];
 const endpointOf = (origin) => `${origin}/api/mcp`;
 
 /**
- * The Claude Code command that adds the server, with the token filled in (the placeholder without one)
+ * The Claude Code command that adds the server, with the token filled in (the placeholder without one); the address
+ * is quoted, so an IPv6 address in brackets is not taken for a shell pattern
  *
  * @param {string} endpoint
  * @param {string} [token]
  * @returns {string}
  */
 const claudeCodeCommand = (endpoint, token) =>
-	`claude mcp add --transport http npmpro ${endpoint} --header "${authHeader(token)}"`;
+	`claude mcp add --transport http npmpro "${endpoint}" --header "${authHeader(token)}"`;
 
 /**
  * The client configuration for Claude Desktop and other clients that start a local command (mcp-remote); the token is a
