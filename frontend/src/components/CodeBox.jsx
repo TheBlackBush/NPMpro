@@ -4,7 +4,7 @@ import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import { cn } from "src/lib/utils";
 import { intl } from "src/locale";
-import { codeBoxClass, codeWords } from "src/modules/CodeBox";
+import { codeBoxClass, codeTokens, codeWords } from "src/modules/CodeBox";
 import { showSuccess } from "src/notifications";
 
 /**
@@ -16,13 +16,14 @@ import { showSuccess } from "src/notifications";
  * @param {Object} props
  * @param {string} props.text
  * @param {"words"|"scroll"} [props.wrap]
+ * @param {"json"} [props.language]       highlights a scroll box (keys, strings, numbers)
  * @param {string} [props.copiedMessage]  the toast, "Copied" by default
  * @param {string} [props.label]          what the box holds, for the copy button's name ("Copy: <label>")
  * @param {Object} [props.copyProps]      more props of the copy button (a data attribute for the focus)
  * @param {string} [props.className]      of the box
  * A scroll box takes the focus: give it an aria-label (the name of its line) through the remaining props.
  */
-function CodeBox({ text, wrap = "words", label, copiedMessage, copyProps, className, ...preProps }) {
+function CodeBox({ text, wrap = "words", language, label, copiedMessage, copyProps, className, ...preProps }) {
 	const pre = useRef(null);
 	const classes = codeBoxClass(wrap);
 	const name = label
@@ -48,7 +49,11 @@ function CodeBox({ text, wrap = "words", label, copiedMessage, copyProps, classN
 					{...preProps}
 					className={classes.pre}
 				>
-					{text}
+					{codeTokens(text, language).map((token) => (
+						<span key={token.key} className={token.className}>
+							{token.text}
+						</span>
+					))}
 				</pre>
 			) : (
 				<pre ref={pre} data-code-box="" {...preProps} className={classes.pre}>

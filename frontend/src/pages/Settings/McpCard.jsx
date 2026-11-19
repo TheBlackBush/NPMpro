@@ -44,6 +44,7 @@ function ConnectLine({ endpoint }) {
 						<CodeBox
 							text={desktopConfig(endpoint)}
 							wrap="scroll"
+							language="json"
 							label={intl.formatMessage({ id: "settings.api-access.mcp.other" })}
 							aria-label={intl.formatMessage({ id: "settings.api-access.mcp.other" })}
 						/>

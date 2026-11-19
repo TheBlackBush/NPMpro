@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { CODE_WRAPS, codeBoxClass, codeWords, LONG_WORD } from "./CodeBox.js";
+import { CODE_TOKEN_CLASS, CODE_WRAPS, codeBoxClass, codeTokens, codeWords, LONG_WORD } from "./CodeBox.js";
 
 const WORDS_PRE = /whitespace-pre-wrap/u;
 const SCROLL_PRE = /overflow-x-auto whitespace-pre/u;
@@ -42,4 +42,21 @@ it("codeBoxClass: words wrap, scroll scrolls; an unknown wrap throws", () => {
 	assert.equal(codeBoxClass("words").piece.word, "whitespace-nowrap");
 	assert.equal(codeBoxClass("words").piece.long, "[overflow-wrap:anywhere]");
 	assert.throws(() => codeBoxClass("wrap"), TypeError);
+});
+
+it("codeTokens colours JSON keys, strings and numbers and keeps the text whole", () => {
+	const text = '{\n  "args": ["-y", 3, true]\n}';
+	const tokens = codeTokens(text, "json");
+	assert.equal(tokens.map((token) => token.text).join(""), text);
+	assert.equal(tokens.find((token) => token.text === '"args"').className, CODE_TOKEN_CLASS.key);
+	assert.equal(tokens.find((token) => token.text === '"-y"').className, CODE_TOKEN_CLASS.string);
+	assert.equal(tokens.find((token) => token.text === "3").className, CODE_TOKEN_CLASS.number);
+	assert.equal(tokens.find((token) => token.text === "true").className, CODE_TOKEN_CLASS.literal);
+	assert.equal(new Set(tokens.map((token) => token.key)).size, tokens.length);
+});
+
+it("codeTokens leaves other text as one plain piece", () => {
+	assert.deepEqual(codeTokens("claude mcp add", undefined), [
+		{ key: "0", text: "claude mcp add", className: undefined },
+	]);
 });

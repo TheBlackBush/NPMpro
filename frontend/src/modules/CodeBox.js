@@ -3,6 +3,7 @@
  * node --test checks them without a DOM. The classes are written out whole so Tailwind finds them.
  */
 import { cn } from "../lib/utils.js";
+import { highlightJson } from "./ApiRequest.js";
 
 /** A word longer than this (characters) may break inside; about the width of a 390 px phone line in the box */
 export const LONG_WORD = 32;
@@ -38,6 +39,31 @@ export const codeWords = (text, longAt = LONG_WORD) => {
  * @param   {"words"|"scroll"} [wrap]
  * @returns {{ box: string, pre: string, copy: string, piece: { word: string, long: string, space: string } }}
  */
+/**
+ * The colours of highlighted code on the box's muted background, light and dark (the API reference's code colours are
+ * made for its dark code surface)
+ */
+export const CODE_TOKEN_CLASS = Object.freeze({
+	key: "text-violet-700 dark:text-violet-300",
+	string: "text-emerald-700 dark:text-emerald-300",
+	number: "text-amber-700 dark:text-amber-300",
+	literal: "text-amber-700 dark:text-amber-300",
+});
+
+/**
+ * The pieces of a code text with their colour classes: JSON is highlighted, any other text is one plain piece
+ *
+ * @param   {string} text
+ * @param   {"json"} [language]
+ * @returns {Array<{ key: string, text: string, className: string | undefined }>}
+ */
+export const codeTokens = (text, language) =>
+	(language === "json" ? highlightJson(text) : [{ kind: "plain", text }]).map((token, index) => ({
+		key: `${index}`,
+		text: token.text,
+		className: CODE_TOKEN_CLASS[token.kind],
+	}));
+
 export function codeBoxClass(wrap = "words") {
 	if (!CODE_WRAPS.includes(wrap)) throw new TypeError(`unknown code wrap "${wrap}"`);
 	return {
