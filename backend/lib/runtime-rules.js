@@ -266,7 +266,7 @@ const RESTART_GROUPS = [...new Set(RUNTIME_RULES.filter(isRestartRule).map((rule
 
 /**
  * @param   {Object}  env
- * @returns {string}  the ACME directory URL (ACME_SERVER, Let's Encrypt when unset)
+ * @returns {string}  the instance CA: a user-set ACME_SERVER, the stored one, Let's Encrypt
  */
 const acmeServerOf = (env) => serverOf(env);
 

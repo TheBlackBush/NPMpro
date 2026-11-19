@@ -1,14 +1,12 @@
 import { statSync } from "node:fs";
 import { isIP } from "node:net";
 import { availableParallelism } from "node:os";
+import { LETSENCRYPT_SERVER, resolveAcmeServer, STAPLING_SERVERS } from "./acme-server.js";
 import { LOG_FORMATS } from "./log-format.js";
 import { parseCpuList, readCpusAllowed } from "./nginx-core.js";
 import { rooted } from "./paths.js";
 import { isTimeZone } from "./time-zones.js";
 
-const LETSENCRYPT_SERVER = "https://acme-v02.api.letsencrypt.org/directory";
-// envs.sh: these servers default to must-staple and OCSP stapling on
-const STAPLING_SERVERS = new Set(["https://dv.acme-v02.api.pki.goog/directory", "https://acme.zerossl.com/v2/DV90"]);
 const KEY_SIZES = { ecdsa: ["secp256r1", "secp384r1", "secp521r1"], rsa: ["2048", "3072", "4096"] };
 const DEFAULT_KEY_SIZE = { ecdsa: "secp384r1", rsa: "4096" };
 const ANUBIS_IMAGES = ["happy", "reject", "pensive"].map((name) => rooted(`/data/public/anubis/${name}.webp`));
@@ -55,7 +53,7 @@ const isNginxTime = (value) => {
 
 const isSet = (raw) => typeof raw === "string" && raw !== "";
 
-const serverOf = (env) => (isSet(env.ACME_SERVER) ? env.ACME_SERVER : LETSENCRYPT_SERVER);
+const serverOf = (env) => resolveAcmeServer(env);
 
 const nonEmptyFile = (path) => {
 	try {
