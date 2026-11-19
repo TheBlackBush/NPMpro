@@ -4,9 +4,8 @@ import { useWatch } from "react-hook-form";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
 import { TokenBadges, TokenFacts, TokenPermissions } from "src/components/ApiTokenCells";
 import { CodeBox } from "src/components/CodeBox";
-import { HookForm, SelectField, SwitchField, SwitchList, TextField, useAppForm } from "src/components/Form";
-import { FormSection } from "src/components/Form/FormSection";
-import { PERMISSION_ROWS, PermissionButtons, VisibilityButtons } from "src/components/Form/PermissionButtons";
+import { HookForm, SelectField, SettingLines, SwitchField, TextField, useAppForm } from "src/components/Form";
+import { TokenPermissionFields } from "src/components/Form/TokenPermissionFields";
 import { TapTooltip } from "src/components/TapTooltip";
 import { Button as UiButton } from "src/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "src/components/ui/input-group";
@@ -193,29 +192,29 @@ function NewStep({ focus, user, onCancel, onCreated }) {
 			</AppModal.Header>
 			<AppModal.Body>
 				<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
-				<TextField
-					name="name"
-					id={`${baseId}-name`}
-					label={<T id="api-tokens.name" />}
-					autoComplete="off"
-					maxLength={100}
-					required
-				/>
-				<ExpiryFields baseId={baseId} />
-				<VisibilityButtons name="visibility" allowAll={caps.visibility === "all"} />
-				<FormSection legend={<T id="api-tokens.permissions" />}>
-					{PERMISSION_ROWS.map(([section, labelId]) => (
-						<PermissionButtons key={section} name={section} legend={<T id={labelId} />} caps={caps} />
-					))}
-					{admin ? null : (
-						<p className="mb-0 text-muted-foreground text-sm">
-							<T id="api-tokens.cap-note" />
-						</p>
-					)}
-				</FormSection>
-				<SwitchList>
+				<div className="@container">
+					<div className="grid grid-cols-1 gap-x-3 @md:grid-cols-2">
+						<TextField
+							name="name"
+							id={`${baseId}-name`}
+							label={<T id="api-tokens.name" />}
+							autoComplete="off"
+							maxLength={100}
+							required
+						/>
+						<ExpiryFields baseId={baseId} />
+					</div>
+				</div>
+				<TokenPermissionFields caps={caps} />
+				{admin ? null : (
+					<p className="m-0 text-muted-foreground text-sm">
+						<T id="api-tokens.cap-note" />
+					</p>
+				)}
+				<SettingLines>
 					{admin ? (
 						<SwitchField
+							line
 							id={`${baseId}-admin`}
 							label={<T id="api-tokens.admin" />}
 							hint={<T id="api-tokens.admin.help" />}
@@ -223,12 +222,13 @@ function NewStep({ focus, user, onCancel, onCreated }) {
 						/>
 					) : null}
 					<SwitchField
+						line
 						id={`${baseId}-allow-delete`}
 						label={<T id="api-tokens.allow-delete" />}
 						hint={<T id="api-tokens.allow-delete.help" />}
 						{...register("allowDelete")}
 					/>
-				</SwitchList>
+				</SettingLines>
 			</AppModal.Body>
 			<AppModal.Footer>
 				<Button variant="ghost" onClick={onCancel} disabled={isSubmitting}>

@@ -143,3 +143,21 @@ export function choiceItemClass({ variant = "buttons", fill = false } = {}) {
 export function switchListClass(columns = 1) {
 	return columns === 2 ? "grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2" : "flex flex-col gap-3";
 }
+
+/**
+ * The classes of a segmented control (a radio group drawn as segments): a muted track, equal segments, the checked
+ * one raised on the page colour; full takes the whole row
+ *
+ * @param   {Object}  [options]
+ * @param   {boolean} [options.full]
+ * @returns {{ group: string, item: string }}
+ */
+export function segmentedClass({ full = true } = {}) {
+	return {
+		group: cn(
+			full ? "grid w-full" : "inline-grid w-auto",
+			"grid-flow-col auto-cols-fr gap-0.5 rounded-lg border bg-muted p-0.5",
+		),
+		item: "inline-flex h-7 min-w-0 items-center justify-center rounded-md px-2 font-medium text-[0.8rem] text-muted-foreground whitespace-nowrap outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-muted-foreground data-[state=checked]:bg-background data-[state=checked]:font-semibold data-[state=checked]:text-foreground data-[state=checked]:shadow-sm dark:data-[state=checked]:bg-input/50",
+	};
+}
