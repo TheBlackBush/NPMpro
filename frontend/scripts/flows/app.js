@@ -435,25 +435,74 @@ async function mfaWindow({ browser, base, viewerPassword }) {
 	}
 }
 
+const SECTIONS = ["Proxy Hosts", "Redirection Hosts", "404 Hosts", "Streams", "Access Lists", "Certificates"];
+const LAST_USED_TIME = /\d{1,2}:\d{2}/u;
+
+// the radio of one level in a section's segmented row
+const levelRadio = (dialog, section, level) =>
+	dialog.getByRole("radiogroup", { name: section, exact: true }).getByRole("radio", { name: level, exact: true });
+
+// the window opens on its title (also on a phone), never on Revoke
+async function titleHasFocus(page) {
+	await page.waitForFunction(() => document.activeElement?.matches("[data-window-start]"));
+	const text = await page.evaluate(() => document.activeElement.textContent.trim());
+	if (text !== "API tokens") throw new Error(`the window opened with the focus on "${text}"`);
+}
+
+async function openApiTokens(page) {
+	// leaving a page with a request in flight shows as a page error in WebKit
+	await page.waitForLoadState("networkidle");
+	await page.goto("/");
+	await page.locator("header").getByRole("button", { name: "Open user menu" }).click();
+	await page.getByRole("menuitem", { name: "API tokens", exact: true }).click();
+	return page.getByRole("dialog");
+}
+
 // a token made in the window works for a script and stops at its revoke (shown once, never listed again)
-async function apiTokens({ admin, base }) {
+async function apiTokens({ admin, base, browser, password }) {
 	const { page } = admin;
 	let script = null;
+	let phone = null;
+	// the sign-in page's own health check can end with an aborted request: only what this flow causes counts
+	const errorsBefore = admin.errors.length;
 	try {
-		await page.goto("/");
-		await page.locator("header").getByRole("button", { name: "Open user menu" }).click();
-		await page.getByRole("menuitem", { name: "API tokens", exact: true }).click();
-		const dialog = page.getByRole("dialog");
+		// the title takes the focus on a phone too
+		phone = await signIn(browser, base, ADMIN_EMAIL, password, { width: 390, height: 844 });
+		await openApiTokens(phone.page);
+		await titleHasFocus(phone.page);
+		if (phone.errors.length > 0) throw new Error(`page error on the phone: ${phone.errors[0]}`);
+		await phone.context.close();
+		phone = null;
+
+		const dialog = await openApiTokens(page);
+		await titleHasFocus(page);
 		await dialog.getByRole("button", { name: "New token", exact: true }).click();
 		await dialog.getByRole("textbox", { name: "Name", exact: true }).fill("flow-token");
-		// Proxy Hosts: View Only (its dependency turns on access lists and certificates view)
-		await dialog
-			.getByRole("group", { name: "Proxy Hosts" })
-			.getByRole("radio", { name: "View Only", exact: true })
-			.click();
+		// Proxy Hosts: View Only (its dependencies turn on access lists and certificates at View Only)
+		await levelRadio(dialog, "Proxy Hosts", "View Only").click();
+		for (const section of ["Access Lists", "Certificates"]) {
+			// biome-ignore lint/performance/noAwaitInLoops: one check after the other
+			if ((await levelRadio(dialog, section, "View Only").getAttribute("aria-checked")) !== "true")
+				throw new Error(`${section} did not turn on View Only`);
+		}
+		if (!(await levelRadio(dialog, "Access Lists", "Hidden").isDisabled()))
+			throw new Error("Hidden is not disabled for Access Lists, which Proxy Hosts needs");
+		// Set all: Hidden leaves every row Hidden; Proxy Hosts View Only again for the token
+		await dialog.getByRole("button", { name: "Set every section to Hidden", exact: true }).click();
+		for (const section of SECTIONS) {
+			// biome-ignore lint/performance/noAwaitInLoops: one check after the other
+			if ((await levelRadio(dialog, section, "Hidden").getAttribute("aria-checked")) !== "true")
+				throw new Error(`${section} is not Hidden after Set all: Hidden`);
+		}
+		await levelRadio(dialog, "Proxy Hosts", "View Only").click();
 		await dialog.getByRole("button", { name: "Create", exact: true }).click();
-		const secret = await dialog.locator("[data-api-token-secret]").inputValue();
+		const secret = (await dialog.locator("[data-api-token-secret]").textContent()).trim();
 		if (!API_TOKEN.test(secret)) throw new Error("the window did not show a token");
+		// the secret is in the created step only: no storage, no address
+		const kept = await page.evaluate(
+			() => JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage }) + location.href,
+		);
+		if (kept.includes(secret)) throw new Error("the secret is in storage or in the address");
 		script = await request.newContext({
 			baseURL: base,
 			ignoreHTTPSErrors: true,
@@ -463,10 +512,27 @@ async function apiTokens({ admin, base }) {
 			throw new Error("the token could not list proxy hosts");
 		if ((await script.post("/api/nginx/proxy-hosts", { data: TOKEN_HOST })).status() !== 403)
 			throw new Error("a view token could create");
+		// a refused clipboard: the command shows in a box, with the token, and nothing says it was copied
+		await page.evaluate(() => {
+			navigator.clipboard.writeText = () => Promise.reject(new Error("refused"));
+		});
+		await dialog.getByRole("button", { name: "Copy the Claude Code command", exact: true }).click();
+		const command = dialog.locator("[data-api-token-command]");
+		await command.waitFor();
+		const commandText = await command.textContent();
+		if (!(commandText.includes("claude mcp add") && commandText.includes(secret)))
+			throw new Error("the manual command lacks claude mcp add or the token");
+		if ((await page.locator("[data-sonner-toast]").filter({ hasText: "copied" }).count()) > 0)
+			throw new Error("a copied toast shows although the clipboard refused");
 		await dialog.getByRole("button", { name: "Done", exact: true }).click();
-		// the list shows the token without its secret
+		// the list shows the token without its secret, and the script's request as the time of its last use
 		await dialog.getByText("flow-token", { exact: true }).waitFor();
 		if ((await dialog.getByText(secret).count()) > 0) throw new Error("the list shows the secret");
+		// a reload while a request is in flight shows as a page error in WebKit
+		await page.waitForLoadState("networkidle");
+		await page.reload();
+		await openApiTokens(page);
+		await dialog.locator("li").filter({ hasText: "flow-token" }).filter({ hasText: LAST_USED_TIME }).waitFor();
 		await dialog.getByRole("button", { name: "Revoke flow-token", exact: true }).click();
 		await dialog.getByRole("button", { name: "Revoke", exact: true }).click();
 		await dialog.getByText("flow-token", { exact: true }).waitFor({ state: "detached" });
@@ -474,9 +540,151 @@ async function apiTokens({ admin, base }) {
 			throw new Error("the revoked token still works");
 		await dialog.getByRole("button", { name: "Close", exact: true }).last().click();
 		await windowClosed(page);
-		if (admin.errors.length > 0) throw new Error(`page error: ${admin.errors[0]}`);
+		if (admin.errors.length > errorsBefore) throw new Error(`page error: ${admin.errors[errorsBefore]}`);
 	} finally {
 		await script?.dispose();
+		await phone?.context.close();
+		await cleanUp(admin.api);
+	}
+}
+
+// a token never goes above its owner: the viewer (every section View Only, visibility all) has no Manage and no
+// Administrator switch, "Set all: Manage" gives View Only and the arrow keys skip the disabled Manage
+async function apiTokenCaps({ browser, base, viewerPassword }) {
+	const viewer = await signIn(browser, base, VIEWER_EMAIL, viewerPassword);
+	try {
+		const { page } = viewer;
+		const dialog = await openApiTokens(page);
+		await dialog.getByRole("button", { name: "New token", exact: true }).click();
+		// the name first: leaving an empty Name shows its error and moves everything below, which swallows a first click
+		await dialog.getByRole("textbox", { name: "Name", exact: true }).fill("flow-caps");
+		for (const section of SECTIONS) {
+			// biome-ignore lint/performance/noAwaitInLoops: one check after the other
+			if (!(await levelRadio(dialog, section, "Manage").isDisabled()))
+				throw new Error(`${section} offers Manage`);
+		}
+		if ((await dialog.getByText("Administrator", { exact: true }).count()) > 0)
+			throw new Error("a user offers the Administrator switch");
+		// the owner's levels load after the window opens: until then every Manage is disabled and so is every View Only
+		await levelRadio(dialog, "Proxy Hosts", "View Only").and(page.locator(":enabled")).waitFor();
+		await dialog.getByRole("button", { name: "Set every section to Manage", exact: true }).click();
+		for (const section of SECTIONS) {
+			// biome-ignore lint/performance/noAwaitInLoops: one check after the other
+			await levelRadio(dialog, section, "View Only").and(page.locator("[aria-checked=true]")).waitFor();
+		}
+		const proxyView = levelRadio(dialog, "Proxy Hosts", "View Only");
+		await proxyView.focus();
+		await page.keyboard.press("ArrowLeft");
+		// the arrow skips the disabled Manage and wraps to Hidden (Chromium moves only the focus, WebKit also checks it)
+		if ((await levelRadio(dialog, "Proxy Hosts", "Manage").getAttribute("aria-checked")) === "true")
+			throw new Error("an arrow key chose the disabled Manage");
+		const onManage = await page.evaluate(() => {
+			const active = document.activeElement;
+			return active?.getAttribute("role") === "radio" && active.textContent.trim() === "Manage";
+		});
+		if (onManage) throw new Error("the focus landed on the disabled Manage");
+		await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+		await dialog.getByRole("button", { name: "Close", exact: true }).last().click();
+		await windowClosed(page);
+		if (viewer.errors.length > 0) throw new Error(`page error for the viewer: ${viewer.errors[0]}`);
+	} finally {
+		await viewer.context.close();
+	}
+}
+
+// Settings, API access: the code boxes sit inside their cards with their copy button inside, the client tabs switch
+// the configuration, a token row names its marks and sections, and a phone shows the row as a card without sideways
+// scrolling
+async function apiAccess({ admin, browser, base, password }) {
+	const { page } = admin;
+	let phone = null;
+	const errorsBefore = admin.errors.length;
+	try {
+		await admin.api("POST", "/users/me/api-tokens", {
+			name: "flow-access",
+			permissions: {
+				proxy_hosts: "manage",
+				redirection_hosts: "hidden",
+				dead_hosts: "hidden",
+				streams: "hidden",
+				access_lists: "view",
+				certificates: "view",
+			},
+			allow_delete: true,
+		});
+		await page.goto("/settings/api-access");
+		await page.locator("[data-mcp-clients] [data-code-box]").first().waitFor();
+		const boxes = await page.locator("[data-code-box]").evaluateAll((list) =>
+			list
+				.filter((box) => box.getClientRects().length > 0)
+				.map((box) => {
+					const card = box.closest("[role=group]").getBoundingClientRect();
+					const wrap = box.getBoundingClientRect();
+					const outer = box.parentElement.getBoundingClientRect();
+					const copy = box.parentElement.querySelector("button").getBoundingClientRect();
+					return {
+						inset: outer.x - card.x,
+						copyInside:
+							copy.x >= outer.x &&
+							copy.right <= outer.right &&
+							copy.y >= outer.y &&
+							copy.bottom <= outer.bottom,
+						wrapInside: wrap.x >= outer.x && wrap.right <= outer.right,
+					};
+				}),
+		);
+		if (boxes.length === 0) throw new Error("no code box is visible");
+		for (const box of boxes) {
+			if (box.inset < 12) throw new Error(`a code box sits ${box.inset} px from its card`);
+			if (!(box.copyInside && box.wrapInside)) throw new Error("a copy button or text lies outside its code box");
+		}
+		const clients = page.locator("[data-mcp-clients]");
+		await clients.getByRole("tab", { name: "Claude Desktop and other clients", exact: true }).click();
+		if (!(await clients.locator("[data-code-box]:visible").textContent()).includes('"mcpServers"'))
+			throw new Error("the other clients tab does not show the mcpServers configuration");
+		await page.keyboard.press("ArrowLeft");
+		await clients.getByRole("tab", { name: "Claude Code", exact: true, selected: true }).waitFor();
+		if (!(await clients.locator("[data-code-box]:visible").textContent()).trim().startsWith("claude mcp add"))
+			throw new Error("the Claude Code box does not start with claude mcp add");
+		// the row: Allow delete under the name, in the name's cell; the chip Proxy Hosts with Manage
+		const row = rowOf(page, "flow-access").first();
+		await row.waitFor();
+		await row.getByText("Allow delete", { exact: true }).filter({ visible: true }).waitFor();
+		await row
+			.locator("[data-slot=badge]")
+			.filter({ hasText: "Proxy Hosts" })
+			.filter({ hasText: "Manage" })
+			.filter({ visible: true })
+			.first()
+			.waitFor();
+		const placed = await row.evaluate((tr) => {
+			// the cell holds a copy for a narrow table and one for a wide one: take the shown ones
+			const cell = tr.querySelector("td");
+			const shown = [...cell.querySelectorAll("*")].filter((el) => el.getClientRects().length > 0);
+			const name = shown.find((el) => el.tagName === "SPAN" && el.textContent === "flow-access");
+			const badge = shown.find((el) => el.children.length === 0 && el.textContent.trim() === "Allow delete");
+			if (!(name && badge)) return null;
+			return { gap: badge.getBoundingClientRect().top - name.getBoundingClientRect().bottom };
+		});
+		if (!placed) throw new Error("the Allow delete badge is not in the name's cell");
+		if (placed.gap < 0) throw new Error("the Allow delete badge is not below the token name");
+		if (admin.errors.length > errorsBefore) throw new Error(`page error: ${admin.errors[errorsBefore]}`);
+
+		// a phone: no sideways scroll, the row is a card with its Revoke button
+		phone = await signIn(browser, base, ADMIN_EMAIL, password, { width: 390, height: 844 });
+		await phone.page.goto("/settings/api-access");
+		const card = rowOf(phone.page, "flow-access");
+		await card.first().waitFor();
+		await card
+			.getByRole("button", { name: "Revoke flow-access", exact: true })
+			.filter({ visible: true })
+			.first()
+			.waitFor();
+		const wide = await phone.page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+		if (wide > 0) throw new Error(`the page scrolls sideways on a phone by ${wide} px`);
+		if (phone.errors.length > 0) throw new Error(`page error on the phone: ${phone.errors[0]}`);
+	} finally {
+		await phone?.context.close();
 		await cleanUp(admin.api);
 	}
 }
@@ -836,6 +1044,8 @@ export const appFlows = [
 	{ name: "phone list", run: phoneList },
 	{ name: "mfa window", run: mfaWindow },
 	{ name: "api tokens", run: apiTokens },
+	{ name: "api token caps", run: apiTokenCaps },
+	{ name: "api access", run: apiAccess },
 	{ name: "users sign-in", run: usersSignIn },
 	{ name: "window focus tooltip", run: windowFocusTooltip },
 	{ name: "help sheet", run: helpSheet },

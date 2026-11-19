@@ -30,7 +30,13 @@ const visited = new Set();
 
 // the access lists an action made with seedAccessLists, removed when it ends
 const seeded = [];
-const browser = await (engine === "webkit" ? webkit : chromium).launch();
+// FLOWS_WEBKIT_WS (a remote Playwright WebKit server's WebSocket URL, local runs only) connects instead of launching
+// biome-ignore lint/style/noProcessEnv: the same switch as in flows/run.js
+const webkitWs = process.env.FLOWS_WEBKIT_WS;
+const browser =
+	engine === "webkit" && webkitWs
+		? await webkit.connect(webkitWs)
+		: await (engine === "webkit" ? webkit : chromium).launch();
 const options = { ignoreHTTPSErrors: true, locale: "en-US", viewport: { width: 1440, height: 900 } };
 
 /** A page that records CSP violations and page errors under the name of what it is doing (page.step) */

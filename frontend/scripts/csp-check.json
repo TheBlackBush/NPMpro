@@ -582,6 +582,27 @@
 				{ "click": "[data-guide-open]" },
 				{ "waitFor": "[data-guide-sheet]" }
 			]
+		},
+		{
+			"name": "api access: client tabs",
+			"route": "/settings/api-access",
+			"steps": [
+				{ "waitFor": "[data-mcp-clients]" },
+				{ "click": "role=tab[name='Claude Desktop and other clients']" },
+				{ "waitFor": "[data-mcp-clients] [data-code-box]" }
+			]
+		},
+		{
+			"name": "api tokens: new token",
+			"route": "/",
+			"steps": [
+				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=menuitem[name='API tokens']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "role=button[name='New token']" },
+				{ "click": "role=button[name='Set every section to View Only']" },
+				{ "press": "Escape" }
+			]
 		}
 	]
 }
