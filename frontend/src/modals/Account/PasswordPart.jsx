@@ -1,5 +1,5 @@
 import { Lock } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { updateAuth } from "src/api/backend";
 import { ApiErrorContent, ErrorAlert, FormSubmit, NoticeAlert } from "src/components";
 import { HookForm, PasswordField, useAppForm, useRecheckDependent } from "src/components/Form";
@@ -29,8 +29,13 @@ function NewPasswordField() {
 
 // The own password. With password sign-in off (OIDC only) the form stays: the password is used again when password
 // sign-in is turned back on, and the notice says so. The health check (GET /api, polled) tells whether it is off.
-function PasswordForm({ onSaved }) {
+function PasswordForm({ onSaved, focusHeading }) {
 	const { data: health } = useHealth();
+	const heading = useRef(null);
+	// after a saved change the focused field went away with the old form: the heading keeps the user's place
+	useEffect(() => {
+		if (focusHeading) heading.current?.focus({ preventScroll: true });
+	}, [focusHeading]);
 	const [error, setError] = useState(null);
 	const methods = useAppForm({ defaultValues: EMPTY, validate });
 	const { isSubmitting } = methods.formState;
@@ -51,6 +56,7 @@ function PasswordForm({ onSaved }) {
 				id="password"
 				icon={Lock}
 				heading={<T id="password" />}
+				headingRef={heading}
 				footer={
 					<FormSubmit isLoading={isSubmitting} disabled={isSubmitting}>
 						<T id="user.change-password" />
@@ -93,8 +99,16 @@ function PasswordForm({ onSaved }) {
 
 // After a saved change the form starts again (a new instance): the fields are empty and the part has no unsaved
 // change, with nothing of the submitted state left (a reset inside the submit handler is undone by the form's own state
-// after the handler, and a reset after it kept the touched and submitted marks, so the first key showed a message)
+// after the handler, and a reset after it kept the touched and submitted marks, so the first key showed a message).
+// The new form puts the focus on the part heading (the field that had it is gone, and Radix would fall back to the
+// window itself).
 export function PasswordPart() {
 	const [generation, setGeneration] = useState(0);
-	return <PasswordForm key={generation} onSaved={() => setGeneration((current) => current + 1)} />;
+	return (
+		<PasswordForm
+			key={generation}
+			focusHeading={generation > 0}
+			onSaved={() => setGeneration((current) => current + 1)}
+		/>
+	);
 }
