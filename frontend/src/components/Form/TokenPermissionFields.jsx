@@ -51,12 +51,13 @@ function SectionRow({ section, labelId, caps, values }) {
  */
 function TokenPermissionFields({ caps }) {
 	const visibilityId = useId();
+	const permissionsId = useId();
 	const { setValue } = useFormContext();
 	const { field: visibility } = useController({ name: "visibility" });
 	const current = useWatch({ name: PERMISSION_SECTIONS });
 	const values = Object.fromEntries(PERMISSION_SECTIONS.map((section, index) => [section, current[index]]));
 	return (
-		<div className="@container flex flex-col gap-4">
+		<div className="@container mb-4 flex flex-col gap-4">
 			<div className="flex flex-col gap-1.5">
 				<span id={visibilityId} className="font-medium text-sm">
 					<T id="permissions.visibility.title" />
@@ -78,9 +79,9 @@ function TokenPermissionFields({ caps }) {
 					]}
 				/>
 			</div>
-			<div className="flex flex-col gap-2">
+			<fieldset aria-labelledby={permissionsId} className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
 				<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-					<span className="font-medium text-sm">
+					<span id={permissionsId} className="font-medium text-sm">
 						<T id="api-tokens.permissions" />
 					</span>
 					<span className="flex flex-wrap items-baseline gap-x-2 text-muted-foreground text-xs">
@@ -108,7 +109,7 @@ function TokenPermissionFields({ caps }) {
 						<SectionRow key={section} section={section} labelId={labelId} caps={caps} values={values} />
 					))}
 				</div>
-			</div>
+			</fieldset>
 		</div>
 	);
 }
