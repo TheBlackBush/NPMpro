@@ -1,18 +1,20 @@
-import { CopyIcon } from "lucide-react";
+import { BookOpen, CopyIcon, ExternalLink } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
-import { TokenBadges, TokenCreated, TokenExpiry, TokenLastUsed, TokenPermissions } from "src/components/ApiTokenCells";
+import { TokenBadges, TokenFacts, TokenPermissions } from "src/components/ApiTokenCells";
+import { CodeBox } from "src/components/CodeBox";
 import { HookForm, SelectField, SwitchField, SwitchList, TextField, useAppForm } from "src/components/Form";
 import { FormSection } from "src/components/Form/FormSection";
 import { PERMISSION_ROWS, PermissionButtons, VisibilityButtons } from "src/components/Form/PermissionButtons";
 import { TapTooltip } from "src/components/TapTooltip";
+import { Button as UiButton } from "src/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "src/components/ui/input-group";
 import { Label } from "src/components/ui/label";
 import { useCreateApiToken, useOwnApiTokens, useRevokeApiToken, useUser } from "src/hooks";
 import { useIsMobile } from "src/hooks/use-mobile";
 import { intl, T } from "src/locale";
-import { EXPIRY_CHOICES, newTokenValues, ownerCaps, tokenPayload, tomorrowOf } from "src/modules/ApiTokens";
+import { authHeader, EXPIRY_CHOICES, newTokenValues, ownerCaps, tokenPayload, tomorrowOf } from "src/modules/ApiTokens";
 import EasyModal from "src/modules/easyModal";
 import { fieldsValidate } from "src/modules/HookForm";
 import { isAdmin } from "src/modules/Permissions";
@@ -42,86 +44,82 @@ function useStepFocus(focus, target) {
 
 function TokenRow({ token, now, onRevoke }) {
 	return (
-		<li className="flex items-start justify-between gap-3 border-b py-3 last:border-b-0">
-			<div className="flex min-w-0 flex-col gap-1.5">
+		<li className="flex flex-col gap-3 border-b py-3.5 last:border-b-0 @md:flex-row @md:items-start">
+			<div className="flex min-w-0 flex-1 flex-col gap-2">
 				<div className="flex flex-wrap items-center gap-2">
-					<span className="break-words font-medium">{token.name}</span>
+					<span className="break-words font-semibold">{token.name}</span>
 					<TokenBadges token={token} now={now} />
 				</div>
 				<TokenPermissions token={token} />
-				<dl className="m-0 flex flex-wrap gap-x-4 gap-y-0.5 text-muted-foreground text-sm">
-					<div className="flex gap-1">
-						<dt>
-							<T id="api-tokens.expires" />:
-						</dt>
-						<dd className="m-0">
-							<TokenExpiry token={token} />
-						</dd>
-					</div>
-					<div className="flex gap-1">
-						<dt>
-							<T id="api-tokens.last-used" />:
-						</dt>
-						<dd className="m-0">
-							<TokenLastUsed token={token} />
-						</dd>
-					</div>
-					<div className="flex gap-1">
-						<dt>
-							<T id="api-tokens.created" />:
-						</dt>
-						<dd className="m-0">
-							<TokenCreated token={token} />
-						</dd>
-					</div>
-				</dl>
+				<TokenFacts token={token} />
 			</div>
-			<Button
+			<UiButton
+				variant="destructive-outline"
 				size="sm"
+				className="self-start"
 				aria-label={intl.formatMessage({ id: "api-tokens.revoke-name" }, { name: token.name })}
 				onClick={() => onRevoke(token)}
 			>
 				<T id="api-tokens.revoke" />
-			</Button>
+			</UiButton>
 		</li>
 	);
 }
 
 function ListStep({ focus, onNew, onRevoke, onClose }) {
 	const title = useStepFocus(focus);
+	const baseId = useId();
 	const { data, isPending, error } = useOwnApiTokens();
 	const now = new Date();
 	return (
 		<>
 			<AppModal.Header closeButton>
-				<AppModal.Title ref={title} tabIndex={-1}>
+				<AppModal.Title ref={title} tabIndex={-1} data-window-start="">
 					<T id="api-tokens.title" />
 				</AppModal.Title>
 			</AppModal.Header>
 			<AppModal.Body>
-				<p className="mb-3 text-muted-foreground text-sm">
-					<T id="api-tokens.intro" />
-				</p>
-				{error ? <ErrorAlert error={error} /> : null}
-				{isPending ? <Loading noLogo /> : null}
-				{data && data.length === 0 ? (
-					<p className="my-4 text-center text-muted-foreground">
-						<T id="api-tokens.empty" />
+				<div className="@container flex flex-col gap-4">
+					<p className="m-0 text-muted-foreground text-sm">
+						<T id="api-tokens.intro" />
 					</p>
-				) : null}
-				{data && data.length > 0 ? (
-					<ul className="m-0 mb-3 list-none p-0">
-						{data.map((token) => (
-							<TokenRow key={token.id} token={token} now={now} onRevoke={onRevoke} />
-						))}
-					</ul>
-				) : null}
-				<p className="mb-0 text-muted-foreground text-sm">
-					<T id="api-tokens.docs.note" /> <code className="font-mono">Authorization: Bearer YOUR_TOKEN</code>{" "}
-					<a href="/api-reference" target="_blank" rel="noopener noreferrer" className="underline">
-						<T id="api-tokens.docs" />
-					</a>
-				</p>
+					{error ? <ErrorAlert error={error} /> : null}
+					{isPending ? <Loading noLogo /> : null}
+					{data && data.length === 0 ? (
+						<p className="my-4 text-center text-muted-foreground">
+							<T id="api-tokens.empty" />
+						</p>
+					) : null}
+					{data && data.length > 0 ? (
+						<ul className="m-0 list-none p-0">
+							{data.map((token) => (
+								<TokenRow key={token.id} token={token} now={now} onRevoke={onRevoke} />
+							))}
+						</ul>
+					) : null}
+					<section
+						className="flex flex-col gap-2 rounded-lg border bg-muted/40 p-3"
+						aria-labelledby={`${baseId}-header`}
+					>
+						<div className="flex items-center justify-between gap-2">
+							<h3 id={`${baseId}-header`} className="m-0 font-semibold text-sm">
+								<T id="api-tokens.header" />
+							</h3>
+							<UiButton asChild variant="ghost" size="xs">
+								<a href="/api-reference" target="_blank" rel="noopener noreferrer">
+									<BookOpen aria-hidden="true" />
+									<T id="api-tokens.reference" />
+									<ExternalLink aria-hidden="true" />
+									<span className="sr-only">
+										{" "}
+										<T id="api-tokens.new-tab" />
+									</span>
+								</a>
+							</UiButton>
+						</div>
+						<CodeBox text={authHeader()} />
+					</section>
+				</div>
 			</AppModal.Body>
 			<AppModal.Footer>
 				<Button onClick={onClose}>

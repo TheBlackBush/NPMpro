@@ -8,7 +8,13 @@ import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
 import { intl } from "src/locale";
 import { useWindowFocusReturn } from "src/modules/easyModal";
-import { isStartField, keepsWindowFocus, START_FIELD_SELECTOR, START_SKIP_ATTRIBUTE } from "src/modules/StartField";
+import {
+	isStartField,
+	START_FIELD_SELECTOR,
+	START_HERE_ATTRIBUTE,
+	START_SKIP_ATTRIBUTE,
+	startStep,
+} from "src/modules/StartField";
 import {
 	bumpsOnOutside,
 	canClose,
@@ -60,6 +66,8 @@ function keepFocus(element, lastFocus) {
 
 const STACKED = '[data-sonner-toaster], [role="dialog"]';
 
+const markedOf = (content) => content.querySelector(`[${START_HERE_ATTRIBUTE}]`);
+
 function firstField(content) {
 	const body = content.querySelector("[data-window-body]");
 	if (!body) return null;
@@ -90,11 +98,17 @@ function useLateStartField(content, open, isPhone) {
 		if (!(open && content)) return;
 		const isPhoneAtOpen = isPhoneRef.current;
 		const settle = () => {
-			const activeIsWindow = content.ownerDocument.activeElement === content;
-			if (keepsWindowFocus({ isPhone: isPhoneAtOpen, activeIsWindow })) return true;
-			const target = firstField(content);
-			target?.focus({ preventScroll: true });
-			return Boolean(target);
+			const marked = markedOf(content);
+			const field = isPhoneAtOpen ? null : firstField(content);
+			const step = startStep({
+				activeIsWindow: content.ownerDocument.activeElement === content,
+				isPhone: isPhoneAtOpen,
+				hasMarked: Boolean(marked),
+				hasField: Boolean(field),
+			});
+			if (step === "marked") marked.focus({ preventScroll: true });
+			if (step === "field") field.focus({ preventScroll: true });
+			return step !== "wait";
 		};
 		if (settle()) return;
 		const observer = new MutationObserver(() => {
@@ -182,14 +196,21 @@ function AppModal({
 		},
 		// intentional: focus leaving the window (to a toast, a stacked layer, the browser UI) never closes it
 		onFocusOutside: (event) => event.preventDefault(),
-		// Radix would focus the first tabbable element, the header's X: the first field of the body instead, or the
-		// window itself (it has tabIndex -1) when the body has none yet (loading) or on a phone, where a focused text
-		// field would open the on-screen keyboard over the window
+		// Radix would focus the first tabbable element, the header's X: the element marked START_HERE_ATTRIBUTE, else
+		// the first field of the body, or the window itself (it has tabIndex -1) when the body has none yet (loading)
+		// or on a phone, where a focused text field would open the on-screen keyboard over the window
 		onOpenAutoFocus: (event) => {
 			event.preventDefault();
 			const content = event.currentTarget;
-			const target = isPhone ? null : firstField(content);
-			(target ?? content).focus({ preventScroll: true });
+			const marked = markedOf(content);
+			const field = isPhone ? null : firstField(content);
+			const step = startStep({
+				activeIsWindow: true,
+				isPhone,
+				hasMarked: Boolean(marked),
+				hasField: Boolean(field),
+			});
+			(step === "marked" ? marked : step === "field" ? field : content).focus({ preventScroll: true });
 		},
 		// Radix would focus what was focused when the window mounted (the page body on Safari): the opener instead
 		onCloseAutoFocus: (event) => {

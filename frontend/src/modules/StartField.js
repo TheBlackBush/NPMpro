@@ -30,13 +30,21 @@ export function isStartField({ role, disabled, visible, tabIndex, containsField,
 	return role === "radiogroup" || !containsField;
 }
 
+/** Marks the element a window starts on, before any field (a list whose first control is a destructive action) */
+export const START_HERE_ATTRIBUTE = "data-window-start";
+
 /**
- * True when the window must leave the focus alone: on a phone (a focused text field opens the on-screen keyboard over
- * the window), or when the focus is no longer on the window element itself (the user clicked or tabbed, or a field
- * already has it)
+ * What a window does with the focus while it starts: done (the user or a field already has it), marked (focus the
+ * marked element, at every width: a title opens no on-screen keyboard), field (the first field, desktop only: on a
+ * phone a focused text field opens the on-screen keyboard over the window) or wait (keep the window focused and look
+ * again when the body changes)
  *
- * @param {{ isPhone: boolean, activeIsWindow: boolean }} state
+ * @param {{ activeIsWindow: boolean, isPhone: boolean, hasMarked: boolean, hasField: boolean }} state
+ * @returns {"done"|"marked"|"field"|"wait"}
  */
-export function keepsWindowFocus({ isPhone, activeIsWindow }) {
-	return isPhone || !activeIsWindow;
+export function startStep({ activeIsWindow, isPhone, hasMarked, hasField }) {
+	if (!activeIsWindow) return "done";
+	if (hasMarked) return "marked";
+	if (isPhone || !hasField) return "wait";
+	return "field";
 }

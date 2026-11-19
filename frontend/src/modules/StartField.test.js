@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { isStartField, keepsWindowFocus, START_FIELD_SELECTOR } from "./StartField.js";
+import { isStartField, START_FIELD_SELECTOR, START_HERE_ATTRIBUTE, startStep } from "./StartField.js";
 
 // a plain text field: shown, enabled, in the tab order, with no control inside it
 const field = { role: null, disabled: false, visible: true, tabIndex: 0, containsField: false };
@@ -23,10 +23,24 @@ it("the selector covers inputs, selects, textareas, buttons and comboboxes, not 
 	}
 });
 
-it("phones and a focus that already moved keep the focus where it is", () => {
-	assert.equal(keepsWindowFocus({ isPhone: true, activeIsWindow: true }), true);
-	assert.equal(keepsWindowFocus({ isPhone: false, activeIsWindow: false }), true);
-	assert.equal(keepsWindowFocus({ isPhone: false, activeIsWindow: true }), false);
+it("a focus that already moved is left alone", () => {
+	for (const isPhone of [true, false])
+		assert.equal(startStep({ activeIsWindow: false, isPhone, hasMarked: true, hasField: true }), "done");
+});
+
+it("a marked element starts the window on a phone and a desktop, before any field", () => {
+	assert.equal(startStep({ activeIsWindow: true, isPhone: false, hasMarked: true, hasField: true }), "marked");
+	assert.equal(startStep({ activeIsWindow: true, isPhone: true, hasMarked: true, hasField: false }), "marked");
+});
+
+it("without a mark a desktop starts on the first field; a phone keeps the window focused", () => {
+	assert.equal(startStep({ activeIsWindow: true, isPhone: false, hasMarked: false, hasField: true }), "field");
+	assert.equal(startStep({ activeIsWindow: true, isPhone: false, hasMarked: false, hasField: false }), "wait");
+	assert.equal(startStep({ activeIsWindow: true, isPhone: true, hasMarked: false, hasField: true }), "wait");
+});
+
+it("the start mark is a data attribute", () => {
+	assert.equal(START_HERE_ATTRIBUTE, "data-window-start");
 });
 
 it("a roving focus container (tab row, radio group, toolbar) is never a start field, its first control is", () => {

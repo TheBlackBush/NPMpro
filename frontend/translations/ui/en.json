@@ -131,6 +131,7 @@
 	"api-tokens.expiry.date": "On a date",
 	"api-tokens.expiry.days": "{days} days",
 	"api-tokens.expiry.never": "No expiry",
+	"api-tokens.header": "Send the token in this header",
 	"api-tokens.intro": "Scripts and AI assistants use an API token instead of signing in. A token never has more permissions than you.",
 	"api-tokens.last-used": "Last used",
 	"api-tokens.name": "Name",
