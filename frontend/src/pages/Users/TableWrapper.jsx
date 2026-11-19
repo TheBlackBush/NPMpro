@@ -7,13 +7,13 @@ import { Button, ErrorAlert, ListToolbar, LoadingPage } from "src/components";
 import { useListFilters, useUser, useUsers, useUsersMfa } from "src/hooks";
 import { T } from "src/locale";
 import {
-	showAccountModal,
 	showDeleteConfirmModal,
 	showPermissionsModal,
 	showUserAccountModal,
 	showUserModal,
 	showUserSignInAction,
 } from "src/modals";
+import { rowUser } from "src/modules/AccountWindow";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { showApiError, showObjectSuccess } from "src/notifications";
 import { SettingsHeading } from "../Settings/SettingsHeading";
@@ -30,7 +30,8 @@ export default function TableWrapper() {
 	const { data: currentUser } = useUser("me");
 	const mfaUserIds = useUsersMfa(data, currentUser?.id);
 
-	const userOf = (id) => data?.find((item) => item.id === id);
+	// null when a refetch removed the row while its menu was open: its sign-in actions then open nothing
+	const userOf = (id) => rowUser(data, id);
 
 	const handleDisableToggle = async (id, enabled) => {
 		try {
@@ -94,9 +95,9 @@ export default function TableWrapper() {
 							isFetching={isFetching}
 							currentUserId={currentUser?.id}
 							mfaUserIds={mfaUserIds}
-							onEditUser={(id) =>
-								id === currentUser?.id ? showAccountModal("profile") : showUserAccountModal(id)
-							}
+							// the own row opens the own Account window: the window itself tells (isOwnUser), also while
+							// /users/me still loads
+							onEditUser={(id) => showUserAccountModal(id)}
 							onEditPermissions={(id) => showPermissionsModal(id)}
 							onSetPassword={(id) => showUserSignInAction("set-password", userOf(id))}
 							onResetMfa={(id) => showUserSignInAction("reset-mfa", userOf(id))}

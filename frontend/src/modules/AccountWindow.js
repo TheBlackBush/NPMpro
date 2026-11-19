@@ -24,6 +24,25 @@ export const USER_PARTS = [
 /** The parts of the own window (self) or of another user's window */
 export const partsFor = (self) => (self ? ACCOUNT_PARTS : USER_PARTS);
 
+/**
+ * Whether a window for userId is the signed-in user's own: "me" always is, a user id is when it equals the signed-in
+ * user's id (an administrator's Edit on the own row of a list that loaded before /users/me). null while the signed-in
+ * user's id is not known yet: the window then waits (a loading body) before it chooses its parts, so the own account
+ * never gets the Administrator and Disabled switches.
+ *
+ * @param {"me"|number|string} userId
+ * @param {number} [meId]  the signed-in user's id, undefined while /users/me loads
+ * @returns {boolean|null}
+ */
+export function isOwnUser(userId, meId) {
+	if (userId === "me") return true;
+	if (meId === undefined || meId === null) return null;
+	return Number(userId) === meId;
+}
+
+/** A list row's user by id, or null when a refetch removed it (deleted in another tab while its menu was open) */
+export const rowUser = (users, id) => users?.find((user) => user.id === id) ?? null;
+
 /** The part a request names when the window has it, Profile for anything else */
 export const partOf = (requested, parts = ACCOUNT_PARTS) =>
 	parts.some((part) => part.id === requested) ? requested : "profile";

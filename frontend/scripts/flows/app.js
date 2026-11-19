@@ -569,6 +569,24 @@ async function accountWindow({ admin, browser, base, viewerPassword }) {
 		// the frame is still open, and closes without a question (nothing was edited)
 		await adminPage.keyboard.press("Escape");
 		await windowClosed(adminPage);
+		// Edit on the own row opens the own Account window: the own parts, never the switches or Sign-in
+		const me = await admin.api("GET", "/users/me");
+		await adminPage
+			.getByRole("button", { name: `Edit ${me.name}`, exact: true })
+			.filter({ visible: true })
+			.click();
+		await windowTitled(adminPage, "Account");
+		const own = adminPage.getByRole("dialog");
+		await own.locator("[data-account-tab=profile][aria-selected=true]").waitFor();
+		const ownTabs = await own
+			.locator("[data-account-tab]")
+			.evaluateAll((tab) => tab.map((t) => t.dataset.accountTab));
+		if (ownTabs.join() !== "profile,password,mfa,api-tokens")
+			throw new Error(`the own Edit opened ${ownTabs.join()}`);
+		if ((await own.getByRole("switch").count()) > 0)
+			throw new Error("the own Edit offers the Administrator switch");
+		await adminPage.keyboard.press("Escape");
+		await windowClosed(adminPage);
 		if (admin.errors.length > errorsBefore) throw new Error(`page error: ${admin.errors[errorsBefore]}`);
 
 		// a phone: the entry opens its part on its heading, the back arrow shows the list, a row opens its part

@@ -16,6 +16,7 @@ import { AvatarRow } from "src/components/AvatarRow";
 import { useSetUser, useUser } from "src/hooks";
 import { T } from "src/locale";
 import { userValidate } from "src/modules/AccountForms";
+import { isOwnUser } from "src/modules/AccountWindow";
 import { isAdmin } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
@@ -25,9 +26,12 @@ const validate = userValidate(validations);
 const EMPTY = { name: "", email: "", isAdmin: false, isDisabled: false };
 
 // a user's picture, name and email (the signed-in user's, or another user's for an administrator, who also sees the
-// Administrator and Disabled switches); Save keeps the window open (the other parts and their edits stay)
+// Administrator and Disabled switches); Save keeps the window open (the other parts and their edits stay). The own
+// account by its id counts as the own too, and so does any user while /users/me loads (the frame waits for it): the
+// switches never show for it and Save never sends its roles or disabled flag.
 export function ProfilePart({ userId = "me" }) {
-	const self = userId === "me";
+	const { data: me } = useUser("me");
+	const self = isOwnUser(userId, me?.id) !== false;
 	const { data, isPending, error } = useUser(userId);
 	const { mutateAsync: setUser } = useSetUser();
 	const [errorMsg, setErrorMsg] = useState(null);

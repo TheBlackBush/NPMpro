@@ -6,7 +6,7 @@ import { Button as UiButton } from "src/components/ui/button";
 import { useUser, useUsersMfa } from "src/hooks";
 import { T } from "src/locale";
 import { showUserSignInAction } from "src/modals/UserSignInActions";
-import { signInActions } from "src/modules/AccountWindow";
+import { isOwnUser, signInActions } from "src/modules/AccountWindow";
 import { AccountPart } from "./AccountPart";
 
 // each action's line: its button text (the Users row menu's), its hint and icon
@@ -21,12 +21,13 @@ const LINES = {
 // on top of this one. Nothing here is a form: the part never has unsaved changes.
 export function SignInPart({ userId }) {
 	const { data: user, isPending, error } = useUser(userId);
-	const { data: me } = useUser("me");
+	const { data: me, isPending: mePending } = useUser("me");
 	const mfaIds = useUsersMfa(user ? [user] : [], me?.id);
 	const heading = useRef(null);
+	// no line until /users/me is known: the own account (or one not known yet) has none
 	const actions = user
 		? signInActions({
-				isSelf: user.id === me?.id,
+				isSelf: isOwnUser(user.id, me?.id) !== false,
 				hasMfa: mfaIds.has(user.id),
 				oidcLinked: Boolean(user.npmproOidcLinkedOn),
 			})
@@ -41,7 +42,7 @@ export function SignInPart({ userId }) {
 	return (
 		<AccountPart id="sign-in" icon={LogIn} heading={<T id="account.sign-in" />} headingRef={heading}>
 			{error ? <ErrorAlert error={error} /> : null}
-			{isPending ? <Loading noLogo /> : null}
+			{isPending || mePending ? <Loading noLogo /> : null}
 			{user ? (
 				<SettingLines>
 					{actions.map((action) => {

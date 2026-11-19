@@ -4,12 +4,14 @@ import { describe, it } from "node:test";
 import {
 	ACCOUNT_PARTS,
 	frameState,
+	isOwnUser,
 	mfaStepFocus,
 	mfaStepReport,
 	otherDirtyPart,
 	partOf,
 	partsFor,
 	reportPart,
+	rowUser,
 	signInActions,
 	startsOnHeading,
 	USER_PARTS,
@@ -194,5 +196,39 @@ describe("signInActions (the Users row menu's rules)", () => {
 			"revoke-sessions",
 			"unlink-oidc",
 		]);
+	});
+});
+
+describe("isOwnUser (which window an Edit opens)", () => {
+	it("me is always the own account", () => {
+		assert.equal(isOwnUser("me", undefined), true);
+		assert.equal(isOwnUser("me", 4), true);
+	});
+
+	it("a user id is the own account when it is the signed-in user's", () => {
+		assert.equal(isOwnUser(4, 4), true);
+		assert.equal(isOwnUser("4", 4), true);
+		assert.equal(isOwnUser(5, 4), false);
+	});
+
+	it("unknown while /users/me loads: the window waits instead of offering the switches", () => {
+		assert.equal(isOwnUser(4, undefined), null);
+		assert.equal(isOwnUser(4, null), null);
+	});
+});
+
+describe("rowUser", () => {
+	const users = [
+		{ id: 1, name: "One" },
+		{ id: 2, name: "Two" },
+	];
+
+	it("finds the row's user", () => {
+		assert.equal(rowUser(users, 2), users[1]);
+	});
+
+	it("null when the row is gone or the list is not loaded", () => {
+		assert.equal(rowUser(users, 3), null);
+		assert.equal(rowUser(undefined, 1), null);
 	});
 });
