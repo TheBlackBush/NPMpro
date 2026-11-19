@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { startApi } from "./support/api.js";
@@ -59,6 +59,20 @@ it("a conf naming a missing account on a CA with a registered account is rewritt
 	await internalCertificate.processExpiringHosts();
 	assert.match(await readFile(conf, "utf8"), new RegExp(`^account = ${account}$`, "mu"));
 	assert.equal((await normalizedCalls(api)).filter((line) => line.includes(" renew ")).length, 1);
+});
+
+it("a renewal run still renews when the renewal confs cannot be listed", async () => {
+	const dir = path.join(api.root, "data/tls/certbot/renewal");
+	await chmod(dir, 0o000);
+	await api.outside.clearCalls();
+	try {
+		await internalCertificate.processExpiringHosts();
+	} finally {
+		await chmod(dir, 0o755);
+	}
+	const renews = (await certbotCalls()).filter((line) => line.includes(" renew "));
+	assert.equal(renews.length, 1);
+	assert.equal(internalCertificate.intervalProcessing, false);
 });
 
 it("a failed renewal run still reloads and frees the flag", async () => {

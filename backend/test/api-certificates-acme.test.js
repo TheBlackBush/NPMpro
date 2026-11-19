@@ -262,6 +262,24 @@ it("removes the row when the plugin cannot be installed, and does not call certb
 	assert.deepEqual(await certbotCalls(), []);
 });
 
+it("installs no plugin when the account check fails for a DNS certificate", async () => {
+	const cred = await credential("order-token");
+	await rm(path.join(api.root, "data/tls/certbot/accounts"), { recursive: true, force: true });
+	await api.db("npmpro_acme_account").delete();
+	await writeFile(path.join(api.root, "fake/register.fail"), "Account refused");
+	await api.outside.clearCalls();
+	const failed = await admin.post(CERTS, {
+		provider: "letsencrypt",
+		domain_names: ["*.order.example.com"],
+		npmpro_dns_challenge: true,
+		npmpro_dns_provider: "cloudflare",
+		npmpro_dns_credential_id: cred.id,
+	});
+	await rm(path.join(api.root, "fake/register.fail"));
+	assert.ok(failed.status >= 400, failed.text);
+	assert.deepEqual(await pipCalls(), []);
+});
+
 it("refuses a DNS certificate with a wrong credential, provider or user, before certbot runs", async () => {
 	const cred = await credential("other-token");
 	const rows = await countRows(api, "certificate");
@@ -386,6 +404,52 @@ it("revokes with the certificate's key when the revoke by account is refused", a
 		`certbot --config ${INI} revoke --server ${ACME} --cert-path ${live}/cert.pem --key-path ${live}/privkey.pem --reason unspecified --no-delete-after-revoke`,
 	);
 	await rm(path.join(api.root, "fake/revoke.fail"));
+});
+
+it("answers a clear error for an unreachable CA and leaves no certificate", async () => {
+	const DOWN = "https://down.lan/dir";
+	api.outside.dns.set("down.lan", "192.168.1.31");
+	acmeDirectory(api, DOWN, { status: 503, body: "down" });
+	const rows = await countRows(api, "certificate");
+	await api.db("npmpro_acme_account").where({ server: ACME }).delete();
+	await rm(path.join(api.root, "data/tls/certbot/accounts"), { recursive: true, force: true });
+	const { default: acmeAccount } = await import("../internal/certificate-acme.js");
+	await assert.rejects(
+		acmeAccount.requestCertbot({ id: 9999, domain_names: ["x.example.com"], npmpro_acme_server: DOWN }, null),
+		(err) => err.message_i18n === "error.acme-unreachable",
+	);
+	assert.equal(await countRows(api, "certificate"), rows);
+	assert.deepEqual(
+		(await certbotCalls()).filter((line) => line.includes(" certonly ")),
+		[],
+	);
+});
+
+it("refuses the request, with no certonly and no row, when the CA refuses the registration", async () => {
+	await rm(path.join(api.root, "data/tls/certbot/accounts"), { recursive: true, force: true });
+	await api.db("npmpro_acme_account").delete();
+	await writeFile(path.join(api.root, "fake/register.fail"), "Account refused");
+	const rows = await countRows(api, "certificate");
+	const failed = await admin.post(CERTS, { provider: "letsencrypt", domain_names: ["refused.example.com"] });
+	await rm(path.join(api.root, "fake/register.fail"));
+	assert.ok(failed.status >= 400, failed.text);
+	assert.equal(await countRows(api, "certificate"), rows);
+	assert.deepEqual(
+		(await certbotCalls()).filter((line) => line.includes(" certonly ")),
+		[],
+	);
+});
+
+it("does not revoke with the key when the certificate has no renewal conf (no known CA)", async () => {
+	const certificate = await requested(["noconf.example.com"]);
+	await rm(path.join(api.root, `data/tls/certbot/renewal/npm-${certificate.id}.conf`));
+	await writeFile(path.join(api.root, "fake/revoke.fail"), "unauthorized");
+	await api.outside.clearCalls();
+	assert.equal((await admin.delete(`${CERTS}/${certificate.id}`)).status, 200);
+	await rm(path.join(api.root, "fake/revoke.fail"));
+	const revokes = (await certbotCalls()).filter((line) => line.includes(" revoke "));
+	assert.equal(revokes.length, 1);
+	assert.equal(revokes[0].includes("--key-path"), false);
 });
 
 it("registers lazily at the first request: one register, then the same account", async () => {

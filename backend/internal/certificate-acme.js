@@ -73,6 +73,8 @@ const revokeBestEffort = async ({ server, account, certName, certPath, keyPath, 
 	} catch (err) {
 		logger.warn(`Revoking through the ACME account failed, trying the certificate's key: ${err.message}`);
 	}
+	// without a known CA the fallback would go to certbot's default one
+	if (!server) return;
 	try {
 		logger.info(
 			await runCertbot([
@@ -127,13 +129,14 @@ const certificateAcme = {
 		if (!dnsPlugin) {
 			throw new errs.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
 		}
+		// the account first: a failed check installs nothing
+		const target = await acmeTarget(certificate, access);
 		await installPlugin(certificate.npmpro_dns_provider);
 
 		logger.info(
 			`Requesting Certbot certificates via ${dnsPlugin.name} for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`,
 		);
 
-		const target = await acmeTarget(certificate, access);
 		const credentialsLocation = rooted(`/tmp/certbot-credentials/credentials-${certificate.id}`);
 		await internalDnsCredential.writeCertificateFile(certificate);
 

@@ -98,6 +98,10 @@ const internalCertificate = {
 		try {
 			try {
 				await prepareRenewals(null);
+			} catch (err) {
+				logger.warn(`The renewal confs could not be prepared: ${err}`);
+			}
+			try {
 				const result = await runCertbot(["--config", CERTBOT_INI, "renew", "--quiet"]);
 
 				if (result) logger.info(`Renew Result: ${result}`);
