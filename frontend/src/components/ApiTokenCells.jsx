@@ -1,4 +1,5 @@
 import { CalendarX, ChevronDown, ShieldAlert, Trash2 } from "lucide-react";
+import { Fragment } from "react";
 import { PERMISSION_ROWS } from "src/components/Form/PermissionButtons";
 import { StatusBadge } from "src/components/StatusBadge";
 import { Badge } from "src/components/ui/badge";
@@ -121,7 +122,7 @@ function PermissionsDetails({ token }) {
 				<SheetTrigger asChild>
 					<PermissionsButton token={token} />
 				</SheetTrigger>
-				<SheetContent side="bottom" showCloseButton={false} className="gap-3 p-4">
+				<SheetContent side="bottom" showCloseButton={false} className="gap-3 p-4" aria-describedby={undefined}>
 					<SheetHeader className="p-0">
 						<SheetTitle className="flex items-center justify-between gap-3">
 							<T id="api-tokens.permissions" />
@@ -154,17 +155,25 @@ function PermissionsDetails({ token }) {
 	);
 }
 
+// each part stays whole on its line and carries its leading dot, so a narrow column never leaves a dot at a line end;
+// the text reads "Manage 1 \u00b7 View 2 \u00b7 3 hidden" as before
 function SummaryText({ token }) {
-	return permissionSummary(token.permissions)
-		.map(([key, count]) => intl.formatMessage({ id: `api-tokens.summary.${key}` }, { count }))
-		.join(" \u00b7 ");
+	return permissionSummary(token.permissions).map(([key, count], index) => {
+		const text = intl.formatMessage({ id: `api-tokens.summary.${key}` }, { count });
+		return (
+			<Fragment key={key}>
+				{index > 0 ? " " : null}
+				<span className="whitespace-nowrap">{index > 0 ? `\u00b7 ${text}` : text}</span>
+			</Fragment>
+		);
+	});
 }
 
 /** One summary line of the six section levels, with Item Visibility under it (visibility) and the Permissions button */
 function TokenPermissions({ token, visibility = false }) {
 	return (
 		<div className="flex flex-col items-start gap-1.5">
-			<p className="m-0 font-medium text-sm" data-token-summary>
+			<p className="m-0 font-medium text-sm whitespace-nowrap" data-token-summary>
 				<SummaryText token={token} />
 			</p>
 			{visibility ? (
