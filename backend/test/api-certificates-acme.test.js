@@ -1,9 +1,17 @@
 import assert from "node:assert/strict";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { startApi } from "./support/api.js";
-import { certbotEnvironment, certbotFails, certbotSucceeds, makeCertificate } from "./support/certbot.js";
+import {
+	acmeDirectory,
+	certbotEnvironment,
+	certbotFails,
+	certbotSucceeds,
+	makeCertificate,
+	normalizedCalls,
+	seedAccount,
+} from "./support/certbot.js";
 import { countRows, fileExists, reloads } from "./support/hosts.js";
 
 const CERTS = "/nginx/certificates";
@@ -48,10 +56,12 @@ let admin;
 let pair;
 let plugins;
 
+const ACCOUNT = /--account [0-9a-f]{32}/gu;
+// the calls without registrations, the account id shown as ID
 const certbotCalls = async () =>
-	(await api.outside.calls())
-		.filter((call) => call.startsWith("certbot "))
-		.map((call) => call.replaceAll(api.root, ""));
+	(await normalizedCalls(api))
+		.filter((line) => !line.includes(" register "))
+		.map((line) => line.replace(ACCOUNT, "--account ID"));
 const pipCalls = async () =>
 	(await api.outside.calls()).filter((call) => call.startsWith("pip ")).map((call) => call.replaceAll(api.root, ""));
 const row = (id) => api.db("certificate").where({ id }).first();
@@ -86,7 +96,9 @@ const dnsRequested = async (token = "cf-token-SECRET", extra = {}) => {
 };
 
 before(async () => {
-	api = await startApi({ env: { ACME_SERVER: ACME, ...SECRETS } });
+	api = await startApi({ env: { ACME_SERVER: ACME, NPMPRO_TEST_OUTBOUND: "mock", ...SECRETS } });
+	api.outside.dns.set("acme.test", "192.0.2.40");
+	acmeDirectory(api, ACME);
 	admin = await api.admin();
 	pair = await makeCertificate(path.join(api.root, "fake"), "a.example.com");
 	plugins = JSON.parse(await readFile(new URL("../certbot/dns-plugins.json", import.meta.url), "utf8"));
@@ -101,7 +113,7 @@ beforeEach(async () => {
 it("requests a certificate over HTTP: certbot gets the config file, server, name, domains and the webroot authenticator", async () => {
 	const created = await requested(["a.example.com", "www.a.example.com"]);
 	assert.deepEqual(await certbotCalls(), [
-		`certbot --config ${INI} certonly --server ${ACME} --cert-name npm-${created.id} --domains a.example.com,www.a.example.com --no-reuse-key --authenticator webroot`,
+		`certbot --config ${INI} certonly --server ${ACME} --account ID --cert-name npm-${created.id} --domains a.example.com,www.a.example.com --no-reuse-key --authenticator webroot`,
 	]);
 	assert.equal(created.provider, "letsencrypt");
 	assert.equal(created.nice_name, "a.example.com, www.a.example.com");
@@ -124,7 +136,7 @@ it("requests a certificate over HTTP: certbot gets the config file, server, name
 it("asks for the same key again when the certificate says so, and passes IP addresses and international names", async () => {
 	const created = await requested(["münchen.example.com", "192.0.2.7", "[2001:db8::1]"], { npmpro_reuse_key: true });
 	assert.deepEqual(await certbotCalls(), [
-		`certbot --config ${INI} certonly --server ${ACME} --cert-name npm-${created.id} --domains xn--mnchen-3ya.example.com --ip-address 192.0.2.7 --ip-address 2001:db8::1 --reuse-key --authenticator webroot`,
+		`certbot --config ${INI} certonly --server ${ACME} --account ID --cert-name npm-${created.id} --domains xn--mnchen-3ya.example.com --ip-address 192.0.2.7 --ip-address 2001:db8::1 --reuse-key --authenticator webroot`,
 	]);
 	assert.equal((await row(created.id)).npmpro_reuse_key, 1);
 });
@@ -185,7 +197,7 @@ it("requests a certificate over DNS: installs the plugin, writes the credentials
 		`pip install --no-cache-dir --constraint /usr/local/share/npmpro/certbot-constraints.txt ${plugin.package_name}==${plugin.version}`,
 	]);
 	assert.deepEqual(await certbotCalls(), [
-		`certbot --config ${INI} certonly --server ${ACME} --cert-name npm-${certificate.id} --domains *.dns.example.com --reuse-key --authenticator ${plugin.full_plugin_name} --${plugin.full_plugin_name}-credentials /tmp/certbot-credentials/credentials-${certificate.id} --${plugin.full_plugin_name}-propagation-seconds 30`,
+		`certbot --config ${INI} certonly --server ${ACME} --account ID --cert-name npm-${certificate.id} --domains *.dns.example.com --reuse-key --authenticator ${plugin.full_plugin_name} --${plugin.full_plugin_name}-credentials /tmp/certbot-credentials/credentials-${certificate.id} --${plugin.full_plugin_name}-propagation-seconds 30`,
 	]);
 	const file = `tmp/certbot-credentials/credentials-${certificate.id}`;
 	assert.equal(await api.read(file), "dns_cloudflare_api_token = cf-token-SECRET\n");
@@ -280,20 +292,18 @@ it("renews a certificate: certbot renews with a new key, revokes the old one, ng
 	await api.db("certificate").where({ id: created.id }).update({ expires_on: "2020-01-01 00:00:00" });
 	await api.outside.clearCalls();
 	const renewal = path.join(api.root, `data/tls/certbot/renewal/npm-${created.id}.conf`);
-	const { writeFile } = await import("node:fs/promises");
-	await writeFile(renewal, "server = https://old-acme.test/directory\n");
+	const old = "https://old-acme.test/directory";
+	await seedAccount(api, old, "c".repeat(32));
+	await writeFile(renewal, `[renewalparams]\naccount = ${"c".repeat(32)}\nserver = ${old}\n`);
 	const before = reloads(api);
 	const done = await admin.post(`${CERTS}/${created.id}/renew`, {});
 	assert.equal(done.status, 200, done.text);
 	const calls = await certbotCalls();
 	assert.equal(calls.length, 2);
-	assert.equal(
-		calls[0],
-		`certbot --config ${INI} renew --server ${ACME} --cert-name npm-${created.id} --new-key --force-renewal`,
-	);
+	assert.equal(calls[0], `certbot --config ${INI} renew --cert-name npm-${created.id} --new-key --force-renewal`);
 	assert.equal(
 		calls[1],
-		`certbot --config ${INI} revoke --server https://old-acme.test/directory --cert-path /data/tls/certbot/live/npm-${created.id}/cert.pem --reason superseded --no-delete-after-revoke`,
+		`certbot --config ${INI} revoke --server ${old} --account ID --cert-path /data/tls/certbot/live/npm-${created.id}/cert.pem --reason superseded --no-delete-after-revoke`,
 	);
 	assert.ok(reloads(api) > before);
 	assert.ok(Date.parse(done.body.expires_on) > Date.now() + 25 * 86400000);
@@ -308,6 +318,85 @@ it("renews a certificate: certbot renews with a new key, revokes the old one, ng
 		Object.keys(env).filter((key) => !ALLOWED.has(key)),
 		[],
 	);
+});
+
+it("renews a certificate on the CA that issued it, after the instance CA changed", async () => {
+	const OLD = "https://old-acme.test/directory";
+	const OLD_ID = "d".repeat(32);
+	api.outside.dns.set("old-acme.test", "192.0.2.41");
+	acmeDirectory(api, OLD);
+	await seedAccount(api, OLD, OLD_ID);
+	const certificate = await requested(["old.example.com"]);
+	const conf = path.join(api.root, `data/tls/certbot/renewal/npm-${certificate.id}.conf`);
+	// the conf names the old CA and an account that no longer exists there
+	await writeFile(
+		conf,
+		`version = 5.10.0\n[renewalparams]\naccount = ${"f".repeat(32)}\nserver = ${OLD}\nauthenticator = webroot\n`,
+	);
+	await api.db("npmpro_acme_account").insert({
+		server: OLD,
+		state: "registered",
+		account_id: OLD_ID,
+		created_on: "2026-11-19 10:00:00",
+		modified_on: "2026-11-19 10:00:00",
+	});
+	await api.outside.clearCalls();
+	assert.equal((await admin.post(`${CERTS}/${certificate.id}/renew`, {})).status, 200);
+	const calls = await normalizedCalls(api);
+	assert.equal(calls[0], `certbot --config ${INI} renew --cert-name npm-${certificate.id} --new-key --force-renewal`);
+	assert.ok(calls.every((line) => !line.includes(` --server ${ACME}`)));
+	assert.match(calls[1], new RegExp(`revoke --server ${OLD} --account ${OLD_ID} --cert-path`, "u"));
+	const text = await readFile(conf, "utf8");
+	assert.match(text, new RegExp(`^server = ${OLD}$`, "mu"));
+	assert.match(text, new RegExp(`^account = ${OLD_ID}$`, "mu"));
+});
+
+it("fails a manual renew whose CA has no usable account with the registration message, before certbot renews", async () => {
+	const GONE = "https://gone.lan/dir";
+	api.outside.dns.set("gone.lan", "192.168.1.30");
+	acmeDirectory(api, GONE, { status: 503, body: "down" });
+	const certificate = await requested(["gone.example.com"]);
+	await writeFile(
+		path.join(api.root, `data/tls/certbot/renewal/npm-${certificate.id}.conf`),
+		`[renewalparams]\naccount = ${"e".repeat(32)}\nserver = ${GONE}\n`,
+	);
+	await api.outside.clearCalls();
+	const res = await admin.post(`${CERTS}/${certificate.id}/renew`, {});
+	assert.equal(res.status, 400, res.text);
+	assert.equal(res.body.error.message_i18n, "error.acme-unreachable");
+	assert.deepEqual(
+		(await normalizedCalls(api)).filter((line) => line.includes(" renew ")),
+		[],
+	);
+});
+
+it("revokes with the certificate's key when the revoke by account is refused", async () => {
+	const certificate = await requested(["revoke.example.com"]);
+	await writeFile(path.join(api.root, "fake/revoke.fail"), "unauthorized");
+	await api.outside.clearCalls();
+	assert.equal((await admin.delete(`${CERTS}/${certificate.id}`)).status, 200);
+	const revokes = (await certbotCalls()).filter((line) => line.includes(" revoke "));
+	const live = `/data/tls/certbot/live/npm-${certificate.id}`;
+	assert.equal(
+		revokes[0],
+		`certbot --config ${INI} revoke --server ${ACME} --account ID --cert-name npm-${certificate.id} --reason unspecified --no-delete-after-revoke`,
+	);
+	assert.equal(
+		revokes[1],
+		`certbot --config ${INI} revoke --server ${ACME} --cert-path ${live}/cert.pem --key-path ${live}/privkey.pem --reason unspecified --no-delete-after-revoke`,
+	);
+	await rm(path.join(api.root, "fake/revoke.fail"));
+});
+
+it("registers lazily at the first request: one register, then the same account", async () => {
+	await rm(path.join(api.root, "data/tls/certbot/accounts"), { recursive: true, force: true });
+	await api.db("npmpro_acme_account").delete();
+	await api.outside.clearCalls();
+	await requested(["lazy.example.com"]);
+	const calls = await normalizedCalls(api);
+	assert.ok(calls[0].includes(" register "));
+	assert.equal(calls.filter((line) => line.includes(" register ")).length, 1);
+	assert.ok(calls[1].includes(" certonly --server "));
 });
 
 it("keeps a certificate when certbot fails to renew it: the error output, no reload, the expiry unchanged", async () => {
@@ -347,7 +436,7 @@ it("deletes a certbot certificate: certbot revokes and deletes it, its files and
 	const deleted = await admin.delete(`${CERTS}/${certificate.id}`);
 	assert.equal(deleted.status, 200, deleted.text);
 	assert.deepEqual(await certbotCalls(), [
-		`certbot --config ${INI} revoke --cert-name npm-${certificate.id} --reason unspecified --no-delete-after-revoke`,
+		`certbot --config ${INI} revoke --server ${ACME} --account ID --cert-name npm-${certificate.id} --reason unspecified --no-delete-after-revoke`,
 		`certbot --config ${INI} delete --cert-name npm-${certificate.id}`,
 	]);
 	assert.equal(await row(certificate.id), undefined);

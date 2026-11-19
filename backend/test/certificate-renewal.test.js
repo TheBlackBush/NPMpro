@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { rm } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { startApi } from "./support/api.js";
-import { certbotFails, certbotSucceeds, makeCertificate } from "./support/certbot.js";
+import { acmeDirectory, certbotFails, certbotSucceeds, makeCertificate, normalizedCalls } from "./support/certbot.js";
 
 const CERTS = "/nginx/certificates";
 const ACME = "https://acme.example.test/directory";
@@ -20,7 +20,9 @@ const requested = async (name) => {
 const certbotCalls = async () => (await api.outside.calls()).filter((line) => line.startsWith("certbot "));
 
 before(async () => {
-	api = await startApi({ env: { ACME_SERVER: ACME } });
+	api = await startApi({ env: { ACME_SERVER: ACME, NPMPRO_TEST_OUTBOUND: "mock" } });
+	api.outside.dns.set("acme.example.test", "192.0.2.50");
+	acmeDirectory(api, ACME);
 	admin = await api.admin();
 	pair = await makeCertificate(path.join(api.root, "fake"), "renew.example.com");
 	internalCertificate = (await import("../internal/certificate.js")).default;
@@ -38,11 +40,25 @@ it("a renewal run renews, reloads, reads each expiry again and lets the next run
 	await api.outside.clearCalls();
 	const reloads = api.outside.control.reloads;
 	await internalCertificate.processExpiringHosts();
-	assert.ok((await certbotCalls()).some((line) => line.includes(" renew ") && line.includes(ACME)));
+	const renews = (await certbotCalls()).filter((line) => line.includes(" renew "));
+	assert.equal(renews.length, 1);
+	assert.ok(renews[0].endsWith(" renew --quiet"));
+	assert.equal(renews[0].includes("--server"), false);
 	assert.equal(api.outside.control.reloads, reloads + 1);
 	const row = await api.db("certificate").where({ id: certificate.id }).first();
 	assert.notEqual(String(row.expires_on).slice(0, 4), "2000");
 	assert.equal(internalCertificate.intervalProcessing, false);
+});
+
+it("a conf naming a missing account on a CA with a registered account is rewritten before certbot renews", async () => {
+	const certificate = await requested("conf.example.com");
+	const conf = path.join(api.root, `data/tls/certbot/renewal/npm-${certificate.id}.conf`);
+	const account = (await api.db("npmpro_acme_account").where({ server: ACME }).first()).account_id;
+	await writeFile(conf, `[renewalparams]\naccount = ${"9".repeat(32)}\nserver = ${ACME}\n`);
+	await api.outside.clearCalls();
+	await internalCertificate.processExpiringHosts();
+	assert.match(await readFile(conf, "utf8"), new RegExp(`^account = ${account}$`, "mu"));
+	assert.equal((await normalizedCalls(api)).filter((line) => line.includes(" renew ")).length, 1);
 });
 
 it("a failed renewal run still reloads and frees the flag", async () => {

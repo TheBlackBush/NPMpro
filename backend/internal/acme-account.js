@@ -346,6 +346,36 @@ const ensureAccount = (server, { access = null } = {}) =>
 	});
 
 /**
+ * Before certbot renews: each renewal conf (all, or those of ids) names an account that exists, its CA's registered
+ * one (registered lazily, D4). A conf whose CA has no usable account is reported and left as it is: certbot then fails
+ * that certificate only.
+ *
+ * @param   {number[]|null}  ids
+ * @param   {Object}         [options]
+ * @param   {Access}         [options.access]
+ * @param   {boolean}        [options.strict]  throw the first problem (a manual renew)
+ * @returns {Promise<{certificateId: number, server: string, message: string}[]>}
+ */
+const prepareRenewals = async (ids, { access = null, strict = false } = {}) => {
+	const problems = [];
+	for (const conf of await listRenewalConfs()) {
+		if (ids && !ids.includes(conf.certificateId)) continue;
+		if (!conf.server || (await accountExists(conf.server, conf.account))) continue;
+		try {
+			const accountId = await ensureAccount(conf.server, { access });
+			await writeFileAtomic(conf.path, setRenewalParams(conf.text, { account: accountId }));
+		} catch (err) {
+			if (strict) throw err;
+			problems.push({ certificateId: conf.certificateId, server: conf.server, message: err.message });
+			logger.warn(
+				`Certificate #${conf.certificateId} has no usable ACME account on ${conf.server}: ${err.message}`,
+			);
+		}
+	}
+	return problems;
+};
+
+/**
  * Changes the contact of a registered account at its CA (fact 3); "" removes every contact. Refused while the CA
  * cannot be reached (D13). The caller holds the CA's lock.
  */
@@ -756,6 +786,7 @@ export {
 	loadAcmeServer,
 	lockedKeys,
 	open,
+	prepareRenewals,
 	readAcmeSetting,
 	readDirectory,
 	refused,

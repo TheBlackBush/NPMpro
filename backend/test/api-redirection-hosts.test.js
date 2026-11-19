@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
-import { certbotSucceeds, makeCertificate } from "./support/certbot.js";
+import { acmeDirectory, certbotSucceeds, makeCertificate } from "./support/certbot.js";
 import { checkFields, created, hostTests } from "./support/hosts.js";
 
 // /nginx/redirection-hosts (schema/paths/nginx/redirection-hosts). The shared tests of every host type are in
@@ -26,6 +26,8 @@ const dotted = (text) => text.replaceAll(".", "\\.");
 
 before(async () => {
 	ctx.api = await startApi();
+	ctx.api.outside.dns.set("acme-v02.api.letsencrypt.org", "192.0.2.30");
+	acmeDirectory(ctx.api, "https://acme-v02.api.letsencrypt.org/directory");
 	ctx.admin = await ctx.api.admin();
 });
 after(() => ctx.api?.stop());
