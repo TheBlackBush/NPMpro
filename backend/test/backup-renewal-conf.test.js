@@ -94,3 +94,10 @@ it("refuses a staged renewal conf of an added certificate that is a folder", asy
 		await rm(stageDir, { recursive: true, force: true });
 	}
 });
+
+it("keeps the required profile of a renewal conf", () => {
+	// biome-ignore lint/security/noSecrets: a renewal conf sample, not a secret
+	const text = "[renewalparams]\nauthenticator = webroot\nrequired_profile = classic\n";
+	const conf = rebuildRenewalConf(text, options);
+	assert.equal(conf.includes("required_profile = classic"), true);
+});

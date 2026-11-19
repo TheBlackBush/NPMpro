@@ -36,9 +36,10 @@ const certbotEnv = (env = process.env) =>
 
 /**
  * @param   {String[]} args
+ * @param   {Object} [options]  more execFile options (a timeout), spread after env
  * @returns {Promise<String>}
  */
-const runCertbot = (args) => utils.execFile("certbot", args, { env: certbotEnv() });
+const runCertbot = (args, options = {}) => utils.execFile("certbot", args, { env: certbotEnv(), ...options });
 
 /**
  * The pip arguments that install a plugin: its pinned version, against the image's certbot versions, never upgrading

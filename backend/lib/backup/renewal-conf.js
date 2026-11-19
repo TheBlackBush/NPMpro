@@ -25,6 +25,7 @@ const CHECKED = {
 	elliptic_curve: /^secp(?:256|384|521)r1$/u,
 	rsa_key_size: /^\d{4}$/u,
 	must_staple: BOOLEAN,
+	required_profile: /^[A-Za-z0-9._-]{1,64}$/u,
 	reuse_key: BOOLEAN,
 	preferred_chain: /^[A-Za-z0-9 ._()-]{1,64}$/u,
 	pref_challs: /^[a-z0-9-]+(?:,\s*[a-z0-9-]+)*,?$/u,
@@ -183,4 +184,4 @@ const checkStagedRenewals = async ({ stageDir, dataDir, items }) => {
 	}
 };
 
-export { accountIds, checkStagedRenewals, namedAccounts, rebuildRenewalConf };
+export { accountIds, checkStagedRenewals, namedAccounts, parseRenewalConf, rebuildRenewalConf };
