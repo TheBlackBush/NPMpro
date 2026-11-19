@@ -93,6 +93,9 @@ const ME = "me";
 // until Done (reported to the frame). A lazy chunk with the QR code library.
 export default function MfaPart() {
 	const isPhone = useIsMobile();
+	// read by the step focus only: a phone or desktop resize alone moves no focus
+	const isPhoneRef = useRef(isPhone);
+	isPhoneRef.current = isPhone;
 	const heading = useRef(null);
 	const doneButton = useRef(null);
 	const stepMoved = useRef(false);
@@ -115,12 +118,13 @@ export default function MfaPart() {
 			return;
 		}
 		if (!stepMoved.current) return;
-		const target = mfaStepFocus({ step, isPhone });
+		const target = mfaStepFocus({ step, isPhone: isPhoneRef.current });
 		if (target === "code") {
-			document.querySelector("[data-mfa-step] input:not([type=hidden])")?.focus({ preventScroll: true });
+			// the code field (CodeEntry ids "mfa-<step>-code" or "-backup"), never the read-only secret key above it
+			document.querySelector(`[data-mfa-step] input[id^="mfa-${step}-"]`)?.focus({ preventScroll: true });
 		} else if (target === "done") doneButton.current?.focus({ preventScroll: true });
 		else heading.current?.focus({ preventScroll: true });
-	}, [step, isPhone]);
+	}, [step]);
 
 	const go = (next) => {
 		stepMoved.current = true;

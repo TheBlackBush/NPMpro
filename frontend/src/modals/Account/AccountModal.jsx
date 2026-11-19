@@ -223,6 +223,9 @@ const AccountModal = EasyModal.create(({ part: opened, visible, remove }) => {
 									key={entry.id}
 									value={entry.id}
 									forceMount
+									// out of the tab order: each part has its own heading and fields, and a lazy part (MFA) would
+									// otherwise give the window's start focus to the empty panel before its heading exists
+									tabIndex={-1}
 									// forceMount keeps a visited part mounted (its edits stay); Radix then never sets hidden
 									className={cn(
 										"min-h-0 min-w-0 flex-1 flex-col data-[state=inactive]:hidden",
