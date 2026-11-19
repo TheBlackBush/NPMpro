@@ -12,8 +12,8 @@ Open `https://<server-ip>:81` and create the admin account on the setup page (or
 On the login page, **Sign in** becomes available once a valid email address and a password are entered. If you leave the email field with an address that is not valid, "Invalid email address" shows under it. In the two-factor step, **Verify** becomes available once a code is entered.
 
 Your own account is one **Account** window, opened from the user menu (your avatar, top right) with its one **Account** entry. It has the parts **Profile**,
-**Password**, **MFA** and **API tokens**, listed on the left (on a phone, the list is the first screen and the back
-arrow returns to it). Each part saves on its own; edits in one part stay while you look at another, a dot
+**Password**, **MFA** and **API tokens**, listed on the left (on a phone, the window opens on the part, and the back
+arrow shows the list of parts). Each part saves on its own; edits in one part stay while you look at another, a dot
 marks a part with unsaved changes, and closing the window asks before discarding them.
 
 In the **MFA** part you can turn on two-factor authentication (TOTP, with one-time backup codes). Scripts and AI
