@@ -296,6 +296,7 @@
 	"certificates.request.title": "Request a new Certificate",
 	"code-box.copied": "Copied",
 	"code-box.copy": "Copy",
+	"code-box.copy-named": "Copy: {label}",
 	"column.access": "Access",
 	"column.authorization": "Authorization",
 	"column.authorizations": "Authorizations",

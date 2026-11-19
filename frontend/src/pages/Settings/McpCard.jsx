@@ -35,12 +35,16 @@ function ConnectLine({ endpoint }) {
 						</TabsTrigger>
 					</TabsList>
 					<TabsContent value="claude-code" className="mt-0">
-						<CodeBox text={claudeCodeCommand(endpoint)} />
+						<CodeBox
+							text={claudeCodeCommand(endpoint)}
+							label={intl.formatMessage({ id: "settings.api-access.mcp.claude-code" })}
+						/>
 					</TabsContent>
 					<TabsContent value="other" className="mt-0">
 						<CodeBox
 							text={desktopConfig(endpoint)}
 							wrap="scroll"
+							label={intl.formatMessage({ id: "settings.api-access.mcp.other" })}
 							aria-label={intl.formatMessage({ id: "settings.api-access.mcp.other" })}
 						/>
 					</TabsContent>
@@ -106,7 +110,9 @@ function McpCard() {
 				id="mcp-endpoint"
 				layout="block"
 				title={<T id="settings.api-access.mcp.endpoint" />}
-				control={<CodeBox text={endpoint} />}
+				control={
+					<CodeBox text={endpoint} label={intl.formatMessage({ id: "settings.api-access.mcp.endpoint" })} />
+				}
 			/>
 			<ConnectLine endpoint={endpoint} />
 			<ToolsLine id="mcp-tools" />

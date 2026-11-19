@@ -197,7 +197,12 @@ function DocsCard() {
 				layout="block"
 				title={<T id="settings.api-access.docs.header" />}
 				hint={<T id="settings.api-access.docs.header.hint" />}
-				control={<CodeBox text={authHeader()} />}
+				control={
+					<CodeBox
+						text={authHeader()}
+						label={intl.formatMessage({ id: "settings.api-access.docs.header" })}
+					/>
+				}
 			/>
 		</SettingsCard>
 	);

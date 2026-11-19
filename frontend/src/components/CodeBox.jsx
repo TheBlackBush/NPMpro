@@ -17,14 +17,17 @@ import { showSuccess } from "src/notifications";
  * @param {string} props.text
  * @param {"words"|"scroll"} [props.wrap]
  * @param {string} [props.copiedMessage]  the toast, "Copied" by default
+ * @param {string} [props.label]          what the box holds, for the copy button's name ("Copy: <label>")
  * @param {Object} [props.copyProps]      more props of the copy button (a data attribute for the focus)
  * @param {string} [props.className]      of the box
  * A scroll box takes the focus: give it an aria-label (the name of its line) through the remaining props.
  */
-function CodeBox({ text, wrap = "words", copiedMessage, copyProps, className, ...preProps }) {
+function CodeBox({ text, wrap = "words", label, copiedMessage, copyProps, className, ...preProps }) {
 	const pre = useRef(null);
 	const classes = codeBoxClass(wrap);
-	const name = intl.formatMessage({ id: "code-box.copy" });
+	const name = label
+		? intl.formatMessage({ id: "code-box.copy-named" }, { label })
+		: intl.formatMessage({ id: "code-box.copy" });
 	const copy = async () => {
 		try {
 			await navigator.clipboard.writeText(text);

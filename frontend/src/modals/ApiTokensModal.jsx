@@ -114,7 +114,7 @@ function ListStep({ focus, onNew, onRevoke, onClose }) {
 								</a>
 							</UiButton>
 						</div>
-						<CodeBox text={authHeader()} />
+						<CodeBox text={authHeader()} label={intl.formatMessage({ id: "api-tokens.header" })} />
 					</section>
 				</div>
 			</AppModal.Body>
@@ -279,6 +279,7 @@ function SecretStep({ focus, token, onDone }) {
 					</p>
 					<CodeBox
 						text={token}
+						label={intl.formatMessage({ id: "api-tokens.secret" })}
 						aria-labelledby={`${baseId}-token`}
 						copiedMessage={intl.formatMessage({ id: "api-tokens.copied" })}
 						copyProps={{ "data-api-token-copy": "" }}
@@ -289,7 +290,11 @@ function SecretStep({ focus, token, onDone }) {
 					<p id={`${baseId}-header`} className="m-0 font-medium text-sm">
 						<T id="api-tokens.secret.header" />
 					</p>
-					<CodeBox text={authHeader(token)} aria-labelledby={`${baseId}-header`} />
+					<CodeBox
+						text={authHeader(token)}
+						label={intl.formatMessage({ id: "api-tokens.secret.header" })}
+						aria-labelledby={`${baseId}-header`}
+					/>
 				</div>
 				<div className="flex flex-col items-start gap-1.5">
 					<UiButton type="button" variant="outline" size="sm" onClick={copyCommand} data-api-token-claude="">
@@ -304,7 +309,11 @@ function SecretStep({ focus, token, onDone }) {
 							<p className="m-0 text-sm">
 								<T id="api-tokens.secret.claude-code.manual" />
 							</p>
-							<CodeBox text={command} data-api-token-command="" />
+							<CodeBox
+								text={command}
+								label={intl.formatMessage({ id: "api-tokens.secret.claude-code" })}
+								data-api-token-command=""
+							/>
 						</div>
 					) : null}
 				</div>
