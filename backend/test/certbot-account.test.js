@@ -20,6 +20,9 @@ import {
 	writeFileAtomic,
 } from "../lib/certbot-account.js";
 
+const CONFIG_DIR_LINE = /^config-dir = \/c$/mu;
+const EMAIL = /email/u;
+const CONTROL = /line break or control character/u;
 const LE = "https://acme-v02.api.letsencrypt.org/directory";
 const PEBBLE = "https://pebble:14000/dir";
 const ID_A = "a".repeat(32);
@@ -80,16 +83,13 @@ it("builds a run config without account lines from the base, with the folders, e
 		text,
 		"logs-dir = /r/logs\nwork-dir = /r/work\nconfig-dir = /data/tls/certbot\nagree-tos = true\nemail = me@x.y\neab-kid = kid1\neab-hmac-key = hmac1\n",
 	);
-	assert.match(accountConfigText(INI, { logsDir: "/l", workDir: "/w", configDir: "/c" }), /^config-dir = \/c$/mu);
-	assert.doesNotMatch(accountConfigText(INI, { logsDir: "/l", workDir: "/w" }), /email/u);
+	assert.match(accountConfigText(INI, { logsDir: "/l", workDir: "/w", configDir: "/c" }), CONFIG_DIR_LINE);
+	assert.doesNotMatch(accountConfigText(INI, { logsDir: "/l", workDir: "/w" }), EMAIL);
 	for (const bad of ["a@b.c\npre-hook = id", "a@b.c\r", "x\u0000"]) {
-		assert.throws(
-			() => accountConfigText(INI, { logsDir: "/l", workDir: "/w", email: bad }),
-			/line break or control character/u,
-		);
+		assert.throws(() => accountConfigText(INI, { logsDir: "/l", workDir: "/w", email: bad }), CONTROL);
 		assert.throws(
 			() => accountConfigText(INI, { logsDir: "/l", workDir: "/w", eab: { kid: bad, hmac: "h" } }),
-			/line break or control character/u,
+			CONTROL,
 		);
 	}
 });
@@ -149,17 +149,40 @@ it("sets, replaces and removes renewal params only inside [renewalparams]", () =
 
 it("lists the renewal confs with their server and account, and writes a file through a rename", async () => {
 	const dir = await mkdtemp(path.join(os.tmpdir(), "ren-"));
+	// biome-ignore lint/security/noSecrets: a renewal conf sample, not a secret
 	await writeFile(path.join(dir, "npm-12.conf"), "[renewalparams]\naccount = abc\nserver = https://a/dir\n");
 	await writeFile(path.join(dir, "other.conf"), "[renewalparams]\n");
 	assert.deepEqual(
-		(await listRenewalConfs({ dir })).map(({ certificateId, server, account }) => ({
-			certificateId,
-			server,
-			account,
+		(await listRenewalConfs({ dir })).map((conf) => ({
+			certificateId: conf.certificateId,
+			server: conf.server,
+			account: conf.account,
 		})),
 		[{ certificateId: 12, server: "https://a/dir", account: "abc" }],
 	);
 	assert.deepEqual(await listRenewalConfs({ dir: path.join(dir, "missing") }), []);
 	await writeFileAtomic(path.join(dir, "npm-12.conf"), "new\n");
 	assert.equal(await readFile(path.join(dir, "npm-12.conf"), "utf8"), "new\n");
+});
+
+it("always gives a run its own logs and work folders, even when the base ini has none", () => {
+	const text = accountConfigText("agree-tos = true\n", { logsDir: "/r/logs", workDir: "/r/work" });
+	assert.equal(text, "agree-tos = true\nlogs-dir = /r/logs\nwork-dir = /r/work\n");
+});
+
+it("refuses a renewal param with a line break and keeps comments and the webroot_map", () => {
+	const conf = "# note\n[renewalparams]\naccount = a\n# c\n[[webroot_map]]\nx.example = /w\n";
+	assert.throws(() => setRenewalParams(conf, { account: "b\nhook = x" }), CONTROL);
+	assert.equal(
+		setRenewalParams(conf, { account: "b" }),
+		"# note\n[renewalparams]\naccount = b\n# c\n[[webroot_map]]\nx.example = /w\n",
+	);
+});
+
+it("counts only server folders whose accounts have a key, and skips accounts directly under accounts/", async () => {
+	const accountsDir = await mkdtemp(path.join(os.tmpdir(), "acc-"));
+	await account(path.join(accountsDir, "a.example/dir"), ID_A);
+	await mkdir(path.join(accountsDir, "nokey.example/dir", ID_B), { recursive: true });
+	await account(accountsDir, ID_A);
+	assert.deepEqual(await serverFolders({ accountsDir }), ["a.example/dir"]);
 });

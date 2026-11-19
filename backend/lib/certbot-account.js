@@ -96,8 +96,9 @@ const serverFolders = async ({ accountsDir = ACCOUNTS_DIR, fs = nodeFs } = {}) =
 		for (const entry of await readDirOrEmpty(fs, path.join(accountsDir, rel))) {
 			const isDir = entry.isDirectory() || entry.isSymbolicLink();
 			if (!isDir) continue;
-			if (ACCOUNT_ID.test(entry.name)) found.add(rel);
-			else if (depth < MAX_DEPTH) await walk(rel ? `${rel}/${entry.name}` : entry.name, depth + 1);
+			if (ACCOUNT_ID.test(entry.name)) {
+				if (rel && (await hasKey(fs, path.join(accountsDir, rel, entry.name)))) found.add(rel);
+			} else if (depth < MAX_DEPTH) await walk(rel ? `${rel}/${entry.name}` : entry.name, depth + 1);
 		}
 	};
 	await walk("", 0);
@@ -124,14 +125,21 @@ const checked = (value) => {
  */
 const accountConfigText = (baseIni, { logsDir, workDir, configDir, email, eab }) => {
 	const folders = { "logs-dir": logsDir, "work-dir": workDir, "config-dir": configDir };
+	const seen = new Set();
 	const lines = baseIni
 		.trimEnd()
 		.split("\n")
 		.filter((line) => !ACCOUNT_LINE.test(line.trim()))
 		.map((line) => {
 			const key = FOLDER_LINE.exec(line.trim())?.groups.key;
-			return key && folders[key] ? `${key} = ${checked(folders[key])}` : line;
+			if (!(key && folders[key])) return line;
+			seen.add(key);
+			return `${key} = ${checked(folders[key])}`;
 		});
+	// a base without these lines must not make the run share the live folders
+	for (const [key, value] of Object.entries(folders)) {
+		if (value && !seen.has(key)) lines.push(`${key} = ${checked(value)}`);
+	}
 	if (email) lines.push(`email = ${checked(email)}`);
 	if (eab) lines.push(`eab-kid = ${checked(eab.kid)}`, `eab-hmac-key = ${checked(eab.hmac)}`);
 	return `${lines.join("\n").trimEnd()}\n`;
