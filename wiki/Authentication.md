@@ -14,7 +14,7 @@ Signing in to the NPMpro web UI: passwords, two-factor authentication and OIDC. 
 
 ## Passwords and two-factor authentication
 
-Every user signs in with an email address and a password. Two-factor authentication (TOTP, with one-time backup codes) can be turned on for each account in the user menu. If you are locked out, the password and MFA can be reset from the command line (SQLite only): `docker exec -it npmpro password-reset.js USER_EMAIL [--disable-mfa]`, the new password is read from stdin. See [Usage](Usage#password-and-mfa-reset). The session cookie is signed with `COOKIE_SECRET`, see [Configuration](Configuration#cookie_secret).
+Every user signs in with an email address and a password. Two-factor authentication (TOTP, with one-time backup codes) can be turned on for each account in the user menu (Account window, **MFA** part). When password sign-in is off (OIDC only), the **Password** part still changes the password and says that it is used again once password sign-in is turned back on. If you are locked out, the password and MFA can be reset from the command line (SQLite only): `docker exec -it npmpro password-reset.js USER_EMAIL [--disable-mfa]`, the new password is read from stdin. See [Usage](Usage#password-and-mfa-reset). The session cookie is signed with `COOKIE_SECRET`, see [Configuration](Configuration#cookie_secret).
 
 ## OIDC login
 
@@ -32,7 +32,7 @@ OIDC is set up under Settings, Authentication in the web UI (administrators only
 ### Linked identities
 
 The first OIDC sign-in of a user links the account to the provider's identity (issuer and subject). An account created by the first sign-in is linked at once. For a user with two-factor authentication the link is made once the code is verified: a sign-in that stops at the code leaves the account unlinked, while a sign-in with a mismatching identity is refused before the code is asked for. Users who signed in with OIDC before this version link at their next OIDC sign-in.
-- A later sign-in for the same email address with another identity at the same provider is refused (`identity_mismatch`, "This account is linked to another account at the sign-in provider"), and so is an identity that is already linked to another user. The refusal is in the audit log. An administrator fixes it under Settings, Users: row menu, Unlink OIDC. The next OIDC sign-in links the account again.
+- A later sign-in for the same email address with another identity at the same provider is refused (`identity_mismatch`, "This account is linked to another account at the sign-in provider"), and so is an identity that is already linked to another user. The refusal is in the audit log. An administrator fixes it under Settings, Users: **Unlink OIDC** in the row menu, or in the user's **Sign-in** part (Edit on the row). The next OIDC sign-in links the account again.
 - Changing the provider (another issuer URL) links each user to the new provider at their next sign-in.
 - Changing a user's email address keeps the link.
 - The Users table has a Sign-in column: Local (the user has a password) and OIDC (linked; the tooltip shows when).

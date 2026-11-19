@@ -40,9 +40,12 @@ below as its release notes.
   cosign signatures.
 - **API:** API tokens for scripts, sent as `Authorization: Bearer`, with their own permissions that never exceed their
   owner's; they work with OIDC-only sign-in and MFA, are stored as a hash and never in backups.
-- **API:** API tokens in the user menu (a compact new token form with expiry and permissions capped at your own, the
-  token shown once with its header and the Claude Code command to copy, revoke) and every token in Settings, API access,
-  with the API reference, the authentication header and the MCP client setup.
+- **API:** API tokens in the Account window (a compact new token form with expiry and permissions capped at your own,
+  the token shown once with its header and the Claude Code command to copy, revoke) and every token in Settings, API
+  access, with the API reference, the authentication header and the MCP client setup.
+- **Account:** one Account window for your profile, password, MFA and API tokens, opened on the matching part from the
+  user menu; edits stay when switching parts and closing asks before discarding them. Administrators edit another user
+  in the same window, with Profile and a Sign-in part.
 - **MCP:** an MCP server at `/api/mcp` for AI assistants, using API tokens: 28 tools for hosts, access
   lists, certificates, monitoring and the audit log, limited to the token's permissions; delete tools only with the
   token's Allow delete switch.

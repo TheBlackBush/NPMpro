@@ -32,10 +32,10 @@ works whether password login is off, OIDC is the only sign-in, or the user has M
 
 ## Creating a token
 
-Open the user menu (your avatar, top right) and choose **API tokens**. The window lists your tokens, each with its marks
-(**Administrator**, **Allow delete**, **Expired**), its permissions as "Section | Level" chips, and its expiry, last use
-and creation date. Below the list, **Send the token in this header** shows the header with a copy button and a link to
-the API reference. To make one:
+Open the user menu (your avatar, top right) and choose **API tokens**: the **Account** window opens on its **API
+tokens** part, which lists your tokens, each with its marks (**Administrator**, **Allow delete**, **Expired**), its
+permissions as "Section | Level" chips, and its expiry, last use and creation date. Below the list, **Send the token in
+this header** shows the header with a copy button and a link to the API reference. To make one:
 
 1. Choose **New token**.
 2. **Name** (up to 100 characters, to tell the token apart from your others) and **Expiry**: **30 days**, **90 days**
@@ -57,8 +57,9 @@ the API reference. To make one:
 
 To end a token, choose **Revoke** on its row in the list and confirm. It stops working at once.
 
-The window uses `POST /api/users/me/api-tokens` (described in the [API reference](#api-reference) below). The route
-needs a signed-in session, so scripts do not create tokens: a token cannot create tokens.
+The API tokens part of the Account window uses `POST /api/users/me/api-tokens` (described in the [API
+reference](#api-reference) below). The route needs a signed-in session, so scripts do not create tokens: a token cannot
+create tokens.
 
 ## Administrators: Settings, API access
 
@@ -85,11 +86,11 @@ phone each token is a card.
 ## API reference
 
 The API reference is at `https://<admin address>/api-reference` (signed in; `/api/docs` leads there too). It opens from
-the API tokens window and from Settings, API access. The left column lists the groups and routes and has a search (press
-`/`); the middle shows what a route does, what it needs (the Needs line), its parameters, request fields and answers;
-the right shows the request as curl, Node or Python (one choice for the whole page), an example answer and **Try it**,
-which runs the request on this instance as you. To run it as a token, choose **Use a token** at the top and paste it:
-the page keeps it only until you reload. Every route has its own link, for example
+the API tokens part of the Account window and from Settings, API access. The left column lists the groups and routes and
+has a search (press `/`); the middle shows what a route does, what it needs (the Needs line), its parameters, request
+fields and answers; the right shows the request as curl, Node or Python (one choice for the whole page), an example
+answer and **Try it**, which runs the request on this instance as you. To run it as a token, choose **Use a token** at
+the top and paste it: the page keeps it only until you reload. Every route has its own link, for example
 `/api-reference#proxy-hosts/post-nginx-proxy-hosts`. The page follows the app's light or dark theme.
 
 ## MCP server
@@ -115,9 +116,10 @@ JSON. It offers 28 tools for hosts, access lists, certificates, monitoring and t
 
 ### Setup
 
-Replace the address with your admin address and `YOUR_TOKEN` with a token from the user menu. Settings, API access
-shows the same setup with your address under **Connect a client**, one tab for **Claude Code** and one for **Claude
-Desktop and other clients**; the token window copies the Claude Code command with a new token already in it.
+Replace the address with your admin address and `YOUR_TOKEN` with a token from the user menu. Settings, API access shows
+the same setup with your address under **Connect a client**, one tab for **Claude Code** and one for **Claude Desktop
+and other clients**; the API tokens part of the Account window copies the Claude Code command with a new token already
+in it.
 
 ```sh
 claude mcp add --transport http npmpro "https://npm.example.com:81/api/mcp" --header "Authorization: Bearer YOUR_TOKEN"
