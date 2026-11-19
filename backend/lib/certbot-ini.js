@@ -1,5 +1,6 @@
 import nodeFs from "node:fs/promises";
-import path from "node:path";
+import { parseRenewalConf } from "./backup/renewal-conf.js";
+import { listRenewalConfs, RENEWAL_DIR, setRenewalParams } from "./certbot-account.js";
 import { rooted } from "./paths.js";
 
 // The live certbot config: start.sh copies the image's /etc/certbot.ini here at boot and edits it from env, the
@@ -20,20 +21,14 @@ no-eff-email = true
 rsa-key-size = 4096
 elliptic-curve = secp384r1
 
-#required-profile
 key-type = ecdsa
-must-staple = true
 no-verify-ssl = false
 `;
-
-const RENEWAL_DIR = rooted("/data/tls/certbot/renewal");
-const PROFILE_LINE = /^#?required-profile(?:\s*=.*)?$/u;
-const RENEWAL_PROFILE_LINE = /required_profile/u;
 
 /**
  * The certbot config (CERTBOT_INI) for the certificate request settings, the same lines start.sh writes for the same env
  *
- * @param   {Object}  values  key_type, key_size, must_staple, server_tls_verify, profile ("" = none)
+ * @param   {Object}  values  key_type, key_size, server_tls_verify
  * @param   {string}  [base]  the image's certbot.ini
  * @returns {string}
  */
@@ -45,50 +40,37 @@ const renderCertbotIni = (values, base = CERTBOT_INI_BASE) => {
 			if (rsa && line.startsWith("rsa-key-size = ")) return `rsa-key-size = ${values.key_size}`;
 			if (!rsa && line.startsWith("elliptic-curve = ")) return `elliptic-curve = ${values.key_size}`;
 			if (line.startsWith("key-type = ")) return `key-type = ${rsa ? "rsa" : "ecdsa"}`;
-			if (line.startsWith("must-staple = ")) return `must-staple = ${values.must_staple ? "true" : "false"}`;
 			if (line.startsWith("no-verify-ssl = "))
 				return `no-verify-ssl = ${values.server_tls_verify ? "false" : "true"}`;
-			if (PROFILE_LINE.test(line))
-				return values.profile ? `required-profile = ${values.profile}` : "#required-profile";
 			return line;
 		})
 		.join("\n");
 };
 
-const listConfs = async (fs, dir) => {
-	let entries;
-	try {
-		entries = await fs.readdir(dir, { withFileTypes: true });
-	} catch (err) {
-		if (err.code === "ENOENT") return [];
-		throw err;
-	}
-	const files = [];
-	for (const entry of entries) {
-		const file = path.join(dir, entry.name);
-		if (entry.isDirectory()) files.push(...(await listConfs(fs, file)));
-		else if (entry.isFile() && entry.name.endsWith(".conf")) files.push(file);
-	}
-	return files.toSorted((a, b) => a.localeCompare(b));
-};
-
 /**
- * The renewal confs that hold a required_profile line, without those lines (as data-setup.sh does), so the next renewal
- * uses the profile of certbot.ini
+ * The renewal confs of one CA with the instance options (renew takes them from the conf): the profile (no line for
+ * none) and must-staple; only the files that change
  *
- * @param   {string}  [dir]
- * @param   {Object}  [fs]   node:fs/promises compatible
- * @returns {Promise<Array<{path: string, content: string}>>}  only the files that change
+ * @param   {Object}   options
+ * @param   {string}   options.server      the CA whose certificates take these options (the instance CA)
+ * @param   {string}   options.profile     "" = none
+ * @param   {boolean}  options.mustStaple
+ * @param   {string}   [options.dir]
+ * @param   {Object}   [options.fs]
+ * @returns {Promise<Array<{path: string, content: string}>>}
  */
-const renewalProfileEdits = async (dir = RENEWAL_DIR, fs = nodeFs) => {
+const renewalOptionEdits = async ({ server, profile, mustStaple, dir = RENEWAL_DIR, fs = nodeFs }) => {
 	const edits = [];
-	for (const file of await listConfs(fs, dir)) {
-		const content = await fs.readFile(file, "utf8");
-		const lines = content.split("\n");
-		const kept = lines.filter((line) => !RENEWAL_PROFILE_LINE.test(line));
-		if (kept.length !== lines.length) edits.push({ path: file, content: kept.join("\n") });
+	for (const conf of await listRenewalConfs({ dir, fs })) {
+		if (conf.server !== server) continue;
+		const wanted = { required_profile: profile || null, must_staple: mustStaple ? "True" : "False" };
+		const { params } = parseRenewalConf(conf.text);
+		// a conf that already holds the wanted values is left alone, whatever the order of its lines
+		if (Object.entries(wanted).every(([name, value]) => (params.get(name) ?? null) === value)) continue;
+		const content = setRenewalParams(conf.text, wanted);
+		if (content !== conf.text) edits.push({ path: conf.path, content });
 	}
 	return edits;
 };
 
-export { CERTBOT_INI, CERTBOT_INI_BASE, RENEWAL_DIR, renderCertbotIni, renewalProfileEdits };
+export { CERTBOT_INI, CERTBOT_INI_BASE, renderCertbotIni, renewalOptionEdits };

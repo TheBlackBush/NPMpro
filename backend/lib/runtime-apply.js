@@ -4,7 +4,8 @@ import { isDeepStrictEqual } from "node:util";
 import { global as logger } from "../logger.js";
 import { readAcmeDirectory } from "./acme-directory.js";
 import { isTrustedServer } from "./acme-server.js";
-import { CERTBOT_INI, RENEWAL_DIR, renderCertbotIni, renewalProfileEdits } from "./certbot-ini.js";
+import { RENEWAL_DIR } from "./certbot-account.js";
+import { CERTBOT_INI, renderCertbotIni, renewalOptionEdits } from "./certbot-ini.js";
 import { DEFAULT_CERT_CONF, defaultCertificatePaths, renderDefaultCertConf, TLS_DIR } from "./default-cert.js";
 import errs from "./error.js";
 import { AUTH_REQUEST_PROVIDERS } from "./forward-auth.js";
@@ -43,7 +44,7 @@ const PATHS = {
 	nginxCore: NGINX_CORE_FILES,
 };
 
-const CERTBOT_KEYS = ["key_type", "key_size", "must_staple", "server_tls_verify", "profile"];
+const CERTBOT_KEYS = ["key_type", "key_size", "server_tls_verify"];
 const DEFAULT_CERT_KEYS = ["default_certificate_id", "ocsp_stapling", "custom_ocsp_stapling"];
 // stapling key, the OCSP fetcher kind and the env var launch.sh fetched with at boot
 const OCSP_KINDS = [
@@ -461,10 +462,20 @@ const createRuntimeApplier = ({
 			if (CERTBOT_KEYS.some((key) => changed.includes(key))) {
 				plan.files.push({ path: paths.certbotIni, content: renderCertbotIni(next) });
 			}
-			if (changed.includes("profile")) {
-				if (next.profile && !startup) plan.check = () => checkProfile(next.profile, next.server_tls_verify);
-				// renewal conf profile lines go on any profile change on save, at startup only for an empty profile
-				if (!next.profile || !startup) plan.files.push(...(await renewalProfileEdits(paths.renewalDir, fs)));
+			if (changed.includes("profile") && next.profile && !startup) {
+				plan.check = () => checkProfile(next.profile, next.server_tls_verify);
+			}
+			// the instance CA's certificates renew with these (at startup every key counts as changed)
+			if (changed.includes("profile") || changed.includes("must_staple")) {
+				plan.files.push(
+					...(await renewalOptionEdits({
+						server: acmeServerOf(env()),
+						profile: next.profile,
+						mustStaple: next.must_staple,
+						dir: paths.renewalDir,
+						fs,
+					})),
+				);
 			}
 			if (changed.includes("ech_rotation_interval")) {
 				const crontab = await echCrontab(next.ech_rotation_interval);
