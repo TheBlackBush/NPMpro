@@ -422,11 +422,10 @@ async function mfaWindow({ browser, base, viewerPassword }) {
 	try {
 		const { page } = viewer;
 		await page.goto("/");
-		await page.locator("header").getByRole("button", { name: "Open user menu" }).click();
-		await page.getByRole("menuitem", { name: "MFA", exact: true }).click();
+		await openAccount(page, "mfa");
 		// the setup step shows the QR code (not the svg icon of the close button); nothing is enabled, Escape ends it
 		await page.getByRole("dialog").getByRole("button", { name: "Enable TOTP", exact: true }).click();
-		await page.getByRole("dialog").locator("svg[role=img]").first().waitFor();
+		await page.getByRole("dialog").getByRole("img", { name: QR_NAME }).waitFor();
 		// a started setup is an unsaved change: the MFA entry has the dot, and Escape asks first
 		await page.getByRole("dialog").locator("[data-account-tab=mfa][data-dirty]").waitFor();
 		await page.keyboard.press("Escape");
@@ -439,7 +438,30 @@ async function mfaWindow({ browser, base, viewerPassword }) {
 	}
 }
 
-// The Account window: each user menu entry opens its part with the focus where the part starts, edits stay when
+// Opens the Account window from the one user menu entry (it opens on Profile), then the part: through the side list on
+// a desktop, through the back arrow and the list row on a phone (where the part takes its heading's focus)
+async function openAccount(page, part = "profile") {
+	await page
+		.locator("header")
+		.getByRole("button", { name: "Open user menu" })
+		.locator("visible=true")
+		.first()
+		.click();
+	await page.getByRole("menuitem", { name: "Account", exact: true }).click();
+	const dialog = page.getByRole("dialog");
+	await dialog.waitFor();
+	if (part === "profile") return;
+	const tab = dialog.locator(`[data-account-tab=${part}]`);
+	if (await tab.isVisible()) {
+		await tab.click();
+	} else {
+		await dialog.locator("[data-account-back]").click();
+		await dialog.locator(`[data-account-row=${part}]`).click();
+	}
+	await dialog.locator(`[data-account-part=${part}]`).waitFor();
+}
+
+// The Account window: the user menu entry opens its part with the focus where the part starts, edits stay when
 // switching parts, Close asks before discarding them, an administrator's window of another user has Profile with the
 // switches and Sign-in, and a phone drills in from the list of parts
 async function accountWindow({ admin, browser, base, viewerPassword }) {
@@ -448,35 +470,36 @@ async function accountWindow({ admin, browser, base, viewerPassword }) {
 	try {
 		const { page } = viewer;
 		await page.goto("/");
-		const open = async (target, entry) => {
-			await target.locator("header").getByRole("button", { name: "Open user menu" }).click();
-			await target.getByRole("menuitem", { name: entry, exact: true }).click();
-			const dialog = target.getByRole("dialog");
-			await dialog.waitFor();
-			return dialog;
+		// the one user menu entry opens the window on Profile; another part is reached through the side list
+		// (a desktop) or the back arrow and the list rows (a phone)
+		const open = async (target, part = "profile") => {
+			await openAccount(target, part);
+			return target.getByRole("dialog");
 		};
-		// the start of each part: its first field (by name) or its heading (by text)
-		const starts = [
-			["Edit Profile", "profile", { field: "name" }],
-			["Change Password", "password", { field: "current" }],
-			["MFA", "mfa", { heading: "MFA" }],
-			["API tokens", "api-tokens", { heading: "API tokens" }],
-		];
-		for (const [entry, part, start] of starts) {
-			// biome-ignore lint/performance/noAwaitInLoops: one window after the other
-			const dialog = await open(page, entry);
-			await dialog.locator(`[data-account-tab=${part}][aria-selected=true]`).waitFor();
-			await page.waitForFunction(({ field, heading }) => {
-				const active = document.activeElement;
-				if (field) return active?.getAttribute("name") === field;
-				return active?.matches("[data-window-start]") && active.textContent.trim() === heading;
-			}, start);
-			await page.keyboard.press("Escape");
-			await windowClosed(page);
+		// the entry opens Profile with the focus in Full Name; every part is reached through the side list
+		const first = await open(page);
+		await first.locator("[data-account-tab=profile][aria-selected=true]").waitFor();
+		await page.waitForFunction(() => document.activeElement?.getAttribute("name") === "name");
+		const tabs = await first
+			.locator("[data-account-tab]")
+			.evaluateAll((tab) => tab.map((t) => t.dataset.accountTab));
+		if (tabs.join() !== "profile,password,mfa,api-tokens") throw new Error(`the side list has ${tabs.join()}`);
+		// the side list is vertical: ArrowDown moves to the next part, ArrowUp back
+		await first.locator("[data-account-tab=profile]").focus();
+		await page.keyboard.press("ArrowDown");
+		await first.locator("[data-account-tab=password][aria-selected=true]").waitFor();
+		await page.keyboard.press("ArrowUp");
+		await first.locator("[data-account-tab=profile][aria-selected=true]").waitFor();
+		for (const part of ["password", "mfa", "api-tokens"]) {
+			// biome-ignore lint/performance/noAwaitInLoops: one part after the other
+			await first.locator(`[data-account-tab=${part}]`).click();
+			await first.locator(`[data-account-part=${part}]`).waitFor();
 		}
+		await page.keyboard.press("Escape");
+		await windowClosed(page);
 
 		// edits stay across parts; the dot and the footer note name the part with edits
-		const dialog = await open(page, "Edit Profile");
+		const dialog = await open(page);
 		const name = dialog.locator("input[name=name]");
 		await name.fill("Flow Viewer edited");
 		await dialog.locator("[data-account-tab=password]").click();
@@ -501,7 +524,7 @@ async function accountWindow({ admin, browser, base, viewerPassword }) {
 		await page.keyboard.press("Escape");
 		await ask.getByRole("button", { name: "Discard changes", exact: true }).click();
 		await windowClosed(page);
-		const reopened = await open(page, "Edit Profile");
+		const reopened = await open(page);
 		const reopenedName = reopened.locator("input[name=name]");
 		await reopenedName.waitFor();
 		if ((await reopenedName.inputValue()) !== "Flow Viewer") throw new Error("Discard changes saved the edit");
@@ -551,15 +574,21 @@ async function accountWindow({ admin, browser, base, viewerPassword }) {
 		// a phone: the entry opens its part on its heading, the back arrow shows the list, a row opens its part
 		phone = await signIn(browser, base, VIEWER_EMAIL, viewerPassword, { width: 390, height: 844 });
 		const small = phone.page;
-		const sheet = await open(small, "Change Password");
+		const sheet = await open(small, "password");
 		await sheet.locator("[data-account-part=password]").waitFor();
 		if (await sheet.getByRole("tablist").isVisible()) throw new Error("the side list shows on a phone");
 		await small.waitForFunction(
 			() =>
-				document.activeElement?.matches("[data-window-start]") &&
+				document.activeElement?.matches("[data-account-part] h3") &&
 				document.activeElement.textContent.trim() === "Password",
 		);
 		await sheet.locator("[data-account-back]").click();
+		// F1: a long email must not widen the list; F7: the rows end in a chevron, the MFA row shows its state
+		const overflow = await sheet
+			.locator("[data-account-row]")
+			.evaluateAll((list) => list.some((row) => row.getBoundingClientRect().right > window.innerWidth));
+		if (overflow) throw new Error("a list row runs past the screen");
+		await sheet.locator("[data-account-row=mfa] [data-slot=badge]").waitFor();
 		await sheet.locator("[data-account-row=api-tokens]").click();
 		await sheet.locator("[data-account-part=api-tokens]").waitFor();
 		if ((await sheet.locator("[data-account-back]").count()) !== 1) throw new Error("no back arrow on a part");
@@ -574,6 +603,7 @@ async function accountWindow({ admin, browser, base, viewerPassword }) {
 	}
 }
 
+const QR_NAME = /Scan this QR code/u;
 const SECTIONS = ["Proxy Hosts", "Redirection Hosts", "404 Hosts", "Streams", "Access Lists", "Certificates"];
 const LAST_USED_TIME = /\d{1,2}:\d{2}/u;
 
@@ -581,9 +611,9 @@ const LAST_USED_TIME = /\d{1,2}:\d{2}/u;
 const levelRadio = (dialog, section, level) =>
 	dialog.getByRole("radiogroup", { name: section, exact: true }).getByRole("radio", { name: level, exact: true });
 
-// the window opens on its title (also on a phone), never on Revoke
+// the part takes the focus on its heading on a phone (drill-in from the list), never on Revoke
 async function titleHasFocus(page) {
-	await page.waitForFunction(() => document.activeElement?.matches("[data-window-start]"));
+	await page.waitForFunction(() => document.activeElement?.matches("[data-account-part] h3"));
 	const text = await page.evaluate(() => document.activeElement.textContent.trim());
 	if (text !== "API tokens") throw new Error(`the window opened with the focus on "${text}"`);
 }
@@ -593,8 +623,7 @@ async function openApiTokens(page) {
 	// biome-ignore lint/suspicious/noPlaywrightNetworkidle: a request still in flight is aborted by the navigation
 	await page.waitForLoadState("networkidle");
 	await page.goto("/");
-	await page.locator("header").getByRole("button", { name: "Open user menu" }).click();
-	await page.getByRole("menuitem", { name: "API tokens", exact: true }).click();
+	await openAccount(page, "api-tokens");
 	return page.getByRole("dialog");
 }
 
@@ -615,7 +644,7 @@ async function apiTokens({ admin, base, browser, password }) {
 		phone = null;
 
 		const dialog = await openApiTokens(page);
-		await titleHasFocus(page);
+		await dialog.locator("[data-account-part=api-tokens]").waitFor();
 		await dialog.getByRole("button", { name: "New token", exact: true }).click();
 		const name = dialog.getByRole("textbox", { name: "Name", exact: true });
 		// an empty Name that has the focus does not move the form: the first click on a Set all button is not lost
@@ -894,9 +923,7 @@ async function windowFocusTooltip({ admin }) {
 	await windowClosed(page);
 	// the Account window opened from the menu on Profile: the avatar there must not open a tooltip
 	await page.goto("/");
-	await page.locator("header").getByRole("button", { name: "Open user menu" }).click();
-	await page.getByRole("menuitem", { name: "Edit Profile", exact: true }).click();
-	await page.getByRole("dialog").waitFor();
+	await openAccount(page);
 	await noTooltip("when the Account window opened");
 	await page.keyboard.press("Escape");
 	await windowClosed(page);

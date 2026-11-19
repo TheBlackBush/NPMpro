@@ -318,7 +318,7 @@
 			"route": "/",
 			"steps": [
 				{ "click": "role=button[name='Open user menu'] >> visible=true" },
-				{ "click": "role=menuitem[name='Edit Profile']" },
+				{ "click": "role=menuitem[name='Account']" },
 				{ "waitFor": "[role=dialog] [data-account-part=profile]" },
 				{ "click": "[role=dialog] [data-account-tab=password]" },
 				{ "waitFor": "[role=dialog] [data-account-part=password]" },
@@ -334,7 +334,8 @@
 			"route": "/",
 			"steps": [
 				{ "click": "role=button[name='Open user menu'] >> visible=true" },
-				{ "click": "role=menuitem[name='MFA']" },
+				{ "click": "role=menuitem[name='Account']" },
+				{ "click": "[role=dialog] [data-account-tab=mfa]" },
 				{ "waitFor": "[role=dialog] [data-account-part=mfa]" },
 				{ "press": "Escape" }
 			]
@@ -592,8 +593,9 @@
 			"route": "/",
 			"steps": [
 				{ "click": "role=button[name='Open user menu'] >> visible=true" },
-				{ "click": "role=menuitem[name='API tokens']" },
-				{ "waitFor": "[role=dialog]" },
+				{ "click": "role=menuitem[name='Account']" },
+				{ "click": "[role=dialog] [data-account-tab=api-tokens]" },
+				{ "waitFor": "[role=dialog] [data-account-part=api-tokens]" },
 				{ "click": "role=button[name='New token']" },
 				{ "click": "role=button[name='Set every section to View Only']" },
 				{ "press": "Escape" }
