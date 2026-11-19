@@ -6,7 +6,13 @@ import { adminDisableMfa, deleteUser, revokeSessions, toggleUser, unlinkUserOidc
 import { Button, ErrorAlert, ListToolbar, LoadingPage } from "src/components";
 import { useListFilters, useUser, useUsers, useUsersMfa } from "src/hooks";
 import { intl, T } from "src/locale";
-import { showDeleteConfirmModal, showPermissionsModal, showSetPasswordModal, showUserModal } from "src/modals";
+import {
+	showAccountModal,
+	showDeleteConfirmModal,
+	showPermissionsModal,
+	showSetPasswordModal,
+	showUserModal,
+} from "src/modals";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { showApiError, showObjectSuccess, showSuccess } from "src/notifications";
 import { SettingsHeading } from "../Settings/SettingsHeading";
@@ -85,7 +91,9 @@ export default function TableWrapper() {
 							isFetching={isFetching}
 							currentUserId={currentUser?.id}
 							mfaUserIds={mfaUserIds}
-							onEditUser={(id) => showUserModal(id)}
+							onEditUser={(id) =>
+								id === currentUser?.id ? showAccountModal("profile") : showUserModal(id)
+							}
 							onEditPermissions={(id) => showPermissionsModal(id)}
 							onSetPassword={(id) => showSetPasswordModal(id)}
 							onResetMfa={(id) => {

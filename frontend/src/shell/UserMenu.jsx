@@ -20,7 +20,7 @@ import { useUser } from "src/hooks";
 import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
-import { showAccountModal, showApiTokensModal } from "src/modals";
+import { showAccountModal } from "src/modals";
 import { returnFocusOnlyForKeyboard } from "src/modules/InputModality";
 import { isAdmin } from "src/modules/Permissions";
 import { showApiError } from "src/notifications";
@@ -74,9 +74,6 @@ export function UserMenu({ variant = "topbar" }) {
 	const pendingWindow = useRef(null);
 	const openPart = (part) => () => {
 		pendingWindow.current = () => showAccountModal(part);
-	};
-	const openOld = (show) => () => {
-		pendingWindow.current = () => show("me");
 	};
 	const role = isAdmin(user?.roles) ? "role.admin" : "role.standard-user";
 
@@ -145,7 +142,7 @@ export function UserMenu({ variant = "topbar" }) {
 					<ShieldCheck aria-hidden="true" />
 					<T id="user.mfa" />
 				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={openOld(showApiTokensModal)}>
+				<DropdownMenuItem onSelect={openPart("api-tokens")}>
 					<KeyRound aria-hidden="true" />
 					<T id="user.api-tokens" />
 				</DropdownMenuItem>

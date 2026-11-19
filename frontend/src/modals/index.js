@@ -1,6 +1,5 @@
 export * from "./AccessListModal";
 export * from "./Account/AccountModal";
-export * from "./ApiTokensModal";
 export * from "./BackupScheduleModal";
 export * from "./ChangeDnsCredentialModal";
 export * from "./CustomCertificateModal";

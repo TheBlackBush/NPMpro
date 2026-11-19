@@ -12,6 +12,7 @@ import { askDiscard } from "src/modals/DiscardChangesModal";
 import { ACCOUNT_PARTS, frameState, partOf, reportPart, startsOnHeading, visitPart } from "src/modules/AccountWindow";
 import EasyModal from "src/modules/easyModal";
 import { AccountContext } from "./AccountPart";
+import { ApiTokensPart } from "./ApiTokensPart";
 import { PasswordPart } from "./PasswordPart";
 import { ProfilePart } from "./ProfilePart";
 
@@ -25,9 +26,7 @@ function MfaView() {
 		</Suspense>
 	);
 }
-// the parts built so far (6.5 adds the last and removes this filter, using ACCOUNT_PARTS)
-const VIEWS = { profile: ProfilePart, password: PasswordPart, mfa: MfaView };
-const PARTS = ACCOUNT_PARTS.filter((part) => VIEWS[part.id]);
+const VIEWS = { profile: ProfilePart, password: PasswordPart, mfa: MfaView, "api-tokens": ApiTokensPart };
 
 /** Opens the Account window on a part ("profile", "password", "mfa" or "api-tokens") */
 const showAccountModal = (part) => {
@@ -68,7 +67,7 @@ function PhoneList({ user, frame, onChoose, firstRef, close }) {
 			<div className="min-h-0 flex-1 overflow-y-auto p-4">
 				<Identity user={user} />
 				<ul className="m-0 mt-4 list-none divide-y rounded-lg border p-0">
-					{PARTS.map((part, index) => {
+					{ACCOUNT_PARTS.map((part, index) => {
 						const Icon = ICONS[part.id];
 						return (
 							<li key={part.id}>
@@ -191,7 +190,7 @@ const AccountModal = EasyModal.create(({ part: opened, visible, remove }) => {
 								aria-label={intl.formatMessage({ id: "account.parts" })}
 								className="w-full gap-0.5 p-0"
 							>
-								{PARTS.map((entry) => {
+								{ACCOUNT_PARTS.map((entry) => {
 									const Icon = ICONS[entry.id];
 									const dirty = frame.dirtyParts.includes(entry.id);
 									return (
@@ -216,7 +215,7 @@ const AccountModal = EasyModal.create(({ part: opened, visible, remove }) => {
 						{phoneList ? (
 							<PhoneList user={user} frame={frame} onChoose={choose} firstRef={firstRow} close={close} />
 						) : null}
-						{PARTS.map((entry) => {
+						{ACCOUNT_PARTS.map((entry) => {
 							const View = VIEWS[entry.id];
 							return (
 								<TabsContent

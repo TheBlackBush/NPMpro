@@ -1,7 +1,7 @@
 import { BookOpen, ExternalLink, KeyRound, TerminalSquare } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
-import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
+import { ApiErrorContent, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
 import { TokenBadges, TokenFacts, TokenPermissions } from "src/components/ApiTokenCells";
 import { CodeBox } from "src/components/CodeBox";
 import { HookForm, SelectField, SettingLines, SwitchField, TextField, useAppForm } from "src/components/Form";
@@ -11,16 +11,12 @@ import { useCreateApiToken, useOwnApiTokens, useRevokeApiToken, useUser } from "
 import { useIsMobile } from "src/hooks/use-mobile";
 import { intl, T } from "src/locale";
 import { authHeader, EXPIRY_CHOICES, newTokenValues, ownerCaps, tokenPayload, tomorrowOf } from "src/modules/ApiTokens";
-import EasyModal from "src/modules/easyModal";
 import { fieldsValidate } from "src/modules/HookForm";
 import { claudeCodeCommand, endpointOf } from "src/modules/Mcp";
 import { isAdmin } from "src/modules/Permissions";
 import { validateRequired, validateString } from "src/modules/Validations";
 import { showSuccess } from "src/notifications";
-
-const showApiTokensModal = (id) => {
-	EasyModal.show(ApiTokensModal, { id });
-};
+import { AccountPart, PartFormReport, usePartReport } from "./AccountPart";
 
 const validate = fieldsValidate((values) => ({
 	name: validateString(1, 100, true),
@@ -63,76 +59,66 @@ function TokenRow({ token, now, onRevoke }) {
 	);
 }
 
-function ListStep({ focus, onNew, onRevoke, onClose }) {
+function ListStep({ focus, onNew, onRevoke }) {
 	const title = useStepFocus(focus);
+	usePartReport("api-tokens", {});
 	const baseId = useId();
 	const { data, isPending, error } = useOwnApiTokens();
 	const now = new Date();
 	return (
-		<>
-			<AppModal.Header closeButton>
-				<AppModal.Title
-					ref={title}
-					tabIndex={-1}
-					className="flex items-center gap-2 outline-none"
-					data-window-start=""
-				>
-					<KeyRound className="size-5 shrink-0" aria-hidden="true" />
-					<T id="api-tokens.title" />
-				</AppModal.Title>
-			</AppModal.Header>
-			<AppModal.Body>
-				<div className="@container flex flex-col gap-4">
-					<p className="m-0 text-muted-foreground text-sm">
-						<T id="api-tokens.intro" />
-					</p>
-					{error ? <ErrorAlert error={error} /> : null}
-					{isPending ? <Loading noLogo /> : null}
-					{data && data.length === 0 ? (
-						<p className="my-4 text-center text-muted-foreground">
-							<T id="api-tokens.empty" />
-						</p>
-					) : null}
-					{data && data.length > 0 ? (
-						<ul className="m-0 list-none p-0">
-							{data.map((token) => (
-								<TokenRow key={token.id} token={token} now={now} onRevoke={onRevoke} />
-							))}
-						</ul>
-					) : null}
-					<section
-						className="flex flex-col gap-2 rounded-lg border bg-muted/40 p-3"
-						aria-labelledby={`${baseId}-header`}
-					>
-						<div className="flex items-center justify-between gap-2">
-							<h3 id={`${baseId}-header`} className="m-0 font-semibold text-sm">
-								<T id="api-tokens.header" />
-							</h3>
-							<UiButton asChild variant="ghost" size="xs">
-								<a href="/api-reference" target="_blank" rel="noopener noreferrer">
-									<BookOpen aria-hidden="true" />
-									<T id="api-tokens.reference" />
-									<ExternalLink aria-hidden="true" />
-									<span className="sr-only">
-										{" "}
-										<T id="api-tokens.new-tab" />
-									</span>
-								</a>
-							</UiButton>
-						</div>
-						<CodeBox text={authHeader()} label={intl.formatMessage({ id: "api-tokens.header" })} />
-					</section>
-				</div>
-			</AppModal.Body>
-			<AppModal.Footer>
-				<Button onClick={onClose}>
-					<T id="action.close" />
-				</Button>
-				<Button className="ms-auto" color="primary" onClick={onNew}>
+		<AccountPart
+			id="api-tokens"
+			icon={KeyRound}
+			heading={<T id="api-tokens.title" />}
+			headingRef={title}
+			footer={
+				<Button color="primary" onClick={onNew}>
 					<T id="api-tokens.new" />
 				</Button>
-			</AppModal.Footer>
-		</>
+			}
+		>
+			<div className="@container flex flex-col gap-4">
+				<p className="m-0 text-muted-foreground text-sm">
+					<T id="api-tokens.intro" />
+				</p>
+				{error ? <ErrorAlert error={error} /> : null}
+				{isPending ? <Loading noLogo /> : null}
+				{data && data.length === 0 ? (
+					<p className="my-4 text-center text-muted-foreground">
+						<T id="api-tokens.empty" />
+					</p>
+				) : null}
+				{data && data.length > 0 ? (
+					<ul className="m-0 list-none p-0">
+						{data.map((token) => (
+							<TokenRow key={token.id} token={token} now={now} onRevoke={onRevoke} />
+						))}
+					</ul>
+				) : null}
+				<section
+					className="flex flex-col gap-2 rounded-lg border bg-muted/40 p-3"
+					aria-labelledby={`${baseId}-header`}
+				>
+					<div className="flex items-center justify-between gap-2">
+						<h3 id={`${baseId}-header`} className="m-0 font-semibold text-sm">
+							<T id="api-tokens.header" />
+						</h3>
+						<UiButton asChild variant="ghost" size="xs">
+							<a href="/api-reference" target="_blank" rel="noopener noreferrer">
+								<BookOpen aria-hidden="true" />
+								<T id="api-tokens.reference" />
+								<ExternalLink aria-hidden="true" />
+								<span className="sr-only">
+									{" "}
+									<T id="api-tokens.new-tab" />
+								</span>
+							</a>
+						</UiButton>
+					</div>
+					<CodeBox text={authHeader()} label={intl.formatMessage({ id: "api-tokens.header" })} />
+				</section>
+			</div>
+		</AccountPart>
 	);
 }
 
@@ -190,14 +176,24 @@ function NewStep({ focus, user, onCancel, onCreated }) {
 		}
 	};
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit}>
-			<AppModal.Header closeButton={!isSubmitting}>
-				<AppModal.Title ref={title} tabIndex={-1} className="flex items-center gap-2 outline-none">
-					<KeyRound className="size-5 shrink-0" aria-hidden="true" />
-					<T id="api-tokens.new" />
-				</AppModal.Title>
-			</AppModal.Header>
-			<AppModal.Body>
+		<HookForm methods={methods} onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+			<PartFormReport id="api-tokens" />
+			<AccountPart
+				id="api-tokens"
+				icon={KeyRound}
+				heading={<T id="api-tokens.new" />}
+				headingRef={title}
+				footer={
+					<>
+						<Button variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+							<T id="cancel" />
+						</Button>
+						<FormSubmit isLoading={isSubmitting} disabled={isSubmitting}>
+							<T id="api-tokens.create" />
+						</FormSubmit>
+					</>
+				}
+			>
 				<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
 				<div className="@container">
 					<div className="grid grid-cols-1 gap-x-3 @md:grid-cols-2">
@@ -236,15 +232,7 @@ function NewStep({ focus, user, onCancel, onCreated }) {
 						{...register("allowDelete")}
 					/>
 				</SettingLines>
-			</AppModal.Body>
-			<AppModal.Footer>
-				<Button variant="ghost" onClick={onCancel} disabled={isSubmitting}>
-					<T id="cancel" />
-				</Button>
-				<FormSubmit className="ms-auto" isLoading={isSubmitting} disabled={isSubmitting}>
-					<T id="api-tokens.create" />
-				</FormSubmit>
-			</AppModal.Footer>
+			</AccountPart>
 		</HookForm>
 	);
 }
@@ -255,6 +243,7 @@ function SecretStep({ focus, token, onDone }) {
 	const baseId = useId();
 	// the token's Copy button, ready to be pressed
 	useStepFocus(focus, () => document.querySelector("[data-api-token-copy]"));
+	usePartReport("api-tokens", { locked: true });
 	const [manual, setManual] = useState(false);
 	const command = claudeCodeCommand(endpointOf(window.location.origin), token);
 	const copyCommand = async () => {
@@ -267,14 +256,17 @@ function SecretStep({ focus, token, onDone }) {
 		}
 	};
 	return (
-		<>
-			<AppModal.Header closeButton={false}>
-				<AppModal.Title className="flex items-center gap-2">
-					<KeyRound className="size-5 shrink-0" aria-hidden="true" />
-					<T id="api-tokens.title" />
-				</AppModal.Title>
-			</AppModal.Header>
-			<AppModal.Body className="flex flex-col gap-4">
+		<AccountPart
+			id="api-tokens"
+			icon={KeyRound}
+			heading={<T id="api-tokens.title" />}
+			footer={
+				<Button color="primary" onClick={onDone}>
+					<T id="api-tokens.done" />
+				</Button>
+			}
+		>
+			<div className="flex flex-col gap-4">
 				<NoticeAlert>
 					<p className="m-0 font-semibold">
 						<T id="api-tokens.secret.title" />
@@ -327,13 +319,8 @@ function SecretStep({ focus, token, onDone }) {
 						</div>
 					) : null}
 				</div>
-			</AppModal.Body>
-			<AppModal.Footer>
-				<Button className="ms-auto" color="primary" onClick={onDone}>
-					<T id="api-tokens.done" />
-				</Button>
-			</AppModal.Footer>
-		</>
+			</div>
+		</AccountPart>
 	);
 }
 
@@ -341,6 +328,7 @@ function RevokeStep({ focus, token, onCancel, onRevoked }) {
 	const title = useStepFocus(focus);
 	const [error, setError] = useState(null);
 	const revoke = useRevokeApiToken();
+	usePartReport("api-tokens", { busy: revoke.isPending });
 	const confirm = async () => {
 		setError(null);
 		try {
@@ -352,33 +340,32 @@ function RevokeStep({ focus, token, onCancel, onRevoked }) {
 		}
 	};
 	return (
-		<>
-			<AppModal.Header closeButton={!revoke.isPending}>
-				<AppModal.Title ref={title} tabIndex={-1} className="flex items-center gap-2 outline-none">
-					<KeyRound className="size-5 shrink-0" aria-hidden="true" />
-					<T id="api-tokens.revoke" />
-				</AppModal.Title>
-			</AppModal.Header>
-			<AppModal.Body>
-				<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
-				<p className="mb-0">
-					<T id="api-tokens.revoke.confirm" data={{ name: token.name }} />
-				</p>
-			</AppModal.Body>
-			<AppModal.Footer>
-				<Button variant="ghost" onClick={onCancel} disabled={revoke.isPending}>
-					<T id="cancel" />
-				</Button>
-				<Button className="ms-auto" color="danger" onClick={confirm} isLoading={revoke.isPending}>
-					<T id="api-tokens.revoke" />
-				</Button>
-			</AppModal.Footer>
-		</>
+		<AccountPart
+			id="api-tokens"
+			icon={KeyRound}
+			heading={<T id="api-tokens.revoke" />}
+			headingRef={title}
+			footer={
+				<>
+					<Button variant="ghost" onClick={onCancel} disabled={revoke.isPending}>
+						<T id="cancel" />
+					</Button>
+					<Button color="danger" onClick={confirm} isLoading={revoke.isPending}>
+						<T id="api-tokens.revoke" />
+					</Button>
+				</>
+			}
+		>
+			<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
+			<p className="mb-0">
+				<T id="api-tokens.revoke.confirm" data={{ name: token.name }} />
+			</p>
+		</AccountPart>
 	);
 }
 
-const ApiTokensModal = EasyModal.create(({ id, visible, remove }) => {
-	const { data: user, isPending } = useUser(id);
+export function ApiTokensPart() {
+	const { data: user, isPending } = useUser("me");
 	const [step, setStep] = useState({ name: "list" });
 	// false until the first step change: the window itself focuses the first step
 	const [moved, setMoved] = useState(false);
@@ -387,8 +374,6 @@ const ApiTokensModal = EasyModal.create(({ id, visible, remove }) => {
 		setStep(next);
 	};
 	const toList = () => go({ name: "list" });
-	// the secret step only ends with Done
-	const closable = step.name !== "secret";
 
 	let content = <Loading noLogo />;
 	if (step.name === "list") {
@@ -397,7 +382,6 @@ const ApiTokensModal = EasyModal.create(({ id, visible, remove }) => {
 				focus={moved}
 				onNew={() => go({ name: "new" })}
 				onRevoke={(token) => go({ name: "revoke", token })}
-				onClose={remove}
 			/>
 		);
 	} else if (step.name === "new" && user) {
@@ -410,17 +394,5 @@ const ApiTokensModal = EasyModal.create(({ id, visible, remove }) => {
 		content = <RevokeStep focus={moved} token={step.token} onCancel={toList} onRevoked={toList} />;
 	}
 
-	return (
-		<AppModal
-			show={visible}
-			onHide={closable ? remove : undefined}
-			backdrop="static"
-			// one size for every step: the window keeps its kind (dialog or side sheet) from step to step
-			keyboard={closable}
-		>
-			{isPending ? <Loading noLogo /> : content}
-		</AppModal>
-	);
-});
-
-export { showApiTokensModal };
+	return isPending ? <Loading noLogo /> : content;
+}
