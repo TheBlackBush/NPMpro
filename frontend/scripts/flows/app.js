@@ -13,6 +13,7 @@ import {
 	signIn,
 	VIEWER_EMAIL,
 	windowClosed,
+	windowTitled,
 	withToast,
 } from "./lib.js";
 
@@ -421,12 +422,14 @@ async function mfaWindow({ browser, base, viewerPassword }) {
 	try {
 		const { page } = viewer;
 		await page.goto("/");
-		await page.locator("header").getByRole("button", { name: "Open user menu" }).click();
-		await page.getByRole("menuitem", { name: "MFA", exact: true }).click();
+		await openAccount(page, "mfa");
 		// the setup step shows the QR code (not the svg icon of the close button); nothing is enabled, Escape ends it
 		await page.getByRole("dialog").getByRole("button", { name: "Enable TOTP", exact: true }).click();
-		await page.getByRole("dialog").locator("svg[role=img]").first().waitFor();
+		await page.getByRole("dialog").getByRole("img", { name: QR_NAME }).waitFor();
+		// a started setup is an unsaved change: the MFA entry has the dot, and Escape asks first
+		await page.getByRole("dialog").locator("[data-account-tab=mfa][data-dirty]").waitFor();
 		await page.keyboard.press("Escape");
+		await page.getByRole("alertdialog").getByRole("button", { name: "Discard changes", exact: true }).click();
 		await windowClosed(page);
 		await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Open user menu");
 		if (viewer.errors.length > 0) throw new Error(`page error for the viewer: ${viewer.errors[0]}`);
@@ -435,6 +438,190 @@ async function mfaWindow({ browser, base, viewerPassword }) {
 	}
 }
 
+// Opens the Account window from the one user menu entry (it opens on Profile), then the part: through the side list on
+// a desktop, through the back arrow and the list row on a phone (where the part takes its heading's focus)
+async function openAccount(page, part = "profile") {
+	await page
+		.locator("header")
+		.getByRole("button", { name: "Open user menu" })
+		.locator("visible=true")
+		.first()
+		.click();
+	await page.getByRole("menuitem", { name: "Account", exact: true }).click();
+	const dialog = page.getByRole("dialog");
+	await dialog.waitFor();
+	if (part === "profile") return;
+	const tab = dialog.locator(`[data-account-tab=${part}]`);
+	if (await tab.isVisible()) {
+		await tab.click();
+	} else {
+		await dialog.locator("[data-account-back]").click();
+		await dialog.locator(`[data-account-row=${part}]`).click();
+	}
+	await dialog.locator(`[data-account-part=${part}]`).waitFor();
+}
+
+// The Account window: the user menu entry opens its part with the focus where the part starts, edits stay when
+// switching parts, Close asks before discarding them, an administrator's window of another user has Profile with the
+// switches and Sign-in, and a phone drills in from the list of parts
+async function accountWindow({ admin, browser, base, viewerPassword }) {
+	const viewer = await signIn(browser, base, VIEWER_EMAIL, viewerPassword);
+	let phone = null;
+	try {
+		const { page } = viewer;
+		await page.goto("/");
+		// the one user menu entry opens the window on Profile; another part is reached through the side list
+		// (a desktop) or the back arrow and the list rows (a phone)
+		const open = async (target, part = "profile") => {
+			await openAccount(target, part);
+			return target.getByRole("dialog");
+		};
+		// the entry opens Profile with the focus in Full Name; every part is reached through the side list
+		const first = await open(page);
+		await first.locator("[data-account-tab=profile][aria-selected=true]").waitFor();
+		await page.waitForFunction(() => document.activeElement?.getAttribute("name") === "name");
+		const tabs = await first
+			.locator("[data-account-tab]")
+			.evaluateAll((tab) => tab.map((t) => t.dataset.accountTab));
+		if (tabs.join() !== "profile,password,mfa,api-tokens") throw new Error(`the side list has ${tabs.join()}`);
+		// the side list is vertical: ArrowDown moves to the next part, ArrowUp back
+		await first.locator("[data-account-tab=profile]").focus();
+		await page.keyboard.press("ArrowDown");
+		await first.locator("[data-account-tab=password][aria-selected=true]").waitFor();
+		await page.keyboard.press("ArrowUp");
+		await first.locator("[data-account-tab=profile][aria-selected=true]").waitFor();
+		for (const part of ["password", "mfa", "api-tokens"]) {
+			// biome-ignore lint/performance/noAwaitInLoops: one part after the other
+			await first.locator(`[data-account-tab=${part}]`).click();
+			await first.locator(`[data-account-part=${part}]`).waitFor();
+		}
+		await page.keyboard.press("Escape");
+		await windowClosed(page);
+
+		// edits stay across parts; the dot and the footer note name the part with edits
+		const dialog = await open(page);
+		const name = dialog.locator("input[name=name]");
+		await name.fill("Flow Viewer edited");
+		await dialog.locator("[data-account-tab=password]").click();
+		await dialog.locator("input[name=current]").fill("not-saved");
+		await dialog.locator("[data-account-tab=profile][data-dirty]").waitFor();
+		await dialog
+			.locator("[data-account-unsaved-note]")
+			.filter({ hasText: "Profile has unsaved changes" })
+			.waitFor();
+		await dialog.locator("[data-account-tab=profile]").click();
+		if ((await name.inputValue()) !== "Flow Viewer edited") throw new Error("Profile lost its edit");
+		await dialog.locator("[data-account-tab=password]").click();
+		if ((await dialog.locator("input[name=current]").inputValue()) !== "not-saved")
+			throw new Error("Password lost its edit");
+		// Close asks: Keep editing keeps both edits, Discard changes closes and saves nothing
+		await dialog.getByRole("button", { name: "Close", exact: true }).locator("visible=true").last().click();
+		const ask = page.getByRole("alertdialog");
+		await ask.getByRole("button", { name: "Keep editing", exact: true }).click();
+		await ask.waitFor({ state: "detached" });
+		await dialog.locator("[data-account-tab=profile]").click();
+		if ((await name.inputValue()) !== "Flow Viewer edited") throw new Error("Keep editing lost the edit");
+		await page.keyboard.press("Escape");
+		await ask.getByRole("button", { name: "Discard changes", exact: true }).click();
+		await windowClosed(page);
+		const reopened = await open(page);
+		const reopenedName = reopened.locator("input[name=name]");
+		await reopenedName.waitFor();
+		if ((await reopenedName.inputValue()) !== "Flow Viewer") throw new Error("Discard changes saved the edit");
+		await page.keyboard.press("Escape");
+		await windowClosed(page);
+		if (viewer.errors.length > 0) throw new Error(`page error for the viewer: ${viewer.errors[0]}`);
+
+		// D36: the administrator edits Flow Viewer (no MFA, no OIDC link): "Edit User" with Profile and its two
+		// switches and Sign-in, none of the own parts; a confirm window over the frame gives the focus back on Cancel
+		const errorsBefore = admin.errors.length;
+		const adminPage = admin.page;
+		await adminPage.goto("/settings/users");
+		await adminPage
+			.getByRole("button", { name: "Edit Flow Viewer", exact: true })
+			.filter({ visible: true })
+			.click();
+		await windowTitled(adminPage, "Edit User");
+		const other = adminPage.getByRole("dialog");
+		await other.locator("[data-account-tab=profile][aria-selected=true]").waitFor();
+		await adminPage.waitForFunction(() => document.activeElement?.getAttribute("name") === "name");
+		await other.getByRole("switch", { name: "Administrator", exact: true }).waitFor();
+		await other.getByRole("switch", { name: "Disabled", exact: true }).waitFor();
+		const ownParts = other.locator(
+			"[data-account-tab=password], [data-account-tab=mfa], [data-account-tab=api-tokens]",
+		);
+		if ((await ownParts.count()) > 0) throw new Error("another user's window offers the own parts");
+		await other.locator("[data-account-tab=sign-in]").click();
+		await other.locator("[data-sign-in-action=set-password]").waitFor();
+		const shown = await other
+			.locator("[data-sign-in-action]")
+			.evaluateAll((buttons) => buttons.map((button) => button.getAttribute("data-sign-in-action")));
+		if (shown.join() !== "set-password,revoke-sessions")
+			throw new Error(`the Sign-in part shows ${shown.join()} for a user without MFA or an OIDC link`);
+		await other.locator("[data-sign-in-action=revoke-sessions]").click();
+		const confirm = adminPage.getByRole("alertdialog");
+		await confirm.getByRole("heading", { name: "Revoke sessions" }).waitFor();
+		await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
+		await confirm.waitFor({ state: "detached" });
+		await adminPage.waitForFunction(
+			() => document.activeElement?.getAttribute("data-sign-in-action") === "revoke-sessions",
+		);
+		// the frame is still open, and closes without a question (nothing was edited)
+		await adminPage.keyboard.press("Escape");
+		await windowClosed(adminPage);
+		// Edit on the own row opens the own Account window: the own parts, never the switches or Sign-in
+		const me = await admin.api("GET", "/users/me");
+		await adminPage
+			.getByRole("button", { name: `Edit ${me.name}`, exact: true })
+			.filter({ visible: true })
+			.click();
+		await windowTitled(adminPage, "Account");
+		const own = adminPage.getByRole("dialog");
+		await own.locator("[data-account-tab=profile][aria-selected=true]").waitFor();
+		const ownTabs = await own
+			.locator("[data-account-tab]")
+			.evaluateAll((tab) => tab.map((t) => t.dataset.accountTab));
+		if (ownTabs.join() !== "profile,password,mfa,api-tokens")
+			throw new Error(`the own Edit opened ${ownTabs.join()}`);
+		if ((await own.getByRole("switch").count()) > 0)
+			throw new Error("the own Edit offers the Administrator switch");
+		await adminPage.keyboard.press("Escape");
+		await windowClosed(adminPage);
+		if (admin.errors.length > errorsBefore) throw new Error(`page error: ${admin.errors[errorsBefore]}`);
+
+		// a phone: the entry opens its part on its heading, the back arrow shows the list, a row opens its part
+		phone = await signIn(browser, base, VIEWER_EMAIL, viewerPassword, { width: 390, height: 844 });
+		const small = phone.page;
+		const sheet = await open(small, "password");
+		await sheet.locator("[data-account-part=password]").waitFor();
+		if (await sheet.getByRole("tablist").isVisible()) throw new Error("the side list shows on a phone");
+		await small.waitForFunction(
+			() =>
+				document.activeElement?.matches("[data-account-part] h3") &&
+				document.activeElement.textContent.trim() === "Password",
+		);
+		await sheet.locator("[data-account-back]").click();
+		// F1: a long email must not widen the list; F7: the rows end in a chevron, the MFA row shows its state
+		const overflow = await sheet
+			.locator("[data-account-row]")
+			.evaluateAll((list) => list.some((row) => row.getBoundingClientRect().right > window.innerWidth));
+		if (overflow) throw new Error("a list row runs past the screen");
+		await sheet.locator("[data-account-row=mfa] [data-slot=badge]").waitFor();
+		await sheet.locator("[data-account-row=api-tokens]").click();
+		await sheet.locator("[data-account-part=api-tokens]").waitFor();
+		if ((await sheet.locator("[data-account-back]").count()) !== 1) throw new Error("no back arrow on a part");
+		if (await small.evaluate(() => document.documentElement.scrollWidth > window.innerWidth))
+			throw new Error("the phone window scrolls sideways");
+		await small.keyboard.press("Escape");
+		await windowClosed(small);
+		if (phone.errors.length > 0) throw new Error(`page error on the phone: ${phone.errors[0]}`);
+	} finally {
+		await phone?.context.close();
+		await viewer.context.close();
+	}
+}
+
+const QR_NAME = /Scan this QR code/u;
 const SECTIONS = ["Proxy Hosts", "Redirection Hosts", "404 Hosts", "Streams", "Access Lists", "Certificates"];
 const LAST_USED_TIME = /\d{1,2}:\d{2}/u;
 
@@ -442,9 +629,9 @@ const LAST_USED_TIME = /\d{1,2}:\d{2}/u;
 const levelRadio = (dialog, section, level) =>
 	dialog.getByRole("radiogroup", { name: section, exact: true }).getByRole("radio", { name: level, exact: true });
 
-// the window opens on its title (also on a phone), never on Revoke
+// the part takes the focus on its heading on a phone (drill-in from the list), never on Revoke
 async function titleHasFocus(page) {
-	await page.waitForFunction(() => document.activeElement?.matches("[data-window-start]"));
+	await page.waitForFunction(() => document.activeElement?.matches("[data-account-part] h3"));
 	const text = await page.evaluate(() => document.activeElement.textContent.trim());
 	if (text !== "API tokens") throw new Error(`the window opened with the focus on "${text}"`);
 }
@@ -454,8 +641,7 @@ async function openApiTokens(page) {
 	// biome-ignore lint/suspicious/noPlaywrightNetworkidle: a request still in flight is aborted by the navigation
 	await page.waitForLoadState("networkidle");
 	await page.goto("/");
-	await page.locator("header").getByRole("button", { name: "Open user menu" }).click();
-	await page.getByRole("menuitem", { name: "API tokens", exact: true }).click();
+	await openAccount(page, "api-tokens");
 	return page.getByRole("dialog");
 }
 
@@ -476,7 +662,7 @@ async function apiTokens({ admin, base, browser, password }) {
 		phone = null;
 
 		const dialog = await openApiTokens(page);
-		await titleHasFocus(page);
+		await dialog.locator("[data-account-part=api-tokens]").waitFor();
 		await dialog.getByRole("button", { name: "New token", exact: true }).click();
 		const name = dialog.getByRole("textbox", { name: "Name", exact: true });
 		// an empty Name that has the focus does not move the form: the first click on a Set all button is not lost
@@ -514,6 +700,11 @@ async function apiTokens({ admin, base, browser, password }) {
 		await dialog.getByRole("button", { name: "Create", exact: true }).click();
 		const secret = (await dialog.locator("[data-api-token-secret]").textContent()).trim();
 		if (!API_TOKEN.test(secret)) throw new Error("the window did not show a token");
+		// the created step locks the window: the other parts are disabled and there is no X and no Close
+		if (!(await dialog.locator("[data-account-tab=profile]").isDisabled()))
+			throw new Error("the side list is not locked while the token shows");
+		if ((await dialog.getByRole("button", { name: "Close", exact: true }).count()) > 0)
+			throw new Error("the window can close while the token shows");
 		// the secret is in the created step only: no storage, no address
 		const kept = await page.evaluate(
 			() => JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage }) + location.href,
@@ -663,17 +854,32 @@ async function apiAccess({ admin, browser, base, password }) {
 		await clients.getByRole("tab", { name: "Claude Code", exact: true, selected: true }).waitFor();
 		if (!(await clients.locator("[data-code-box]:visible").textContent()).trim().startsWith("claude mcp add"))
 			throw new Error("the Claude Code box does not start with claude mcp add");
-		// the row: Allow delete under the name, in the name's cell; the chip Proxy Hosts with Manage
+		// the row: Allow delete under the name, in the name's cell; the summary line, and in the Permissions popover
+		// Proxy Hosts with Manage
 		const row = rowOf(page, "flow-access").first();
 		await row.waitFor();
 		await row.getByText("Allow delete", { exact: true }).filter({ visible: true }).waitFor();
 		await row
-			.locator("[data-slot=badge]")
-			.filter({ hasText: "Proxy Hosts" })
-			.filter({ hasText: "Manage" })
+			.locator("[data-token-summary]")
+			.filter({ hasText: "Manage 1 \u00b7 View 2 \u00b7 3 hidden" })
 			.filter({ visible: true })
 			.first()
 			.waitFor();
+		const opener = row
+			.getByRole("button", { name: "Permissions of flow-access", exact: true })
+			.filter({ visible: true })
+			.first();
+		await opener.click();
+		const perms = page.locator("[data-token-permissions-list]").filter({ visible: true });
+		await perms.locator("li").filter({ hasText: "Proxy Hosts" }).filter({ hasText: "Manage" }).waitFor();
+		await perms.locator("li").filter({ hasText: "Redirection Hosts" }).filter({ hasText: "Hidden" }).waitFor();
+		if (!(await perms.textContent()).includes("Allow deleteEnabled"))
+			throw new Error("the popover does not show Allow delete as Enabled");
+		await page.keyboard.press("Escape");
+		await perms.waitFor({ state: "hidden" });
+		await page.waitForFunction(
+			() => document.activeElement?.getAttribute("aria-label") === "Permissions of flow-access",
+		);
 		const placed = await row.evaluate((tr) => {
 			// the cell holds a copy for a narrow table and one for a wide one: take the shown ones
 			const cell = tr.querySelector("td");
@@ -744,8 +950,14 @@ async function windowFocusTooltip({ admin }) {
 	await noTooltip("on the button the closed window gave the focus back to");
 	await page.goto("/settings/users");
 	await page.getByRole("button", { name: "Edit Flow Viewer", exact: true }).filter({ visible: true }).click();
-	await page.getByRole("dialog").waitFor();
+	await windowTitled(page, "Edit User");
 	await noTooltip("when the user window opened");
+	await page.keyboard.press("Escape");
+	await windowClosed(page);
+	// the Account window opened from the menu on Profile: the avatar there must not open a tooltip
+	await page.goto("/");
+	await openAccount(page);
+	await noTooltip("when the Account window opened");
 	await page.keyboard.press("Escape");
 	await windowClosed(page);
 }
@@ -1060,6 +1272,7 @@ export const appFlows = [
 	{ name: "landing pages settings", run: landingPagesSettings },
 	{ name: "phone list", run: phoneList },
 	{ name: "mfa window", run: mfaWindow },
+	{ name: "account window", run: accountWindow },
 	{ name: "api tokens", run: apiTokens },
 	{ name: "api token caps", run: apiTokenCaps },
 	{ name: "api access", run: apiAccess },

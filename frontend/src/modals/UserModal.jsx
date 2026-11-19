@@ -1,7 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { Users } from "lucide-react";
-import { useRef, useState } from "react";
-import { deleteAvatar, uploadAvatar } from "src/api/backend";
+import { useState } from "react";
 import {
 	ApiErrorContent,
 	AppModal,
@@ -9,7 +7,6 @@ import {
 	ErrorAlert,
 	FormSection,
 	FormSubmit,
-	GravatarFormatter,
 	HookForm,
 	Loading,
 	SwitchField,
@@ -42,8 +39,6 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 	const { data: currentUser, isPending: currentIsPending } = useUser("me");
 	const { mutateAsync: setUser } = useSetUser();
 	const [errorMsg, setErrorMsg] = useState(null);
-	const queryClient = useQueryClient();
-	const fileInput = useRef(null);
 	const methods = useAppForm({
 		defaultValues: emptyUser,
 		values: data
@@ -60,19 +55,6 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 		register,
 		formState: { isSubmitting },
 	} = methods;
-	const changeAvatar = async (fn) => {
-		setErrorMsg(null);
-		try {
-			await fn();
-			await Promise.all([
-				queryClient.invalidateQueries({ queryKey: ["user"] }),
-				queryClient.invalidateQueries({ queryKey: ["users"] }),
-			]);
-		} catch (err) {
-			setErrorMsg(<ApiErrorContent error={err} />);
-		}
-	};
-
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
 
@@ -117,33 +99,6 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 					</AppModal.Header>
 					<AppModal.Body>
 						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-						{id !== "new" && (
-							// the window starts on Name: the picture's tooltip would open on a focused avatar
-							<div className="mb-3 flex items-center gap-2" data-window-start-skip="">
-								<GravatarFormatter url={data?.avatar} name={data?.name} email={data?.email} size="lg" />
-
-								<input
-									ref={fileInput}
-									type="file"
-									accept="image/png,image/jpeg,image/gif,image/webp"
-									className="hidden"
-									onChange={(e) => {
-										const file = e.target.files?.[0];
-										void changeAvatar(() => uploadAvatar(id, file));
-										e.target.value = "";
-									}}
-								/>
-
-								<Button onClick={() => fileInput.current?.click()}>
-									<T id="avatar.upload" />
-								</Button>
-								{data?.avatar?.startsWith("/images/avatar/") && (
-									<Button color="danger" outline onClick={() => changeAvatar(() => deleteAvatar(id))}>
-										<T id="avatar.remove" />
-									</Button>
-								)}
-							</div>
-						)}
 						<TextField name="name" label={<T id="user.full-name" />} autoComplete="off" required />
 						<TextField
 							name="email"

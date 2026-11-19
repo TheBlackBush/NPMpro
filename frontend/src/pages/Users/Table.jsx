@@ -14,6 +14,7 @@ import {
 import { TableLayout } from "src/components/Table/TableLayout";
 import { useAppTable } from "src/components/Table/useAppTable";
 import { intl, T } from "src/locale";
+import { signInActions } from "src/modules/AccountWindow";
 import { signInMethods } from "src/modules/SignInMethods";
 
 const columnHelper = createColumnHelper();
@@ -43,6 +44,11 @@ function UserActions({
 }) {
 	// the other items act on another account: not offered on your own row
 	const other = currentUserId !== user.id;
+	const signIn = signInActions({
+		isSelf: !other,
+		hasMfa: Boolean(mfaUserIds?.has(user.id)),
+		oidcLinked: Boolean(user.npmproOidcLinkedOn),
+	});
 	return (
 		<RowActions
 			// names the row, so the buttons of a list are told apart
@@ -70,30 +76,28 @@ function UserActions({
 					label: <T id="user.set-password" />,
 					icon: Lock,
 					onSelect: () => onSetPassword?.(user.id),
-					hidden: !other,
+					hidden: !signIn.includes("set-password"),
 				},
 				{
 					key: "reset-mfa",
 					label: <T id="user.reset-mfa" />,
 					icon: ShieldOff,
 					onSelect: () => onResetMfa?.(user.id),
-					// nothing to reset without MFA
-					hidden: !other || !mfaUserIds?.has(user.id),
+					hidden: !signIn.includes("reset-mfa"),
 				},
 				{
 					key: "revoke-sessions",
 					label: <T id="user.revoke-sessions" />,
 					icon: MonitorOff,
 					onSelect: () => onRevokeSessions?.(user.id),
-					hidden: !other,
+					hidden: !signIn.includes("revoke-sessions"),
 				},
 				{
 					key: "unlink-oidc",
 					label: <T id="user.unlink-oidc" />,
 					icon: Unlink,
 					onSelect: () => onUnlinkOidc?.(user.id),
-					// nothing to unlink without a link (R5)
-					hidden: !(other && user.npmproOidcLinkedOn),
+					hidden: !signIn.includes("unlink-oidc"),
 				},
 				{
 					key: "toggle",

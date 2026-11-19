@@ -1,11 +1,18 @@
-import { CalendarX, ShieldAlert, Trash2 } from "lucide-react";
+import { CalendarX, ChevronDown, ShieldAlert, Trash2 } from "lucide-react";
+import { Fragment } from "react";
 import { PERMISSION_ROWS } from "src/components/Form/PermissionButtons";
 import { StatusBadge } from "src/components/StatusBadge";
+import { Badge } from "src/components/ui/badge";
+import { Button } from "src/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
+import { Separator } from "src/components/ui/separator";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "src/components/ui/sheet";
+import { useIsMobile } from "src/hooks/use-mobile";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { formatDateTime } from "src/locale/Utils";
 import { permissionSummary, tokenMarks } from "src/modules/ApiTokens";
-
-const PERMISSION_LABELS = Object.fromEntries(PERMISSION_ROWS);
+import { sectionIcon } from "src/shell/useNavItems";
 
 const formatDate = (value) => new Intl.DateTimeFormat(intl.locale, { dateStyle: "medium" }).format(new Date(value));
 
@@ -32,27 +39,149 @@ function TokenBadges({ token, now }) {
 	);
 }
 
-/** One "Section | Level" chip per section the token can use, and with visibility the Item Visibility line */
+const LEVEL_TONES = {
+	manage: "border-primary/40 bg-primary/15 text-foreground",
+	view: "border-border bg-muted text-foreground",
+	hidden: "border-dashed border-border bg-transparent text-muted-foreground",
+};
+
+function LevelBadge({ level }) {
+	const shown = level === "manage" || level === "view" ? level : "hidden";
+	return (
+		<Badge variant="outline" className={cn("h-auto py-0.5", LEVEL_TONES[shown])}>
+			<T id={`permissions.${shown}`} />
+		</Badge>
+	);
+}
+
+function DetailLine({ label, children }) {
+	return (
+		<div className="flex items-center justify-between gap-3">
+			<span className="text-muted-foreground">{label}</span>
+			<span className="font-medium">{children}</span>
+		</div>
+	);
+}
+
+/** The six sections with their level, then Item Visibility, Administrator and Allow delete (the popover and sheet body) */
+function PermissionDetails({ token }) {
+	return (
+		<div className="flex flex-col gap-2.5" data-token-permissions-list>
+			<ul className="m-0 flex list-none flex-col gap-2 p-0">
+				{PERMISSION_ROWS.map(([section, labelId]) => {
+					const Icon = sectionIcon(section);
+					return (
+						<li key={section} className="flex items-center justify-between gap-3">
+							<span className="flex min-w-0 items-center gap-2">
+								{Icon ? (
+									<Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+								) : null}
+								<T id={labelId} />
+							</span>
+							<LevelBadge level={token.permissions?.[section]} />
+						</li>
+					);
+				})}
+			</ul>
+			<Separator />
+			<DetailLine label={<T id="permissions.visibility.title" />}>
+				<T id={`permissions.visibility.${token.visibility}`} />
+			</DetailLine>
+			<DetailLine label={<T id="api-tokens.admin" />}>
+				<T id={token.admin ? "enabled" : "disabled"} />
+			</DetailLine>
+			<DetailLine label={<T id="api-tokens.allow-delete" />}>
+				<T id={token.allowDelete ? "enabled" : "disabled"} />
+			</DetailLine>
+		</div>
+	);
+}
+
+function PermissionsButton({ token, ...rest }) {
+	return (
+		<Button
+			type="button"
+			variant="outline"
+			size="xs"
+			className="self-start"
+			aria-label={intl.formatMessage({ id: "api-tokens.permissions-of" }, { name: token.name })}
+			{...rest}
+		>
+			<T id="api-tokens.permissions" />
+			<ChevronDown aria-hidden="true" className="size-3" />
+		</Button>
+	);
+}
+
+/** The Permissions button with the details: a popover on a desktop, a bottom sheet on a phone (not the vaul drawer) */
+function PermissionsDetails({ token }) {
+	const phone = useIsMobile();
+	if (phone) {
+		return (
+			<Sheet>
+				<SheetTrigger asChild>
+					<PermissionsButton token={token} />
+				</SheetTrigger>
+				<SheetContent side="bottom" showCloseButton={false} className="gap-3 p-4" aria-describedby={undefined}>
+					<SheetHeader className="p-0">
+						<SheetTitle className="flex items-center justify-between gap-3">
+							<T id="api-tokens.permissions" />
+							<span className="break-all font-normal text-muted-foreground text-sm">{token.name}</span>
+						</SheetTitle>
+					</SheetHeader>
+					<PermissionDetails token={token} />
+					<SheetClose asChild>
+						<Button type="button" variant="outline" className="w-full">
+							<T id="action.close" />
+						</Button>
+					</SheetClose>
+				</SheetContent>
+			</Sheet>
+		);
+	}
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<PermissionsButton token={token} />
+			</PopoverTrigger>
+			<PopoverContent align="end" className="w-80 gap-3 p-3.5">
+				<div className="flex items-center justify-between gap-3 font-semibold">
+					<T id="api-tokens.permissions" />
+					<span className="break-all font-normal text-muted-foreground text-xs">{token.name}</span>
+				</div>
+				<PermissionDetails token={token} />
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+// each part stays whole on its line and carries its leading dot, so a narrow column never leaves a dot at a line end;
+// the text reads "Manage 1 \u00b7 View 2 \u00b7 3 hidden" as before
+function SummaryText({ token }) {
+	return permissionSummary(token.permissions).map(([key, count], index) => {
+		const text = intl.formatMessage({ id: `api-tokens.summary.${key}` }, { count });
+		return (
+			<Fragment key={key}>
+				{index > 0 ? " " : null}
+				<span className="whitespace-nowrap">{index > 0 ? `\u00b7 ${text}` : text}</span>
+			</Fragment>
+		);
+	});
+}
+
+/** One summary line of the six section levels, with Item Visibility under it (visibility) and the Permissions button */
 function TokenPermissions({ token, visibility = false }) {
 	return (
-		<div className="flex flex-col gap-1.5">
-			<div className="flex flex-wrap gap-1.5">
-				{permissionSummary(token).map(([section, level]) => (
-					<StatusBadge key={section} tone="muted" dot={false}>
-						<T id={PERMISSION_LABELS[section]} />
-						<span className="sr-only">: </span>
-						<span aria-hidden="true" className="h-3 border-l" />
-						<span className="font-normal text-muted-foreground">
-							<T id={`permissions.${level}`} />
-						</span>
-					</StatusBadge>
-				))}
-			</div>
+		<div className="flex flex-col items-start gap-1.5">
+			<p className="m-0 font-medium text-sm whitespace-nowrap" data-token-summary>
+				<SummaryText token={token} />
+			</p>
 			{visibility ? (
 				<p className="m-0 text-muted-foreground text-xs">
 					<T id={`permissions.visibility.${token.visibility}`} />
 				</p>
 			) : null}
+			<PermissionsDetails token={token} />
 		</div>
 	);
 }

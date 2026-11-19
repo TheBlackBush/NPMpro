@@ -2,13 +2,20 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { adminDisableMfa, deleteUser, revokeSessions, toggleUser, unlinkUserOidc } from "src/api/backend";
+import { deleteUser, toggleUser } from "src/api/backend";
 import { Button, ErrorAlert, ListToolbar, LoadingPage } from "src/components";
 import { useListFilters, useUser, useUsers, useUsersMfa } from "src/hooks";
-import { intl, T } from "src/locale";
-import { showDeleteConfirmModal, showPermissionsModal, showSetPasswordModal, showUserModal } from "src/modals";
+import { T } from "src/locale";
+import {
+	showDeleteConfirmModal,
+	showPermissionsModal,
+	showUserAccountModal,
+	showUserModal,
+	showUserSignInAction,
+} from "src/modals";
+import { rowUser } from "src/modules/AccountWindow";
 import { activeFilterCount } from "src/modules/ListFilters";
-import { showApiError, showObjectSuccess, showSuccess } from "src/notifications";
+import { showApiError, showObjectSuccess } from "src/notifications";
 import { SettingsHeading } from "../Settings/SettingsHeading";
 import { SettingsLead } from "../Settings/SettingsLead";
 import Table, { useColumns } from "./Table";
@@ -22,6 +29,9 @@ export default function TableWrapper() {
 	const { isFetching, isPending, isError, error, data } = useUsers();
 	const { data: currentUser } = useUser("me");
 	const mfaUserIds = useUsersMfa(data, currentUser?.id);
+
+	// null when a refetch removed the row while its menu was open: its sign-in actions then open nothing
+	const userOf = (id) => rowUser(data, id);
 
 	const handleDisableToggle = async (id, enabled) => {
 		try {
@@ -85,56 +95,16 @@ export default function TableWrapper() {
 							isFetching={isFetching}
 							currentUserId={currentUser?.id}
 							mfaUserIds={mfaUserIds}
-							onEditUser={(id) => showUserModal(id)}
+							// the own row opens the own Account window: the window itself tells (isOwnUser), also while
+							// /users/me still loads
+							onEditUser={(id) => showUserAccountModal(id)}
 							onEditPermissions={(id) => showPermissionsModal(id)}
-							onSetPassword={(id) => showSetPasswordModal(id)}
-							onResetMfa={(id) => {
-								const user = data?.find((item) => item.id === id);
-								showDeleteConfirmModal({
-									tTitle: "user.reset-mfa",
-									children: <T id="user.reset-mfa.content" />,
-									subject: user?.name,
-									details: user?.email,
-									onConfirm: async () => {
-										await adminDisableMfa(id);
-										showObjectSuccess("user", "updated");
-									},
-									invalidations: [
-										["user", id],
-										["users-mfa", id],
-									],
-								});
-							}}
-							onRevokeSessions={(id) => {
-								const user = data?.find((item) => item.id === id);
-								showDeleteConfirmModal({
-									tTitle: "user.revoke-sessions",
-									children: <T id="user.revoke-sessions.content" />,
-									subject: user?.name,
-									details: user?.email,
-									onConfirm: async () => {
-										await revokeSessions(id);
-										showSuccess(intl.formatMessage({ id: "notification.user-sessions-revoked" }));
-									},
-									invalidations: [["users"], ["user", id]],
-								});
-							}}
-							onUnlinkOidc={(id) => {
-								const user = data?.find((item) => item.id === id);
-								showDeleteConfirmModal({
-									tTitle: "user.unlink-oidc",
-									children: <T id="user.unlink-oidc.content" />,
-									subject: user?.name,
-									details: user?.email,
-									onConfirm: async () => {
-										await unlinkUserOidc(id);
-										showObjectSuccess("user", "updated");
-									},
-									invalidations: [["users"], ["user", id]],
-								});
-							}}
+							onSetPassword={(id) => showUserSignInAction("set-password", userOf(id))}
+							onResetMfa={(id) => showUserSignInAction("reset-mfa", userOf(id))}
+							onRevokeSessions={(id) => showUserSignInAction("revoke-sessions", userOf(id))}
+							onUnlinkOidc={(id) => showUserSignInAction("unlink-oidc", userOf(id))}
 							onDeleteUser={(id) => {
-								const user = data?.find((item) => item.id === id);
+								const user = userOf(id);
 								showDeleteConfirmModal({
 									title: <T id="object.delete" tData={{ object: "user" }} />,
 									onConfirm: async () => {
