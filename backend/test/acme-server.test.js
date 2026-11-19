@@ -91,6 +91,7 @@ it("gives a request the instance options on the instance CA, else that CA's defa
 	assert.deepEqual(requestOptionsFor(PEBBLE, PEBBLE, values), { profile: "tlsserver", must_staple: true });
 	assert.deepEqual(requestOptionsFor(LETSENCRYPT_SERVER, PEBBLE, values), { profile: "", must_staple: false });
 	assert.deepEqual(requestOptionsFor(ZEROSSL_SERVER, PEBBLE, values), { profile: "", must_staple: true });
+	assert.deepEqual(requestOptionsFor(GOOGLE_SERVER, PEBBLE, values), { profile: "", must_staple: true });
 });
 
 it("lets the runtime defaults follow the stored CA (D8)", () => {
