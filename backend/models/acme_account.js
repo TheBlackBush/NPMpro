@@ -15,6 +15,12 @@ class AcmeAccount extends Model {
 		this.modified_on = now();
 	}
 
+	// the EAB pair never leaves the backend: answers say only whether it is set (spec rule 3)
+	$formatJson(json) {
+		const { eab_kid: _kid, eab_hmac_key: _key, ...rest } = super.$formatJson(json);
+		return rest;
+	}
+
 	static tableName = "npmpro_acme_account";
 }
 
