@@ -11,7 +11,7 @@ const TOKEN_TEXT = /^[\w-]+$/u;
  * The Authorization header line with the token, or with the placeholder when there is none or it looks odd
  */
 export const authHeader = (token = TOKEN_PLACEHOLDER) =>
-	`Authorization: Bearer ${TOKEN_TEXT.test(token) ? token : TOKEN_PLACEHOLDER}`;
+	`Authorization: Bearer ${typeof token === "string" && TOKEN_TEXT.test(token) ? token : TOKEN_PLACEHOLDER}`;
 
 export const EXPIRY_CHOICES = ["30", "90", "365", "date", "never"];
 export const DEFAULT_EXPIRY = "90";

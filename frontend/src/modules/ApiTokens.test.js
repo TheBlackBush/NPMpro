@@ -114,6 +114,8 @@ it("authHeader fills a token in, or the placeholder for a missing or odd one", (
 	assert.equal(authHeader("npmpro_ab12_Xy-z9"), "Authorization: Bearer npmpro_ab12_Xy-z9");
 	assert.equal(authHeader('x" $(rm -rf ~)'), "Authorization: Bearer YOUR_TOKEN");
 	assert.equal(authHeader(""), "Authorization: Bearer YOUR_TOKEN");
+	assert.equal(authHeader(null), "Authorization: Bearer YOUR_TOKEN");
+	assert.equal(authHeader(123), "Authorization: Bearer YOUR_TOKEN");
 	assert.equal(TOKEN_PLACEHOLDER, "YOUR_TOKEN");
 });
 
