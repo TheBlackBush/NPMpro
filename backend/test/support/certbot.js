@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
@@ -122,26 +122,71 @@ const certbotSucceeds = (api, { certificate, key }) =>
 	api.outside.hookCommand(
 		"certbot",
 		`#!/bin/sh
-env > "${api.root}/fake/certbot.env"
-name=""
-action=""
-while [ $# -gt 0 ]; do
-	if [ "$1" = "--cert-name" ]; then name="$2"; fi
-	case "$1" in certonly|renew|revoke|delete) [ -z "$action" ] && action="$1";; esac
-	shift
+root='${api.root}'
+env > "$root/fake/certbot.env"
+config=""; server=""; name=""; account=""; keypath=""; action=""; prev=""
+for arg in "$@"; do
+	case "$prev" in
+		--config) config="$arg" ;;
+		--server) server="$arg" ;;
+		--cert-name) name="$arg" ;;
+		--account) account="$arg" ;;
+		--key-path) keypath="$arg" ;;
+	esac
+	case "$arg" in
+		register|update_account|unregister|certonly|renew|revoke|delete) [ -z "$action" ] && action="$arg" ;;
+	esac
+	prev="$arg"
 done
+fail() { if [ -f "$root/fake/$1.fail" ]; then cat "$root/fake/$1.fail" >&2; exit 1; fi; }
+certbotdir() {
+	dir="$(sed -n 's/^config-dir = //p' "$config" 2>/dev/null | tail -n 1)"
+	case "$dir" in
+		"") dir="$root/data/tls/certbot" ;;
+		/data/*) dir="$root$dir" ;;
+	esac
+	printf '%s' "$dir"
+}
+serverdir() { printf '%s' "$server" | sed 's|^[a-z]*://||'; }
+case "$action" in
+	register|update_account)
+		n=$(( $(ls "$root/fake" | grep -c "^$action-.*[.]ini$") + 1 ))
+		cp "$config" "$root/fake/$action-$n.ini"
+		stat -c '%a' "$config" "$(dirname "$config")" > "$root/fake/$action-$n.mode"
+		fail "$action"
+		[ "$action" = update_account ] && exit 0
+		id="$(printf '%032x' "$n")"
+		dir="$(certbotdir)/accounts/$(serverdir)/$id"
+		mkdir -p "$dir"
+		printf '{"creation_dt": "2026-11-19T10:00:00Z"}' > "$dir/meta.json"
+		printf '{"body": {}}' > "$dir/regr.json"
+		printf '{}' > "$dir/private_key.json"
+		exit 0 ;;
+	unregister)
+		fail unregister
+		rm -rf "$(certbotdir)/accounts/$(serverdir)/$account"
+		exit 0 ;;
+	revoke)
+		[ -z "$keypath" ] && fail revoke
+		exit 0 ;;
+esac
 [ -z "$name" ] && exit 0
-live="${api.root}/data/tls/certbot/live/$name"
-if [ "$action" = "delete" ]; then
-	rm -rf "$live" "${api.root}/data/tls/certbot/renewal/$name.conf"
+live="$root/data/tls/certbot/live/$name"
+conf="$root/data/tls/certbot/renewal/$name.conf"
+if [ "$action" = delete ]; then
+	rm -rf "$live" "$conf"
 	exit 0
 fi
-[ "$action" = "revoke" ] && exit 0
+fail "$action"
 mkdir -p "$live"
 cp "${certificate}" "$live/fullchain.pem"
 cp "${certificate}" "$live/cert.pem"
 cp "${key}" "$live/privkey.pem"
-touch "${api.root}/data/tls/certbot/renewal/$name.conf"
+if [ "$action" = certonly ]; then
+	printf 'version = 5.10.0\\n[renewalparams]\\naccount = %s\\nserver = %s\\nauthenticator = webroot\\n' "$account" "$server" > "$conf"
+elif [ ! -f "$conf" ]; then
+	: > "$conf"
+fi
 `,
 	);
 
@@ -202,4 +247,55 @@ const readZip = (bytes) => {
 	return files;
 };
 
-export { certbotEnvironment, certbotFails, certbotSucceeds, makeCertificate, makeExpiredCertificate, readZip };
+/**
+ * Answers GET <server> with an ACME directory (persisting unless persist is false)
+ *
+ * @param {Object} api
+ * @param {string} server
+ * @param {Object} [options]
+ * @param {Object|string} [options.body]  default { newNonce } of the server's origin
+ * @param {number} [options.status]
+ * @param {boolean} [options.persist]
+ */
+const acmeDirectory = (api, server, { body, status = 200, persist = true } = {}) => {
+	const url = new URL(server);
+	const scope = api.outside.http
+		.get(url.origin)
+		.intercept({ path: url.pathname, method: "GET" })
+		.reply(status, body ?? { newNonce: `${url.origin}/nonce` }, {
+			headers: { "content-type": "application/json" },
+		});
+	if (persist) scope.persist();
+};
+
+const SCHEME = /^[a-z]+:\/\//u;
+
+/** An account folder of certbot for server under the test root (with its key, so it counts as usable) */
+const seedAccount = async (api, server, id, { created = "2026-01-01T00:00:00Z" } = {}) => {
+	const dir = path.join(api.root, "data/tls/certbot/accounts", server.replace(SCHEME, ""), id);
+	await mkdir(dir, { recursive: true });
+	await writeFile(path.join(dir, "meta.json"), JSON.stringify({ creation_dt: created }));
+	await writeFile(path.join(dir, "regr.json"), "{}");
+	await writeFile(path.join(dir, "private_key.json"), "{}");
+	return dir;
+};
+
+const RUN_FOLDER = /acme-register-[^/]+/gu;
+
+// The calls of a fake command, with the test root removed and every run folder shown as acme-register-*
+const normalizedCalls = async (api, command = "certbot") =>
+	(await api.outside.calls())
+		.filter((line) => line.startsWith(`${command} `))
+		.map((line) => line.replaceAll(api.root, "").replaceAll(RUN_FOLDER, "acme-register-*"));
+
+export {
+	acmeDirectory,
+	certbotEnvironment,
+	certbotFails,
+	certbotSucceeds,
+	makeCertificate,
+	makeExpiredCertificate,
+	normalizedCalls,
+	readZip,
+	seedAccount,
+};
