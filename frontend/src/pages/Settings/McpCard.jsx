@@ -21,10 +21,16 @@ function ConnectLine({ endpoint }) {
 			control={
 				<Tabs defaultValue="claude-code" className="min-w-0 gap-2" data-mcp-clients="">
 					<TabsList className="w-full group-data-[orientation=horizontal]/tabs:h-auto @lg:w-fit">
-						<TabsTrigger value="claude-code" className="h-auto min-h-7 whitespace-normal">
+						<TabsTrigger
+							value="claude-code"
+							className="h-auto min-h-7 whitespace-normal @lg:flex-none @lg:px-3 @lg:whitespace-nowrap"
+						>
 							<T id="settings.api-access.mcp.claude-code" />
 						</TabsTrigger>
-						<TabsTrigger value="other" className="h-auto min-h-7 whitespace-normal">
+						<TabsTrigger
+							value="other"
+							className="h-auto min-h-7 whitespace-normal @lg:flex-none @lg:px-3 @lg:whitespace-nowrap"
+						>
 							<T id="settings.api-access.mcp.other" />
 						</TabsTrigger>
 					</TabsList>
