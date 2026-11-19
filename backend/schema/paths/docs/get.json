@@ -1,23 +1,13 @@
 {
 	"operationId": "docs",
-	"summary": "Returns the Swagger UI for this API schema",
+	"summary": "Open the API reference page",
 	"tags": [
 		"docs"
 	],
-	"security": [
-		{
-			"cookieAuth": []
-		},
-		{
-			"bearerAuth": []
-		}
-	],
 	"responses": {
-		"200": {
-			"description": "200 response",
-			"content": {
-				"text/html": {}
-			}
+		"302": {
+			"description": "A redirect to `/api-reference`"
 		}
-	}
+	},
+	"description": "Redirects the browser to the API reference page of the web interface (`/api-reference`), which reads `GET /schema`. Old links with a Swagger anchor (`#/<group>/<operationId>`) still open their route.\n\nNeeds: nothing (public)"
 }

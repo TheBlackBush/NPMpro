@@ -1,6 +1,6 @@
 {
 	"operationId": "updateUserPermissions",
-	"summary": "Update a User's Permissions",
+	"summary": "Set the permissions of a user",
 	"tags": [
 		"users"
 	],
@@ -18,7 +18,7 @@
 				"minimum": 1
 			},
 			"required": true,
-			"description": "User ID",
+			"description": "ID of the user",
 			"example": 2
 		}
 	],
@@ -44,7 +44,7 @@
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "true when the permissions were saved",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -57,6 +57,10 @@
 					}
 				}
 			}
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
 		}
-	}
+	},
+	"description": "Sets the visibility and the access level (manage, view or hidden) of each section for a user; only the fields sent change. Access lists cannot be hidden while proxy hosts are visible, and certificates cannot be hidden while any host type is visible (400). Lowering a user's permissions lowers their API tokens at once.\n\nNeeds: a signed-in session of an administrator (API tokens are refused)"
 }

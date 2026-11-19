@@ -1,7 +1,7 @@
 {
 	"operationId": "runBackupSchedule",
 	"summary": "Run a backup schedule now",
-	"description": "Admin only. Errors: busy (409) while another backup or restore runs, any other failure is stored on the schedule.",
+	"description": "Makes the backup at once and stores the result on the schedule; the next planned run stays as it is. A failed run does not fail the request: it is stored as last_status failed with its last_error. busy (409) while another backup or restore runs.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"backups"
 	],
@@ -28,11 +28,44 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The schedule with the result of this run",
 			"content": {
 				"application/json": {
 					"schema": {
 						"$ref": "../../../../../components/backup-schedule-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"id": 1,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T09:30:00.000Z",
+								"owner_user_id": 1,
+								"name": "Nightly",
+								"enabled": true,
+								"frequency": "daily",
+								"every_hours": null,
+								"time": "03:30",
+								"weekday": null,
+								"month_day": null,
+								"types": [
+									"proxy_hosts",
+									"certificates",
+									"access_lists"
+								],
+								"protection": "passphrase",
+								"keep": 7,
+								"next_run_at": "2026-11-18T03:30:00.000Z",
+								"last_run_at": "2026-11-17T03:30:00.000Z",
+								"last_status": "success",
+								"last_error": null,
+								"last_file": "npmpro-backup-npmpro-20261117-033000-s1.npmpro",
+								"last_size": 482113,
+								"last_duration_ms": 840,
+								"passphrase_set": true,
+								"file_count": 7
+							}
+						}
 					}
 				}
 			}

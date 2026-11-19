@@ -27,33 +27,42 @@
 		},
 		"object_type": {
 			"type": "string",
-			"example": "certificate"
+			"example": "certificate",
+			"description": "Kind of object the entry is about, such as `proxy-host`, `certificate` or `user`"
 		},
 		"object_id": {
-			"$ref": "../common.json#/properties/id"
+			"type": "integer",
+			"minimum": 0,
+			"example": 12,
+			"description": "Id of the object the entry is about; 0 when the event has no single object, such as a backup"
 		},
 		"action": {
 			"type": "string",
-			"example": "created"
+			"example": "created",
+			"description": "What happened, such as `created`, `updated`, `deleted`, `revoked` or `backup-failed`"
 		},
 		"npmpro_api_token_id": {
 			"type": [
 				"integer",
 				"null"
-			]
+			],
+			"description": "ID of the API token that made the change, null for a change made in a session or by NPMpro itself"
 		},
 		"npmpro_api_token_name": {
 			"type": [
 				"string",
 				"null"
-			]
+			],
+			"description": "Name of that token when the entry was written, null when no token acted"
 		},
 		"meta": {
 			"type": "object",
-			"example": {}
+			"example": {},
+			"description": "Details of the change: for a host its domain names, for a user its name and permissions; the content depends on the object type and action"
 		},
 		"user": {
-			"$ref": "./user-object.json"
+			"$ref": "./user-object.json",
+			"description": "The user who acted, only present with `expand=user`"
 		}
 	}
 }

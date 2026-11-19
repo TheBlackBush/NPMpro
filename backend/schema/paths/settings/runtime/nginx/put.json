@@ -1,7 +1,7 @@
 {
 	"operationId": "updateRuntimeNginxSettings",
 	"summary": "Update the nginx settings",
-	"description": "Fields set by environment variables are ignored. The change is applied before it is saved: nginx -t runs on the new core config and nginx is reloaded; when applying fails, nothing is saved.",
+	"description": "Saves the nginx settings; send only what changes. Fields set by environment variables are ignored, and tls12 and secp_curves are locked while force_mlkem is on. worker_processes must be auto or from 1 to cpu_count, and a new cpu_affinity list may only name CPUs the container may use; a refused value answers 400 with the field name. nginx -t runs on the new core config and nginx is reloaded: when applying fails, nothing is saved.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"settings"
 	],
@@ -14,7 +14,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "Settings payload",
+		"description": "The settings to change; fields you leave out keep their value",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -93,14 +93,14 @@
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The nginx settings after the save, in the same form as the GET answer",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
 								"worker_processes": "4",
-								"worker_connections": 512,
+								"worker_connections": 1024,
 								"worker_shutdown_timeout": "1h",
 								"cpu_affinity": "off",
 								"log_not_found": false,

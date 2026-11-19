@@ -1,7 +1,9 @@
 {
 	"operationId": "regenUserMfaBackupCodes",
-	"summary": "Regenerate MFA backup codes",
-	"tags": ["users"],
+	"summary": "Create new backup codes",
+	"tags": [
+		"users"
+	],
 	"security": [
 		{
 			"cookieAuth": []
@@ -16,7 +18,7 @@
 				"minimum": 1
 			},
 			"required": true,
-			"description": "User ID",
+			"description": "ID of your own user. `me` is also accepted for the signed-in user",
 			"example": 2
 		}
 	],
@@ -32,14 +34,21 @@
 							"minLength": 6,
 							"maxLength": 8,
 							"type": "string",
-							"example": "123456"
+							"example": "123456",
+							"description": "A current code (6 digits) from the authenticator"
 						}
 					},
-					"required": ["code"],
+					"required": [
+						"code"
+					],
 					"type": "object"
 				},
-				"example": {
-					"code": "123456"
+				"examples": {
+					"default": {
+						"value": {
+							"code": "123456"
+						}
+					}
 				}
 			}
 		}
@@ -52,21 +61,23 @@
 						"default": {
 							"value": {
 								"backup_codes": [
-									"6CD7CB06",
-									"495302F3",
-									"D8037852",
-									"A6FFC956",
-									"BC1A1851",
-									"A05E644F",
-									"A406D2E8",
-									"0AE3C522"
+									"CODE0001",
+									"CODE0002",
+									"CODE0003",
+									"CODE0004",
+									"CODE0005",
+									"CODE0006",
+									"CODE0007",
+									"CODE0008"
 								]
 							}
 						}
 					},
 					"schema": {
 						"type": "object",
-						"required": ["backup_codes"],
+						"required": [
+							"backup_codes"
+						],
 						"additionalProperties": false,
 						"properties": {
 							"backup_codes": {
@@ -91,7 +102,11 @@
 					}
 				}
 			},
-			"description": "200 response"
+			"description": "The new backup codes, shown once"
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
 		}
-	}
+	},
+	"description": "Replaces the backup codes of your own account with new ones, shown once in the answer. The old codes stop working and your other sessions end. Needs a current 6 digit code from your authenticator (400 when wrong or MFA is not on). The answer sets a fresh session cookie.\n\nNeeds: a signed-in session as that user (API tokens are refused)"
 }

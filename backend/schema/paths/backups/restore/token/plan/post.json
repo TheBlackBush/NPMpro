@@ -1,7 +1,7 @@
 {
 	"operationId": "planBackupMerge",
 	"summary": "Plan a merge restore (dry run)",
-	"description": "A Settings session (inspect) is planned by its admin, a page import session (import open) by its importer, who needs manage permission on the page's items. Shows what a merge of the chosen items would do and changes nothing. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable, invalid-item.",
+	"description": "Shows what a merge of the chosen parts or items of the session would do with every item, and changes nothing. A Settings session (from inspect) is planned by an administrator, a page import session (from import open) by its importer. Send the plan's hash as plan_hash to POST /backups/restore/{token} to apply exactly this plan. An API token cannot plan the Users, settings_oidc or settings_runtime parts. Errors carry a backup.error.<code> message id: invalid-types, token-expired (410), invalid-item.\n\nNeeds: an administrator for a Settings session (a token needs its Administrator switch); manage on the section of the kind for a page import session",
 	"tags": [
 		"backups"
 	],
@@ -41,7 +41,8 @@
 							"type": "string",
 							"enum": [
 								"merge"
-							]
+							],
+							"description": "Always merge: only a merge is planned."
 						},
 						"types": {
 							"type": "array",
@@ -126,23 +127,96 @@
 							}
 						}
 					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"mode": "merge",
+							"types": [
+								"proxy_hosts",
+								"certificates"
+							],
+							"items": {
+								"proxy_hosts": [
+									12
+								]
+							},
+							"choices": {
+								"certificates:5": "existing"
+							}
+						}
+					}
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The merge plan",
 			"content": {
 				"application/json": {
 					"schema": {
 						"$ref": "../../../../../components/backup-plan-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"items": [
+									{
+										"key": "proxy_hosts:12",
+										"type": "proxy_hosts",
+										"id": 12,
+										"label": "app.example.com",
+										"action": "add",
+										"reason": null,
+										"target": null,
+										"choices": [],
+										"default": "add",
+										"needed_by": [],
+										"linked": false
+									},
+									{
+										"key": "certificates:5",
+										"type": "certificates",
+										"id": 5,
+										"label": "app.example.com",
+										"action": "existing",
+										"reason": "same-certificate",
+										"target": {
+											"type": "certificates",
+											"id": 9,
+											"label": "app.example.com"
+										},
+										"choices": [
+											"existing",
+											"add"
+										],
+										"default": "existing",
+										"needed_by": [
+											"proxy_hosts:12"
+										],
+										"linked": true
+									}
+								],
+								"counts": {
+									"add": 1,
+									"replace": 0,
+									"skip": 0,
+									"existing": 1,
+									"take": 0,
+									"keep": 0
+								},
+								"cleared_links": [],
+								"needs_secrets": [],
+								"hash": "9f2b6c1d4e7a3085"
+							}
+						}
 					}
 				}
 			}
 		},
 		"409": {
-			"description": "409 plan-changed: the instance changed since the plan was made; the error carries the new plan",
+			"description": "Plan changed: the instance changed since the plan was made; the error carries the new plan",
 			"content": {
 				"application/json": {
 					"schema": {

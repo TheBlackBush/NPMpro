@@ -1,6 +1,6 @@
 {
 	"operationId": "reportsHosts",
-	"summary": "Report on Host Statistics",
+	"summary": "Get the dashboard host counts",
 	"tags": [
 		"reports"
 	],
@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The counts the dashboard shows",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -33,7 +33,13 @@
 									"stream": 0
 								},
 								"certificates_expiring": 2,
-								"certificates_expired": 1
+								"certificates_expired": 1,
+								"backup_schedules_failed": [
+									{
+										"id": 2,
+										"name": "Nightly"
+									}
+								]
 							}
 						}
 					},
@@ -126,10 +132,12 @@
 									],
 									"properties": {
 										"id": {
-											"type": "integer"
+											"type": "integer",
+											"description": "ID of the backup schedule"
 										},
 										"name": {
-											"type": "string"
+											"type": "string",
+											"description": "Name of the backup schedule"
 										}
 									}
 								}
@@ -145,5 +153,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Counts the hosts, streams, access lists and certificates the user may see (an administrator or a user with visibility `all` sees every one, otherwise only their own). The config error and certificate expiry counts are 0 for a section the user cannot view. `backup_schedules_failed` is filled for administrators only and is empty for everyone else. Certificates count as expiring within 14 days.\n\nNeeds: a signed-in user (a session or an API token); each count follows the user's permissions"
 }

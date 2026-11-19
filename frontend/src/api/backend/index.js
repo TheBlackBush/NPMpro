@@ -26,6 +26,7 @@ export * from "./exportItems";
 export * from "./exportPreview";
 export * from "./getAccessList";
 export * from "./getAccessLists";
+export * from "./getApiSchema";
 export * from "./getAuditLog";
 export * from "./getAuditLogs";
 export * from "./getBackupSchedules";

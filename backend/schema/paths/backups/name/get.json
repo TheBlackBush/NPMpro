@@ -1,7 +1,7 @@
 {
 	"operationId": "downloadBackup",
 	"summary": "Download a stored backup",
-	"description": "Admin only.",
+	"description": "Sends the file of a stored backup as application/octet-stream. Automatic backups can be downloaded too, but only restore on this instance.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"backups"
 	],
@@ -29,7 +29,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The backup file, as application/octet-stream",
 			"content": {
 				"application/octet-stream": {
 					"schema": {

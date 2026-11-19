@@ -95,10 +95,12 @@
 					"$ref": "./certificate-object.json"
 				}
 			],
-			"example": null
+			"example": null,
+			"description": "The host's certificate, null when it has none. Only the list answer carries it, and only with `expand=certificate`."
 		},
 		"owner": {
-			"$ref": "./user-object.json"
+			"$ref": "./user-object.json",
+			"description": "The user who created the host. Only the list answer carries it, and only with `expand=owner`."
 		},
 		"npmpro_page": {
 			"$ref": "../common.json#/properties/npmpro_page"

@@ -4,13 +4,14 @@
 	"type": "object",
 	"properties": {
 		"id": {
-			"description": "Unique identifier",
 			"readOnly": true,
 			"type": "integer",
+			"description": "Identifier of the item, assigned when it is created",
 			"minimum": 1,
 			"example": 11
 		},
 		"expand": {
+			"description": "Relations to add to each item of the answer, by name; null adds none",
 			"anyOf": [
 				{
 					"type": "null"
@@ -26,6 +27,7 @@
 			]
 		},
 		"query": {
+			"description": "Text to search for in the items; null or no value returns every item",
 			"anyOf": [
 				{
 					"type": "null"
@@ -38,20 +40,20 @@
 			]
 		},
 		"created_on": {
-			"description": "Date and time of creation",
 			"readOnly": true,
 			"type": "string",
+			"description": "When the item was created (ISO 8601, UTC)",
 			"example": "2025-10-28T04:17:54.000Z"
 		},
 		"modified_on": {
-			"description": "Date and time of last update",
 			"readOnly": true,
 			"type": "string",
+			"description": "When the item was last changed (ISO 8601, UTC)",
 			"example": "2025-10-28T04:17:54.000Z"
 		},
 		"user_id": {
-			"description": "User ID",
 			"type": "integer",
+			"description": "Identifier of the user who owns the item",
 			"minimum": 1,
 			"example": 2
 		},
@@ -72,8 +74,8 @@
 			"example": 5
 		},
 		"domain_names": {
-			"description": "Domain Names array",
 			"type": "array",
+			"description": "Domain names the host answers for, one to 100, each once",
 			"minItems": 1,
 			"maxItems": 100,
 			"uniqueItems": true,
@@ -90,37 +92,38 @@
 			]
 		},
 		"enabled": {
-			"description": "Is Enabled",
 			"type": "boolean",
+			"description": "Whether the host is active; a disabled host stays saved but is left out of the nginx config",
 			"default": true,
 			"example": false
 		},
 		"ssl_forced": {
-			"description": "Is SSL Forced",
 			"type": "boolean",
+			"description": "Whether plain HTTP requests are redirected to HTTPS (needs a certificate)",
 			"default": false,
 			"example": true
 		},
 		"hsts_enabled": {
-			"description": "Is HSTS Enabled",
 			"type": "boolean",
+			"description": "Whether the Strict-Transport-Security header is sent (needs a certificate and forced HTTPS)",
 			"default": false,
 			"example": true
 		},
 		"hsts_subdomains": {
-			"description": "Is HSTS applicable to all subdomains",
 			"type": "boolean",
+			"description": "Whether the HSTS header also covers every subdomain (includeSubDomains)",
 			"default": false,
 			"example": true
 		},
 		"ssl_provider": {
 			"type": "string",
+			"description": "Where the certificate comes from: letsencrypt (an ACME server), other (uploaded) or mtls (a client CA)",
 			"pattern": "^(letsencrypt|other|mtls)$",
 			"example": "letsencrypt"
 		},
 		"npmpro_http3_support": {
-			"description": "HTTP3 Protocol Support",
 			"type": "boolean",
+			"description": "Whether the host also listens for HTTP/3 (QUIC); needs a certificate",
 			"default": false,
 			"example": true
 		},
@@ -161,7 +164,10 @@
 				"maxLength": 32,
 				"pattern": "^[\\p{L}\\p{M}\\p{N}._-](?:[\\p{L}\\p{M}\\p{N} ._-]*[\\p{L}\\p{M}\\p{N}._-])?$"
 			},
-			"example": ["Production", "Home lab"]
+			"example": [
+				"Production",
+				"Home lab"
+			]
 		},
 		"npmpro_mtls_certificate_id": {
 			"description": "mTLS Certificate ID: an mTLS CA certificate with its file present, 0 for none",
@@ -219,8 +225,8 @@
 			"example": false
 		},
 		"email": {
-			"description": "Email address",
 			"type": "string",
+			"description": "Email address, used to sign in and for notices",
 			"pattern": "@",
 			"minLength": 3,
 			"maxLength": 255,
@@ -228,6 +234,7 @@
 		},
 		"directive": {
 			"type": "string",
+			"description": "What the rule does to a matching address: allow or deny",
 			"enum": [
 				"allow",
 				"deny"
@@ -236,6 +243,7 @@
 		},
 		"address": {
 			"type": "string",
+			"description": "A client address or network (IPv4 or IPv6, with an optional /prefix), a unix: socket, or all",
 			"maxLength": 255,
 			"pattern": "^([Aa][Ll][Ll]|unix:|[0-9A-Fa-f.:/]*)$",
 			"example": "192.168.0.11"
@@ -253,12 +261,14 @@
 				"properties": {
 					"username": {
 						"type": "string",
+						"description": "Name to sign in with; no colon or control character, each name once in the list",
 						"minLength": 1,
 						"pattern": "^[^:\\p{Cc}]+$",
 						"maxLength": 255
 					},
 					"password": {
-						"type": "string"
+						"type": "string",
+						"description": "Password to sign in with, stored only as a hash; never part of an answer"
 					}
 				},
 				"example": {
@@ -286,9 +296,11 @@
 				],
 				"properties": {
 					"address": {
+						"description": "A client address or network (IPv4 or IPv6, with an optional /prefix), a unix: socket, or all",
 						"$ref": "#/properties/address"
 					},
 					"directive": {
+						"description": "What the rule does to a matching address: allow or deny",
 						"$ref": "#/properties/directive"
 					}
 				},
@@ -308,6 +320,7 @@
 		"npmpro_access_list_ids": {
 			"writeOnly": true,
 			"type": "array",
+			"description": "Identifiers of the access lists applied, each once; never part of an answer",
 			"uniqueItems": true,
 			"items": {
 				"type": "integer",
@@ -317,6 +330,7 @@
 		},
 		"npmpro_host_access_list_type": {
 			"type": "string",
+			"description": "Which access lists protect the host: public (none) or custom (the chosen ones)",
 			"enum": [
 				"public",
 				"custom"
@@ -325,6 +339,7 @@
 		},
 		"npmpro_location_access_list_type": {
 			"type": "string",
+			"description": "Which access lists protect the location: global (the host's), public (none) or custom (the chosen ones)",
 			"enum": [
 				"global",
 				"public",

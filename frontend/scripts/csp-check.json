@@ -30,6 +30,9 @@
 		"/monitoring",
 		"/monitoring/traffic",
 		"/monitoring/crowdsec",
+		"/api/docs",
+		"/api-reference",
+		"/api-reference#proxy-hosts/post-nginx-proxy-hosts",
 		"/login",
 		"/no-such-page",
 		"/settings/nope",
@@ -535,6 +538,49 @@
 				{ "hover": "main a[href='/nginx/proxy']:has([data-slot=card])" },
 				{ "waitFor": "main a[href='/nginx/proxy']:hover [data-slot=card]" },
 				{ "press": "Tab" }
+			]
+		},
+		{
+			"name": "api reference: token and Try it",
+			"route": "/api-reference",
+			"steps": [
+				{ "waitFor": "[data-api-op]" },
+				{ "click": "[data-token-open]" },
+				{ "waitFor": "[data-token-popover]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-token-popover]" },
+				{ "click": "[data-try-open]" },
+				{ "waitFor": "[data-try-panel]" },
+				{ "click": "[data-try-cancel]" },
+				{ "gone": "[data-try-panel]" }
+			]
+		},
+		{
+			"name": "api reference: code tab",
+			"route": "/api-reference",
+			"steps": [
+				{ "waitFor": "[data-api-op]" },
+				{ "click": "[data-api-op] >> role=tab[name='Node']" },
+				{ "waitFor": "[data-code-tab=node]" }
+			]
+		},
+		{
+			"name": "api reference: dark",
+			"route": "/api-reference",
+			"steps": [
+				{ "colorScheme": "dark" },
+				{ "reload": true },
+				{ "waitFor": "html.dark" },
+				{ "waitFor": "[data-api-op]" }
+			]
+		},
+		{
+			"name": "api reference: guide",
+			"route": "/api-reference",
+			"steps": [
+				{ "waitFor": "[data-guide-open]" },
+				{ "click": "[data-guide-open]" },
+				{ "waitFor": "[data-guide-sheet]" }
 			]
 		}
 	]

@@ -1,20 +1,78 @@
 {
 	"operationId": "getDatabaseMove",
-	"summary": "Progress of the current or last database move",
-	"description": "Admin only. In memory: empty after a restart.",
-	"tags": ["database"],
-	"security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+	"summary": "Get the progress of a database move",
+	"description": "The current or last move with its step, per-table progress and error. It is kept in memory: empty (move null) after the backend restarts, which a successful move ends with.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"tags": [
+		"database"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The current or last move; move is null when none ran since the backend started",
 			"content": {
 				"application/json": {
 					"schema": {
 						"type": "object",
 						"additionalProperties": false,
-						"required": ["move"],
+						"required": [
+							"move"
+						],
 						"properties": {
-							"move": { "oneOf": [{ "type": "null" }, { "$ref": "../../../components/database-move-object.json" }] }
+							"move": {
+								"oneOf": [
+									{
+										"type": "null"
+									},
+									{
+										"$ref": "../../../components/database-move-object.json"
+									}
+								],
+								"description": "The move, or null."
+							}
+						}
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"move": {
+									"id": "3f2a9c0d1e4b5a68",
+									"state": "running",
+									"step": "copy",
+									"started_at": "2026-11-17T09:30:00.000Z",
+									"finished_at": null,
+									"target": {
+										"engine": "postgres",
+										"host": "db.lan",
+										"port": 5432,
+										"name": "npmpro",
+										"user": "npmpro",
+										"ssl": {
+											"enabled": false
+										}
+									},
+									"tables": [
+										{
+											"name": "proxy_host",
+											"rows": 12,
+											"copied": 12
+										},
+										{
+											"name": "certificate",
+											"rows": 5,
+											"copied": 0
+										}
+									],
+									"backup": "npmpro-backup-npmpro-20261117-093000-auto.npmpro",
+									"error": null
+								}
+							}
 						}
 					}
 				}

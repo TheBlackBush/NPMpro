@@ -16,7 +16,7 @@
 		{
 			"in": "path",
 			"name": "credentialID",
-			"description": "DNS credential ID",
+			"description": "ID of the DNS credential, as the list shows it",
 			"schema": {
 				"type": "integer",
 				"minimum": 1
@@ -26,7 +26,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "DNS credential payload",
+		"description": "The fields to change",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -43,7 +43,7 @@
 						},
 						"fields": {
 							"type": "array",
-							"description": "Secret values may be omitted or empty to keep the stored value",
+							"description": "The credential values as the provider's fields, as listed by the DNS providers operation. A secret left out or empty keeps its stored value. Send either `fields` or `ini`, not both.",
 							"items": {
 								"type": "object",
 								"required": [
@@ -53,11 +53,13 @@
 								"properties": {
 									"key": {
 										"type": "string",
+										"description": "Name of the provider field, such as `dns_cloudflare_api_token`",
 										"minLength": 1,
 										"maxLength": 255
 									},
 									"value": {
 										"type": "string",
+										"description": "Value of the field",
 										"maxLength": 4096
 									}
 								}
@@ -67,28 +69,45 @@
 							"$ref": "../../../../components/dns-credential-object.json#/properties/ini"
 						}
 					}
+				},
+				"example": {
+					"name": "Cloudflare production",
+					"fields": [
+						{
+							"key": "dns_cloudflare_api_token",
+							"value": "YOUR_CLOUDFLARE_TOKEN"
+						}
+					]
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The updated credential, without its values",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
 								"id": 1,
-								"created_on": "2024-10-09T05:31:58.000Z",
-								"modified_on": "2024-10-09T05:32:11.000Z",
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-18T08:00:00.000Z",
 								"owner_user_id": 1,
-								"name": "Cloudflare main",
+								"name": "Cloudflare production",
 								"provider": "cloudflare",
 								"fields": [
 									{
 										"key": "dns_cloudflare_api_token",
 										"is_set": true
+									},
+									{
+										"key": "dns_cloudflare_email",
+										"is_set": false
+									},
+									{
+										"key": "dns_cloudflare_api_key",
+										"is_set": false
 									}
 								],
 								"ini_set": false,
@@ -102,5 +121,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Changes a DNS credential: send only what changes. Secrets left out or empty keep their stored value, and a changed endpoint address needs its secrets sent again. The provider can change only while no certificate uses the credential, and then the new values are required. The files of the certificates that use it are rewritten for their next renewal.\n\nNeeds: Certificates manage"
 }

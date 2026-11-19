@@ -1,6 +1,6 @@
 {
 	"type": "object",
-	"description": "Effective certificates and TLS runtime settings",
+	"description": "The effective certificates and TLS settings: each value, the fields an environment variable sets, and when a change takes effect",
 	"additionalProperties": false,
 	"required": [
 		"key_type",
@@ -96,52 +96,62 @@
 					"ech_rotation_interval"
 				]
 			},
-			"description": "Fields set by environment variables (read only)"
+			"description": "Fields that cannot be changed because an environment variable sets them, or forces them (see locked_by and locked_reason). A save ignores them (read only)"
 		},
 		"locked_by": {
 			"type": "object",
-			"description": "The environment variable that sets each locked field (read only)",
+			"description": "For each locked field, the environment variable that sets it. A field locked by its own variable names that variable; a field another setting forces names the variable of that setting (read only)",
 			"additionalProperties": false,
 			"properties": {
 				"key_type": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the key type: ACME_KEY_TYPE, or ACME_KEY_SIZE when it forces the field"
 				},
 				"key_size": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the key size: ACME_KEY_SIZE"
 				},
 				"profile": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the profile: ACME_PROFILE"
 				},
 				"must_staple": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the must staple: ACME_MUST_STAPLE, or ACME_OCSP_STAPLING when it forces the field"
 				},
 				"server_tls_verify": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the server tls verify: ACME_SERVER_TLS_VERIFY"
 				},
 				"renewal_interval": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the renewal interval: CERTBOT_RUN_INTERVAL"
 				},
 				"ocsp_stapling": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the ocsp stapling: ACME_OCSP_STAPLING, or ACME_MUST_STAPLE when it forces the field"
 				},
 				"custom_ocsp_stapling": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the custom ocsp stapling: CUSTOM_OCSP_STAPLING"
 				},
 				"default_certificate_id": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the default certificate id: DEFAULT_CERT_ID"
 				},
 				"ech_rotation_interval": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the ech rotation interval: ECH_ROTATION_INTERVAL"
 				}
 			}
 		},
@@ -154,19 +164,22 @@
 					"type": "string",
 					"enum": [
 						"key-size"
-					]
+					],
+					"description": "Why the key type is locked by another setting's variable: key-size, when only ACME_KEY_SIZE is set"
 				},
 				"must_staple": {
 					"type": "string",
 					"enum": [
 						"ocsp-stapling-off"
-					]
+					],
+					"description": "Why the must staple is locked by another setting's variable: ocsp-stapling-off, when ACME_OCSP_STAPLING turns OCSP stapling off"
 				},
 				"ocsp_stapling": {
 					"type": "string",
 					"enum": [
 						"must-staple"
-					]
+					],
+					"description": "Why the ocsp stapling is locked by another setting's variable: must-staple, when ACME_MUST_STAPLE is on"
 				}
 			}
 		},
@@ -193,7 +206,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the key type takes effect: with the next certificate that is requested or renewed"
 				},
 				"key_size": {
 					"type": "string",
@@ -201,7 +215,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the key size takes effect: with the next certificate that is requested or renewed"
 				},
 				"profile": {
 					"type": "string",
@@ -209,7 +224,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the profile takes effect: with the next certificate that is requested or renewed"
 				},
 				"must_staple": {
 					"type": "string",
@@ -217,7 +233,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the must staple takes effect: with the next certificate that is requested or renewed"
 				},
 				"server_tls_verify": {
 					"type": "string",
@@ -225,7 +242,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the server tls verify takes effect: with the next certificate that is requested or renewed"
 				},
 				"renewal_interval": {
 					"type": "string",
@@ -233,7 +251,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the renewal interval takes effect: on save"
 				},
 				"ocsp_stapling": {
 					"type": "string",
@@ -241,7 +260,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the ocsp stapling takes effect: on save, with an nginx reload"
 				},
 				"custom_ocsp_stapling": {
 					"type": "string",
@@ -249,7 +269,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the custom ocsp stapling takes effect: on save, with an nginx reload"
 				},
 				"default_certificate_id": {
 					"type": "string",
@@ -257,7 +278,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the default certificate id takes effect: on save, with an nginx reload"
 				},
 				"ech_rotation_interval": {
 					"type": "string",
@@ -265,13 +287,14 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the ech rotation interval takes effect: on save"
 				}
 			}
 		},
 		"restart_pending": {
 			"type": "array",
-			"description": "Settings that apply after a container restart (applies restart) saved with another value than the container runs with: restart the container to apply them",
+			"description": "Always empty: every certificates and TLS setting applies without a container restart",
 			"items": {
 				"type": "string"
 			},

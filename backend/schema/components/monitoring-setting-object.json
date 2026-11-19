@@ -14,27 +14,27 @@
 	"properties": {
 		"traffic_enabled": {
 			"type": "boolean",
-			"description": "Traffic statistics enabled (the nginx access log is written)"
+			"description": "Whether traffic statistics are on, which writes the nginx access log. Default: off"
 		},
 		"retention_days": {
 			"type": "integer",
 			"minimum": 7,
 			"maximum": 365,
-			"description": "Days the hourly statistics are kept"
+			"description": "How many days the hourly statistics are kept, 7 to 365. Default: 30"
 		},
 		"show_ips": {
 			"type": "boolean",
-			"description": "Store and show client IP addresses"
+			"description": "Whether client IP addresses are stored and shown. Default: off; turning it off deletes the stored addresses"
 		},
 		"unique_visitors": {
 			"type": "boolean",
-			"description": "Count unique visitors with keyed IP hashes; turning it off deletes them"
+			"description": "Whether unique visitors are counted with keyed IP hashes. Default: off; turning it off deletes the stored hashes"
 		},
 		"visitors_cap": {
 			"type": "integer",
 			"minimum": 1000,
 			"maximum": 1000000,
-			"description": "Distinct visitors counted per host and day; beyond it new visitors are not counted and the day is marked as capped"
+			"description": "How many distinct visitors are counted per host and day, 1000 to 1000000. Beyond it new visitors are not counted and the day is marked as capped. Default: 100000"
 		},
 		"locked": {
 			"type": "array",

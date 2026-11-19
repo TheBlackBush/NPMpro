@@ -1,13 +1,52 @@
 {
 	"operationId": "getDatabase",
-	"summary": "The database in use, its tables and the current or last move",
-	"description": "Admin only.",
-	"tags": ["database"],
-	"security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+	"summary": "Get the database in use",
+	"description": "The engine, version, size and tables of the database NPMpro runs on, where its connection comes from, when and from where it was moved, and the current or last move. A connection from the DB_* environment variables cannot be moved.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"tags": [
+		"database"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
 	"responses": {
 		"200": {
-			"description": "200 response",
-			"content": { "application/json": { "schema": { "$ref": "../../components/database-object.json" } } }
+			"description": "The database in use",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../components/database-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"engine": "sqlite",
+								"version": "3.50.4",
+								"source": "default",
+								"file": "/data/npmpro/database.sqlite",
+								"size": 1048576,
+								"moved_at": null,
+								"moved_from": null,
+								"tables": [
+									{
+										"name": "proxy_host",
+										"rows": 12
+									},
+									{
+										"name": "certificate",
+										"rows": 5
+									}
+								],
+								"move": null
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }

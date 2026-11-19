@@ -1,6 +1,6 @@
 {
 	"type": "object",
-	"description": "Effective nginx runtime settings",
+	"description": "The effective nginx settings: each value, the fields an environment variable sets, and when a change takes effect",
 	"additionalProperties": false,
 	"required": [
 		"worker_processes",
@@ -103,64 +103,77 @@
 					"module_vts"
 				]
 			},
-			"description": "Fields set by environment variables or locked by force_mlkem (read only)"
+			"description": "Fields that cannot be changed because an environment variable sets them, or forces them (see locked_by and locked_reason). A save ignores them (read only)"
 		},
 		"locked_by": {
 			"type": "object",
-			"description": "The environment variable that sets each locked field (read only)",
+			"description": "For each locked field, the environment variable that sets it. A field locked by its own variable names that variable; a field another setting forces names the variable of that setting (read only)",
 			"additionalProperties": false,
 			"properties": {
 				"worker_processes": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the worker processes: NGINX_WORKER_PROCESSES"
 				},
 				"worker_connections": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the worker connections: NGINX_WORKER_CONNECTIONS"
 				},
 				"worker_shutdown_timeout": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the worker shutdown timeout: NGINX_WORKER_SHUTDOWN_TIMEOUT"
 				},
 				"cpu_affinity": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the cpu affinity: NGINX_CPU_AFFINITY"
 				},
 				"log_not_found": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the log not found: NGINX_LOG_NOT_FOUND"
 				},
 				"tls12": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the tls12: NGINX_DISABLE_TLS12, or NGINX_FORCE_X25519MLKEM768 when it forces the field"
 				},
 				"force_mlkem": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the force mlkem: NGINX_FORCE_X25519MLKEM768"
 				},
 				"secp_curves": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the secp curves: NGINX_TRUST_SECPR1, or NGINX_FORCE_X25519MLKEM768 when it forces the field"
 				},
 				"rsa_pkcs1": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the rsa pkcs1: NGINX_TRUST_RSA_PKCS1"
 				},
 				"module_njs": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the module njs: NGINX_LOAD_NJS_MODULE"
 				},
 				"module_ldap": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the module ldap: NGINX_LOAD_LDAP_MODULE"
 				},
 				"module_ntlm": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the module ntlm: NGINX_LOAD_NTLM_MODULE"
 				},
 				"module_vts": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the module vts: NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE"
 				}
 			}
 		},
@@ -174,14 +187,16 @@
 					"enum": [
 						"force-mlkem",
 						"force-mlkem-setting"
-					]
+					],
+					"description": "Why the tls12 is locked by another setting's variable: force-mlkem or force-mlkem-setting (post-quantum only is on)"
 				},
 				"secp_curves": {
 					"type": "string",
 					"enum": [
 						"force-mlkem",
 						"force-mlkem-setting"
-					]
+					],
+					"description": "Why the secp curves is locked by another setting's variable: force-mlkem or force-mlkem-setting (post-quantum only is on)"
 				}
 			}
 		},
@@ -211,7 +226,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the worker processes takes effect: on save, with an nginx reload"
 				},
 				"worker_connections": {
 					"type": "string",
@@ -219,7 +235,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the worker connections takes effect: on save, with an nginx reload"
 				},
 				"worker_shutdown_timeout": {
 					"type": "string",
@@ -227,7 +244,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the worker shutdown timeout takes effect: on save, with an nginx reload"
 				},
 				"cpu_affinity": {
 					"type": "string",
@@ -235,7 +253,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the cpu affinity takes effect: on save, with an nginx reload"
 				},
 				"log_not_found": {
 					"type": "string",
@@ -243,7 +262,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the log not found takes effect: on save, with an nginx reload"
 				},
 				"tls12": {
 					"type": "string",
@@ -251,7 +271,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the tls12 takes effect: on save, with an nginx reload"
 				},
 				"force_mlkem": {
 					"type": "string",
@@ -259,7 +280,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the force mlkem takes effect: on save, with an nginx reload"
 				},
 				"secp_curves": {
 					"type": "string",
@@ -267,7 +289,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the secp curves takes effect: on save, with an nginx reload"
 				},
 				"rsa_pkcs1": {
 					"type": "string",
@@ -275,7 +298,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the rsa pkcs1 takes effect: on save, with an nginx reload"
 				},
 				"module_njs": {
 					"type": "string",
@@ -283,7 +307,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the module njs takes effect: on save, with an nginx reload"
 				},
 				"module_ldap": {
 					"type": "string",
@@ -291,7 +316,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the module ldap takes effect: on save, with an nginx reload"
 				},
 				"module_ntlm": {
 					"type": "string",
@@ -299,7 +325,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the module ntlm takes effect: on save, with an nginx reload"
 				},
 				"module_vts": {
 					"type": "string",
@@ -307,7 +334,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the module vts takes effect: on save, with an nginx reload"
 				}
 			}
 		},

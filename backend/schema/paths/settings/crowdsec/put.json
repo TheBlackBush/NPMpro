@@ -1,7 +1,7 @@
 {
 	"operationId": "updateCrowdsecSettings",
 	"summary": "Update and apply the CrowdSec bouncer settings",
-	"description": "Fields set by environment variables are ignored. While the bouncer is on, the connection test runs first and a failure answers 409 with its checks unless force is true. The file and the nginx includes are written, tested with nginx -t and reloaded; a failure puts everything back.",
+	"description": "Saves the bouncer settings; send only what changes. Fields set by environment variables are ignored. While the bouncer is on, the connection test runs first (up to 5 seconds) and a failure answers 409 with the checks, unless force is true. When AppSec would deny the admin interface and its check fails, the save is refused even with force and the 409 carries force_blocked. Then crowdsec.conf and the nginx includes are written, tested with nginx -t and reloaded; a failure puts everything back and answers 400.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"settings"
 	],
@@ -14,7 +14,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "Settings payload",
+		"description": "The settings to change",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -24,24 +24,73 @@
 				"example": {
 					"enabled": true,
 					"api_url": "http://127.0.0.1:8080",
-					"api_key": "0123456789abcdef"
+					"api_key": "YOUR_BOUNCER_KEY"
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The CrowdSec settings as they are now",
 			"content": {
 				"application/json": {
 					"schema": {
 						"$ref": "../../../components/crowdsec-setting-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"enabled": true,
+								"api_url": "http://127.0.0.1:8080",
+								"api_key_set": true,
+								"use_tls_auth": false,
+								"tls_client_cert": "",
+								"tls_client_key": "",
+								"cache_expiration": 1,
+								"bouncing_on_type": "all",
+								"fallback_remediation": "ban",
+								"request_timeout": 3000,
+								"update_frequency": 10,
+								"enable_internal": false,
+								"mode": "live",
+								"scenarios_containing": "",
+								"scenarios_not_containing": "",
+								"exclude_location": "",
+								"ban_response": "page",
+								"ban_template_path": "/data/public/pages/global/ban.html",
+								"redirect_location": "",
+								"ret_code": null,
+								"captcha_provider": "",
+								"captcha_secret_set": false,
+								"captcha_site_key": "",
+								"captcha_template_path": "/data/public/pages/global/captcha.html",
+								"captcha_expiration": 3600,
+								"appsec_url": "",
+								"appsec_failure_action": "deny",
+								"appsec_connect_timeout": null,
+								"appsec_send_timeout": null,
+								"appsec_process_timeout": null,
+								"always_send_to_appsec": false,
+								"appsec_drop_unreadable_body": true,
+								"ssl_verify": true,
+								"admin_ui": "checked",
+								"locked": [],
+								"locked_by": {},
+								"secret_error": false,
+								"status": {
+									"loaded": true,
+									"reachable": true,
+									"last_contact": "2026-11-17T09:30:00.000Z",
+									"error": null
+								}
+							}
+						}
 					}
 				}
 			}
 		},
 		"409": {
-			"description": "The connection test failed (error.checks: one entry per check; error.force_blocked is \"appsec_deny_admin\" when saving anyway is refused because it would lock the admin UI out too)",
+			"description": "The connection test failed. error.checks has one entry per check; error.force_blocked is appsec_deny_admin when saving anyway is refused because it would lock out the admin interface too",
 			"content": {
 				"application/json": {
 					"example": {
@@ -54,6 +103,11 @@
 									"name": "lapi",
 									"result": "key_refused",
 									"message": "HTTP 403"
+								},
+								{
+									"name": "appsec",
+									"result": "ok",
+									"message": ""
 								}
 							]
 						}

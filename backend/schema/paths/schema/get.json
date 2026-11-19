@@ -1,6 +1,6 @@
 {
 	"operationId": "schema",
-	"summary": "Returns this swagger API schema",
+	"summary": "Get the OpenAPI schema",
 	"tags": [
 		"docs"
 	],
@@ -14,7 +14,8 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response"
+			"description": "The OpenAPI schema as `application/json`"
 		}
-	}
+	},
+	"description": "Returns the OpenAPI 3 schema of this API as JSON, with the running NPMpro version and the address of your request filled in as the server.\n\nNeeds: a signed-in user (a session or an API token)"
 }

@@ -1,7 +1,7 @@
 {
 	"operationId": "restoreBackup",
 	"summary": "Restore a backup (replace or merge)",
-	"description": "A Settings session (inspect) is restored by its admin, a page import session (import open) is merged by its importer, who needs manage permission on the page's items. Replace (default, Settings only) replaces the chosen types with the backup's after an automatic backup. Merge adds the chosen items to the instance and needs the plan_hash of the plan the user confirmed; when the instance changed since, the call fails with 409 plan-changed and the error carries the new plan. The request can take long: a running certificate renewal is waited for. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable, invalid-item.",
+	"description": "Replace (the default, for a stored backup only) deletes every row of the chosen parts and puts the backup's in their place, after an automatic backup, and needs confirm true. It signs out the other users when the Users part is restored, and deletes their API tokens (a backup never carries tokens). Merge adds the chosen items without deleting anything and needs the plan_hash of the plan you confirmed; when the instance changed since, it fails with 409 plan-changed and the error carries the new plan. Both roll back completely when nginx refuses the result. The request can take long: a running certificate renewal is waited for. An API token cannot restore or merge the Users, settings_oidc or settings_runtime parts, and a token's replace needs its Allow delete switch. Errors carry a backup.error.<code> message id: invalid-types, partial-replace (a file of single items can only be merged), plan-changed (409), restore-failed, invalid-item, token-expired (410), busy (409).\n\nNeeds: an administrator for a Settings session, and for a replace a token's Allow delete switch; manage on the section of the kind for a page import session (merge only)",
 	"tags": [
 		"backups"
 	],
@@ -42,7 +42,8 @@
 								"replace",
 								"merge"
 							],
-							"default": "replace"
+							"default": "replace",
+							"description": "replace (the default) or merge."
 						},
 						"types": {
 							"type": "array",
@@ -164,13 +165,43 @@
 							}
 						}
 					]
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"mode": "replace",
+							"types": [
+								"proxy_hosts",
+								"certificates"
+							],
+							"confirm": true
+						}
+					},
+					"merge": {
+						"value": {
+							"mode": "merge",
+							"types": [
+								"proxy_hosts",
+								"certificates"
+							],
+							"items": {
+								"proxy_hosts": [
+									12
+								]
+							},
+							"choices": {
+								"certificates:5": "existing"
+							},
+							"plan_hash": "9f2b6c1d4e7a3085"
+						}
+					}
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "What the restore did: counts per part, whether a restart is needed, settings that could not be applied, hosts nginx refused, and for a replace its references and skipped users or for a merge its cleared links and items that need secrets",
 			"content": {
 				"application/json": {
 					"schema": {
@@ -187,24 +218,28 @@
 								"type": "object",
 								"additionalProperties": {
 									"type": "integer"
-								}
+								},
+								"description": "Replace: rows restored per part. Merge: items per action (add, replace, skip, existing, take, keep)."
 							},
 							"references": {
 								"type": "array",
 								"items": {
 									"type": "object",
 									"additionalProperties": true
-								}
+								},
+								"description": "Replace only: references to rows that do not exist after the restore, cleared or moved to the restoring administrator."
 							},
 							"skippedUsers": {
 								"type": "array",
 								"items": {
 									"type": "object",
 									"additionalProperties": true
-								}
+								},
+								"description": "Replace only: backup users that were not restored because they are the restoring administrator."
 							},
 							"restartNeeded": {
-								"type": "boolean"
+								"type": "boolean",
+								"description": "Whether restored settings only apply after the container restarts."
 							},
 							"runtimeFailed": {
 								"type": "array",
@@ -226,19 +261,24 @@
 									],
 									"properties": {
 										"type": {
-											"type": "string"
+											"type": "string",
+											"description": "The host type: proxy, redirection, dead or stream."
 										},
 										"id": {
-											"type": "integer"
+											"type": "integer",
+											"description": "The host's id."
 										},
 										"domain": {
-											"type": "string"
+											"type": "string",
+											"description": "What the host is called in lists: its domains, or its port for a stream."
 										},
 										"error": {
-											"type": "string"
+											"type": "string",
+											"description": "The nginx error that took the host offline."
 										}
 									}
-								}
+								},
+								"description": "Hosts that nginx refused after the restore: they are taken offline and need fixing on their host page."
 							},
 							"cleared": {
 								"type": "array",
@@ -257,12 +297,46 @@
 							}
 						},
 						"description": "Replace returns references and skippedUsers; merge returns cleared and needsSecrets"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"counts": {
+									"proxy_hosts": 12,
+									"certificates": 5
+								},
+								"references": [],
+								"skippedUsers": [
+									{
+										"id": 1,
+										"email": "admin@example.com",
+										"name": "Jane Doe"
+									}
+								],
+								"restartNeeded": false,
+								"runtimeFailed": [],
+								"offlineHosts": []
+							}
+						},
+						"merge": {
+							"value": {
+								"counts": {
+									"add": 1,
+									"existing": 1
+								},
+								"cleared": [],
+								"needsSecrets": [],
+								"restartNeeded": false,
+								"runtimeFailed": [],
+								"offlineHosts": []
+							}
+						}
 					}
 				}
 			}
 		},
 		"409": {
-			"description": "409 plan-changed: the instance changed since the plan was made; the error carries the new plan",
+			"description": "Plan changed: the instance changed since the plan was made; the error carries the new plan",
 			"content": {
 				"application/json": {
 					"schema": {

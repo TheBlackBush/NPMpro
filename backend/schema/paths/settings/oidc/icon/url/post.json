@@ -1,7 +1,7 @@
 {
 	"operationId": "downloadOidcIcon",
-	"summary": "Download the OIDC login button icon from a URL",
-	"description": "http or https only, at most 3 redirects, 10 s timeout and 256 KB. The same type checks as an upload apply.",
+	"summary": "Download the OIDC button icon from a URL",
+	"description": "NPMpro downloads the image and saves it as the button icon. Only http and https addresses work, with at most 3 redirects, 10 seconds and 256 KB. The same type checks as an upload apply, and a refused image answers 400.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
 		"settings"
 	],
@@ -11,7 +11,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "Icon URL",
+		"description": "The address of the icon",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -39,14 +39,60 @@
 	},
 	"responses": {
 		"200": {
-			"description": "200 response, the OIDC settings",
+			"description": "The OIDC settings as they are now, without the client secret",
 			"content": {
 				"application/json": {
 					"schema": {
 						"$ref": "../../../../../components/oidc-setting-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"enabled": true,
+								"issuer_url": "https://id.example.com/application/o/npmpro/",
+								"client_id": "npmpro",
+								"client_secret_set": true,
+								"redirect_domain": "npm.example.com",
+								"scopes": "openid email profile",
+								"require_verified_email": true,
+								"skip_mfa": false,
+								"disable_password": false,
+								"auto_create": {
+									"enabled": false,
+									"allowed_domains": [],
+									"permissions": {
+										"visibility": "user",
+										"proxy_hosts": "view",
+										"redirection_hosts": "view",
+										"dead_hosts": "view",
+										"streams": "view",
+										"access_lists": "view",
+										"certificates": "view"
+									}
+								},
+								"button": {
+									"label": "OIDC",
+									"color": "#206bc4",
+									"icon": {
+										"type": "file",
+										"ext": "svg",
+										"updated_on": 1763371800000
+									}
+								},
+								"locked": [],
+								"locked_by": {},
+								"active": true,
+								"secret_error": false,
+								"callback_url": "https://npm.example.com/api/oidc/callback",
+								"session_auth_method": "oidc"
+							}
+						}
 					}
 				}
 			}
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot be used for this request`."
 		}
 	}
 }

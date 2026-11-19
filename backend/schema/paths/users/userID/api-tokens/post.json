@@ -1,6 +1,6 @@
 {
 	"operationId": "createApiToken",
-	"summary": "Create an API token (the secret is shown once)",
+	"summary": "Create an API token",
 	"tags": [
 		"api-tokens"
 	],
@@ -18,7 +18,7 @@
 				"minimum": 1
 			},
 			"required": true,
-			"description": "User ID (the signed-in user)",
+			"description": "ID of the signed-in user. `me` is also accepted; another user's ID is refused with 403",
 			"example": 2
 		}
 	],
@@ -38,21 +38,23 @@
 						"name": {
 							"type": "string",
 							"minLength": 1,
-							"maxLength": 100
+							"maxLength": 100,
+							"description": "Name to tell the token apart, 1 to 100 characters, unique among your tokens ignoring case"
 						},
 						"expires_on": {
 							"type": [
 								"string",
 								"null"
 							],
-							"description": "ISO date and time; null for no expiry; left out: 90 days"
+							"description": "Expiry as an ISO date and time in the future; null for no expiry; left out for 90 days"
 						},
 						"visibility": {
 							"type": "string",
 							"enum": [
 								"all",
 								"user"
-							]
+							],
+							"description": "Which items the token sees: `user` only the items you created (default), `all` every item (only when your own visibility is all)"
 						},
 						"permissions": {
 							"type": "object",
@@ -72,7 +74,8 @@
 										"manage",
 										"view",
 										"hidden"
-									]
+									],
+									"description": "Level for Proxy Hosts: manage, view or hidden"
 								},
 								"redirection_hosts": {
 									"type": "string",
@@ -80,7 +83,8 @@
 										"manage",
 										"view",
 										"hidden"
-									]
+									],
+									"description": "Level for Redirection Hosts: manage, view or hidden"
 								},
 								"dead_hosts": {
 									"type": "string",
@@ -88,7 +92,8 @@
 										"manage",
 										"view",
 										"hidden"
-									]
+									],
+									"description": "Level for 404 Hosts: manage, view or hidden"
 								},
 								"streams": {
 									"type": "string",
@@ -96,7 +101,8 @@
 										"manage",
 										"view",
 										"hidden"
-									]
+									],
+									"description": "Level for Streams: manage, view or hidden"
 								},
 								"access_lists": {
 									"type": "string",
@@ -104,7 +110,8 @@
 										"manage",
 										"view",
 										"hidden"
-									]
+									],
+									"description": "Level for Access Lists: manage, view or hidden"
 								},
 								"certificates": {
 									"type": "string",
@@ -112,30 +119,38 @@
 										"manage",
 										"view",
 										"hidden"
-									]
+									],
+									"description": "Level for Certificates: manage, view or hidden"
 								}
-							}
+							},
+							"description": "Level for each section: manage, view or hidden. A level above your own is refused with 400"
 						},
 						"admin": {
-							"type": "boolean"
+							"type": "boolean",
+							"description": "Whether the token acts as an administrator for the admin areas; only an administrator can turn it on. Default false"
 						},
 						"allow_delete": {
-							"type": "boolean"
+							"type": "boolean",
+							"description": "Whether the token may delete (DELETE requests, replace restores, MCP delete tools). Default false"
 						}
 					}
 				},
 				"examples": {
 					"default": {
 						"value": {
-							"name": "ci",
+							"name": "deploy script",
+							"expires_on": "2027-02-15T09:30:00.000Z",
+							"visibility": "user",
 							"permissions": {
-								"proxy_hosts": "view",
+								"proxy_hosts": "manage",
 								"redirection_hosts": "view",
-								"dead_hosts": "view",
-								"streams": "view",
+								"dead_hosts": "hidden",
+								"streams": "hidden",
 								"access_lists": "view",
 								"certificates": "view"
-							}
+							},
+							"admin": false,
+							"allow_delete": false
 						}
 					}
 				}
@@ -144,31 +159,31 @@
 	},
 	"responses": {
 		"201": {
-			"description": "201 response",
+			"description": "The created token, with the token text in `token`, shown once",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
 								"id": 1,
-								"name": "ci",
-								"prefix": "npmpro_0123456789abcdef",
+								"name": "deploy script",
+								"prefix": "npmpro_3f9c2a7d1b4e8f60",
 								"visibility": "user",
 								"permissions": {
-									"proxy_hosts": "view",
+									"proxy_hosts": "manage",
 									"redirection_hosts": "view",
-									"dead_hosts": "view",
-									"streams": "view",
+									"dead_hosts": "hidden",
+									"streams": "hidden",
 									"access_lists": "view",
 									"certificates": "view"
 								},
 								"admin": false,
 								"allow_delete": false,
-								"expires_on": "2027-02-15T12:00:00.000Z",
+								"expires_on": "2027-02-15T09:30:00.000Z",
 								"last_used_on": null,
-								"created_on": "2026-11-17T12:00:00.000Z",
+								"created_on": "2026-11-17T09:30:00.000Z",
 								"expired": false,
-								"token": "npmpro_0123456789abcdef_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+								"token": "npmpro_3f9c2a7d1b4e8f60_..."
 							}
 						}
 					},
@@ -179,10 +194,11 @@
 			}
 		},
 		"400": {
-			"description": "400 response"
+			"description": "Refused: the name is empty, longer than 100 characters or already used, the expiry is not a future date, the body is invalid, or a level or visibility is above the owner's"
 		},
 		"403": {
-			"description": "403 response"
+			"description": "Not allowed: the request was made with an API token, the user in the path is not the signed-in user, or an Administrator token was asked for by a non-administrator"
 		}
-	}
+	},
+	"description": "Creates a token for the signed-in user. The answer holds the token text once in `token`; it is never shown again, so copy it now. A token never has more than its owner: a level or visibility above the owner's is refused with 400, `admin` only for administrators. `expires_on` left out gives 90 days (the web interface offers 30, 90 or 365 days, a date or none); a name that you already use is refused with 400.\n\nNeeds: a signed-in session (API tokens are refused)"
 }

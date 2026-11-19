@@ -166,7 +166,7 @@ function DocsCard() {
 				title={<T id="settings.api-access.docs.openapi" />}
 				control={
 					<Button asChild variant="outline" size="sm">
-						<a href="/api/docs" target="_blank" rel="noopener noreferrer">
+						<a href="/api-reference" target="_blank" rel="noopener noreferrer">
 							<T id="api-tokens.docs" />
 							<ExternalLink aria-hidden="true" />
 						</a>

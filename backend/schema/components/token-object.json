@@ -1,14 +1,14 @@
 {
 	"type": "object",
-	"description": "Token object",
+	"description": "The session that was set",
 	"required": [
 		"expires"
 	],
 	"additionalProperties": false,
 	"properties": {
 		"expires": {
-			"description": "Token Expiry ISO Time String",
-			"example": "2025-02-04T20:40:46.340Z",
+			"description": "When the session cookie that was just set expires, ISO time in UTC",
+			"example": "2026-11-17T10:30:00.000Z",
 			"type": "string"
 		}
 	}

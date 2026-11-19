@@ -1,7 +1,7 @@
 {
 	"operationId": "updateGeoipSettings",
 	"summary": "Update the GeoIP settings",
-	"description": "Fields set by environment variables are ignored. An empty or omitted license_key keeps the saved one.",
+	"description": "Saves the MaxMind account ID, license key and editions; send only what changes. Fields set by environment variables are ignored. An empty or omitted license_key keeps the saved one. A change of the account, key or editions starts a database download in the background; the answer does not wait for it, the outcome shows in last_update and last_error.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"settings"
 	],
@@ -14,7 +14,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "Settings payload",
+		"description": "The settings to change",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -33,11 +33,11 @@
 							"type": "string",
 							"maxLength": 255,
 							"description": "MaxMind license key, empty keeps the saved one",
-							"example": "abcdef"
+							"example": "YOUR_LICENSE_KEY"
 						},
 						"editions": {
 							"type": "array",
-							"description": "The databases to download, empty for none (files already downloaded stay)",
+							"description": "Databases to download",
 							"maxItems": 3,
 							"uniqueItems": true,
 							"items": {
@@ -47,21 +47,20 @@
 									"GeoLite2-ASN",
 									"GeoLite2-City"
 								]
-							},
-							"description": "Databases to download"
+							}
 						}
 					}
 				},
 				"example": {
 					"account_id": "123456",
-					"license_key": "abcdef"
+					"license_key": "YOUR_LICENSE_KEY"
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The GeoIP settings as they are now",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -76,7 +75,7 @@
 								"locked": [],
 								"locked_by": {},
 								"secret_error": false,
-								"last_update": "2026-10-24T10:00:00.000Z",
+								"last_update": "2026-11-17T09:30:00.000Z",
 								"last_error": null
 							}
 						}

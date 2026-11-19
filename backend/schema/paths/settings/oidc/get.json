@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The OIDC settings as they are now, without the client secret",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -65,5 +65,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns the effective OIDC settings: the saved values with the ones set by environment variables on top (listed in locked and locked_by). The client secret is never returned; client_secret_set says whether one exists.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

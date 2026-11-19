@@ -1,6 +1,6 @@
 {
 	"type": "object",
-	"description": "Setting object",
+	"description": "One stored setting",
 	"required": [
 		"id",
 		"name",
@@ -12,24 +12,24 @@
 	"properties": {
 		"id": {
 			"type": "string",
-			"description": "Setting ID",
+			"description": "Id of the setting, such as default-site",
 			"minLength": 1,
 			"example": "default-site"
 		},
 		"name": {
 			"type": "string",
-			"description": "Setting Display Name",
+			"description": "Name of the setting as the web interface shows it",
 			"minLength": 1,
 			"example": "Default Site"
 		},
 		"description": {
 			"type": "string",
-			"description": "Meaningful description",
+			"description": "What the setting is for",
 			"minLength": 1,
 			"example": "What to show when Nginx is hit with an unknown Host"
 		},
 		"value": {
-			"description": "Value in almost any form",
+			"description": "The chosen value. Its type depends on the setting; the default site holds a string (congratulations, 404, 444, redirect or html)",
 			"example": "congratulations",
 			"anyOf": [
 				{
@@ -51,7 +51,7 @@
 			]
 		},
 		"meta": {
-			"description": "Extra metadata",
+			"description": "Extra values of the setting as an object. The default site uses redirect, html and status",
 			"example": {
 				"redirect": "http://example.com",
 				"html": "<h1>404</h1>"

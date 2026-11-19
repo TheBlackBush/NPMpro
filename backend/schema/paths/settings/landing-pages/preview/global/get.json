@@ -1,6 +1,6 @@
 {
 	"operationId": "previewLandingPageGlobal",
-	"summary": "A global page as saved, as HTML",
+	"summary": "Preview a global landing page",
 	"tags": [
 		"settings"
 	],
@@ -30,19 +30,20 @@
 				]
 			},
 			"required": true,
-			"description": "Which page",
+			"description": "Which page: a global page kind, or default_site for the page of the default site",
 			"example": "ban"
 		}
 	],
 	"responses": {
 		"200": {
-			"description": "The page, with sample values",
+			"description": "The page as HTML (text/html), with sample values filled in",
 			"content": {
 				"text/html": {}
 			}
 		},
 		"404": {
-			"description": "The place shows no page of its own"
+			"description": "The place shows no page of its own, or the id does not exist"
 		}
-	}
+	},
+	"description": "Returns a global page as it is saved now, as HTML with sample values: the custom page when one is chosen, else the built-in one. default_site is the page the default site shows. The answer is 404 when the default site is a redirect or 444.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

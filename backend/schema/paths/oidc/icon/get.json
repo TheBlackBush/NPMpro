@@ -1,12 +1,12 @@
 {
 	"operationId": "getOidcIcon",
-	"summary": "Get the OIDC login button icon file (public)",
+	"summary": "Get the OIDC sign-in button icon",
 	"tags": [
 		"public"
 	],
 	"responses": {
 		"200": {
-			"description": "The icon file",
+			"description": "The icon file as PNG, JPEG, WebP or SVG",
 			"content": {
 				"image/png": {
 					"schema": {
@@ -37,5 +37,6 @@
 		"404": {
 			"description": "No icon file is stored"
 		}
-	}
+	},
+	"description": "Returns the icon the login page shows on the OIDC button, when an uploaded file is set (404 otherwise). It is public so the login page can load it, and cached for a day.\n\nNeeds: nothing (public)"
 }

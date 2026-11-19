@@ -1,6 +1,6 @@
 {
 	"operationId": "getSettings",
-	"summary": "Get all settings",
+	"summary": "List the settings",
 	"tags": [
 		"settings"
 	],
@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The stored settings",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -36,5 +36,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Lists the stored setting rows, ordered by description. The OIDC and GeoIP rows come without their secrets. CrowdSec, landing pages and the runtime sections are left out: they have their own endpoints.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

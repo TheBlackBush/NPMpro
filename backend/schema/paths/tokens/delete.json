@@ -1,12 +1,12 @@
 {
 	"operationId": "deleteToken",
-	"summary": "Clear the token cookie",
+	"summary": "Sign out",
 	"tags": [
 		"tokens"
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The cookie is cleared; the expiry is in the past",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -21,6 +21,10 @@
 					}
 				}
 			}
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot sign out a session`."
 		}
-	}
+	},
+	"description": "Ends this session and clears the session cookie, so a copy of the cookie stops working too. It answers 200 even when no valid session was sent; a request with an API token is refused with 403.\n\nNeeds: a signed-in session (API tokens are refused)"
 }

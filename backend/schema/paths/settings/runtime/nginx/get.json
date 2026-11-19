@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The nginx settings as they are now",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -63,5 +63,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns the nginx settings: workers, connections, shutdown timeout, CPU pinning, TLS options and optional modules, with cpu_count and cpus_allowed for choosing worker_processes and cpu_affinity. A value an environment variable sets is shown as locked.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

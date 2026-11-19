@@ -15,7 +15,7 @@
 	"properties": {
 		"account_id": {
 			"type": "string",
-			"description": "MaxMind account ID"
+			"description": "The MaxMind account ID the databases are downloaded with; empty when not set"
 		},
 		"editions": {
 			"type": "array",
@@ -27,11 +27,11 @@
 					"GeoLite2-City"
 				]
 			},
-			"description": "Databases to download"
+			"description": "The GeoLite2 databases to download: Country, ASN and City"
 		},
 		"license_key_set": {
 			"type": "boolean",
-			"description": "A license key is saved or set by the environment"
+			"description": "Whether a license key is saved or set by the environment. The key itself is never returned"
 		},
 		"locked": {
 			"type": "array",
@@ -49,21 +49,22 @@
 		},
 		"secret_error": {
 			"type": "boolean",
-			"description": "The saved license key cannot be decrypted"
+			"description": "Whether the saved license key cannot be decrypted and must be entered again"
 		},
 		"last_update": {
 			"type": [
 				"string",
 				"null"
 			],
-			"description": "Time of the last successful update (ISO 8601)"
+			"description": "When the databases were last updated (ISO 8601 in UTC), null before the first update",
+			"example": "2026-11-17T09:30:00.000Z"
 		},
 		"last_error": {
 			"type": [
 				"string",
 				"null"
 			],
-			"description": "Error of the last update, null after a success"
+			"description": "The error of the last update, null after a success"
 		}
 	}
 }

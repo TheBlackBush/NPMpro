@@ -1,7 +1,7 @@
 {
 	"operationId": "getLandingPages",
-	"summary": "Get Settings, Landing pages",
-	"description": "Admins only: the Default page and the seven global pages",
+	"summary": "Get the landing pages",
+	"description": "Returns the default site, the seven global pages (the built-in one or a custom HTML each) and the visit time. A page that was never customized answers with choice npmpro.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"settings"
 	],
@@ -15,11 +15,52 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The landing page settings as they are now",
 			"content": {
 				"application/json": {
 					"schema": {
 						"$ref": "../../../components/landing-pages-setting-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"visit_time": "utc",
+								"default_site": {
+									"value": "congratulations",
+									"meta": {}
+								},
+								"pages": {
+									"not_found": {
+										"choice": "npmpro",
+										"html": ""
+									},
+									"upstream_error": {
+										"choice": "npmpro",
+										"html": ""
+									},
+									"denied": {
+										"choice": "npmpro",
+										"html": ""
+									},
+									"maintenance": {
+										"choice": "custom",
+										"html": "<h1>Back soon</h1>"
+									},
+									"certificate": {
+										"choice": "npmpro",
+										"html": ""
+									},
+									"ban": {
+										"choice": "npmpro",
+										"html": ""
+									},
+									"captcha": {
+										"choice": "npmpro",
+										"html": ""
+									}
+								}
+							}
+						}
 					}
 				}
 			}

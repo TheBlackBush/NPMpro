@@ -1,5 +1,6 @@
 export * from "./useAccessList";
 export * from "./useAccessLists";
+export * from "./useApiSchema";
 export * from "./useApiTokens";
 export * from "./useAuditLog";
 export * from "./useAuditLogs";

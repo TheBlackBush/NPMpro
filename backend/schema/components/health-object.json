@@ -23,7 +23,9 @@
 		},
 		"maintenance": {
 			"type": "string",
-			"enum": ["database-move"],
+			"enum": [
+				"database-move"
+			],
 			"description": "Set while a database move runs: writes are refused until the backend restarts",
 			"example": "database-move"
 		},
@@ -67,7 +69,8 @@
 								"builtin",
 								"file"
 							],
-							"example": "builtin"
+							"example": "builtin",
+							"description": "Whether the icon is one of the built-in icons (`builtin`, with `name`) or an uploaded file (`file`, with `url`)"
 						},
 						"name": {
 							"type": "string",

@@ -1,7 +1,7 @@
 {
 	"operationId": "deleteOidcIcon",
-	"summary": "Remove the OIDC login button icon file",
-	"description": "The button falls back to the default builtin icon.",
+	"summary": "Remove the OIDC button icon",
+	"description": "Deletes the uploaded icon file; the button goes back to the default built-in icon.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
 		"settings"
 	],
@@ -12,14 +12,59 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response, the OIDC settings",
+			"description": "The OIDC settings as they are now, without the client secret",
 			"content": {
 				"application/json": {
 					"schema": {
 						"$ref": "../../../../components/oidc-setting-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"enabled": true,
+								"issuer_url": "https://id.example.com/application/o/npmpro/",
+								"client_id": "npmpro",
+								"client_secret_set": true,
+								"redirect_domain": "npm.example.com",
+								"scopes": "openid email profile",
+								"require_verified_email": true,
+								"skip_mfa": false,
+								"disable_password": false,
+								"auto_create": {
+									"enabled": false,
+									"allowed_domains": [],
+									"permissions": {
+										"visibility": "user",
+										"proxy_hosts": "view",
+										"redirection_hosts": "view",
+										"dead_hosts": "view",
+										"streams": "view",
+										"access_lists": "view",
+										"certificates": "view"
+									}
+								},
+								"button": {
+									"label": "OIDC",
+									"color": "#206bc4",
+									"icon": {
+										"type": "builtin",
+										"name": "key"
+									}
+								},
+								"locked": [],
+								"locked_by": {},
+								"active": true,
+								"secret_error": false,
+								"callback_url": "https://npm.example.com/api/oidc/callback",
+								"session_auth_method": "oidc"
+							}
+						}
 					}
 				}
 			}
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot be used for this request`."
 		}
 	}
 }

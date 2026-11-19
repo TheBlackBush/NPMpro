@@ -32,7 +32,8 @@ What NPMpro offers, grouped by topic. Each group links to the page that explains
 ## Monitoring and logs
 - a [Monitoring](Monitoring) page with traffic statistics per host (requests, bytes, status classes, countries, networks, optional unique visitors and top IPs) and the active CrowdSec bans
 - GeoIP: NPMpro downloads the MaxMind GeoLite2 databases itself (Settings, GeoIP)
-- the [GoAccess](Monitoring#goaccess) log report (`/goaccess`) and a Swagger UI (`/api/docs`) for the API, both inside the web UI
+- the [GoAccess](Monitoring#goaccess) log report (`/goaccess`) and the API reference (`/api-reference`), both inside
+  the web UI
 
 ## Web UI and operations
 - most settings live in the web UI (Settings): certificates and TLS, network, forward authentication, logs and monitoring, GeoIP, authentication, nginx core options (workers, TLS 1.2, curves, modules) and more; an environment variable still wins and locks the field (see [Settings and environment variables](Configuration))

@@ -2,23 +2,78 @@
 	"type": "object",
 	"description": "A database move target. SQLite needs only the engine: a new file /data/npmpro/database-<date>.sqlite is created.",
 	"additionalProperties": false,
-	"required": ["engine"],
+	"required": [
+		"engine"
+	],
 	"properties": {
-		"engine": { "type": "string", "enum": ["sqlite", "mysql", "postgres"], "description": "mysql is MySQL and MariaDB" },
-		"host": { "type": "string", "maxLength": 253, "example": "db.lan" },
-		"port": { "type": "integer", "minimum": 1, "maximum": 65535, "example": 5432 },
-		"name": { "type": "string", "maxLength": 64, "description": "Database name", "example": "npmpro" },
-		"user": { "type": "string", "maxLength": 255, "example": "npmpro" },
-		"password": { "type": "string", "maxLength": 1024, "description": "Taken as typed (not trimmed); never returned" },
+		"engine": {
+			"type": "string",
+			"enum": [
+				"sqlite",
+				"mysql",
+				"postgres"
+			],
+			"description": "mysql is MySQL and MariaDB"
+		},
+		"host": {
+			"type": "string",
+			"maxLength": 253,
+			"example": "db.lan",
+			"description": "Server host name or address; needed for mysql and postgres."
+		},
+		"port": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 65535,
+			"example": 5432,
+			"description": "Server port; needed for mysql and postgres."
+		},
+		"name": {
+			"type": "string",
+			"maxLength": 64,
+			"description": "Database name",
+			"example": "npmpro"
+		},
+		"user": {
+			"type": "string",
+			"maxLength": 255,
+			"example": "npmpro",
+			"description": "Database user; needed for mysql and postgres."
+		},
+		"password": {
+			"type": "string",
+			"maxLength": 1024,
+			"description": "Taken as typed (not trimmed); never returned"
+		},
 		"ssl": {
 			"type": "object",
 			"additionalProperties": false,
 			"description": "MySQL: enabled, reject_unauthorized, verify_identity. Postgres: enabled.",
 			"properties": {
-				"enabled": { "type": "boolean" },
-				"reject_unauthorized": { "type": "boolean" },
-				"verify_identity": { "type": "boolean" }
+				"enabled": {
+					"type": "boolean",
+					"description": "Whether to connect with TLS."
+				},
+				"reject_unauthorized": {
+					"type": "boolean",
+					"description": "Whether to refuse a server certificate that is not trusted (MySQL)."
+				},
+				"verify_identity": {
+					"type": "boolean",
+					"description": "Whether the server name must match the certificate (MySQL)."
+				}
 			}
+		}
+	},
+	"example": {
+		"engine": "postgres",
+		"host": "db.lan",
+		"port": 5432,
+		"name": "npmpro",
+		"user": "npmpro",
+		"password": "your-password",
+		"ssl": {
+			"enabled": false
 		}
 	}
 }

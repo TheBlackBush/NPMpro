@@ -1,7 +1,7 @@
 {
 	"operationId": "updateRuntimeCertificatesSettings",
 	"summary": "Update the certificates and TLS settings",
-	"description": "Fields set by environment variables are ignored. The change is applied before it is saved: when applying fails, nothing is saved.",
+	"description": "Saves the certificate and TLS settings; send only what changes. Fields set by environment variables are ignored. The key size is checked against the key type (ecdsa: secp256r1, secp384r1 or secp521r1; rsa: 2048, 3072 or 4096), a profile against the ACME server, and default_certificate_id must be 0 or an existing certificate that is not an mTLS CA. A refused value answers 400 with the field name. Key, profile, must-staple and TLS check changes apply to the next certificate; OCSP stapling and default certificate changes reload nginx. The change is applied before it is saved: when applying fails, nothing is saved.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"settings"
 	],
@@ -14,7 +14,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "Settings payload",
+		"description": "The settings to change; fields you leave out keep their value",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -86,21 +86,22 @@
 					}
 				},
 				"example": {
-					"key_type": "ecdsa"
+					"key_type": "rsa",
+					"key_size": "4096"
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The certificates and TLS settings after the save, in the same form as the GET answer",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"key_type": "ecdsa",
-								"key_size": "secp384r1",
+								"key_type": "rsa",
+								"key_size": "4096",
 								"profile": "shortlived",
 								"must_staple": false,
 								"server_tls_verify": true,
@@ -110,6 +111,8 @@
 								"default_certificate_id": 0,
 								"ech_rotation_interval": 1,
 								"locked": [],
+								"locked_by": {},
+								"locked_reason": {},
 								"applies": {
 									"key_type": "next-certificate",
 									"key_size": "next-certificate",
@@ -121,7 +124,8 @@
 									"custom_ocsp_stapling": "reload",
 									"default_certificate_id": "reload",
 									"ech_rotation_interval": "immediately"
-								}
+								},
+								"restart_pending": []
 							}
 						}
 					},

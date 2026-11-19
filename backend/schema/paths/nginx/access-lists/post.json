@@ -1,6 +1,6 @@
 {
 	"operationId": "createAccessList",
-	"summary": "Create a Access List",
+	"summary": "Create an access list",
 	"tags": [
 		"access-lists"
 	],
@@ -13,7 +13,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "Access List Payload",
+		"description": "The access list: its name, how its checks combine, its users and its address rules",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -48,19 +48,23 @@
 					}
 				},
 				"example": {
-					"name": "My Access List",
+					"name": "Office network",
 					"satisfy_any": true,
 					"pass_auth": false,
 					"items": [
 						{
-							"username": "admin",
-							"password": "pass"
+							"username": "jane",
+							"password": "your-password"
 						}
 					],
 					"clients": [
 						{
 							"directive": "allow",
-							"address": "192.168.0.0/24"
+							"address": "198.51.100.0/24"
+						},
+						{
+							"directive": "deny",
+							"address": "all"
 						}
 					],
 					"npmpro_denied_page": "global"
@@ -70,49 +74,48 @@
 	},
 	"responses": {
 		"201": {
-			"description": "201 response",
+			"description": "The created access list with its users and rules, without password hashes",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"id": 1,
-								"created_on": "2024-10-08T22:15:40.000Z",
-								"modified_on": "2024-10-08T22:15:40.000Z",
+								"id": 3,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T09:30:00.000Z",
 								"owner_user_id": 1,
-								"name": "test1234",
+								"name": "Office network",
 								"satisfy_any": true,
 								"pass_auth": false,
 								"proxy_host_count": 0,
+								"npmpro_denied_page": "global",
 								"items": [
 									{
-										"id": 1,
-										"created_on": "2024-10-08T22:15:40.000Z",
-										"modified_on": "2024-10-08T22:15:40.000Z",
-										"access_list_id": 1,
-										"username": "admin",
-										"password": ""
-									},
-									{
-										"id": 2,
-										"created_on": "2024-10-08T22:15:40.000Z",
-										"modified_on": "2024-10-08T22:15:40.000Z",
-										"access_list_id": 1,
-										"username": "asdad",
-										"password": ""
+										"id": 4,
+										"created_on": "2026-11-17T09:30:00.000Z",
+										"modified_on": "2026-11-17T09:30:00.000Z",
+										"access_list_id": 3,
+										"username": "jane"
 									}
 								],
 								"clients": [
 									{
-										"id": 1,
-										"created_on": "2024-10-08T22:15:40.000Z",
-										"modified_on": "2024-10-08T22:15:40.000Z",
-										"access_list_id": 1,
-										"address": "127.0.0.1",
+										"id": 5,
+										"created_on": "2026-11-17T09:30:00.000Z",
+										"modified_on": "2026-11-17T09:30:00.000Z",
+										"access_list_id": 3,
+										"address": "198.51.100.0/24",
 										"directive": "allow"
+									},
+									{
+										"id": 6,
+										"created_on": "2026-11-17T09:30:00.000Z",
+										"modified_on": "2026-11-17T09:30:00.000Z",
+										"access_list_id": 3,
+										"address": "all",
+										"directive": "deny"
 									}
-								],
-								"npmpro_denied_page": "global"
+								]
 							}
 						}
 					},
@@ -122,5 +125,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Creates an access list: basic auth users, address rules or both. Every user needs a password (at most 72 bytes), usernames must be unique, an `all` rule can only be the last rule, and the list needs at least one user or one rule that is not `all`, otherwise the answer is 400. The password is stored only as a hash. The list protects nothing until a proxy host uses it.\n\nNeeds: Access Lists manage"
 }

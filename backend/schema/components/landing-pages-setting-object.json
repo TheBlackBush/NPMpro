@@ -1,36 +1,91 @@
 {
 	"type": "object",
 	"description": "Settings, Landing pages: the Default page (the default-site setting), the seven global pages and the visit time",
-	"required": ["default_site", "pages", "visit_time"],
+	"required": [
+		"default_site",
+		"pages",
+		"visit_time"
+	],
 	"additionalProperties": false,
 	"properties": {
 		"visit_time": {
 			"type": "string",
-			"enum": ["utc", "local", "local-utc"],
-			"description": "How the built-in pages show the visit time"
+			"enum": [
+				"utc",
+				"local",
+				"local-utc"
+			],
+			"description": "How the built-in pages show the visit time: utc, local, or local-utc for both. Default: utc"
 		},
 		"default_site": {
 			"type": "object",
-			"required": ["value", "meta"],
+			"required": [
+				"value",
+				"meta"
+			],
 			"additionalProperties": false,
 			"properties": {
-				"value": { "type": "string", "enum": ["congratulations", "404", "444", "redirect", "html"] },
-				"meta": { "type": "object" }
-			}
+				"value": {
+					"type": "string",
+					"enum": [
+						"congratulations",
+						"404",
+						"444",
+						"redirect",
+						"html"
+					],
+					"description": "congratulations (the built-in page), 404 (the not found page), 444 (nginx closes the connection without an answer), redirect (a 302 to meta.redirect) or html (the page in meta.html)"
+				},
+				"meta": {
+					"type": "object",
+					"description": "Extra values of the chosen value: redirect, html and status, as for the default site setting"
+				}
+			},
+			"description": "What a request for an unknown host gets (the default-site setting)"
 		},
 		"pages": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["not_found", "upstream_error", "denied", "maintenance", "certificate", "ban", "captcha"],
+			"required": [
+				"not_found",
+				"upstream_error",
+				"denied",
+				"maintenance",
+				"certificate",
+				"ban",
+				"captcha"
+			],
 			"properties": {
-				"not_found": { "$ref": "#/$defs/page" },
-				"upstream_error": { "$ref": "#/$defs/page" },
-				"denied": { "$ref": "#/$defs/page" },
-				"maintenance": { "$ref": "#/$defs/page" },
-				"certificate": { "$ref": "#/$defs/page" },
-				"ban": { "$ref": "#/$defs/page" },
-				"captcha": { "$ref": "#/$defs/page" }
-			}
+				"not_found": {
+					"$ref": "#/$defs/page",
+					"description": "Shown when a page is not found: by a 404 host, and by a proxy host that chooses a 404 page"
+				},
+				"upstream_error": {
+					"$ref": "#/$defs/page",
+					"description": "Shown in place of an upstream 502, 503 or 504 answer, for example when the upstream cannot be reached"
+				},
+				"denied": {
+					"$ref": "#/$defs/page",
+					"description": "Shown when an access list refuses a visitor"
+				},
+				"maintenance": {
+					"$ref": "#/$defs/page",
+					"description": "Shown by a proxy host in maintenance mode (503)"
+				},
+				"certificate": {
+					"$ref": "#/$defs/page",
+					"description": "Shown for plain HTTP to a host that forces HTTPS while its certificate files are missing"
+				},
+				"ban": {
+					"$ref": "#/$defs/page",
+					"description": "Shown to a visitor CrowdSec bans"
+				},
+				"captcha": {
+					"$ref": "#/$defs/page",
+					"description": "Shown to a visitor CrowdSec sends to a captcha"
+				}
+			},
+			"description": "The seven global pages, one per kind. A host or access list can use them or its own page"
 		}
 	},
 	"$defs": {
@@ -38,8 +93,17 @@
 			"type": "object",
 			"additionalProperties": false,
 			"properties": {
-				"choice": { "type": "string", "enum": ["npmpro", "custom"] },
-				"html": { "$ref": "../common.json#/properties/npmpro_page_html" }
+				"choice": {
+					"type": "string",
+					"enum": [
+						"npmpro",
+						"custom"
+					],
+					"description": "npmpro for the built-in page, custom for the HTML in html"
+				},
+				"html": {
+					"$ref": "../common.json#/properties/npmpro_page_html"
+				}
 			}
 		}
 	}

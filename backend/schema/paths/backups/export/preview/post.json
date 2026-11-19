@@ -1,7 +1,7 @@
 {
 	"operationId": "previewBackupExport",
-	"summary": "Preview a page export",
-	"description": "Needs view permission on the page's items. Lists the chosen items and the linked items they need. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
+	"summary": "Preview an export of items",
+	"description": "Lists the items an export of a page kind would hold: the visible ones (all, or those with the given ids) and the linked certificates, access lists and DNS credentials they need, of the kinds the user can view. A user whose permission covers only their own items sees only those. secrets_allowed tells whether the user may include secrets (manage on every included kind). Errors carry a backup.error.<code> message id: invalid-types.\n\nNeeds: view on the section of the chosen kind (Proxy Hosts, Redirection Hosts, 404 Hosts, Streams, Access Lists or Certificates; DNS credentials use Certificates)",
 	"tags": [
 		"backups"
 	],
@@ -35,7 +35,7 @@
 								"access_lists",
 								"dns_credentials"
 							],
-							"description": "Page kind"
+							"description": "The page kind to export; dead_hosts are the 404 hosts."
 						},
 						"ids": {
 							"type": "array",
@@ -43,7 +43,18 @@
 								"type": "integer",
 								"minimum": 1
 							},
-							"uniqueItems": true
+							"uniqueItems": true,
+							"description": "The ids to export; leave it out for every item the user can see."
+						}
+					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"kind": "proxy_hosts",
+							"ids": [
+								12
+							]
 						}
 					}
 				}
@@ -52,7 +63,7 @@
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The items to export, the linked items they need and whether secrets are allowed",
 			"content": {
 				"application/json": {
 					"schema": {
@@ -69,18 +80,51 @@
 								"items": {
 									"type": "object",
 									"additionalProperties": true
-								}
+								},
+								"description": "The items the export would hold: their id and the name they have in lists."
 							},
 							"linked": {
 								"type": "array",
 								"items": {
 									"type": "object",
 									"additionalProperties": true
-								}
+								},
+								"description": "The linked items they need, with the keys of the items that need them (needed_by, for example proxy_hosts:12)."
 							},
 							"secrets_allowed": {
 								"type": "boolean",
 								"description": "Whether the user may export the secrets of these items"
+							}
+						}
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"items": [
+									{
+										"id": 12,
+										"label": "app.example.com"
+									}
+								],
+								"linked": [
+									{
+										"type": "certificates",
+										"id": 5,
+										"label": "app.example.com",
+										"needed_by": [
+											"proxy_hosts:12"
+										]
+									},
+									{
+										"type": "access_lists",
+										"id": 3,
+										"label": "Office",
+										"needed_by": [
+											"proxy_hosts:12"
+										]
+									}
+								],
+								"secrets_allowed": true
 							}
 						}
 					}

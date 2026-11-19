@@ -118,7 +118,7 @@ function ListStep({ focus, onNew, onRevoke, onClose }) {
 				) : null}
 				<p className="mb-0 text-muted-foreground text-sm">
 					<T id="api-tokens.docs.note" /> <code className="font-mono">Authorization: Bearer YOUR_TOKEN</code>{" "}
-					<a href="/api/docs" target="_blank" rel="noopener noreferrer" className="underline">
+					<a href="/api-reference" target="_blank" rel="noopener noreferrer" className="underline">
 						<T id="api-tokens.docs" />
 					</a>
 				</p>

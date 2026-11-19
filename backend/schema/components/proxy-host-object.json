@@ -64,16 +64,18 @@
 			"maxLength": 255,
 			"pattern": "^[^\\s/;{}\"'\\\\#]{0,253}(/[^\\s;{}\"'\\\\#]*)?$",
 			"default": "",
-			"example": "127.0.0.1"
+			"example": "127.0.0.1",
+			"description": "Address of the upstream server: a host name or IP address, with an optional path after it (`10.0.0.5/app`). A name starting with `cu_` refers to a custom upstream block (leave the port empty then). With the `path` scheme it is the folder to serve. Required unless forward_scheme is `empty`."
 		},
 		"forward_port": {
 			"type": "integer",
 			"minimum": 0,
 			"maximum": 65535,
 			"default": 0,
-			"example": 8080
+			"example": 8080,
+			"description": "Port of the upstream server, 0 to 65535. With the `path` scheme a value above 0 hands PHP files to the PHP-FPM socket of that number; 0 serves files only."
 		},
-		"npmpro_access_list_ids":{
+		"npmpro_access_list_ids": {
 			"$ref": "../common.json#/properties/npmpro_access_list_ids"
 		},
 		"npmpro_access_list_type": {
@@ -133,7 +135,8 @@
 				"none"
 			],
 			"default": "SAMEORIGIN",
-			"example": "DENY"
+			"example": "DENY",
+			"description": "What the X-Frame-Options header does: `DENY` and `SAMEORIGIN` send that value, `upstream` leaves the upstream's own header alone, `none` removes it."
 		},
 		"npmpro_auth_request": {
 			"type": "string",
@@ -148,14 +151,16 @@
 				"authentik-send-basic-auth"
 			],
 			"default": "none",
-			"example": "none"
+			"example": "none",
+			"description": "Forward authentication provider that has to approve each request before it is served, or `none`. The provider's upstream is npmpro_auth_request_upstream."
 		},
 		"npmpro_auth_request_upstream": {
 			"type": "string",
 			"pattern": "^(https?://(([^\\s/:;{}#\"'$\\\\]+|\\[[a-fA-F0-9:]+\\]):[0-9]+|cu_[^\\s/:;{}#\"'$\\\\]+))?$",
 			"maxLength": 255,
 			"default": "",
-			"example": ""
+			"example": "",
+			"description": "Address of the Auth Request provider, such as `http://10.0.0.8:9091`, or the scheme and name of a custom upstream (`http://cu_myauth`). Empty uses the upstream set for the provider in the environment. Always saved empty while npmpro_auth_request is `none`."
 		},
 		"advanced_config": {
 			"description": "Raw nginx config. Only administrators can set or change it; other users can only keep the stored value.",
@@ -275,7 +280,8 @@
 						"type": "string",
 						"minLength": 1,
 						"maxLength": 255,
-						"pattern": "^\\S+$"
+						"pattern": "^\\S+$",
+						"description": "Path the location matches, for example `/api`, without whitespace. How it matches depends on location_type."
 					},
 					"location_type": {
 						"type": "string",
@@ -287,16 +293,19 @@
 							"~* ",
 							"^~ "
 						],
-						"default": ""
+						"default": "",
+						"description": "How path is matched: empty is a prefix, `= ` exact, `~ ` a case sensitive regular expression, `~* ` a case insensitive one, `^~ ` a prefix that skips regular expressions, `@` a named location. The trailing space belongs to the value."
 					},
 					"forward_scheme": {
 						"$ref": "#/properties/forward_scheme"
 					},
 					"forward_host": {
-						"$ref": "#/properties/forward_host"
+						"$ref": "#/properties/forward_host",
+						"description": "Upstream address of the location, with the same rules as the host's forward_host. Required unless its forward_scheme is `empty`."
 					},
 					"forward_port": {
-						"$ref": "#/properties/forward_port"
+						"$ref": "#/properties/forward_port",
+						"description": "Upstream port of the location, with the same rules as the host's forward_port."
 					},
 					"npmpro_noindex": {
 						"$ref": "#/properties/npmpro_noindex"
@@ -317,7 +326,8 @@
 						"$ref": "#/properties/npmpro_fancyindex"
 					},
 					"npmpro_x_frame_options": {
-						"$ref": "#/properties/npmpro_x_frame_options"
+						"$ref": "#/properties/npmpro_x_frame_options",
+						"description": "X-Frame-Options of the location, with the same values as the host's."
 					},
 					"npmpro_auth_request": {
 						"description": "global (Same as host) uses the host's Auth Request and its upstream; none makes the location public on purpose. New locations default to global.",
@@ -337,14 +347,15 @@
 						"example": "global"
 					},
 					"npmpro_auth_request_upstream": {
-						"$ref": "#/properties/npmpro_auth_request_upstream"
+						"$ref": "#/properties/npmpro_auth_request_upstream",
+						"description": "Auth Request upstream of the location. Always saved empty while its Auth Request is `none` or `global`."
 					},
 					"advanced_config": {
 						"description": "Raw nginx config. Only administrators can set or change it; other users can only keep the stored value.",
 						"type": "string",
 						"default": ""
 					},
-					"npmpro_access_list_ids":{
+					"npmpro_access_list_ids": {
 						"$ref": "../common.json#/properties/npmpro_access_list_ids"
 					},
 					"npmpro_access_list_type": {
@@ -359,10 +370,14 @@
 					"forward_scheme": "http",
 					"forward_host": "example.com",
 					"forward_port": 80,
-					"npmpro_access_list_ids": [1, 2],
+					"npmpro_access_list_ids": [
+						1,
+						2
+					],
 					"npmpro_access_list_type": "custom"
 				}
-			]
+			],
+			"description": "Custom locations: other paths of the host sent to their own upstream, in the order given. A save replaces the whole list. An answer also carries each location's id, proxy_host_id and access_lists, which are not in this schema."
 		},
 		"hsts_enabled": {
 			"$ref": "../common.json#/properties/hsts_enabled"
@@ -380,17 +395,20 @@
 					"$ref": "./certificate-object.json"
 				}
 			],
-			"example": null
+			"example": null,
+			"description": "The host's certificate, null when it has none. Only the list answer carries it, and only with `expand=certificate`."
 		},
 		"owner": {
-			"$ref": "./user-object.json"
+			"$ref": "./user-object.json",
+			"description": "The user who created the host. Only the list answer carries it, and only with `expand=owner`."
 		},
 		"access_lists": {
 			"type": "array",
 			"items": {
-				"$ref": "./access-list-object.json"
+				"$ref": "./proxy-host-access-list-object.json"
 			},
-			"example": []
+			"example": [],
+			"description": "The access lists applied to the host itself, in the order they were chosen. Set npmpro_access_list_ids to change them; a request never sends this field."
 		}
 	}
 }

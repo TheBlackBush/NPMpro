@@ -1,6 +1,6 @@
 {
 	"type": "object",
-	"description": "The dry run of a merge",
+	"description": "The dry run of a merge: what each item would do. It changes nothing.",
 	"additionalProperties": false,
 	"required": [
 		"items",
@@ -30,20 +30,24 @@
 				],
 				"properties": {
 					"key": {
-						"type": "string"
+						"type": "string",
+						"description": "Identifies the item: <part>:<id> (for example proxy_hosts:3), setting:<group> or file:<path>. The keys of the choices field of a restore use it."
 					},
 					"type": {
-						"type": "string"
+						"type": "string",
+						"description": "The backup part the item belongs to."
 					},
 					"id": {
 						"type": [
 							"integer",
 							"string",
 							"null"
-						]
+						],
+						"description": "The item's id in the backup; null for a settings group or a file."
 					},
 					"label": {
-						"type": "string"
+						"type": "string",
+						"description": "What the item is called in lists: the domains, name, port or email."
 					},
 					"action": {
 						"type": "string",
@@ -53,14 +57,16 @@
 						"type": [
 							"string",
 							"null"
-						]
+						],
+						"description": "Why the item meets one on this instance: domain-in-use, domain-in-use-several, port-in-use, same-certificate, same-email or same-name; null when it meets none."
 					},
 					"target": {
 						"type": [
 							"object",
 							"null"
 						],
-						"additionalProperties": true
+						"additionalProperties": true,
+						"description": "The item on this instance that it meets (type, id, label); null when it meets none."
 					},
 					"choices": {
 						"type": "array",
@@ -75,28 +81,34 @@
 								"take",
 								"unticked"
 							]
-						}
+						},
+						"description": "The choices the item offers, the first is the default. Empty when there is nothing to choose."
 					},
 					"default": {
 						"type": [
 							"string",
 							"null"
-						]
+						],
+						"description": "The choice used when none is sent; null when the item offers none."
 					},
 					"needed_by": {
 						"type": "array",
 						"items": {
 							"type": "string"
-						}
+						},
+						"description": "The keys of the chosen items that need this one (a linked certificate, access list or DNS credential)."
 					},
 					"linked": {
-						"type": "boolean"
+						"type": "boolean",
+						"description": "Whether the item is only here because a chosen item needs it."
 					},
 					"unticked": {
-						"type": "boolean"
+						"type": "boolean",
+						"description": "Present and true when the choice left a linked item out (choice unticked)."
 					}
 				}
-			}
+			},
+			"description": "Every item of the chosen parts, with what a merge would do with it."
 		},
 		"counts": {
 			"type": "object",
@@ -112,27 +124,33 @@
 			"properties": {
 				"add": {
 					"type": "integer",
-					"minimum": 0
+					"minimum": 0,
+					"description": "Items added as new."
 				},
 				"replace": {
 					"type": "integer",
-					"minimum": 0
+					"minimum": 0,
+					"description": "Items that replace an existing one."
 				},
 				"skip": {
 					"type": "integer",
-					"minimum": 0
+					"minimum": 0,
+					"description": "Items left out."
 				},
 				"existing": {
 					"type": "integer",
-					"minimum": 0
+					"minimum": 0,
+					"description": "Items that use the matching existing one."
 				},
 				"take": {
 					"type": "integer",
-					"minimum": 0
+					"minimum": 0,
+					"description": "Settings and files taken from the backup."
 				},
 				"keep": {
 					"type": "integer",
-					"minimum": 0
+					"minimum": 0,
+					"description": "Settings and files kept as this instance has them."
 				}
 			},
 			"description": "Number of items per action"
@@ -151,19 +169,23 @@
 				],
 				"properties": {
 					"key": {
-						"type": "string"
+						"type": "string",
+						"description": "The key of the item whose link is cleared."
 					},
 					"column": {
-						"type": "string"
+						"type": "string",
+						"description": "The column that loses its value, for example certificate_id."
 					},
 					"from": {
 						"type": [
 							"integer",
 							"string"
-						]
+						],
+						"description": "The id the column held in the backup."
 					},
 					"label": {
-						"type": "string"
+						"type": "string",
+						"description": "The cleared target, as it is called in the backup."
 					}
 				}
 			}
@@ -179,5 +201,55 @@
 			"type": "string",
 			"description": "Identifies the plan; send it as plan_hash to apply it"
 		}
+	},
+	"example": {
+		"items": [
+			{
+				"key": "proxy_hosts:12",
+				"type": "proxy_hosts",
+				"id": 12,
+				"label": "app.example.com",
+				"action": "add",
+				"reason": null,
+				"target": null,
+				"choices": [],
+				"default": "add",
+				"needed_by": [],
+				"linked": false
+			},
+			{
+				"key": "certificates:5",
+				"type": "certificates",
+				"id": 5,
+				"label": "app.example.com",
+				"action": "existing",
+				"reason": "same-certificate",
+				"target": {
+					"type": "certificates",
+					"id": 9,
+					"label": "app.example.com"
+				},
+				"choices": [
+					"existing",
+					"add"
+				],
+				"default": "existing",
+				"needed_by": [
+					"proxy_hosts:12"
+				],
+				"linked": true
+			}
+		],
+		"counts": {
+			"add": 1,
+			"replace": 0,
+			"skip": 0,
+			"existing": 1,
+			"take": 0,
+			"keep": 0
+		},
+		"cleared_links": [],
+		"needs_secrets": [],
+		"hash": "9f2b6c1d4e7a3085"
 	}
 }

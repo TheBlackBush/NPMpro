@@ -1,6 +1,6 @@
 {
 	"operationId": "previewLandingPageDeadHost",
-	"summary": "The page a 404 host shows, as HTML",
+	"summary": "Preview a 404 host page",
 	"tags": [
 		"settings"
 	],
@@ -21,19 +21,20 @@
 				"minimum": 1
 			},
 			"required": true,
-			"description": "404 host id",
+			"description": "Identifier of the 404 host",
 			"example": 1
 		}
 	],
 	"responses": {
 		"200": {
-			"description": "The page, with sample values",
+			"description": "The page as HTML (text/html), with sample values filled in",
 			"content": {
 				"text/html": {}
 			}
 		},
 		"404": {
-			"description": "The place shows no page of its own"
+			"description": "The place shows no page of its own, or the id does not exist"
 		}
-	}
+	},
+	"description": "Returns the page a 404 host shows, as HTML with sample values. The answer is 404 when the host does not exist or shows no page of its own.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

@@ -1,6 +1,6 @@
 {
 	"operationId": "getMcpTools",
-	"summary": "List the MCP tools and what each needs (administrators)",
+	"summary": "List the MCP tools",
 	"tags": [
 		"mcp"
 	],
@@ -14,20 +14,84 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "Every MCP tool with its area and what it needs",
 			"content": {
 				"application/json": {
 					"schema": {
 						"type": "array",
+						"description": "The MCP tools",
 						"items": {
-							"type": "object"
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"name",
+								"title",
+								"area",
+								"needs"
+							],
+							"properties": {
+								"name": {
+									"type": "string",
+									"description": "Name a client calls the tool by"
+								},
+								"title": {
+									"type": "string",
+									"description": "Short title of the tool"
+								},
+								"area": {
+									"type": "string",
+									"enum": [
+										"hosts",
+										"access_lists",
+										"certificates",
+										"monitoring",
+										"audit"
+									],
+									"description": "The part of NPMpro the tool works on"
+								},
+								"needs": {
+									"type": "string",
+									"enum": [
+										"view",
+										"manage",
+										"delete",
+										"admin"
+									],
+									"description": "What a token needs: view or manage on the area's section, manage plus the token's Allow delete switch (`delete`), or the Administrator switch (`admin`)"
+								}
+							}
+						}
+					},
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"name": "list_hosts",
+									"title": "List hosts",
+									"area": "hosts",
+									"needs": "view"
+								},
+								{
+									"name": "delete_access_list",
+									"title": "Delete an access list",
+									"area": "access_lists",
+									"needs": "delete"
+								},
+								{
+									"name": "get_traffic",
+									"title": "Get traffic statistics",
+									"area": "monitoring",
+									"needs": "admin"
+								}
+							]
 						}
 					}
 				}
 			}
 		},
 		"403": {
-			"description": "403 response"
+			"description": "Not allowed: the user is not an administrator, or the token lacks its Administrator switch"
 		}
-	}
+	},
+	"description": "Lists every MCP tool with the area it belongs to and what a token needs to use it, for the API access section of Settings. It lists all tools, whatever the caller's own permissions; `tools/list` of the MCP endpoint lists only what the token may use.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

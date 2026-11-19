@@ -63,7 +63,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The statistics for the range and filter",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -152,7 +152,31 @@
 									"error": null,
 									"unique_visitors": true,
 									"visitors_error": null
-								}
+								},
+								"recent": [
+									{
+										"time": "2026-11-17T09:29:58.000Z",
+										"host_id": 3,
+										"host_type": "proxy",
+										"name": "app.example.com",
+										"method": "GET",
+										"path": "/index.html",
+										"status": 200,
+										"bytes": 5120,
+										"country": "DE"
+									},
+									{
+										"time": "2026-11-17T09:29:41.000Z",
+										"host_id": null,
+										"host_type": "other",
+										"name": "_other",
+										"method": "GET",
+										"path": "/admin",
+										"status": 404,
+										"bytes": 146,
+										"country": null
+									}
+								]
 							}
 						}
 					},
@@ -162,5 +186,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns the request statistics NPMpro keeps from the nginx access log: totals, a series per time bucket, the top hosts, countries and networks, and the newest requests. Filter by `host`, or by `host_id` with `host_type` for one NPMpro host with all its domain names (404 when that host does not exist). Statistics are empty while traffic statistics are switched off in Settings, Monitoring; `status` says so. Visitor addresses (`top_ips`, `recent[].ip`) appear only when Settings shows them. A 400 means an invalid `range`, `host_id` or `host_type`.\n\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The certificates and TLS settings as they are now",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -31,6 +31,8 @@
 								"default_certificate_id": 0,
 								"ech_rotation_interval": 1,
 								"locked": [],
+								"locked_by": {},
+								"locked_reason": {},
 								"applies": {
 									"key_type": "next-certificate",
 									"key_size": "next-certificate",
@@ -42,7 +44,47 @@
 									"custom_ocsp_stapling": "reload",
 									"default_certificate_id": "reload",
 									"ech_rotation_interval": "immediately"
-								}
+								},
+								"restart_pending": []
+							}
+						},
+						"locked": {
+							"summary": "ACME_KEY_SIZE set",
+							"value": {
+								"key_type": "ecdsa",
+								"key_size": "secp384r1",
+								"profile": "shortlived",
+								"must_staple": false,
+								"server_tls_verify": true,
+								"renewal_interval": 3,
+								"ocsp_stapling": false,
+								"custom_ocsp_stapling": false,
+								"default_certificate_id": 0,
+								"ech_rotation_interval": 1,
+								"locked": [
+									"key_size",
+									"key_type"
+								],
+								"locked_by": {
+									"key_size": "ACME_KEY_SIZE",
+									"key_type": "ACME_KEY_SIZE"
+								},
+								"locked_reason": {
+									"key_type": "key-size"
+								},
+								"applies": {
+									"key_type": "next-certificate",
+									"key_size": "next-certificate",
+									"profile": "next-certificate",
+									"must_staple": "next-certificate",
+									"server_tls_verify": "next-certificate",
+									"renewal_interval": "immediately",
+									"ocsp_stapling": "reload",
+									"custom_ocsp_stapling": "reload",
+									"default_certificate_id": "reload",
+									"ech_rotation_interval": "immediately"
+								},
+								"restart_pending": []
 							}
 						}
 					},
@@ -52,5 +94,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns the certificate and TLS settings: the key type and size, ACME profile, must-staple, ACME server TLS check, renewal interval, OCSP stapling, the default certificate and the ECH key rotation interval. A value an environment variable sets is shown as locked.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

@@ -1,6 +1,6 @@
 {
 	"operationId": "downloadCertificate",
-	"summary": "Downloads a Certificate",
+	"summary": "Download a certificate",
 	"tags": [
 		"certificates"
 	],
@@ -16,18 +16,18 @@
 		{
 			"in": "path",
 			"name": "certID",
-			"description": "Certificate ID",
+			"description": "ID of the certificate, as the list shows it",
 			"schema": {
 				"type": "integer",
 				"minimum": 1
 			},
 			"required": true,
-			"example": 1
+			"example": 5
 		}
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "A zip file (`application/zip`) with the certificate files",
 			"content": {
 				"application/zip": {
 					"schema": {
@@ -37,5 +37,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Downloads the certificate as a zip file: `fullchain.pem` and `privkey.pem`, or only the CA file of an mTLS certificate. The zip holds the private key, so the download is written to the audit log and limited to 10 requests per 10 minutes for each address (429 after that). There is no JSON example: the answer is a zip file.\n\nNeeds: Certificates manage"
 }

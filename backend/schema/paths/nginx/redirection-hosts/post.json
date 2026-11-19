@@ -1,6 +1,6 @@
 {
 	"operationId": "createRedirectionHost",
-	"summary": "Create a Redirection Host",
+	"summary": "Create a redirection host",
 	"tags": [
 		"redirection-hosts"
 	],
@@ -13,7 +13,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "Redirection Host Payload",
+		"description": "Redirection Host fields",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -175,56 +175,72 @@
 						}
 					}
 				},
-				"example": {
-					"domain_names": [
-						"test.example.com"
-					],
-					"forward_domain_name": "example.com",
-					"forward_scheme": "$scheme",
-					"forward_http_code": 301,
-					"preserve_path": false,
-					"certificate_id": 0,
-					"ssl_forced": false,
-					"npmpro_http3_support": false,
-					"hsts_enabled": false,
-					"hsts_subdomains": false,
-					"advanced_config": ""
+				"examples": {
+					"default": {
+						"summary": "With an existing certificate",
+						"value": {
+							"domain_names": [
+								"www.example.com"
+							],
+							"forward_domain_name": "app.example.com",
+							"forward_scheme": "https",
+							"forward_http_code": 301,
+							"preserve_path": true,
+							"certificate_id": 5,
+							"ssl_forced": true,
+							"hsts_enabled": true,
+							"npmpro_description": "Old www address"
+						}
+					},
+					"newCertificate": {
+						"summary": "Requesting a new certificate",
+						"value": {
+							"domain_names": [
+								"www.example.com"
+							],
+							"forward_domain_name": "app.example.com",
+							"forward_scheme": "https",
+							"forward_http_code": 301,
+							"certificate_id": "new",
+							"ssl_forced": true
+						}
+					}
 				}
 			}
 		}
 	},
 	"responses": {
 		"201": {
-			"description": "201 response",
+			"description": "The created redirection host",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"id": 2,
-								"created_on": "2025-10-30T01:27:04.000Z",
-								"modified_on": "2025-10-30T01:27:04.000Z",
+								"id": 8,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T09:30:00.000Z",
 								"owner_user_id": 1,
 								"domain_names": [
-									"test.example.com"
+									"www.example.com"
 								],
-								"forward_domain_name": "example.com",
-								"preserve_path": false,
-								"certificate_id": 0,
-								"ssl_forced": false,
+								"forward_domain_name": "app.example.com",
+								"preserve_path": true,
+								"certificate_id": 5,
+								"ssl_forced": true,
 								"advanced_config": "",
-								"npmpro_nginx_online": false,
+								"npmpro_nginx_online": true,
 								"npmpro_nginx_err": "",
 								"npmpro_directory": "",
 								"npmpro_tags": [],
-								"npmpro_description": "",
+								"npmpro_description": "Old www address",
 								"npmpro_mtls_certificate_id": 0,
 								"npmpro_mtls_verify_client_optional": false,
 								"npmpro_http3_support": false,
 								"enabled": true,
-								"hsts_enabled": false,
+								"hsts_enabled": true,
 								"hsts_subdomains": false,
-								"forward_scheme": "$scheme",
+								"forward_scheme": "https",
 								"forward_http_code": 301
 							}
 						}
@@ -235,5 +251,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Creates a redirection host, writes its nginx config and reloads nginx. A domain name already used by another enabled host is refused with a 400. Set `certificate_id` to `new` to request a Let's Encrypt certificate for the domain names in the same call (HTTP challenge, or the DNS challenge fields; it also needs Certificates manage). A config nginx refuses is still stored: the answer then has `npmpro_nginx_online` false and the nginx message in `npmpro_nginx_err`, and the config stays out of nginx until it is fixed.\n\nNeeds: Redirection Hosts manage"
 }

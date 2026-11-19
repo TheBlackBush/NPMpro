@@ -1,6 +1,6 @@
 {
 	"operationId": "previewLandingPageAccessList",
-	"summary": "The denied page of an access list, as HTML",
+	"summary": "Preview an access list denied page",
 	"tags": [
 		"settings"
 	],
@@ -21,19 +21,20 @@
 				"minimum": 1
 			},
 			"required": true,
-			"description": "Access list id",
+			"description": "Identifier of the access list",
 			"example": 1
 		}
 	],
 	"responses": {
 		"200": {
-			"description": "The page, with sample values",
+			"description": "The page as HTML (text/html), with sample values filled in",
 			"content": {
 				"text/html": {}
 			}
 		},
 		"404": {
-			"description": "The place shows no page of its own"
+			"description": "The place shows no page of its own, or the id does not exist"
 		}
-	}
+	},
+	"description": "Returns the page an access list shows to a refused visitor, as HTML with sample values. The answer is 404 when the list does not exist or shows no page of its own.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

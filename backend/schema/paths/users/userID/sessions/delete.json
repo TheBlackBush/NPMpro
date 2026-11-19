@@ -1,7 +1,9 @@
 {
 	"operationId": "revokeUserSessions",
-	"summary": "Revoke all of a user's sessions",
-	"tags": ["users"],
+	"summary": "Sign a user out everywhere",
+	"tags": [
+		"users"
+	],
 	"security": [
 		{
 			"cookieAuth": []
@@ -24,7 +26,7 @@
 				]
 			},
 			"required": true,
-			"description": "User ID or 'me' for yourself",
+			"description": "ID of the user. `me` is also accepted for the signed-in user",
 			"example": 2
 		}
 	],
@@ -42,7 +44,11 @@
 					}
 				}
 			},
-			"description": "200 response"
+			"description": "true when the sessions were ended"
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
 		}
-	}
+	},
+	"description": "Ends every session of a user at once, on every device. API tokens keep working: revoke them separately. For your own account the answer also clears your session cookie.\n\nNeeds: a signed-in session as that user or as an administrator (API tokens are refused)"
 }

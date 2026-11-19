@@ -1,6 +1,6 @@
 {
 	"operationId": "requestToken",
-	"summary": "Request a new access token from credentials",
+	"summary": "Sign in with email and password",
 	"tags": [
 		"tokens"
 	],
@@ -15,18 +15,21 @@
 						"identity": {
 							"minLength": 1,
 							"type": "string",
-							"example": "me@example.com"
+							"example": "admin@example.com",
+							"description": "The user's email address, not case sensitive"
 						},
 						"secret": {
 							"minLength": 1,
 							"type": "string",
-							"example": "bigredhorsebanana"
+							"example": "your-password",
+							"description": "The user's password"
 						},
 						"code": {
 							"minLength": 6,
 							"maxLength": 8,
 							"type": "string",
-							"example": "123456"
+							"example": "123456",
+							"description": "A current TOTP code or an unused backup code, only when MFA is on; without it the answer is an MFA challenge"
 						}
 					},
 					"required": [
@@ -35,9 +38,21 @@
 					],
 					"type": "object"
 				},
-				"example": {
-					"identity": "me@example.com",
-					"secret": "bigredhorsebanana"
+				"examples": {
+					"default": {
+						"value": {
+							"identity": "admin@example.com",
+							"secret": "your-password"
+						}
+					},
+					"with_code": {
+						"summary": "With the second factor",
+						"value": {
+							"identity": "admin@example.com",
+							"secret": "your-password",
+							"code": "123456"
+						}
+					}
 				}
 			}
 		}
@@ -49,7 +64,14 @@
 					"examples": {
 						"default": {
 							"value": {
-								"expires": "2025-02-04T20:40:46.340Z"
+								"expires": "2026-11-17T10:30:00.000Z"
+							}
+						},
+						"mfa_challenge": {
+							"summary": "MFA is on and no code was sent",
+							"value": {
+								"requiresTotp": true,
+								"expires": "2026-11-17T09:33:00.000Z"
 							}
 						}
 					},
@@ -65,7 +87,8 @@
 					}
 				}
 			},
-			"description": "200 response"
+			"description": "The session cookie is set and its expiry returned, or an MFA challenge"
 		}
-	}
+	},
+	"description": "Checks the credentials and sets the session cookie (valid 1 hour); the answer holds only its expiry. With MFA on and no `code`, it sets a challenge cookie (valid 3 minutes) and answers `requiresTotp`: finish with POST /tokens/totp, or send `code` (a TOTP or backup code) in the same request. It answers 403 when OIDC is the only sign-in. 5 failed requests per address in 5 minutes block that address for the rest of the 5 minutes.\n\nNeeds: nothing (public)"
 }

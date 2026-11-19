@@ -54,7 +54,7 @@ permissions, expiry, last use and creation date. To make one:
 
 To end a token, choose **Revoke** on its row in the list and confirm. It stops working at once.
 
-The window uses `POST /api/users/me/api-tokens` (described in the OpenAPI documentation at `/api/docs`). The route
+The window uses `POST /api/users/me/api-tokens` (described in the [API reference](#api-reference) below). The route
 needs a signed-in session, so scripts do not create tokens: a token cannot create tokens.
 
 ## Administrators: Settings, API access
@@ -75,8 +75,18 @@ someone else. The section links to the API documentation.
 - Without the token's Allow delete switch, every DELETE request with the token is refused, and so is a restore that
   replaces parts of a backup (a merge is allowed); turn it on for scripts and MCP clients that should delete.
 - Five failed token attempts from one address in five minutes block that address for the rest of the five minutes.
-- The OpenAPI documentation is at `/api/docs` on the admin port (signed in). Its Authorize button takes a token.
+- The API reference is at `/api-reference` on the admin port (signed in), see [API reference](#api-reference) below.
 - Expiry: 30, 90 or 365 days, a date, or none (default 90 days).
+
+## API reference
+
+The API reference is at `https://<admin address>/api-reference` (signed in; `/api/docs` leads there too). It opens from
+the API tokens window and from Settings, API access. The left column lists the groups and routes and has a search (press
+`/`); the middle shows what a route does, what it needs (the Needs line), its parameters, request fields and answers;
+the right shows the request as curl, Node or Python (one choice for the whole page), an example answer and **Try it**,
+which runs the request on this instance as you. To run it as a token, choose **Use a token** at the top and paste it:
+the page keeps it only until you reload. Every route has its own link, for example
+`/api-reference#proxy-hosts/post-nginx-proxy-hosts`. The page follows the app's light or dark theme.
 
 ## MCP server
 

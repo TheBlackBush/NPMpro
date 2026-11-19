@@ -16,7 +16,7 @@
 		{
 			"in": "path",
 			"name": "credentialID",
-			"description": "DNS credential ID",
+			"description": "ID of the DNS credential, as the list shows it",
 			"schema": {
 				"type": "integer",
 				"minimum": 1
@@ -27,22 +27,30 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The credential that was deleted, without its values",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"id": 1,
-								"created_on": "2024-10-09T05:31:58.000Z",
-								"modified_on": "2024-10-09T05:32:11.000Z",
+								"id": 2,
+								"created_on": "2026-11-18T07:55:00.000Z",
+								"modified_on": "2026-11-18T07:55:00.000Z",
 								"owner_user_id": 1,
-								"name": "Cloudflare main",
+								"name": "Cloudflare spare",
 								"provider": "cloudflare",
 								"fields": [
 									{
 										"key": "dns_cloudflare_api_token",
 										"is_set": true
+									},
+									{
+										"key": "dns_cloudflare_email",
+										"is_set": false
+									},
+									{
+										"key": "dns_cloudflare_api_key",
+										"is_set": false
 									}
 								],
 								"ini_set": false,
@@ -56,5 +64,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Deletes a DNS credential for good. A credential that certificates still use is refused with a 400; link those to another credential first. The answer is the credential as it was, without its values.\n\nNeeds: Certificates manage and the token's Allow delete switch"
 }

@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The advanced settings as they are now",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -48,5 +48,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns the advanced settings: nginx config formatting, Gravatar profile pictures and the container time zone, with time_zones listing the accepted values. A value an environment variable sets is shown as locked.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

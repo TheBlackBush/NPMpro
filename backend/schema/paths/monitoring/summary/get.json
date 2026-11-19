@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "Today's traffic numbers and the CrowdSec ban counts, null where unavailable",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -67,5 +67,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns the numbers of the dashboard cards: requests, error counts and countries of today (the UTC day so far) and, when CrowdSec is configured and reachable, its active bans. A number is null when its source is off or not available, for example traffic statistics switched off, no GeoIP database or CrowdSec not configured.\n\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

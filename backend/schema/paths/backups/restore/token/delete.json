@@ -1,7 +1,7 @@
 {
 	"operationId": "cancelBackupRestore",
-	"summary": "Cancel a restore and drop its unpacked files",
-	"description": "Admin only.",
+	"summary": "Cancel a restore session",
+	"description": "Drops the restore session and its unpacked files. A session that has already expired is not an error. A session from a page import is cancelled by its importer; a Settings session by its administrator.\n\nNeeds: an administrator for a stored backup (a token needs its Administrator switch); the importer for a page import; a token also needs its Allow delete switch",
 	"tags": [
 		"backups"
 	],
@@ -27,12 +27,17 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "true when the session is gone",
 			"content": {
 				"application/json": {
 					"schema": {
 						"type": "boolean",
 						"example": true
+					},
+					"examples": {
+						"default": {
+							"value": true
+						}
 					}
 				}
 			}

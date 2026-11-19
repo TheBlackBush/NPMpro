@@ -1,7 +1,7 @@
 {
 	"operationId": "checkBackupRestore",
-	"summary": "Preview a restore of chosen types",
-	"description": "Admin only. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed.",
+	"summary": "Preview a replace restore of chosen parts",
+	"description": "Shows what a replace restore of the chosen parts of the session would change: references that would be cleared, users that are skipped and parts whose secrets the file lacks. It changes nothing. Errors carry a backup.error.<code> message id: invalid-types, token-expired (410).\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"backups"
 	],
@@ -62,7 +62,17 @@
 							},
 							"minItems": 1,
 							"uniqueItems": true,
-							"description": "Backup types"
+							"description": "The parts to preview; all of them must be in the backup."
+						}
+					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"types": [
+								"proxy_hosts",
+								"certificates"
+							]
 						}
 					}
 				}
@@ -71,11 +81,35 @@
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "What a replace restore of these parts would change",
 			"content": {
 				"application/json": {
 					"schema": {
 						"$ref": "../../../../../components/backup-preview-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"references": [
+									{
+										"table": "proxy_host",
+										"id": 12,
+										"column": "certificate_id",
+										"from": 5,
+										"to": null,
+										"label": "app.example.com"
+									}
+								],
+								"skippedUsers": [
+									{
+										"id": 1,
+										"email": "admin@example.com",
+										"name": "Jane Doe"
+									}
+								],
+								"missingSecrets": []
+							}
+						}
 					}
 				}
 			}

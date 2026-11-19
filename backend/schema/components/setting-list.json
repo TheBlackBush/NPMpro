@@ -1,6 +1,6 @@
 {
 	"type": "array",
-	"description": "Setting list",
+	"description": "The stored settings, ordered by description",
 	"items": {
 		"$ref": "./setting-object.json"
 	}

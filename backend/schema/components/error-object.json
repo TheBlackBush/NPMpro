@@ -9,19 +9,107 @@
 	"properties": {
 		"code": {
 			"type": "integer",
+			"description": "HTTP status code of the answer",
 			"example": 400
 		},
 		"message": {
 			"type": "string",
+			"description": "What went wrong, in English; internal errors only say Internal Error",
 			"example": "Bad Request"
 		},
 		"message_i18n": {
 			"type": "string",
+			"description": "Key the web interface translates instead of the English message, when the error has one",
 			"example": "error.invalid-auth"
 		},
 		"output": {
 			"type": "string",
+			"description": "nginx, certbot or database driver output that explains the failure, shortened to its end",
 			"example": "Some challenges have failed."
+		},
+		"message_values": {
+			"type": "object",
+			"description": "Values filled into the translated message (names and numbers the message mentions)",
+			"additionalProperties": true,
+			"example": {
+				"name": "app.example.com"
+			}
+		},
+		"saved_id": {
+			"type": "integer",
+			"description": "Identifier of the host that was saved although nginx refused to reload; only on a reload error",
+			"minimum": 1,
+			"example": 12
+		},
+		"saved_certificate_id": {
+			"type": "integer",
+			"description": "Identifier of the certificate saved with that host; only on a reload error",
+			"minimum": 1,
+			"example": 5
+		},
+		"checks": {
+			"type": "array",
+			"description": "The CrowdSec connection checks of a refused CrowdSec save (409), one per service; never carries a key",
+			"items": {
+				"type": "object",
+				"description": "One check and its result",
+				"additionalProperties": false,
+				"required": [
+					"name",
+					"result",
+					"message"
+				],
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "The service checked",
+						"enum": [
+							"lapi",
+							"appsec"
+						],
+						"example": "lapi"
+					},
+					"result": {
+						"type": "string",
+						"description": "ok, or why the check failed",
+						"enum": [
+							"ok",
+							"no_key",
+							"key_refused",
+							"refused",
+							"status",
+							"tls_error",
+							"unreachable"
+						],
+						"example": "unreachable"
+					},
+					"message": {
+						"type": "string",
+						"description": "Details of the result, such as an HTTP status or a network error code; empty when there is nothing to add",
+						"example": "ECONNREFUSED"
+					}
+				}
+			},
+			"example": [
+				{
+					"name": "lapi",
+					"result": "unreachable",
+					"message": "ECONNREFUSED"
+				},
+				{
+					"name": "appsec",
+					"result": "ok",
+					"message": ""
+				}
+			]
+		},
+		"force_blocked": {
+			"type": "string",
+			"description": "Why a refused CrowdSec save cannot be forced: appsec_deny_admin means AppSec would deny the admin interface too",
+			"enum": [
+				"appsec_deny_admin"
+			],
+			"example": "appsec_deny_admin"
 		}
 	}
 }

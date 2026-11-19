@@ -1,7 +1,7 @@
 {
 	"operationId": "deleteBackupSchedule",
 	"summary": "Delete a backup schedule",
-	"description": "Admin only. With files=true the stored files of the schedule are removed too; that fails with busy (409) while a backup or restore runs.",
+	"description": "Deletes the schedule. Its stored files stay as plain stored backups, unless files is true, which removes them too and fails with busy (409) while a backup or restore runs.\n\nNeeds: an administrator (a token needs its Administrator switch) and the token's Allow delete switch",
 	"tags": [
 		"backups"
 	],
@@ -28,7 +28,7 @@
 		{
 			"in": "query",
 			"name": "files",
-			"description": "Also remove the stored files",
+			"description": "true removes the schedule's stored files as well; anything else keeps them.",
 			"required": false,
 			"schema": {
 				"type": "string",
@@ -41,11 +41,16 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "true when the schedule was deleted",
 			"content": {
 				"application/json": {
 					"schema": {
 						"type": "boolean"
+					},
+					"examples": {
+						"default": {
+							"value": true
+						}
 					}
 				}
 			}

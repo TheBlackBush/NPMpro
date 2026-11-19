@@ -1,6 +1,6 @@
 {
 	"operationId": "updateDeadHost",
-	"summary": "Update a 404 Host",
+	"summary": "Update a 404 host",
 	"tags": [
 		"404-hosts"
 	],
@@ -16,17 +16,17 @@
 		{
 			"in": "path",
 			"name": "hostID",
-			"description": "The ID of the 404 Host",
+			"description": "ID of the 404 host, as the list shows it",
 			"schema": {
 				"type": "integer",
 				"minimum": 1
 			},
 			"required": true,
-			"example": 2
+			"example": 4
 		}
 	],
 	"requestBody": {
-		"description": "404 Host Payload",
+		"description": "404 Host fields",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -179,40 +179,48 @@
 							"$ref": "../../../../components/dead-host-object.json#/properties/npmpro_page_html"
 						}
 					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"npmpro_page": "npmpro",
+							"npmpro_description": "Retired site, built-in page"
+						}
+					}
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The updated 404 host",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"id": 1,
-								"created_on": "2024-10-09T01:38:52.000Z",
-								"modified_on": "2024-10-09T01:46:06.000Z",
+								"id": 4,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T10:15:00.000Z",
 								"owner_user_id": 1,
 								"domain_names": [
-									"test.example.com"
+									"old.example.com"
 								],
-								"certificate_id": 0,
-								"ssl_forced": false,
+								"certificate_id": 5,
+								"ssl_forced": true,
 								"advanced_config": "",
 								"npmpro_nginx_online": true,
 								"npmpro_nginx_err": "",
 								"npmpro_directory": "",
 								"npmpro_tags": [],
-								"npmpro_description": "",
+								"npmpro_description": "Retired site, built-in page",
 								"npmpro_mtls_certificate_id": 0,
 								"npmpro_mtls_verify_client_optional": false,
 								"npmpro_http3_support": false,
 								"enabled": true,
 								"hsts_enabled": false,
 								"hsts_subdomains": false,
-								"npmpro_page": "global"
+								"npmpro_page": "npmpro"
 							}
 						}
 					},
@@ -222,5 +230,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Changes a 404 host: send only the fields to change. When the host is enabled it rewrites the nginx config and reloads nginx like a create (a disabled host is only saved, nothing is written or reloaded), and `certificate_id` `new` requests a certificate the same way. A config nginx refuses is still stored: the answer then has `npmpro_nginx_online` false and the nginx message in `npmpro_nginx_err`, and the config stays out of nginx until it is fixed.\n\nNeeds: 404 Hosts manage"
 }

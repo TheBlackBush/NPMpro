@@ -1,12 +1,13 @@
 {
 	"operationId": "oidcCallback",
-	"summary": "Callback of the OIDC authorization code flow, sets the token cookie",
+	"summary": "Finish an OIDC sign-in",
 	"tags": [
 		"public"
 	],
 	"responses": {
 		"302": {
-			"description": "Redirect to the frontend"
+			"description": "Redirect to the web interface, or to the login page with an `oidc_error` code"
 		}
-	}
+	},
+	"description": "The address the provider sends the browser back to. It checks state, nonce and PKCE, finds or creates the user as the OIDC settings allow, sets the session cookie and redirects to the web interface (to the login page with an `oidc_error` code when refused). With MFA on, a challenge cookie is set instead. 10 requests per address in 5 minutes.\n\nNeeds: nothing (public, with the cookies of a started OIDC sign-in)"
 }

@@ -1,6 +1,6 @@
 {
 	"operationId": "getDNSProviders",
-	"summary": "Get DNS Providers for Certificates",
+	"summary": "List DNS providers",
 	"tags": [
 		"certificates"
 	],
@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The DNS providers, ordered by name",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -49,5 +49,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Lists the DNS providers certificates and DNS credentials can use, ordered by name, with the fields each one takes. `fields` is null for a provider that takes only a raw credentials file, and `deprecated` providers are no longer offered for new certificates.\n\nNeeds: any signed-in user, no permission"
 }

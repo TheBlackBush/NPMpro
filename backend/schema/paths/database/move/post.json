@@ -1,13 +1,48 @@
 {
 	"operationId": "startDatabaseMove",
-	"summary": "Move NPMpro to another database",
-	"description": "Admin only. Tests the target, takes the backup lock and answers with the move id; the steps (maintenance, safety backup, schema, copy, verify, switch) run in the background and the backend restarts on the new database. 409 when a move, backup or restore runs or the connection comes from the DB_* environment variables. Errors carry a database.error.<code> message id (env-locked, move-running, not-empty when the new SQLite file exists already, and the target test codes: invalid-target, connect, timeout, version, not-empty, permission, same-database) or backup.error.busy.",
-	"tags": ["database"],
-	"security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
+	"summary": "Start a database move",
+	"description": "Tests the target, takes the backup lock and answers with the move id. The steps (maintenance, safety backup, schema, copy, verify, switch) run in the background: changes are refused while it runs, and the backend restarts on the new database at the end. Follow it with GET /database/move. A move to SQLite needs only the engine and creates a new file. 409 when a move, backup or restore runs or the connection comes from the DB_* environment variables. Errors carry a database.error.<code> message id (env-locked, move-running, not-empty when the new SQLite file exists already, and the target test codes: invalid-target, connect, timeout, version, not-empty, permission, same-database) or backup.error.busy.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"tags": [
+		"database"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
 	"requestBody": {
 		"description": "Target",
 		"required": true,
-		"content": { "application/json": { "schema": { "$ref": "../../../components/database-target-object.json" } } }
+		"content": {
+			"application/json": {
+				"schema": {
+					"$ref": "../../../components/database-target-object.json"
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"engine": "postgres",
+							"host": "db.lan",
+							"port": 5432,
+							"name": "npmpro",
+							"user": "npmpro",
+							"password": "your-password",
+							"ssl": {
+								"enabled": false
+							}
+						}
+					},
+					"sqlite": {
+						"value": {
+							"engine": "sqlite"
+						}
+					}
+				}
+			}
+		}
 	},
 	"responses": {
 		"200": {
@@ -17,8 +52,22 @@
 					"schema": {
 						"type": "object",
 						"additionalProperties": false,
-						"required": ["id"],
-						"properties": { "id": { "type": "string" } }
+						"required": [
+							"id"
+						],
+						"properties": {
+							"id": {
+								"type": "string",
+								"description": "The move id, the same as in GET /database/move."
+							}
+						}
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"id": "3f2a9c0d1e4b5a68"
+							}
+						}
 					}
 				}
 			}

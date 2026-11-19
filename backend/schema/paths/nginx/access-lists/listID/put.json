@@ -1,6 +1,6 @@
 {
 	"operationId": "updateAccessList",
-	"summary": "Update a Access List",
+	"summary": "Update an access list",
 	"tags": [
 		"access-lists"
 	],
@@ -16,17 +16,17 @@
 		{
 			"in": "path",
 			"name": "listID",
-			"description": "Access List ID",
+			"description": "ID of the access list, as the list shows it",
 			"schema": {
 				"type": "integer",
 				"minimum": 1
 			},
 			"required": true,
-			"example": 2
+			"example": 3
 		}
 	],
 	"requestBody": {
-		"description": "Access List Payload",
+		"description": "The fields to change",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -59,71 +59,94 @@
 					}
 				},
 				"example": {
-					"name": "My Access List",
-					"satisfy_any": true,
-					"pass_auth": false,
+					"name": "Office and home",
 					"items": [
 						{
-							"username": "admin2",
-							"password": "pass2"
+							"username": "jane",
+							"password": ""
+						},
+						{
+							"username": "john",
+							"password": "your-password"
 						}
 					],
 					"clients": [
 						{
 							"directive": "allow",
-							"address": "192.168.0.0/24"
+							"address": "198.51.100.0/24"
+						},
+						{
+							"directive": "allow",
+							"address": "2001:db8::/32"
+						},
+						{
+							"directive": "deny",
+							"address": "all"
 						}
-					],
-					"npmpro_denied_page": "global"
+					]
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The updated access list with its users and rules, without password hashes",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"id": 1,
-								"created_on": "2024-10-08T22:15:40.000Z",
-								"modified_on": "2024-10-08T22:34:34.000Z",
+								"id": 3,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-18T08:00:00.000Z",
 								"owner_user_id": 1,
-								"name": "test123!!",
+								"name": "Office and home",
 								"satisfy_any": true,
 								"pass_auth": false,
-								"proxy_host_count": 0,
+								"proxy_host_count": 1,
+								"npmpro_denied_page": "global",
 								"items": [
 									{
-										"id": 1,
-										"created_on": "2024-10-08T22:15:40.000Z",
-										"modified_on": "2024-10-08T22:15:40.000Z",
-										"access_list_id": 1,
-										"username": "admin",
-										"password": ""
+										"id": 4,
+										"created_on": "2026-11-17T09:30:00.000Z",
+										"modified_on": "2026-11-17T09:30:00.000Z",
+										"access_list_id": 3,
+										"username": "jane"
 									},
 									{
-										"id": 2,
-										"created_on": "2024-10-08T22:15:40.000Z",
-										"modified_on": "2024-10-08T22:15:40.000Z",
-										"access_list_id": 1,
-										"username": "asdad",
-										"password": ""
+										"id": 7,
+										"created_on": "2026-11-18T08:00:00.000Z",
+										"modified_on": "2026-11-18T08:00:00.000Z",
+										"access_list_id": 3,
+										"username": "john"
 									}
 								],
 								"clients": [
 									{
-										"id": 1,
-										"created_on": "2024-10-08T22:15:40.000Z",
-										"modified_on": "2024-10-08T22:15:40.000Z",
-										"access_list_id": 1,
-										"address": "127.0.0.1",
+										"id": 5,
+										"created_on": "2026-11-17T09:30:00.000Z",
+										"modified_on": "2026-11-17T09:30:00.000Z",
+										"access_list_id": 3,
+										"address": "198.51.100.0/24",
 										"directive": "allow"
+									},
+									{
+										"id": 8,
+										"created_on": "2026-11-18T08:00:00.000Z",
+										"modified_on": "2026-11-18T08:00:00.000Z",
+										"access_list_id": 3,
+										"address": "2001:db8::/32",
+										"directive": "allow"
+									},
+									{
+										"id": 9,
+										"created_on": "2026-11-18T08:00:00.000Z",
+										"modified_on": "2026-11-18T08:00:00.000Z",
+										"access_list_id": 3,
+										"address": "all",
+										"directive": "deny"
 									}
-								],
-								"npmpro_denied_page": "global"
+								]
 							}
 						}
 					},
@@ -133,5 +156,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Changes an access list: send only what changes. `items` and `clients` replace the whole set: a user sent without a password keeps their password, a user left out is removed, a new user needs a password. The rules of the create operation apply. Saving rewrites the access file and the configs of the proxy hosts that use the list, and reloads nginx.\n\nNeeds: Access Lists manage"
 }

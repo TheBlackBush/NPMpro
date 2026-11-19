@@ -1,6 +1,6 @@
 {
 	"type": "array",
-	"description": "Certificates list",
+	"description": "The certificates",
 	"items": {
 		"$ref": "./certificate-object.json"
 	}

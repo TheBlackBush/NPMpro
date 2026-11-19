@@ -31,6 +31,7 @@
 			"$ref": "../common.json#/properties/user_id"
 		},
 		"provider": {
+			"description": "Where the certificate comes from: letsencrypt (an ACME server), other (uploaded) or mtls (a client CA)",
 			"$ref": "../common.json#/properties/ssl_provider"
 		},
 		"nice_name": {
@@ -118,7 +119,10 @@
 		},
 		"npmpro_dns_credential_id": {
 			"description": "Saved DNS credential used for the DNS challenge",
-			"type": ["integer", "null"],
+			"type": [
+				"integer",
+				"null"
+			],
 			"minimum": 1,
 			"example": 1
 		},

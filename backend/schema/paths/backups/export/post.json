@@ -1,7 +1,7 @@
 {
 	"operationId": "exportBackupItems",
 	"summary": "Export items of a page",
-	"description": "Needs view permission on the page's items; secrets need manage permission on every included kind, and ACME account keys only go into an administrator's export with secrets. Creates a partial file with the chosen items and linked items as a pending download (GET /backups/pending/{id}), once. Secrets need a passphrase. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
+	"description": "Writes a partial backup file with the chosen items and the linked items you pick as a pending download (GET /backups/pending/{id}), once; nothing is stored. Without secrets the file is not encrypted. With secrets (manage on every included kind, and a passphrase of at least 12 characters) private keys, access list passwords and DNS credential values are included, encrypted; ACME account keys only go into an administrator's export. The file can only be merged, on a list page import. Errors carry a backup.error.<code> message id: invalid-types (also when no item is chosen), weak-passphrase, busy.\n\nNeeds: view on the section of the chosen kind (Proxy Hosts, Redirection Hosts, 404 Hosts, Streams, Access Lists or Certificates; DNS credentials use Certificates); secrets also need manage on every included kind",
 	"tags": [
 		"backups"
 	],
@@ -47,7 +47,8 @@
 								"minimum": 1
 							},
 							"uniqueItems": true,
-							"minItems": 1
+							"minItems": 1,
+							"description": "The ids of the items to export."
 						},
 						"linked": {
 							"type": "object",
@@ -59,7 +60,8 @@
 										"type": "integer",
 										"minimum": 1
 									},
-									"uniqueItems": true
+									"uniqueItems": true,
+									"description": "Ids of the linked certificates to include; those from the preview you leave out are not exported."
 								},
 								"access_lists": {
 									"type": "array",
@@ -67,7 +69,8 @@
 										"type": "integer",
 										"minimum": 1
 									},
-									"uniqueItems": true
+									"uniqueItems": true,
+									"description": "Ids of the linked access lists to include."
 								},
 								"dns_credentials": {
 									"type": "array",
@@ -75,7 +78,8 @@
 										"type": "integer",
 										"minimum": 1
 									},
-									"uniqueItems": true
+									"uniqueItems": true,
+									"description": "Ids of the linked DNS credentials to include."
 								}
 							},
 							"description": "Linked items to include"
@@ -91,13 +95,33 @@
 							"description": "Passphrase, at least 12 characters, never stored"
 						}
 					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"kind": "proxy_hosts",
+							"ids": [
+								12
+							],
+							"linked": {
+								"certificates": [
+									5
+								],
+								"access_lists": [
+									3
+								]
+							},
+							"secrets": true,
+							"passphrase": "YOUR_PASSPHRASE"
+						}
+					}
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The pending download id and file name",
 			"content": {
 				"application/json": {
 					"schema": {
@@ -109,10 +133,20 @@
 						],
 						"properties": {
 							"pending": {
-								"type": "string"
+								"type": "string",
+								"description": "The id to download the file with, once, from GET /backups/pending/{id}."
 							},
 							"name": {
-								"type": "string"
+								"type": "string",
+								"description": "The file name to offer for the download."
+							}
+						}
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"pending": "k3j9x2m1q8w7e6r5",
+								"name": "npmpro-export-proxy-hosts-npmpro-20261117-093000.npmpro"
 							}
 						}
 					}

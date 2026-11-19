@@ -2,41 +2,158 @@
 	"type": "object",
 	"description": "The database in use",
 	"additionalProperties": false,
-	"required": ["engine", "version", "source", "size", "moved_at", "moved_from", "tables", "move"],
+	"required": [
+		"engine",
+		"version",
+		"source",
+		"size",
+		"moved_at",
+		"moved_from",
+		"tables",
+		"move"
+	],
 	"properties": {
-		"engine": { "type": "string", "enum": ["sqlite", "mysql", "postgres"] },
-		"version": { "type": "string", "example": "3.50.4" },
+		"engine": {
+			"type": "string",
+			"enum": [
+				"sqlite",
+				"mysql",
+				"postgres"
+			],
+			"description": "The database engine in use; mysql is MySQL or MariaDB."
+		},
+		"version": {
+			"type": "string",
+			"example": "3.50.4",
+			"description": "The server version of the database."
+		},
 		"source": {
 			"type": "string",
-			"enum": ["env", "file", "default"],
+			"enum": [
+				"env",
+				"file",
+				"default"
+			],
 			"description": "env: DB_* environment variables (moves are locked); file: /data/npmpro/database.json; default: /data/npmpro/database.sqlite"
 		},
-		"file": { "type": "string", "description": "SQLite only" },
-		"host": { "type": "string" },
-		"port": { "type": "integer" },
-		"name": { "type": "string" },
-		"user": { "type": "string" },
-		"ssl": { "type": "object" },
-		"size": { "type": ["integer", "null"], "description": "Bytes, when the engine reports it" },
-		"moved_at": { "type": ["string", "null"], "format": "date-time" },
+		"file": {
+			"type": "string",
+			"description": "SQLite only"
+		},
+		"host": {
+			"type": "string",
+			"description": "Server host name or address (MySQL and PostgreSQL)."
+		},
+		"port": {
+			"type": "integer",
+			"description": "Server port (MySQL and PostgreSQL)."
+		},
+		"name": {
+			"type": "string",
+			"description": "Database name (MySQL and PostgreSQL)."
+		},
+		"user": {
+			"type": "string",
+			"description": "Database user (MySQL and PostgreSQL)."
+		},
+		"ssl": {
+			"type": "object",
+			"description": "The TLS settings of the connection (MySQL and PostgreSQL), as in a move target."
+		},
+		"size": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"description": "Bytes, when the engine reports it"
+		},
+		"moved_at": {
+			"type": [
+				"string",
+				"null"
+			],
+			"format": "date-time",
+			"description": "When NPMpro was last moved to this database; null if it never was."
+		},
 		"moved_from": {
-			"type": ["object", "null"],
+			"type": [
+				"object",
+				"null"
+			],
 			"additionalProperties": false,
 			"properties": {
-				"engine": { "type": "string", "enum": ["sqlite", "mysql", "postgres"] },
-				"host": { "type": "string" },
-				"name": { "type": "string" }
-			}
+				"engine": {
+					"type": "string",
+					"enum": [
+						"sqlite",
+						"mysql",
+						"postgres"
+					],
+					"description": "The engine before the move."
+				},
+				"host": {
+					"type": "string",
+					"description": "The server before the move."
+				},
+				"name": {
+					"type": "string",
+					"description": "The database name before the move (the file for SQLite)."
+				}
+			},
+			"description": "Where it was moved from (engine, and host and name for a server); null if it never was moved."
 		},
 		"tables": {
 			"type": "array",
 			"items": {
 				"type": "object",
 				"additionalProperties": false,
-				"required": ["name", "rows"],
-				"properties": { "name": { "type": "string" }, "rows": { "type": "integer" } }
-			}
+				"required": [
+					"name",
+					"rows"
+				],
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "The table name."
+					},
+					"rows": {
+						"type": "integer",
+						"description": "The number of rows in the table."
+					}
+				}
+			},
+			"description": "Every table with its number of rows."
 		},
-		"move": { "oneOf": [{ "type": "null" }, { "$ref": "./database-move-object.json" }] }
+		"move": {
+			"oneOf": [
+				{
+					"type": "null"
+				},
+				{
+					"$ref": "./database-move-object.json"
+				}
+			],
+			"description": "The current or last database move; null when none ran since the backend started."
+		}
+	},
+	"example": {
+		"engine": "sqlite",
+		"version": "3.50.4",
+		"source": "default",
+		"file": "/data/npmpro/database.sqlite",
+		"size": 1048576,
+		"moved_at": null,
+		"moved_from": null,
+		"tables": [
+			{
+				"name": "proxy_host",
+				"rows": 12
+			},
+			{
+				"name": "certificate",
+				"rows": 5
+			}
+		],
+		"move": null
 	}
 }

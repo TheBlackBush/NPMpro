@@ -1,6 +1,6 @@
 {
 	"operationId": "getAuditLogs",
-	"summary": "Get Audit Logs",
+	"summary": "List audit log entries",
 	"tags": [
 		"audit-log"
 	],
@@ -16,7 +16,7 @@
 		{
 			"in": "query",
 			"name": "expand",
-			"description": "Expansions",
+			"description": "Relations to add to each entry: `user` adds the user who acted",
 			"schema": {
 				"type": "string",
 				"enum": [
@@ -27,7 +27,7 @@
 		{
 			"in": "query",
 			"name": "query",
-			"description": "Search text matched against the entry meta",
+			"description": "Text to search for in the entry's stored details (`meta`); entries that contain it are listed",
 			"schema": {
 				"type": "string"
 			}
@@ -35,7 +35,7 @@
 		{
 			"in": "query",
 			"name": "limit",
-			"description": "Page size",
+			"description": "Number of entries in the page",
 			"schema": {
 				"type": "integer",
 				"minimum": 1,
@@ -46,7 +46,7 @@
 		{
 			"in": "query",
 			"name": "offset",
-			"description": "Number of entries to skip",
+			"description": "Number of entries to skip, newest first",
 			"schema": {
 				"type": "integer",
 				"minimum": 0,
@@ -56,7 +56,7 @@
 		{
 			"in": "query",
 			"name": "object_type",
-			"description": "Filter by object type",
+			"description": "Only entries about this kind of object",
 			"schema": {
 				"type": "string",
 				"enum": [
@@ -79,7 +79,7 @@
 		{
 			"in": "query",
 			"name": "action",
-			"description": "Filter by action",
+			"description": "Only entries with this action",
 			"schema": {
 				"type": "string",
 				"enum": [
@@ -110,7 +110,7 @@
 		{
 			"in": "query",
 			"name": "user_id",
-			"description": "Filter by user ID",
+			"description": "Only entries made by the user with this ID",
 			"schema": {
 				"type": "integer",
 				"minimum": 1
@@ -119,35 +119,43 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "One page of audit log entries, newest first, with the total count in the `X-Total-Count` header",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": [
 								{
-									"id": 7,
-									"created_on": "2024-10-08T13:09:54.000Z",
-									"modified_on": "2024-10-08T13:09:54.000Z",
+									"id": 42,
+									"created_on": "2026-11-17T09:30:00.000Z",
+									"modified_on": "2026-11-17T09:30:00.000Z",
 									"user_id": 1,
-									"object_type": "user",
-									"object_id": 3,
+									"object_type": "proxy-host",
+									"object_id": 12,
 									"action": "updated",
+									"npmpro_api_token_id": null,
+									"npmpro_api_token_name": null,
 									"meta": {
-										"name": "John Doe",
-										"permissions": {
-											"user_id": 3,
-											"visibility": "all",
-											"access_lists": "manage",
-											"dead_hosts": "hidden",
-											"proxy_hosts": "manage",
-											"redirection_hosts": "view",
-											"streams": "hidden",
-											"certificates": "manage",
-											"id": 3,
-											"modified_on": "2024-10-08T13:09:54.000Z",
-											"created_on": "2024-10-08T13:09:51.000Z"
-										}
+										"domain_names": [
+											"app.example.com"
+										]
+									}
+								},
+								{
+									"id": 41,
+									"created_on": "2026-11-17T09:12:00.000Z",
+									"modified_on": "2026-11-17T09:12:00.000Z",
+									"user_id": 1,
+									"object_type": "certificate",
+									"object_id": 5,
+									"action": "created",
+									"npmpro_api_token_id": 3,
+									"npmpro_api_token_name": "deploy-script",
+									"meta": {
+										"domain_names": [
+											"app.example.com"
+										],
+										"provider": "letsencrypt"
 									}
 								}
 							]
@@ -160,12 +168,13 @@
 			},
 			"headers": {
 				"X-Total-Count": {
-					"description": "Total number of entries matching the filter",
+					"description": "Number of entries that match the filters, over all pages",
 					"schema": {
 						"type": "integer"
 					}
 				}
 			}
 		}
-	}
+	},
+	"description": "Lists the audit log, newest first, one page at a time. `limit` and `offset` page it and `X-Total-Count` holds the number of entries that match the filters. `query` searches the entry's stored details (`meta`), for example a host name. Add `expand=user` to include the user who acted. For a change made with an API token, `npmpro_api_token_id` and `npmpro_api_token_name` name the token. A 400 means an invalid filter value.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

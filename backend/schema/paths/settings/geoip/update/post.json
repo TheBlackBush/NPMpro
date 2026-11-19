@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The result of the update",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -36,11 +36,12 @@
 						],
 						"properties": {
 							"ok": {
-								"type": "boolean"
+								"type": "boolean",
+								"description": "Whether the update succeeded"
 							},
 							"updated": {
 								"type": "array",
-								"description": "Editions whose database file was replaced (can be non-empty when ok is false)",
+								"description": "The editions whose database file was replaced; can be filled even when ok is false",
 								"items": {
 									"type": "string",
 									"enum": [
@@ -52,12 +53,13 @@
 							},
 							"error": {
 								"type": "string",
-								"description": "Reason when ok is false"
+								"description": "Why the update failed; only when ok is false"
 							}
 						}
 					}
 				}
 			}
 		}
-	}
+	},
+	"description": "Downloads the selected GeoLite2 databases from MaxMind now and waits for the result, which can take a while. A failure answers 200 with ok false and the reason in error; updated can still list editions that were replaced.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

@@ -1,12 +1,12 @@
 {
 	"operationId": "health",
-	"summary": "Returns the API health status",
+	"summary": "Check that NPMpro is running",
 	"tags": [
 		"public"
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "NPMpro is running: the health object",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -23,5 +23,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns `OK` with whether the first administrator exists (`setup`), whether password sign-in is on, the OIDC sign-in button and, while a database move runs, `maintenance`. The sign-in page and the web interface poll it. Both `/api` and `/api/` answer.\n\nNeeds: nothing (public)"
 }

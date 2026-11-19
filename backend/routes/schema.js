@@ -17,9 +17,12 @@ router
 	 * GET /schema
 	 */
 	.get(async (req, res) => {
-		const swaggerJSON = await getCompiledSchema();
-		swaggerJSON.info.version = PACKAGE.version;
-		swaggerJSON.servers[0].url = `${req.protocol}://${req.host}/api`;
+		const schema = await getCompiledSchema();
+		const swaggerJSON = {
+			...schema,
+			info: { ...schema.info, version: PACKAGE.version },
+			servers: [{ ...schema.servers[0], url: `${req.protocol}://${req.host}/api` }],
+		};
 		res.status(200)
 			.type("json")
 			.send(JSON.stringify(swaggerJSON, null, req.app.get("json spaces")));

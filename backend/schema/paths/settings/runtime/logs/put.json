@@ -1,7 +1,7 @@
 {
 	"operationId": "updateRuntimeLogsSettings",
 	"summary": "Update the log files settings",
-	"description": "Fields set by environment variables are ignored. The change is applied before it is saved: when applying fails, nothing is saved.",
+	"description": "Saves the log and GoAccess settings; send only what changes. Fields set by environment variables are ignored. tls_handshake_log can only be turned on while write_log_files is on, otherwise the answer is 400. Log file settings reload nginx; the GoAccess settings are stored and apply after a container restart. The change is applied before it is saved: when applying fails, nothing is saved.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"settings"
 	],
@@ -14,7 +14,7 @@
 		}
 	],
 	"requestBody": {
-		"description": "Settings payload",
+		"description": "The settings to change; fields you leave out keep their value",
 		"required": true,
 		"content": {
 			"application/json": {
@@ -80,23 +80,24 @@
 					}
 				},
 				"example": {
-					"write_log_files": false
+					"log_format": "json",
+					"log_rotations": 7
 				}
 			}
 		}
 	},
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The log files and GoAccess settings after the save, in the same form as the GET answer",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
 								"write_log_files": false,
-								"log_format": "classic",
+								"log_format": "json",
 								"tls_handshake_log": false,
-								"log_rotations": 3,
+								"log_rotations": 7,
 								"goaccess": false,
 								"goaccess_keep_days": 30,
 								"goaccess_anonymize": "1",

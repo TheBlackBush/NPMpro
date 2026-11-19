@@ -14,7 +14,7 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The log files and GoAccess settings as they are now",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -47,6 +47,45 @@
 								},
 								"restart_pending": []
 							}
+						},
+						"locked": {
+							"summary": "GOA set",
+							"value": {
+								"write_log_files": true,
+								"log_format": "classic",
+								"tls_handshake_log": false,
+								"log_rotations": 3,
+								"goaccess": true,
+								"goaccess_keep_days": 30,
+								"goaccess_anonymize": "1",
+								"goaccess_drop_query_strings": true,
+								"goaccess_real_os": true,
+								"goaccess_resolve_hosts": true,
+								"locked": [
+									"goaccess",
+									"write_log_files"
+								],
+								"locked_by": {
+									"goaccess": "GOA",
+									"write_log_files": "GOA"
+								},
+								"locked_reason": {
+									"write_log_files": "goaccess"
+								},
+								"applies": {
+									"write_log_files": "reload",
+									"log_format": "reload",
+									"tls_handshake_log": "reload",
+									"log_rotations": "immediately",
+									"goaccess": "restart",
+									"goaccess_keep_days": "restart",
+									"goaccess_anonymize": "restart",
+									"goaccess_drop_query_strings": "restart",
+									"goaccess_real_os": "restart",
+									"goaccess_resolve_hosts": "restart"
+								},
+								"restart_pending": []
+							}
 						}
 					},
 					"schema": {
@@ -55,5 +94,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Returns the log file settings (log files, format, TLS handshake log, rotations) and the GoAccess report settings. write_log_files is locked on while GoAccess or CrowdSec is on. restart_pending lists the GoAccess settings saved but not yet running.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

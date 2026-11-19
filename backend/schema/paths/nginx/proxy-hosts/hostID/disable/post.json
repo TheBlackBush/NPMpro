@@ -1,6 +1,6 @@
 {
 	"operationId": "disableProxyHost",
-	"summary": "Disable a Proxy Host",
+	"summary": "Disable a proxy host",
 	"tags": [
 		"proxy-hosts"
 	],
@@ -16,7 +16,7 @@
 		{
 			"in": "path",
 			"name": "hostID",
-			"description": "The ID of the Proxy Host",
+			"description": "ID of the proxy host, as the list shows it",
 			"schema": {
 				"type": "integer",
 				"minimum": 1
@@ -27,32 +27,31 @@
 	],
 	"responses": {
 		"200": {
-			"description": "200 response",
+			"description": "The proxy host after it was disabled",
 			"content": {
 				"application/json": {
 					"examples": {
 						"default": {
 							"value": {
-								"id": 3,
-								"created_on": "2025-10-30T01:12:05.000Z",
-								"modified_on": "2025-10-30T01:17:06.000Z",
+								"id": 12,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T10:15:00.000Z",
 								"owner_user_id": 1,
 								"domain_names": [
-									"test.example.com"
+									"app.example.com"
 								],
-								"forward_host": "127.0.0.1",
+								"forward_host": "192.168.1.20",
 								"forward_port": 8080,
-								"npmpro_access_list_ids": [],
-								"npmpro_access_list_type": "public",
-								"certificate_id": 0,
-								"ssl_forced": false,
+								"npmpro_access_list_type": "custom",
+								"certificate_id": 5,
+								"ssl_forced": true,
 								"npmpro_noindex": false,
 								"npmpro_crowdsec_appsec": false,
 								"npmpro_proxy_request_buffering": false,
 								"npmpro_proxy_response_buffering": false,
 								"npmpro_upstream_compression": false,
 								"npmpro_fancyindex": false,
-								"npmpro_x_frame_options": "DENY",
+								"npmpro_x_frame_options": "SAMEORIGIN",
 								"npmpro_auth_request": "none",
 								"npmpro_auth_request_upstream": "",
 								"advanced_config": "",
@@ -60,21 +59,35 @@
 								"npmpro_nginx_online": true,
 								"npmpro_nginx_err": "",
 								"npmpro_directory": "",
-								"npmpro_tags": [],
-								"npmpro_description": "",
+								"npmpro_tags": [
+									"Production"
+								],
+								"npmpro_description": "Internal app",
 								"npmpro_mtls_certificate_id": 0,
 								"npmpro_mtls_verify_client_optional": false,
 								"npmpro_mtls_bypass_auth_request": false,
-								"npmpro_http3_support": false,
+								"npmpro_http3_support": true,
 								"forward_scheme": "http",
 								"enabled": false,
 								"locations": [],
-								"hsts_enabled": false,
+								"hsts_enabled": true,
 								"hsts_subdomains": false,
 								"npmpro_maintenance": false,
 								"npmpro_page_not_found": "upstream",
 								"npmpro_page_upstream": "global",
-								"npmpro_page_maintenance": "global"
+								"npmpro_page_maintenance": "global",
+								"access_lists": [
+									{
+										"id": 3,
+										"created_on": "2026-11-17T09:30:00.000Z",
+										"modified_on": "2026-11-17T09:30:00.000Z",
+										"owner_user_id": 1,
+										"name": "Office only",
+										"satisfy_any": false,
+										"pass_auth": false,
+										"npmpro_denied_page": "global"
+									}
+								]
 							}
 						}
 					},
@@ -85,7 +98,7 @@
 			}
 		},
 		"400": {
-			"description": "400 response",
+			"description": "The proxy host is already disabled",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -104,5 +117,6 @@
 				}
 			}
 		}
-	}
+	},
+	"description": "Turns a proxy host off: removes its nginx config and reloads nginx, keeping the proxy host stored. It is refused with a 400 when the proxy host is already disabled.\n\nNeeds: Proxy Hosts manage"
 }

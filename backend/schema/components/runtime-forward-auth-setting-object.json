@@ -1,6 +1,6 @@
 {
 	"type": "object",
-	"description": "Effective forward authentication runtime settings",
+	"description": "The effective forward authentication settings: each value, the fields an environment variable sets, and when a change takes effect",
 	"additionalProperties": false,
 	"required": [
 		"anubis_upstream",
@@ -65,46 +65,53 @@
 					"anubis_custom_images"
 				]
 			},
-			"description": "Fields set by environment variables (read only)"
+			"description": "Fields that cannot be changed because an environment variable sets them, or forces them (see locked_by and locked_reason). A save ignores them (read only)"
 		},
 		"locked_by": {
 			"type": "object",
-			"description": "The environment variable that sets each locked field (read only)",
+			"description": "For each locked field, the environment variable that sets it. A field locked by its own variable names that variable; a field another setting forces names the variable of that setting (read only)",
 			"additionalProperties": false,
 			"properties": {
 				"anubis_upstream": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the anubis upstream: AUTH_REQUEST_ANUBIS_UPSTREAM"
 				},
 				"tinyauth_upstream": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the tinyauth upstream: AUTH_REQUEST_TINYAUTH_UPSTREAM"
 				},
 				"oauth2proxy_upstream": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the oauth2proxy upstream: AUTH_REQUEST_OAUTH2PROXY_UPSTREAM"
 				},
 				"voidauth_upstream": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the voidauth upstream: AUTH_REQUEST_VOIDAUTH_UPSTREAM"
 				},
 				"authelia_upstream": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the authelia upstream: AUTH_REQUEST_AUTHELIA_UPSTREAM"
 				},
 				"authentik_upstream": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the authentik upstream: AUTH_REQUEST_AUTHENTIK_UPSTREAM"
 				},
 				"anubis_custom_images": {
 					"type": "string",
-					"pattern": "^[A-Z][A-Z0-9_]*$"
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the anubis custom images: AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES"
 				}
 			}
 		},
 		"locked_reason": {
 			"type": "object",
-			"description": "Fields locked by the environment variable of another setting (an indirect lock), with the reason: key-size (the key type follows ACME_KEY_SIZE), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns OCSP stapling off), must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess reads the log files). Fields locked by their own variable are not listed.",
+			"description": "Always empty: no field of this section is locked by the variable of another setting",
 			"additionalProperties": false,
 			"properties": {}
 		},
@@ -128,7 +135,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the anubis upstream takes effect: on save, with an nginx reload"
 				},
 				"tinyauth_upstream": {
 					"type": "string",
@@ -136,7 +144,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the tinyauth upstream takes effect: on save, with an nginx reload"
 				},
 				"oauth2proxy_upstream": {
 					"type": "string",
@@ -144,7 +153,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the oauth2proxy upstream takes effect: on save, with an nginx reload"
 				},
 				"voidauth_upstream": {
 					"type": "string",
@@ -152,7 +162,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the voidauth upstream takes effect: on save, with an nginx reload"
 				},
 				"authelia_upstream": {
 					"type": "string",
@@ -160,7 +171,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the authelia upstream takes effect: on save, with an nginx reload"
 				},
 				"authentik_upstream": {
 					"type": "string",
@@ -168,7 +180,8 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the authentik upstream takes effect: on save, with an nginx reload"
 				},
 				"anubis_custom_images": {
 					"type": "string",
@@ -176,13 +189,14 @@
 						"next-certificate",
 						"reload",
 						"immediately"
-					]
+					],
+					"description": "When a change of the anubis custom images takes effect: on save, with an nginx reload"
 				}
 			}
 		},
 		"restart_pending": {
 			"type": "array",
-			"description": "Settings that apply after a container restart (applies restart) saved with another value than the container runs with: restart the container to apply them",
+			"description": "Always empty: every forward authentication setting applies without a container restart",
 			"items": {
 				"type": "string"
 			},

@@ -21,23 +21,30 @@
 				],
 				"properties": {
 					"table": {
-						"type": "string"
+						"type": "string",
+						"description": "The table of the row that holds the reference."
 					},
 					"id": {
 						"type": [
 							"integer",
 							"string",
 							"null"
-						]
+						],
+						"description": "The id of that row; null for a link row."
 					},
 					"column": {
 						"type": "string",
 						"description": "* when a link row is removed"
 					},
-					"from": {},
-					"to": {},
+					"from": {
+						"description": "The value in the backup."
+					},
+					"to": {
+						"description": "What it becomes: null when the link is cleared, or the restoring administrator's id for an owner."
+					},
 					"label": {
-						"type": "string"
+						"type": "string",
+						"description": "The row that holds the reference, as it is called in lists."
 					}
 				}
 			}
@@ -55,13 +62,16 @@
 				],
 				"properties": {
 					"id": {
-						"type": "integer"
+						"type": "integer",
+						"description": "The user's id in the backup."
 					},
 					"email": {
-						"type": "string"
+						"type": "string",
+						"description": "The user's email."
 					},
 					"name": {
-						"type": "string"
+						"type": "string",
+						"description": "The user's name."
 					}
 				}
 			}
@@ -73,5 +83,25 @@
 				"type": "string"
 			}
 		}
+	},
+	"example": {
+		"references": [
+			{
+				"table": "proxy_host",
+				"id": 12,
+				"column": "certificate_id",
+				"from": 5,
+				"to": null,
+				"label": "app.example.com"
+			}
+		],
+		"skippedUsers": [
+			{
+				"id": 1,
+				"email": "admin@example.com",
+				"name": "Jane Doe"
+			}
+		],
+		"missingSecrets": []
 	}
 }
