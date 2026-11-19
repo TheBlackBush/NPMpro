@@ -41,13 +41,14 @@ function CodeBox({ text, wrap = "words", copiedMessage, copyProps, className, ..
 					// biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region needs the focus for keyboard scrolling
 					tabIndex={0}
 					ref={pre}
+					data-code-box=""
 					{...preProps}
 					className={classes.pre}
 				>
 					{text}
 				</pre>
 			) : (
-				<pre ref={pre} {...preProps} className={classes.pre}>
+				<pre ref={pre} data-code-box="" {...preProps} className={classes.pre}>
 					{codeWords(text).map((piece) => (
 						<span key={piece.key} className={classes.piece[piece.kind] || undefined}>
 							{piece.text}

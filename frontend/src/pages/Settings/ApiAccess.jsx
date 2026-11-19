@@ -1,10 +1,11 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { ExternalLink } from "lucide-react";
+import { BookOpen, ExternalLink } from "lucide-react";
 import { useMemo, useState } from "react";
 import { revokeApiToken } from "src/api/backend";
 import { ErrorAlert, Loading } from "src/components";
 import { TokenBadges, TokenCreated, TokenExpiry, TokenLastUsed, TokenPermissions } from "src/components/ApiTokenCells";
-import { SettingLine, SettingLineNote } from "src/components/Form/SettingLine";
+import { CodeBox } from "src/components/CodeBox";
+import { SettingLine } from "src/components/Form/SettingLine";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { PagedTable } from "src/components/Table/TablePagination";
 import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
@@ -12,7 +13,7 @@ import { Button } from "src/components/ui/button";
 import { useAllApiTokens, usePaging } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
-import { tokenMarks } from "src/modules/ApiTokens";
+import { authHeader, tokenMarks } from "src/modules/ApiTokens";
 import { showSuccess } from "src/notifications";
 import { McpCard } from "./McpCard";
 import { SettingsCard } from "./SettingsCard";
@@ -173,20 +174,31 @@ function DocsCard() {
 	return (
 		<SettingsCard title={<T id="settings.api-access.docs" />} lines>
 			<SettingLine
-				id="api-access-docs"
-				title={<T id="settings.api-access.docs.openapi" />}
+				id="api-access-reference"
+				title={<T id="api-tokens.reference" />}
+				hint={<T id="settings.api-access.docs.reference.hint" />}
+				controlClassName="@lg:w-auto"
 				control={
 					<Button asChild variant="outline" size="sm">
 						<a href="/api-reference" target="_blank" rel="noopener noreferrer">
-							<T id="api-tokens.docs" />
+							<BookOpen aria-hidden="true" />
+							<T id="settings.api-access.docs.open" />
 							<ExternalLink aria-hidden="true" />
+							<span className="sr-only">
+								{" "}
+								<T id="api-tokens.new-tab" />
+							</span>
 						</a>
 					</Button>
 				}
 			/>
-			<SettingLineNote className="text-muted-foreground text-sm">
-				<T id="api-tokens.docs.note" /> <code className="font-mono">Authorization: Bearer YOUR_TOKEN</code>
-			</SettingLineNote>
+			<SettingLine
+				id="api-access-header"
+				layout="block"
+				title={<T id="settings.api-access.docs.header" />}
+				hint={<T id="settings.api-access.docs.header.hint" />}
+				control={<CodeBox text={authHeader()} />}
+			/>
 		</SettingsCard>
 	);
 }
