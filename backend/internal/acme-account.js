@@ -1,5 +1,6 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import dayjs from "dayjs";
 import { dispatcherFor, readAcmeDirectory } from "../lib/acme-directory.js";
 import {
 	acmeEnvSet,
@@ -12,10 +13,16 @@ import {
 import { runCertbot } from "../lib/certbot.js";
 import {
 	accountConfigText,
+	accountDirsOf,
 	accountExists,
 	listAccountIds,
+	listRenewalConfs,
 	registerArgs,
+	serverFolders,
+	serverOfFolder,
+	setRenewalParams,
 	updateEmailArgs,
+	writeFileAtomic,
 } from "../lib/certbot-account.js";
 import { CERTBOT_INI, CERTBOT_INI_BASE } from "../lib/certbot-ini.js";
 import errs from "../lib/error.js";
@@ -36,6 +43,7 @@ const RUN_TIMEOUT = 60_000;
 const ZEROSSL_TIMEOUT = 10_000;
 const MAX_MESSAGE = 2000;
 const RUN_DIR = rooted("/tmp");
+const RUN_PREFIX = "acme-register-";
 const ZEROSSL_EAB_URL = "https://api.zerossl.com/acme/eab-credentials-email";
 
 const locks = new Map();
@@ -191,7 +199,7 @@ const zeroSslEab = async (email) => {
  */
 const inRunFolder = async (fn) => {
 	await mkdir(RUN_DIR, { recursive: true });
-	const run = await mkdtemp(path.join(RUN_DIR, "acme-register-"));
+	const run = await mkdtemp(path.join(RUN_DIR, RUN_PREFIX));
 	try {
 		return await fn(run);
 	} finally {
@@ -365,6 +373,99 @@ const updateEmailLocked = async (server, email, { access = null } = {}) => {
 const updateEmail = (server, email, options) =>
 	withAccountLock(server, () => updateEmailLocked(server, email, options));
 
+const sqlTime = (ms) => dayjs(ms).format("YYYY-MM-DD HH:mm:ss");
+
+/** The servers the rows, files and settings name: the instance CA, every row, every conf's server, every account folder */
+const knownServers = (rows, confs, folders) => {
+	const servers = new Set([
+		instanceServer(),
+		...rows.map((row) => row.server),
+		...confs.map((conf) => conf.server).filter(Boolean),
+	]);
+	const covered = new Set([...servers].flatMap((server) => accountDirsOf(server, "")));
+	for (const rel of folders) if (!covered.has(rel)) servers.add(serverOfFolder(rel));
+	return servers;
+};
+
+/**
+ * At the start only (nothing runs yet): removes the per-run folders a crash left in the run folder, since they may
+ * hold the email or the EAB pair
+ */
+const sweepRunFolders = async () => {
+	let entries;
+	try {
+		entries = await readdir(RUN_DIR, { withFileTypes: true });
+	} catch (err) {
+		if (err.code === "ENOENT") return;
+		throw err;
+	}
+	for (const entry of entries) {
+		if (entry.isDirectory() && entry.name.startsWith(RUN_PREFIX)) {
+			await rm(path.join(RUN_DIR, entry.name), { recursive: true, force: true });
+		}
+	}
+};
+
+/**
+ * The start (and a restore or merge): a row for an account folder whose CA has no registered row (the account most
+ * confs of the CA name, then the oldest; the email is ACME_EMAIL for the instance CA, else not recorded), registered
+ * rows whose folder is gone back to pending, confs naming a missing account pointed at their CA's registered account.
+ * File checks only: no network, no certbot.
+ */
+const syncAccountsWithFiles = async () => {
+	const confs = await listRenewalConfs();
+	const instance = instanceServer();
+	for (const server of knownServers(await acmeAccountModel.query(), confs, await serverFolders())) {
+		const row = await accountRow(server);
+		const accounts = await listAccountIds(server);
+		if (row?.state !== "registered" && accounts.length > 0) {
+			const named = (id) => confs.filter((conf) => conf.server === server && conf.account === id).length;
+			// a stable sort keeps the oldest first among accounts named equally often
+			const chosen = accounts.toSorted((a, b) => named(b.id) - named(a.id))[0];
+			const email =
+				row?.email ??
+				(server === instance && acmeEnvSet(process.env).has("ACME_EMAIL") ? process.env.ACME_EMAIL : null);
+			await upsertRow(server, row, {
+				email,
+				account_id: chosen.id,
+				state: "registered",
+				error: null,
+				registered_on: chosen.created === null ? now() : sqlTime(chosen.created),
+			});
+			logger.info(`Adopted the ACME account ${chosen.id} of ${server}`);
+		} else if (row?.state === "registered" && !accounts.some((entry) => entry.id === row.account_id)) {
+			await acmeAccountModel.query().patchAndFetchById(row.id, {
+				state: "pending",
+				account_id: null,
+				error: "The account files are missing: it registers again at the next certificate request",
+			});
+			logger.warn(`The ACME account files of ${server} are missing, it registers again when needed`);
+		}
+	}
+	for (const conf of confs) {
+		if (!conf.server || (await accountExists(conf.server, conf.account))) continue;
+		const row = await accountRow(conf.server);
+		if (row?.state === "registered" && (await accountExists(conf.server, row.account_id))) {
+			await writeFileAtomic(conf.path, setRenewalParams(conf.text, { account: row.account_id }));
+		}
+	}
+};
+
+/** In the background after the start: the instance account's contact follows a set ACME_EMAIL */
+const syncEnvEmail = async () => {
+	if (!acmeEnvSet(process.env).has("ACME_EMAIL")) return;
+	const server = instanceServer();
+	const row = await accountRow(server);
+	if (row?.state !== "registered" || row.email === process.env.ACME_EMAIL) return;
+	try {
+		await updateEmail(server, process.env.ACME_EMAIL);
+		logger.info(`The email of the ACME account of ${server} now follows ACME_EMAIL`);
+	} catch (err) {
+		await acmeAccountModel.query().patchAndFetchById(row.id, { error: err.message });
+		logger.warn(`Could not set the email of the ACME account of ${server} from ACME_EMAIL: ${err.message}`);
+	}
+};
+
 export {
 	accountRow,
 	accountView,
@@ -384,6 +485,9 @@ export {
 	scrub,
 	seal,
 	storeRegistered,
+	sweepRunFolders,
+	syncAccountsWithFiles,
+	syncEnvEmail,
 	updateEmail,
 	updateEmailLocked,
 	upsertRow,
