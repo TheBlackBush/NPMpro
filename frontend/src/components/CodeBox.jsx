@@ -19,7 +19,7 @@ import { showSuccess } from "src/notifications";
  * @param {string} [props.copiedMessage]  the toast, "Copied" by default
  * @param {Object} [props.copyProps]      more props of the copy button (a data attribute for the focus)
  * @param {string} [props.className]      of the box
- * A scroll box is a focusable region: give it an aria-label (the name of its line) through the remaining props.
+ * A scroll box takes the focus: give it an aria-label (the name of its line) through the remaining props.
  */
 function CodeBox({ text, wrap = "words", copiedMessage, copyProps, className, ...preProps }) {
 	const pre = useRef(null);
@@ -40,7 +40,6 @@ function CodeBox({ text, wrap = "words", copiedMessage, copyProps, className, ..
 				<pre
 					// biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region needs the focus for keyboard scrolling
 					tabIndex={0}
-					role="region"
 					ref={pre}
 					{...preProps}
 					className={classes.pre}
