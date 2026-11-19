@@ -39,7 +39,9 @@ function Owner({ owner }) {
 	if (!owner) return <span className="text-muted-foreground">{label("user.deleted")}</span>;
 	return (
 		<div className="min-w-0">
-			<div className="whitespace-nowrap">{owner.name}</div>
+			<div className="max-w-64 truncate" title={owner.name}>
+				{owner.name}
+			</div>
 			<div className="max-w-64 truncate text-muted-foreground text-sm" title={owner.email}>
 				{owner.email}
 			</div>
