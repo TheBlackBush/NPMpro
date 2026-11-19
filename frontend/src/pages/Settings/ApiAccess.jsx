@@ -2,7 +2,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { ExternalLink } from "lucide-react";
 import { useMemo, useState } from "react";
 import { revokeApiToken } from "src/api/backend";
-import { Button as AppButton, ErrorAlert, Loading } from "src/components";
+import { ErrorAlert, Loading } from "src/components";
 import { TokenBadges, TokenCreated, TokenExpiry, TokenLastUsed, TokenPermissions } from "src/components/ApiTokenCells";
 import { SettingLine, SettingLineNote } from "src/components/Form/SettingLine";
 import { TableLayout } from "src/components/Table/TableLayout";
@@ -12,6 +12,7 @@ import { Button } from "src/components/ui/button";
 import { useAllApiTokens, usePaging } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
+import { tokenMarks } from "src/modules/ApiTokens";
 import { showSuccess } from "src/notifications";
 import { McpCard } from "./McpCard";
 import { SettingsCard } from "./SettingsCard";
@@ -38,8 +39,10 @@ function Owner({ owner }) {
 	if (!owner) return <span className="text-muted-foreground">{label("user.deleted")}</span>;
 	return (
 		<div className="min-w-0">
-			<div className="break-words">{owner.name}</div>
-			<div className="break-all text-muted-foreground text-sm">{owner.email}</div>
+			<div className="whitespace-nowrap">{owner.name}</div>
+			<div className="max-w-64 truncate text-muted-foreground text-sm" title={owner.email}>
+				{owner.email}
+			</div>
 		</div>
 	);
 }
@@ -55,9 +58,13 @@ function TokensTable({ data }) {
 				meta: { mobile: "title" },
 				header: label("api-tokens.name"),
 				cell: (info) => (
-					<div className="flex flex-wrap items-center gap-2">
+					<div className="flex min-w-0 flex-col gap-1.5">
 						<span className="break-words font-medium">{info.getValue()}</span>
-						<TokenBadges token={info.row.original} now={now} />
+						{tokenMarks(info.row.original, now).length > 0 ? (
+							<div className="flex flex-wrap gap-1.5">
+								<TokenBadges token={info.row.original} now={now} />
+							</div>
+						) : null}
 					</div>
 				),
 			}),
@@ -70,7 +77,7 @@ function TokensTable({ data }) {
 			columnHelper.display({
 				id: "permissions",
 				header: label("api-tokens.permissions"),
-				cell: (info) => <TokenPermissions token={info.row.original} />,
+				cell: (info) => <TokenPermissions token={info.row.original} visibility />,
 			}),
 			columnHelper.accessor((row) => row.expiresOn ?? "", {
 				id: "expires",
@@ -92,6 +99,7 @@ function TokensTable({ data }) {
 			}),
 			columnHelper.accessor((row) => row.createdOn ?? "", {
 				id: "created",
+				meta: { mobile: "hide" },
 				header: label("api-tokens.created"),
 				cell: (info) => (
 					<span className="whitespace-nowrap">
@@ -103,13 +111,14 @@ function TokensTable({ data }) {
 				id: "actions",
 				meta: { mobile: "title-end", className: "text-right whitespace-nowrap" },
 				cell: (info) => (
-					<AppButton
+					<Button
+						variant="destructive-outline"
 						size="sm"
 						aria-label={label("api-tokens.revoke-name", { name: info.row.original.name })}
 						onClick={() => revoke(info.row.original)}
 					>
 						<T id="api-tokens.revoke" />
-					</AppButton>
+					</Button>
 				),
 			}),
 		];

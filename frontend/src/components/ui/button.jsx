@@ -20,6 +20,10 @@ const buttonVariants = cva(
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        // NPMpro: a destructive action that is not the main one (Revoke in a list): an outline button in the
+        // destructive colour; the light text is darkened like StatusBadge's destructive tone for 4.5:1 on the page
+        "destructive-outline":
+          "border-destructive/40 bg-background text-[color-mix(in_oklab,var(--destructive)_75%,black)] hover:bg-destructive/10 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:border-destructive/50 dark:bg-input/30 dark:text-destructive dark:hover:bg-destructive/20",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
