@@ -1,7 +1,14 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { dispatcherFor, readAcmeDirectory } from "../lib/acme-directory.js";
-import { acmeEnvSet, isTrustedServer, isZeroSsl, resolveAcmeServer, setStoredAcmeServer } from "../lib/acme-server.js";
+import {
+	acmeEnvSet,
+	isTrustedServer,
+	isZeroSsl,
+	resolveAcmeServer,
+	serverKey,
+	setStoredAcmeServer,
+} from "../lib/acme-server.js";
 import { runCertbot } from "../lib/certbot.js";
 import {
 	accountConfigText,
@@ -41,11 +48,12 @@ const locks = new Map();
  * @returns {Promise}   fn's result
  */
 const withAccountLock = (server, fn) => {
-	const run = (locks.get(server) ?? Promise.resolve()).then(fn);
+	const key = serverKey(server);
+	const run = (locks.get(key) ?? Promise.resolve()).then(fn);
 	const tail = run.catch(() => {});
-	locks.set(server, tail);
+	locks.set(key, tail);
 	tail.then(() => {
-		if (locks.get(server) === tail) locks.delete(server);
+		if (locks.get(key) === tail) locks.delete(key);
 	});
 	return run;
 };
@@ -97,10 +105,26 @@ const open = (sealed) => {
 	}
 };
 
-/** A CA's or certbot's message without the given secrets (the email, the EAB pair), at most 2000 characters */
+const hideAll = (text, secret) => {
+	const needle = secret.toLowerCase();
+	let out = "";
+	let from = 0;
+	for (let at = text.toLowerCase().indexOf(needle); at !== -1; at = text.toLowerCase().indexOf(needle, from)) {
+		out += `${text.slice(from, at)}[hidden]`;
+		from = at + needle.length;
+	}
+	return out + text.slice(from);
+};
+
+/**
+ * A CA's or certbot's message without the given secrets (the email, the EAB pair), in any letter case and also in
+ * their URL-encoded form, at most 2000 characters
+ */
 const scrub = (message, secrets) => {
 	let text = String(message ?? "").slice(0, MAX_MESSAGE);
-	for (const secret of secrets.filter(Boolean)) text = text.replaceAll(secret, "[hidden]");
+	for (const secret of secrets.filter(Boolean)) {
+		for (const form of new Set([secret, encodeURIComponent(secret)])) text = hideAll(text, form);
+	}
 	return text.trim() || "certbot failed without a message";
 };
 

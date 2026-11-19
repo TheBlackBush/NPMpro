@@ -10,6 +10,7 @@ import {
 	presetOf,
 	requestOptionsFor,
 	resolveAcmeServer,
+	serverKey,
 	setStoredAcmeServer,
 	storedAcmeServer,
 	ZEROSSL_SERVER,
@@ -105,4 +106,11 @@ it("lets the runtime defaults follow the stored CA (D8)", () => {
 	({ values } = mergeRuntimeConfig("certificates", {}, env));
 	assert.equal(values.must_staple, false);
 	assert.equal(values.profile, "shortlived");
+});
+
+it("gives the spellings of one CA URL one key", () => {
+	assert.equal(serverKey("HTTPS://Acme.Test/directory/"), "https://acme.test/directory");
+	assert.equal(serverKey("https://acme.test:443/directory"), "https://acme.test/directory");
+	assert.notEqual(serverKey("https://acme.test/a"), serverKey("https://acme.test/b"));
+	assert.equal(serverKey("not a url"), "not a url");
 });

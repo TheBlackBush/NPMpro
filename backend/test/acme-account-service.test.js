@@ -20,7 +20,17 @@ const containsAny = (text, values) => values.some((value) => text.includes(value
 const readFake = (name) => readFile(path.join(api.root, "fake", name), "utf8");
 const FAKE_FILES = [".ini", ".fail", ".mode"];
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const registerCalls = async () => (await normalizedCalls(api)).filter((line) => line.includes(" register "));
+
+const waitForRegisterCalls = async (count) => {
+	for (let tries = 0; tries < 100; tries += 1) {
+		if ((await registerCalls()).length >= count) return;
+		await sleep(50);
+	}
+	throw new Error("certbot register was not called");
+};
 
 before(async () => {
 	api = await startApi({ env: { ACME_SERVER: CA, NPMPRO_TEST_OUTBOUND: "mock" } });
@@ -152,7 +162,7 @@ it("seals the EAB pair, never returns it and drops it after a registration", asy
 	assert.ok(!containsAny((await normalizedCalls(api)).join("\n"), ["hmac-secret-2", "kid-2"]));
 });
 
-it("keeps the EAB pair out of the audit log, the stored error and the certbot debug folder", async () => {
+it("keeps the EAB pair and the email out of the audit log, the stored error and every log line", async () => {
 	acmeDirectory(api, LAN, { body: EAB_REQUIRED, persist: false });
 	await writeFile(path.join(api.root, "fake/register.fail"), "bad key kid-3 hmac-secret-3 for ops@example.com");
 	await model.query().insert({
@@ -162,12 +172,66 @@ it("keeps the EAB pair out of the audit log, the stored error and the certbot de
 		eab_kid: service.seal("kid-3"),
 		eab_hmac_key: service.seal("hmac-secret-3"),
 	});
-	await assert.rejects(service.ensureAccount(LAN), (err) => err.message_i18n === "error.acme-refused");
+	// the backend logs through console.log, which startApi silences: capture it for this call
+	const silenced = console.log;
+	const logged = [];
+	console.log = (...args) => logged.push(args.map(String).join(" "));
+	try {
+		await assert.rejects(service.ensureAccount(LAN), (err) => err.message_i18n === "error.acme-refused");
+	} finally {
+		console.log = silenced;
+	}
+	// the capture works: the debug line of the certbot call is there, without the secrets
+	assert.ok(logged.some((line) => line.includes("CMD: certbot")));
+	assert.ok(!containsAny(logged.join("\n"), ["kid-3", "hmac-secret-3", "ops@example.com"]));
 	const row = await model.query().where("server", LAN).first();
 	const everything = JSON.stringify([row.error, await api.db("audit_log")]);
 	assert.ok(!containsAny(everything, ["kid-3", "hmac-secret-3", "ops@example.com"]));
 	assert.ok(row.error.includes("[hidden]"));
 	assert.deepEqual(await readdir(path.join(api.root, "tmp")), []);
+});
+
+it("hides the email in any letter case and URL-encoded", () => {
+	const text = "bad Ops@Example.COM, ops%40example.com and OPS%40EXAMPLE.COM, key K-1";
+	const out = service.scrub(text, ["ops@example.com", "k-1", ""]);
+	assert.equal(out, "bad [hidden], [hidden] and [hidden], key [hidden]");
+	assert.equal(service.scrub("", ["a"]), "certbot failed without a message");
+});
+
+it("shares one lock between the spellings of a CA URL", async () => {
+	acmeDirectory(api, CA);
+	const other = "https://ACME.test/directory";
+	await writeFile(path.join(api.root, "fake/hold"), CA);
+	try {
+		const first = service.ensureAccount(CA);
+		await waitForRegisterCalls(1);
+		const second = service.ensureAccount(other);
+		await sleep(300);
+		assert.equal((await registerCalls()).length, 1);
+		await rm(path.join(api.root, "fake/hold"));
+		await Promise.all([first, second]);
+	} finally {
+		await rm(path.join(api.root, "fake/hold"), { force: true });
+	}
+	assert.equal((await registerCalls()).length, 2);
+});
+
+it("does not hold a registration of one CA behind a slow registration of another", async () => {
+	acmeDirectory(api, CA);
+	acmeDirectory(api, LAN, { persist: false });
+	await writeFile(path.join(api.root, "fake/hold"), CA);
+	try {
+		const slow = service.ensureAccount(CA);
+		await waitForRegisterCalls(1);
+		const id = await service.ensureAccount(LAN);
+		assert.equal(typeof id, "string");
+		assert.equal((await model.query().where("server", CA).first())?.state, undefined);
+		await rm(path.join(api.root, "fake/hold"));
+		await slow;
+	} finally {
+		await rm(path.join(api.root, "fake/hold"), { force: true });
+	}
+	assert.equal((await model.query().where("server", CA).first()).state, "registered");
 });
 
 it("refuses a CA that needs EAB without a pair, and stores the failure for a lazy registration", async () => {

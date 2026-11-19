@@ -21,6 +21,7 @@ const STAPLING_SERVERS = new Set([GOOGLE_SERVER, ZEROSSL_SERVER]);
 const DIRECTORY_URL = /^https:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?(?:\/[A-Za-z0-9._~/-]*)?$/u;
 const MAX_URL_LENGTH = 255;
 const WHITESPACE = /\s+/u;
+const TRAILING_SLASHES = /\/+$/u;
 const ACME_ENV_NAMES = ["ACME_SERVER", "ACME_EMAIL", "ACME_EAB_KID", "ACME_EAB_HMAC_KEY", "ACME_PROFILE"];
 
 /**
@@ -89,6 +90,19 @@ const isZeroSsl = (server) => {
 	}
 };
 
+/**
+ * @returns {string}  one key for the spellings of a CA URL (scheme and host in lower case, no trailing slash): what
+ *          the per-CA lock is keyed on
+ */
+const serverKey = (server) => {
+	try {
+		const url = new URL(server);
+		return `${url.protocol}//${url.host}${url.pathname.replace(TRAILING_SLASHES, "")}${url.search}`;
+	} catch {
+		return String(server);
+	}
+};
+
 /** @returns {string|null}  the preset id of a directory URL */
 const presetOf = (server) => ACME_PRESETS.find((preset) => preset.server === server)?.id ?? null;
 
@@ -119,6 +133,7 @@ export {
 	requestOptionsFor,
 	resolveAcmeServer,
 	STAPLING_SERVERS,
+	serverKey,
 	setStoredAcmeServer,
 	storedAcmeServer,
 	ZEROSSL_SERVER,

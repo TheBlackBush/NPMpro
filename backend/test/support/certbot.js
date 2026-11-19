@@ -152,6 +152,7 @@ case "$action" in
 	register|update_account)
 		n=$(( $(ls "$root/fake" | grep -c "^$action-.*[.]ini$") + 1 ))
 		cp "$config" "$root/fake/$action-$n.ini"
+		while [ -f "$root/fake/hold" ] && [ "$server" = "$(cat "$root/fake/hold")" ]; do sleep 0.1; done
 		stat -c '%a' "$config" "$(dirname "$config")" > "$root/fake/$action-$n.mode"
 		fail "$action"
 		[ "$action" = update_account ] && exit 0
