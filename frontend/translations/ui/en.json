@@ -23,6 +23,8 @@
 	"access-list.username.invalid": "Up to 255 characters, without : or control characters",
 	"access-lists": "Access Lists",
 	"access-lists.count": "{count} {count, plural, one {Access List} other {Access Lists}}",
+	"account.profile": "Profile",
+	"account.sign-in": "Sign-in",
 	"action.add": "Add",
 	"action.add-location": "Add Location",
 	"action.allow": "Allow",
