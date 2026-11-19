@@ -47,19 +47,22 @@ const firstLine = (error) =>
 const failed = [];
 let browser;
 let admin;
+let remote = null;
 try {
 	try {
-		if (engine === "webkit" && webkitWs) browser = await webkit.connect(webkitWs);
-		else
-			browser = cdp
-				? await chromium.connectOverCDP(cdp)
-				: await (engine === "webkit" ? webkit : chromium).launch();
+		if (engine === "webkit" && webkitWs) {
+			remote = "FLOWS_WEBKIT_WS";
+			browser = await webkit.connect(webkitWs);
+		} else if (cdp) {
+			remote = "FLOWS_CDP";
+			browser = await chromium.connectOverCDP(cdp);
+		} else {
+			browser = await (engine === "webkit" ? webkit : chromium).launch();
+		}
 	} catch (error) {
-		// with a remote URL the error holds the browser URL and its token, so it is not passed on as the cause
-		const remote = engine === "webkit" ? webkitWs : cdp;
-		const name = engine === "webkit" ? "FLOWS_WEBKIT_WS" : "FLOWS_CDP";
+		// a remote connect error holds the browser URL and its token, so it is not passed on as the cause
 		// biome-ignore lint/style/useErrorCause: the token stays out of the log
-		throw new Error(`the browser did not start: ${remote ? `${name} did not connect` : firstLine(error)}`, {
+		throw new Error(`the browser did not start: ${remote ? `${remote} did not connect` : firstLine(error)}`, {
 			cause: remote ? undefined : error,
 		});
 	}

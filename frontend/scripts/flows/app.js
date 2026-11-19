@@ -451,6 +451,7 @@ async function titleHasFocus(page) {
 
 async function openApiTokens(page) {
 	// leaving a page with a request in flight shows as a page error in WebKit
+	// biome-ignore lint/suspicious/noPlaywrightNetworkidle: a request still in flight is aborted by the navigation
 	await page.waitForLoadState("networkidle");
 	await page.goto("/");
 	await page.locator("header").getByRole("button", { name: "Open user menu" }).click();
@@ -477,7 +478,22 @@ async function apiTokens({ admin, base, browser, password }) {
 		const dialog = await openApiTokens(page);
 		await titleHasFocus(page);
 		await dialog.getByRole("button", { name: "New token", exact: true }).click();
-		await dialog.getByRole("textbox", { name: "Name", exact: true }).fill("flow-token");
+		const name = dialog.getByRole("textbox", { name: "Name", exact: true });
+		// an empty Name that has the focus does not move the form: the first click on a Set all button is not lost
+		await name.focus();
+		await levelRadio(dialog, "Proxy Hosts", "View Only").and(page.locator(":enabled")).waitFor();
+		await dialog.getByRole("button", { name: "Set every section to View Only", exact: true }).click();
+		for (const section of SECTIONS) {
+			// biome-ignore lint/performance/noAwaitInLoops: one check after the other
+			await levelRadio(dialog, section, "View Only").and(page.locator("[aria-checked=true]")).waitFor();
+		}
+		// Create with the Name still empty: its error shows and the focus goes to it
+		await dialog.getByRole("button", { name: "Create", exact: true }).click();
+		await name.and(page.locator("[aria-invalid=true]")).waitFor();
+		await page.waitForFunction(() => document.activeElement?.matches("[aria-invalid=true]"));
+		if (!(await name.evaluate((input) => input === document.activeElement)))
+			throw new Error("the focus is not in the empty Name after Create");
+		await name.fill("flow-token");
 		// Proxy Hosts: View Only (its dependencies turn on access lists and certificates at View Only)
 		await levelRadio(dialog, "Proxy Hosts", "View Only").click();
 		for (const section of ["Access Lists", "Certificates"]) {
@@ -529,6 +545,7 @@ async function apiTokens({ admin, base, browser, password }) {
 		await dialog.getByText("flow-token", { exact: true }).waitFor();
 		if ((await dialog.getByText(secret).count()) > 0) throw new Error("the list shows the secret");
 		// a reload while a request is in flight shows as a page error in WebKit
+		// biome-ignore lint/suspicious/noPlaywrightNetworkidle: a request still in flight is aborted by the reload
 		await page.waitForLoadState("networkidle");
 		await page.reload();
 		await openApiTokens(page);
@@ -556,7 +573,7 @@ async function apiTokenCaps({ browser, base, viewerPassword }) {
 		const { page } = viewer;
 		const dialog = await openApiTokens(page);
 		await dialog.getByRole("button", { name: "New token", exact: true }).click();
-		// the name first: leaving an empty Name shows its error and moves everything below, which swallows a first click
+		// a name, so the token could be created
 		await dialog.getByRole("textbox", { name: "Name", exact: true }).fill("flow-caps");
 		for (const section of SECTIONS) {
 			// biome-ignore lint/performance/noAwaitInLoops: one check after the other
