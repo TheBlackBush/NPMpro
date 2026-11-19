@@ -589,6 +589,17 @@
 			]
 		},
 		{
+			"name": "api access: permissions popover",
+			"route": "/settings/api-access",
+			"steps": [
+				{ "waitFor": "[data-mcp-clients]" },
+				{ "skipIfMissing": "role=button[name^='Permissions of'] >> visible=true" },
+				{ "click": "role=button[name^='Permissions of'] >> visible=true" },
+				{ "waitFor": "[data-token-permissions-list]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "api tokens: new token",
 			"route": "/",
 			"steps": [

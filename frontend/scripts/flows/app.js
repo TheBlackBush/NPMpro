@@ -836,17 +836,32 @@ async function apiAccess({ admin, browser, base, password }) {
 		await clients.getByRole("tab", { name: "Claude Code", exact: true, selected: true }).waitFor();
 		if (!(await clients.locator("[data-code-box]:visible").textContent()).trim().startsWith("claude mcp add"))
 			throw new Error("the Claude Code box does not start with claude mcp add");
-		// the row: Allow delete under the name, in the name's cell; the chip Proxy Hosts with Manage
+		// the row: Allow delete under the name, in the name's cell; the summary line, and in the Permissions popover
+		// Proxy Hosts with Manage
 		const row = rowOf(page, "flow-access").first();
 		await row.waitFor();
 		await row.getByText("Allow delete", { exact: true }).filter({ visible: true }).waitFor();
 		await row
-			.locator("[data-slot=badge]")
-			.filter({ hasText: "Proxy Hosts" })
-			.filter({ hasText: "Manage" })
+			.locator("[data-token-summary]")
+			.filter({ hasText: "Manage 1 \u00b7 View 2 \u00b7 3 hidden" })
 			.filter({ visible: true })
 			.first()
 			.waitFor();
+		const opener = row
+			.getByRole("button", { name: "Permissions of flow-access", exact: true })
+			.filter({ visible: true })
+			.first();
+		await opener.click();
+		const perms = page.locator("[data-token-permissions-list]").filter({ visible: true });
+		await perms.locator("li").filter({ hasText: "Proxy Hosts" }).filter({ hasText: "Manage" }).waitFor();
+		await perms.locator("li").filter({ hasText: "Redirection Hosts" }).filter({ hasText: "Hidden" }).waitFor();
+		if (!(await perms.textContent()).includes("Allow deleteEnabled"))
+			throw new Error("the popover does not show Allow delete as Enabled");
+		await page.keyboard.press("Escape");
+		await perms.waitFor({ state: "hidden" });
+		await page.waitForFunction(
+			() => document.activeElement?.getAttribute("aria-label") === "Permissions of flow-access",
+		);
 		const placed = await row.evaluate((tr) => {
 			// the cell holds a copy for a narrow table and one for a wide one: take the shown ones
 			const cell = tr.querySelector("td");
