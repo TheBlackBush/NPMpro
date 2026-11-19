@@ -1,4 +1,4 @@
-import { BookOpen, CopyIcon, ExternalLink } from "lucide-react";
+import { BookOpen, ExternalLink, TerminalSquare } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
@@ -6,16 +6,14 @@ import { TokenBadges, TokenFacts, TokenPermissions } from "src/components/ApiTok
 import { CodeBox } from "src/components/CodeBox";
 import { HookForm, SelectField, SettingLines, SwitchField, TextField, useAppForm } from "src/components/Form";
 import { TokenPermissionFields } from "src/components/Form/TokenPermissionFields";
-import { TapTooltip } from "src/components/TapTooltip";
 import { Button as UiButton } from "src/components/ui/button";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "src/components/ui/input-group";
-import { Label } from "src/components/ui/label";
 import { useCreateApiToken, useOwnApiTokens, useRevokeApiToken, useUser } from "src/hooks";
 import { useIsMobile } from "src/hooks/use-mobile";
 import { intl, T } from "src/locale";
 import { authHeader, EXPIRY_CHOICES, newTokenValues, ownerCaps, tokenPayload, tomorrowOf } from "src/modules/ApiTokens";
 import EasyModal from "src/modules/easyModal";
 import { fieldsValidate } from "src/modules/HookForm";
+import { claudeCodeCommand, endpointOf } from "src/modules/Mcp";
 import { isAdmin } from "src/modules/Permissions";
 import { validateRequired, validateString } from "src/modules/Validations";
 import { showSuccess } from "src/notifications";
@@ -242,19 +240,21 @@ function NewStep({ focus, user, onCancel, onCreated }) {
 	);
 }
 
-// the token is shown once: only Done ends this step (the window has no X, no Escape)
+// the token is shown once: only Done ends this step (the window has no X, no Escape). Nothing here logs or stores it:
+// the header and the command are built in memory and only go to the clipboard or this step's own boxes.
 function SecretStep({ focus, token, onDone }) {
-	const id = useId();
-	const input = useRef(null);
-	// the token field, ready to be copied
-	useStepFocus(focus, () => input.current);
-	const copy = async () => {
+	const baseId = useId();
+	// the token's Copy button, ready to be pressed
+	useStepFocus(focus, () => document.querySelector("[data-api-token-copy]"));
+	const [manual, setManual] = useState(false);
+	const command = claudeCodeCommand(endpointOf(window.location.origin), token);
+	const copyCommand = async () => {
 		try {
-			await navigator.clipboard.writeText(token);
-			showSuccess(intl.formatMessage({ id: "api-tokens.copied" }));
+			await navigator.clipboard.writeText(command);
+			showSuccess(intl.formatMessage({ id: "api-tokens.secret.claude-code.copied" }));
 		} catch {
-			// no clipboard access (a browser setting or policy): select the token so it can be copied by hand
-			input.current?.select();
+			// no clipboard access: show the command so it can be copied by hand
+			setManual(true);
 		}
 	};
 	return (
@@ -264,40 +264,49 @@ function SecretStep({ focus, token, onDone }) {
 					<T id="api-tokens.title" />
 				</AppModal.Title>
 			</AppModal.Header>
-			<AppModal.Body>
-				<NoticeAlert className="mb-3">
-					<T id="api-tokens.secret.warning" />
+			<AppModal.Body className="flex flex-col gap-4">
+				<NoticeAlert>
+					<p className="m-0 font-semibold">
+						<T id="api-tokens.secret.title" />
+					</p>
+					<p className="m-0 text-muted-foreground">
+						<T id="api-tokens.secret.warning" />
+					</p>
 				</NoticeAlert>
 				<div className="flex flex-col gap-1.5">
-					<Label htmlFor={id} className="text-muted-foreground">
+					<p id={`${baseId}-token`} className="m-0 font-medium text-sm">
 						<T id="api-tokens.secret" />
-					</Label>
-					<InputGroup>
-						{/* a textarea: the whole token wraps instead of running off a phone screen */}
-						<InputGroupTextarea
-							ref={input}
-							id={id}
-							rows={2}
-							className="break-all font-mono text-sm"
-							value={token}
-							readOnly
-							autoComplete="off"
-							spellCheck={false}
-							data-api-token-secret
-							onClick={(e) => e.target.select()}
-						/>
-						<InputGroupAddon align="inline-end">
-							<TapTooltip content={intl.formatMessage({ id: "api-tokens.copy" })} tap={false}>
-								<InputGroupButton
-									size="icon-xs"
-									aria-label={intl.formatMessage({ id: "api-tokens.copy" })}
-									onClick={copy}
-								>
-									<CopyIcon aria-hidden="true" />
-								</InputGroupButton>
-							</TapTooltip>
-						</InputGroupAddon>
-					</InputGroup>
+					</p>
+					<CodeBox
+						text={token}
+						aria-labelledby={`${baseId}-token`}
+						copiedMessage={intl.formatMessage({ id: "api-tokens.copied" })}
+						copyProps={{ "data-api-token-copy": "" }}
+						data-api-token-secret=""
+					/>
+				</div>
+				<div className="flex flex-col gap-1.5">
+					<p id={`${baseId}-header`} className="m-0 font-medium text-sm">
+						<T id="api-tokens.secret.header" />
+					</p>
+					<CodeBox text={authHeader(token)} aria-labelledby={`${baseId}-header`} />
+				</div>
+				<div className="flex flex-col items-start gap-1.5">
+					<UiButton type="button" variant="outline" size="sm" onClick={copyCommand} data-api-token-claude="">
+						<TerminalSquare aria-hidden="true" />
+						<T id="api-tokens.secret.claude-code" />
+					</UiButton>
+					<p className="m-0 text-muted-foreground text-xs">
+						<T id="api-tokens.secret.claude-code.hint" />
+					</p>
+					{manual ? (
+						<div className="flex w-full flex-col gap-1.5">
+							<p className="m-0 text-sm">
+								<T id="api-tokens.secret.claude-code.manual" />
+							</p>
+							<CodeBox text={command} data-api-token-command="" />
+						</div>
+					) : null}
 				</div>
 			</AppModal.Body>
 			<AppModal.Footer>
