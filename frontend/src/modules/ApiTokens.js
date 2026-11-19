@@ -95,10 +95,21 @@ export const newTokenValues = () => ({
 	allowDelete: false,
 });
 
-export const permissionSummary = (token) =>
-	PERMISSION_SECTIONS.map((section) => [section, token.permissions?.[section]]).filter(
-		([, level]) => level && level !== "hidden",
-	);
+/**
+ * The summary of a token's six section levels as the parts of one line: [["all-manage"]] when every section is
+ * Manage, [["all-view"]] when every section is View Only, else [key, count] for manage, view and hidden in that order
+ * with the zero counts left out (the cell turns each into text). A level that is missing counts as hidden.
+ */
+export const permissionSummary = (permissions) => {
+	const counts = { manage: 0, view: 0, hidden: 0 };
+	for (const section of PERMISSION_SECTIONS) {
+		const level = permissions?.[section];
+		counts[level === "manage" || level === "view" ? level : "hidden"] += 1;
+	}
+	if (counts.manage === PERMISSION_SECTIONS.length) return [["all-manage"]];
+	if (counts.view === PERMISSION_SECTIONS.length) return [["all-view"]];
+	return Object.entries(counts).filter(([, count]) => count > 0);
+};
 
 export const tokenState = (token, now) =>
 	token.expired || (token.expiresOn && new Date(token.expiresOn).getTime() <= now.getTime()) ? "expired" : "active";

@@ -77,14 +77,20 @@ it("tokenPayload trims the name and carries every section", () => {
 	assert.equal(payload.allowDelete, false);
 });
 
-it("permissionSummary lists the shown sections in order; tokenState", () => {
-	assert.deepEqual(
-		permissionSummary({ permissions: { ...all("hidden"), certificates: "view", proxyHosts: "manage" } }),
-		[
-			["proxyHosts", "manage"],
-			["certificates", "view"],
-		],
-	);
+it("permissionSummary: all Manage, all View Only, counts without the zero parts; tokenState", () => {
+	assert.deepEqual(permissionSummary(all("manage")), [["all-manage"]]);
+	assert.deepEqual(permissionSummary(all("view")), [["all-view"]]);
+	assert.deepEqual(permissionSummary(all("hidden")), [["hidden", 6]]);
+	assert.deepEqual(permissionSummary({ ...all("hidden"), certificates: "view", proxyHosts: "manage" }), [
+		["manage", 1],
+		["view", 1],
+		["hidden", 4],
+	]);
+	assert.deepEqual(permissionSummary({ ...all("manage"), streams: "view" }), [
+		["manage", 5],
+		["view", 1],
+	]);
+	assert.deepEqual(permissionSummary(undefined), [["hidden", 6]]);
 	assert.equal(tokenState({ expired: true }, NOW), "expired");
 	assert.equal(tokenState({ expired: false, expiresOn: "2026-11-17T09:59:00Z" }, NOW), "expired");
 	assert.equal(tokenState({ expired: false, expiresOn: null }, NOW), "active");
