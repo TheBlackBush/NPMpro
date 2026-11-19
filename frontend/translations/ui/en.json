@@ -24,6 +24,7 @@
 	"access-lists": "Access Lists",
 	"access-lists.count": "{count} {count, plural, one {Access List} other {Access Lists}}",
 	"account.back": "Back to the list of parts",
+	"account.mfa.hint": "Ask for a code from an authenticator app at every sign-in.",
 	"account.parts": "Account parts",
 	"account.password-off.text": "Only OIDC can be used to sign in. A password you set here is used again when password sign-in is turned back on.",
 	"account.password-off.title": "Password sign-in is off",

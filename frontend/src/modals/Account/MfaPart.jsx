@@ -1,16 +1,20 @@
 import { CopyIcon, ShieldCheck } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotpSetup } from "src/api/backend";
-import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
-import { CodeEntry, HookForm, useAppForm, useRefusedCodeReset } from "src/components/Form";
+import { ApiErrorContent, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
+import { CodeEntry, HookForm, SettingLine, SettingLines, useAppForm, useRefusedCodeReset } from "src/components/Form";
 import { StatusBadge } from "src/components/StatusBadge";
 import { TapTooltip } from "src/components/TapTooltip";
+import { Button as UiButton } from "src/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
 import { Label } from "src/components/ui/label";
+import { useIsMobile } from "src/hooks/use-mobile";
 import { intl, T } from "src/locale";
 import { CODE_VALUES, codeOf, mfaCodeValidate } from "src/modules/AccountForms";
+import { mfaStepFocus, mfaStepReport } from "src/modules/AccountWindow";
 import { validations } from "src/modules/Validations";
+import { AccountPart, usePartReport } from "./AccountPart";
 
 /**
  * The code form of a step (setup, disable, verify): the code (the six boxes; turning two-factor off also takes a
@@ -83,7 +87,16 @@ function SecretKey({ secret }) {
 	);
 }
 
-export default function MfaWindow({ id, visible, remove }) {
+const ME = "me";
+
+// The own MFA: status lines, then the setup, regenerate and turn-off steps. The backup codes step locks the window
+// until Done (reported to the frame). A lazy chunk with the QR code library.
+export default function MfaPart() {
+	const isPhone = useIsMobile();
+	const heading = useRef(null);
+	const doneButton = useRef(null);
+	const stepMoved = useRef(false);
+	const firstStatus = useRef(true);
 	const [error, setError] = useState(null);
 	const [step, setStep] = useState("loading");
 	const [isEnabled, setIsEnabled] = useState(false);
@@ -92,9 +105,31 @@ export default function MfaWindow({ id, visible, remove }) {
 	const [backupCodes, setBackupCodes] = useState([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
+	usePartReport("mfa", { ...mfaStepReport(step), busy: isSubmitting });
+
+	// a step moved by a button or a handler (not the first status, which the window start covers) takes the focus
+	useEffect(() => {
+		if (step === "loading") return;
+		if (step === "status" && firstStatus.current) {
+			firstStatus.current = false;
+			return;
+		}
+		if (!stepMoved.current) return;
+		const target = mfaStepFocus({ step, isPhone });
+		if (target === "code") {
+			document.querySelector("[data-mfa-step] input:not([type=hidden])")?.focus({ preventScroll: true });
+		} else if (target === "done") doneButton.current?.focus({ preventScroll: true });
+		else heading.current?.focus({ preventScroll: true });
+	}, [step, isPhone]);
+
+	const go = (next) => {
+		stepMoved.current = true;
+		setStep(next);
+	};
+
 	const loadStatus = useCallback(async () => {
 		try {
-			const status = await getMfaStatus(id);
+			const status = await getMfaStatus(ME);
 			setIsEnabled(status.totpEnabled);
 			setBackupCodesRemaining(status.backupCodesRemaining);
 			setStep("status");
@@ -102,7 +137,7 @@ export default function MfaWindow({ id, visible, remove }) {
 			setError(<ApiErrorContent error={err} />);
 			setStep("error");
 		}
-	}, [id]);
+	}, []);
 
 	useEffect(() => {
 		void loadStatus();
@@ -112,9 +147,9 @@ export default function MfaWindow({ id, visible, remove }) {
 		setError(null);
 		setIsSubmitting(true);
 		try {
-			const data = await startTotpSetup(id);
+			const data = await startTotpSetup(ME);
 			setSetupData(data);
-			setStep("setup");
+			go("setup");
 		} catch (err) {
 			setError(<ApiErrorContent error={err} />);
 		}
@@ -138,10 +173,10 @@ export default function MfaWindow({ id, visible, remove }) {
 
 	const handleVerify = (payload) =>
 		submitCode(async () => {
-			const result = await enableTotp(id, payload);
+			const result = await enableTotp(ME, payload);
 			if (result.backupCodes) {
 				setBackupCodes(result.backupCodes);
-				setStep("backup");
+				go("backup");
 			} else {
 				await loadStatus();
 			}
@@ -149,19 +184,20 @@ export default function MfaWindow({ id, visible, remove }) {
 
 	const handleDisable = (payload) =>
 		submitCode(async () => {
-			await disableTotp(id, payload);
+			await disableTotp(ME, payload);
 			setIsEnabled(false);
-			setStep("status");
+			go("status");
 		});
 
 	const handleRegenerateBackup = (payload) =>
 		submitCode(async () => {
-			const result = await regenerateBackupCodes(id, payload);
+			const result = await regenerateBackupCodes(ME, payload);
 			setBackupCodes(result.backupCodes);
-			setStep("backup");
+			go("backup");
 		});
 
 	const handleBackupDone = () => {
+		stepMoved.current = true;
 		setIsEnabled(true);
 		setBackupCodes([]);
 		void loadStatus();
@@ -174,70 +210,94 @@ export default function MfaWindow({ id, visible, remove }) {
 
 		if (step === "status") {
 			return (
-				<div className="py-2">
-					<div className="mb-4">
-						<div className="mb-2 flex items-center justify-between gap-2">
-							<span className="font-medium">
-								<T id="totp.status" />
-							</span>
-							<StatusBadge tone={isEnabled ? "success" : "muted"}>
-								{isEnabled ? <T id="totp.enabled" /> : <T id="totp.disabled" />}
-							</StatusBadge>
-						</div>
-						{isEnabled && (
-							<p className="mb-0 text-muted-foreground text-sm">
-								<T id="mfa.backup-codes-remaining" data={{ count: backupCodesRemaining }} />
-							</p>
-						)}
-					</div>
-					{!isEnabled ? (
-						<Button fullWidth color="primary" onClick={handleStartSetup} isLoading={isSubmitting}>
-							<T id="totp.enable" />
-						</Button>
-					) : (
-						<div className="flex flex-col gap-2">
-							<Button fullWidth onClick={() => setStep("disable")}>
-								<T id="totp.disable" />
-							</Button>
-							<Button fullWidth onClick={() => setStep("verify")}>
-								<T id="mfa.regenerate-backup" />
+				<>
+					<SettingLines>
+						<SettingLine
+							id="mfa-status"
+							title={<T id="totp.status" />}
+							hint={
+								isEnabled ? (
+									<T id="mfa.backup-codes-remaining" data={{ count: backupCodesRemaining }} />
+								) : (
+									<T id="account.mfa.hint" />
+								)
+							}
+							control={
+								<StatusBadge tone={isEnabled ? "success" : "muted"}>
+									{isEnabled ? <T id="totp.enabled" /> : <T id="totp.disabled" />}
+								</StatusBadge>
+							}
+						/>
+						{isEnabled ? (
+							<>
+								<SettingLine
+									id="mfa-regenerate"
+									title={<T id="mfa.regenerate-backup" />}
+									hint={<T id="mfa.regenerate-instructions" />}
+									control={
+										<UiButton variant="outline" size="sm" onClick={() => go("verify")}>
+											<T id="mfa.regenerate" />
+										</UiButton>
+									}
+								/>
+								<SettingLine
+									id="mfa-disable"
+									title={<T id="totp.disable" />}
+									hint={<T id="totp.disable-warning" />}
+									control={
+										<UiButton variant="destructive-outline" size="sm" onClick={() => go("disable")}>
+											<T id="totp.disable" />
+										</UiButton>
+									}
+								/>
+							</>
+						) : null}
+					</SettingLines>
+					{isEnabled ? null : (
+						<div className="mt-3">
+							<Button color="primary" onClick={handleStartSetup} isLoading={isSubmitting}>
+								<T id="totp.enable" />
 							</Button>
 						</div>
 					)}
-				</div>
+				</>
 			);
 		}
 
 		if (step === "setup") {
 			return (
-				<div className="py-2">
+				<div>
 					<NoticeAlert className="mb-3">
 						<T id="logout-other-devices" />
 					</NoticeAlert>
 					<p className="mb-3 text-muted-foreground text-sm">
 						<T id="totp.setup-instructions" />
 					</p>
-					<div className="mb-3 flex justify-center">
-						<QRCodeSVG value={setupData.otpauthUrl} size={256} marginSize={4} />
+					<div className="grid gap-4 @md:grid-cols-[auto_minmax(0,1fr)] @md:items-start">
+						<div className="flex justify-center">
+							<QRCodeSVG value={setupData.otpauthUrl} size={192} marginSize={4} />
+						</div>
+						<div className="min-w-0">
+							<SecretKey secret={setupData.secret} />
+							<CodeForm
+								key="setup"
+								step="setup"
+								labelId="totp.enter-code"
+								color="primary"
+								submitId="totp.verify-enable"
+								onSubmit={handleVerify}
+								onCancel={() => go("status")}
+								isSubmitting={isSubmitting}
+							/>
+						</div>
 					</div>
-					<SecretKey secret={setupData.secret} />
-					<CodeForm
-						key="setup"
-						step="setup"
-						labelId="totp.enter-code"
-						color="primary"
-						submitId="totp.verify-enable"
-						onSubmit={handleVerify}
-						onCancel={() => setStep("status")}
-						isSubmitting={isSubmitting}
-					/>
 				</div>
 			);
 		}
 
 		if (step === "backup") {
 			return (
-				<div className="py-2">
+				<div>
 					<NoticeAlert className="mb-3">
 						<T id="mfa.backup-warning" />
 					</NoticeAlert>
@@ -248,16 +308,13 @@ export default function MfaWindow({ id, visible, remove }) {
 							</code>
 						))}
 					</div>
-					<Button fullWidth color="primary" onClick={handleBackupDone}>
-						<T id="totp.done" />
-					</Button>
 				</div>
 			);
 		}
 
 		if (step === "disable") {
 			return (
-				<div className="py-2">
+				<div>
 					<NoticeAlert className="mb-3">
 						<T id="totp.disable-warning" />
 					</NoticeAlert>
@@ -269,7 +326,7 @@ export default function MfaWindow({ id, visible, remove }) {
 						color="danger"
 						submitId="totp.disable-confirm"
 						onSubmit={handleDisable}
-						onCancel={() => setStep("status")}
+						onCancel={() => go("status")}
 						isSubmitting={isSubmitting}
 					/>
 				</div>
@@ -278,7 +335,7 @@ export default function MfaWindow({ id, visible, remove }) {
 
 		if (step === "verify") {
 			return (
-				<div className="py-2">
+				<div>
 					<NoticeAlert className="mb-3">
 						<T id="logout-other-devices" />
 					</NoticeAlert>
@@ -292,7 +349,7 @@ export default function MfaWindow({ id, visible, remove }) {
 						color="primary"
 						submitId="mfa.regenerate"
 						onSubmit={handleRegenerateBackup}
-						onCancel={() => setStep("status")}
+						onCancel={() => go("status")}
 						isSubmitting={isSubmitting}
 					/>
 				</div>
@@ -302,28 +359,22 @@ export default function MfaWindow({ id, visible, remove }) {
 		return null;
 	};
 
-	// the backup codes are shown once: that step only ends with Done, not with Escape, a backdrop click or the X
-	const closable = !isSubmitting && step !== "backup";
-
 	return (
-		<AppModal size="sm" show={visible} onHide={closable ? remove : undefined} backdrop="static" keyboard={closable}>
-			<AppModal.Header closeButton={closable}>
-				<AppModal.Title className="flex items-center gap-2">
-					<ShieldCheck className="size-5 shrink-0" aria-hidden="true" />
-					<T id="mfa.title" />
-				</AppModal.Title>
-			</AppModal.Header>
-			<AppModal.Body>
-				<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
-				{renderContent()}
-			</AppModal.Body>
-			{["loading", "error", "status"].includes(step) && (
-				<AppModal.Footer>
-					<Button className="ms-auto" onClick={remove} disabled={isSubmitting}>
-						<T id="action.close" />
+		<AccountPart
+			id="mfa"
+			icon={ShieldCheck}
+			heading={<T id="mfa.title" />}
+			headingRef={heading}
+			footer={
+				step === "backup" ? (
+					<Button ref={doneButton} color="primary" onClick={handleBackupDone}>
+						<T id="totp.done" />
 					</Button>
-				</AppModal.Footer>
-			)}
-		</AppModal>
+				) : null
+			}
+		>
+			<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
+			<div data-mfa-step={step}>{renderContent()}</div>
+		</AccountPart>
 	);
 }

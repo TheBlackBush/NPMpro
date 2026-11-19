@@ -20,7 +20,7 @@ import { useUser } from "src/hooks";
 import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
-import { showAccountModal, showApiTokensModal, showMfaModal } from "src/modals";
+import { showAccountModal, showApiTokensModal } from "src/modals";
 import { returnFocusOnlyForKeyboard } from "src/modules/InputModality";
 import { isAdmin } from "src/modules/Permissions";
 import { showApiError } from "src/notifications";
@@ -141,7 +141,7 @@ export function UserMenu({ variant = "topbar" }) {
 					<Lock aria-hidden="true" />
 					<T id="user.change-password" />
 				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={openOld(showMfaModal)}>
+				<DropdownMenuItem onSelect={openPart("mfa")}>
 					<ShieldCheck aria-hidden="true" />
 					<T id="user.mfa" />
 				</DropdownMenuItem>

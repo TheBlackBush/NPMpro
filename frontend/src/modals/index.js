@@ -13,7 +13,6 @@ export * from "./EventDetailsModal";
 export * from "./ExportItemsModal";
 export * from "./HelpModal";
 export * from "./HTTPCertificateModal";
-export * from "./MfaModal";
 export * from "./PermissionsModal";
 export * from "./ProxyHostModal";
 export * from "./ReachabilityModal";

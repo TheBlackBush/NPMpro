@@ -1,6 +1,6 @@
 import { ArrowLeft, ChevronRight, CircleUser, KeyRound, Lock, ShieldCheck, User } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AppModal, Button } from "src/components";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { AppModal, Button, Loading } from "src/components";
 import { UserAvatar } from "src/components/UserAvatar";
 import { Button as UiButton } from "src/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "src/components/ui/tabs";
@@ -16,8 +16,17 @@ import { PasswordPart } from "./PasswordPart";
 import { ProfilePart } from "./ProfilePart";
 
 const ICONS = { profile: User, password: Lock, mfa: ShieldCheck, "api-tokens": KeyRound };
-// the parts built so far (6.3 to 6.5 add the others; 6.5 removes this filter and uses ACCOUNT_PARTS)
-const VIEWS = { profile: ProfilePart, password: PasswordPart };
+// the MFA part and the QR code library are a chunk of their own, loaded on the part's first visit
+const MfaPart = lazy(() => import("./MfaPart"));
+function MfaView() {
+	return (
+		<Suspense fallback={<Loading noLogo />}>
+			<MfaPart />
+		</Suspense>
+	);
+}
+// the parts built so far (6.5 adds the last and removes this filter, using ACCOUNT_PARTS)
+const VIEWS = { profile: ProfilePart, password: PasswordPart, mfa: MfaView };
 const PARTS = ACCOUNT_PARTS.filter((part) => VIEWS[part.id]);
 
 /** Opens the Account window on a part ("profile", "password", "mfa" or "api-tokens") */
