@@ -32,6 +32,9 @@ before(async () => {
 			"/data/tls/certbot/renewal/npm-2.conf": conf(LE, B),
 			"/data/tls/certbot/renewal/npm-3.conf": conf(LE, A),
 			"/data/tls/certbot/renewal/npm-4.conf": conf(PEBBLE, D),
+			"/data/tls/certbot/renewal/npm-5.conf": conf(`${PEBBLE}/`, D),
+			"/data/tls/certbot/renewal/npm-6.conf": conf("https://acme-v01.api.letsencrypt.org/directory", D),
+			"/data/tls/certbot/renewal/npm-7.conf": conf("https://nocreds.test/dir", D),
 			"/tmp/acme-register-crashed/certbot.ini": "email = old@example.com\neab-hmac-key = secret\n",
 			"/tmp/keep-me/file": "x",
 		},
@@ -57,6 +60,19 @@ it("points a conf whose account is missing at its CA's registered account, witho
 	assert.deepEqual(await normalizedCalls(api), []);
 });
 
+it("keys rows and repairs on one spelling per CA: a trailing slash or the v01 URL", async () => {
+	const rows = await model.query();
+	assert.equal(rows.length, 3);
+	const read = (n) => readFile(path.join(api.root, `data/tls/certbot/renewal/npm-${n}.conf`), "utf8");
+	assert.match(await read(5), new RegExp(`^account = ${C}$`, "mu"));
+	assert.match(await read(6), new RegExp(`^account = ${B}$`, "mu"));
+});
+
+it("leaves a conf alone when its CA has no registered account, even if other CAs do", async () => {
+	const text = await readFile(path.join(api.root, "data/tls/certbot/renewal/npm-7.conf"), "utf8");
+	assert.equal(text, conf("https://nocreds.test/dir", D));
+});
+
 it("removes stale run folders at the start and leaves other folders alone", async () => {
 	await assert.rejects(readFile(path.join(api.root, OLD_RUN, "certbot.ini")), { code: "ENOENT" });
 	assert.equal(await api.read("tmp/keep-me/file"), "x");
@@ -78,8 +94,15 @@ it("adopts a folder whose row is missing or not registered, so no second account
 	assert.equal(added.account_id, D);
 	assert.equal(added.state, "registered");
 	await model.query().where("server", "https://restored.test/dir").patch({ state: "pending", account_id: null });
+	await model
+		.query()
+		.where("server", "https://restored.test/dir")
+		.patch({ eab_kid: "sealed", eab_hmac_key: "sealed" });
 	await syncAccountsWithFiles();
-	assert.equal((await model.query().where("server", "https://restored.test/dir").first()).account_id, D);
+	const again = await model.query().where("server", "https://restored.test/dir").first();
+	assert.equal(again.account_id, D);
+	assert.equal(again.eab_kid, null);
+	assert.equal(again.eab_hmac_key, null);
 	assert.deepEqual(await normalizedCalls(api), []);
 });
 

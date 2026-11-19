@@ -375,16 +375,33 @@ const updateEmail = (server, email, options) =>
 
 const sqlTime = (ms) => dayjs(ms).format("YYYY-MM-DD HH:mm:ss");
 
-/** The servers the rows, files and settings name: the instance CA, every row, every conf's server, every account folder */
+// certbot's LE_REUSE_SERVERS: the v01 directories are the same CA as their v02 ones
+const LE_V01 = {
+	"https://acme-v01.api.letsencrypt.org/directory": "https://acme-v02.api.letsencrypt.org/directory",
+	"https://acme-staging.api.letsencrypt.org/directory": "https://acme-staging-v02.api.letsencrypt.org/directory",
+};
+
+/** One spelling per CA: no trailing slash, the v02 Let's Encrypt URLs */
+const canonicalServer = (server) => {
+	const key = serverKey(server);
+	return LE_V01[key] ?? key;
+};
+
+/** The canonical servers the rows, files and settings name: the instance CA, every row, every conf, every folder */
 const knownServers = (rows, confs, folders) => {
-	const servers = new Set([
-		instanceServer(),
-		...rows.map((row) => row.server),
-		...confs.map((conf) => conf.server).filter(Boolean),
-	]);
+	const servers = new Set(
+		[instanceServer(), ...rows.map((row) => row.server), ...confs.map((conf) => conf.server).filter(Boolean)].map(
+			canonicalServer,
+		),
+	);
 	const covered = new Set([...servers].flatMap((server) => accountDirsOf(server, "")));
-	for (const rel of folders) if (!covered.has(rel)) servers.add(serverOfFolder(rel));
+	for (const rel of folders) if (!covered.has(rel)) servers.add(canonicalServer(serverOfFolder(rel)));
 	return servers;
+};
+
+const rowOf = async (server) => {
+	const wanted = canonicalServer(server);
+	return (await acmeAccountModel.query()).find((row) => canonicalServer(row.server) === wanted);
 };
 
 /**
@@ -414,38 +431,47 @@ const sweepRunFolders = async () => {
  */
 const syncAccountsWithFiles = async () => {
 	const confs = await listRenewalConfs();
-	const instance = instanceServer();
+	const instance = canonicalServer(instanceServer());
 	for (const server of knownServers(await acmeAccountModel.query(), confs, await serverFolders())) {
-		const row = await accountRow(server);
-		const accounts = await listAccountIds(server);
-		if (row?.state !== "registered" && accounts.length > 0) {
-			const named = (id) => confs.filter((conf) => conf.server === server && conf.account === id).length;
-			// a stable sort keeps the oldest first among accounts named equally often
-			const chosen = accounts.toSorted((a, b) => named(b.id) - named(a.id))[0];
-			const email =
-				row?.email ??
-				(server === instance && acmeEnvSet(process.env).has("ACME_EMAIL") ? process.env.ACME_EMAIL : null);
-			await upsertRow(server, row, {
-				email,
-				account_id: chosen.id,
-				state: "registered",
-				error: null,
-				registered_on: chosen.created === null ? now() : sqlTime(chosen.created),
-			});
-			logger.info(`Adopted the ACME account ${chosen.id} of ${server}`);
-		} else if (row?.state === "registered" && !accounts.some((entry) => entry.id === row.account_id)) {
-			await acmeAccountModel.query().patchAndFetchById(row.id, {
-				state: "pending",
-				account_id: null,
-				error: "The account files are missing: it registers again at the next certificate request",
-			});
-			logger.warn(`The ACME account files of ${server} are missing, it registers again when needed`);
-		}
+		// under the CA's lock, so a registration running (after a restore or merge) is not overwritten
+		await withAccountLock(server, async () => {
+			const row = await rowOf(server);
+			const accounts = await listAccountIds(server);
+			if (row?.state !== "registered" && accounts.length > 0) {
+				const named = (id) =>
+					confs.filter(
+						(conf) => conf.server && canonicalServer(conf.server) === server && conf.account === id,
+					).length;
+				// a stable sort keeps the oldest first among accounts named equally often
+				const chosen = accounts.toSorted((a, b) => named(b.id) - named(a.id))[0];
+				const email =
+					row?.email ??
+					(server === instance && acmeEnvSet(process.env).has("ACME_EMAIL") ? process.env.ACME_EMAIL : null);
+				await upsertRow(server, row, {
+					email,
+					account_id: chosen.id,
+					// the account exists: no EAB pair is kept (D7)
+					eab_kid: null,
+					eab_hmac_key: null,
+					state: "registered",
+					error: null,
+					registered_on: chosen.created === null ? now() : sqlTime(chosen.created),
+				});
+				logger.info(`Adopted the ACME account ${chosen.id} of ${server}`);
+			} else if (row?.state === "registered" && !accounts.some((entry) => entry.id === row.account_id)) {
+				await acmeAccountModel.query().patchAndFetchById(row.id, {
+					state: "pending",
+					account_id: null,
+					error: "The account files are missing: it registers again at the next certificate request",
+				});
+				logger.warn(`The ACME account files of ${server} are missing, it registers again when needed`);
+			}
+		});
 	}
 	for (const conf of confs) {
 		if (!conf.server || (await accountExists(conf.server, conf.account))) continue;
-		const row = await accountRow(conf.server);
-		if (row?.state === "registered" && (await accountExists(conf.server, row.account_id))) {
+		const row = await rowOf(conf.server);
+		if (row?.state === "registered" && (await accountExists(row.server, row.account_id))) {
 			await writeFileAtomic(conf.path, setRenewalParams(conf.text, { account: row.account_id }));
 		}
 	}

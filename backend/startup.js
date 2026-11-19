@@ -38,12 +38,9 @@ import setup from "./setup.js";
  * @returns {Promise}
  */
 const prepareApp = async ({ background = true } = {}) => {
-	// the stored instance CA first: every write of startup-settings.env below (and the runtime defaults) names it
-	try {
-		await loadAcmeServer();
-	} catch (err) {
-		logger.error(`Could not read the ACME settings: ${err.message}`);
-	}
+	// the stored instance CA first: every write of startup-settings.env below (and the runtime defaults) names it.
+	// A failed read stops this pass (the caller retries) rather than write the file without the stored CA
+	await loadAcmeServer();
 	// run folders a crash left behind may hold an email or an EAB pair
 	try {
 		await sweepRunFolders();
