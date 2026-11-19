@@ -119,6 +119,14 @@ fi
 if [ -z "$GOACLA" ]; then
     GOACLA="$(startup_settings_goacla /data/npmpro/startup-settings.env)"
 fi
+# the instance CA saved in Settings, Certificates, where the env does not set ACME_SERVER; after NPMPRO_USER_ENV so it
+# does not count as set by the user. A line startup-settings.sh does not accept is reported above and Let's Encrypt
+# applies.
+acme_server_stored=false
+if [ -z "$ACME_SERVER" ]; then
+    ACME_SERVER="$(startup_setting /data/npmpro/startup-settings.env ACME_SERVER)"
+    [ -n "$ACME_SERVER" ] && acme_server_stored=true
+fi
 
 
 if [ -n "$NC_AIO" ] && ! echo "$NC_AIO" | grep -q "^true$\|^false$"; then
@@ -459,14 +467,19 @@ if ! echo "$CUSTOM_OCSP_STAPLING" | grep -q "^true$\|^false$"; then
     sleep inf
 fi
 
-if [ "$ACME_PROFILE" != "none" ] && [ "$(curl -sSL "$ACME_SERVER" | jq --arg p "$ACME_PROFILE" '.meta.profiles[$p]')" = "null" ]; then
-    if [ "$(curl -sSL "$ACME_SERVER" | jq -r ".newNonce")" != "null" ]; then
+# acme-profile-check begin
+# a profile the CA does not list stops the start only when the env chose both; a CA saved in Settings never stops it
+if [ "$ACME_PROFILE" != "none" ] && [ "$(curl -sSL --max-time 10 "$ACME_SERVER" | jq --arg p "$ACME_PROFILE" '.meta.profiles[$p]')" = "null" ]; then
+    if [ "$(curl -sSL --max-time 10 "$ACME_SERVER" | jq -r ".newNonce")" = "null" ]; then
+        echo "Cannot check if the ACME_PROFILE is supported by the ACME_SERVER since the ACME_SERVER is down."
+    elif [ "$acme_server_stored" = true ]; then
+        echo "The ACME_PROFILE seems to be not supported by the ACME server saved in Settings, Certificates."
+    else
         echo "The ACME_PROFILE seems to be not supported by the ACME_SERVER."
         sleep inf
-    else
-        echo "Cannot check if the ACME_PROFILE is supported by the ACME_SERVER since the ACME_SERVER is down."
     fi
 fi
+# acme-profile-check end
 
 
 if ! echo "$PUID" | grep -q "^[0-9]\+$"; then

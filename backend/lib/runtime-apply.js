@@ -607,4 +607,27 @@ const createRuntimeApplier = ({
 	return { applyAll, applyGroup };
 };
 
-export { createRuntimeApplier, PATHS, testAndReload, withFiles };
+/**
+ * Writes the startup settings file now (an ACME settings save: the stored CA changed), with every restart group as
+ * it is in effect
+ */
+const writeStartupSettings = async ({
+	getConfig = defaultGetRuntimeConfig,
+	env = () => process.env,
+	fs = nodeFs,
+	paths = PATHS,
+	log = logger,
+} = {}) => {
+	const valuesByGroup = {};
+	for (const name of RESTART_GROUPS) valuesByGroup[name] = (await getConfig(name)).values;
+	await withFiles(
+		[{ path: paths.startupSettings, content: renderStartupSettings(valuesByGroup, env()) }],
+		async () => {},
+		{
+			fs,
+			log,
+		},
+	);
+};
+
+export { createRuntimeApplier, PATHS, testAndReload, withFiles, writeStartupSettings };

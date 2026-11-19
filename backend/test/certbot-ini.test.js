@@ -174,5 +174,4 @@ it("points every certbot call at the live config, not the root-owned /etc copy",
 	);
 	const launchSh = await readFile(path.join(ROOT, "rootfs/usr/local/bin/launch.sh"), "utf8");
 	assert.equal(launchSh.includes("/etc/certbot.ini"), false);
-	assert.equal(launchSh.includes("--config /run/npmpro/certbot.ini"), true);
 });

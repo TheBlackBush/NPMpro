@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
+import { acmeEnvSet, storedAcmeServer } from "./acme-server.js";
 import { crowdsecEnabledNow } from "./crowdsec/config.js";
 import { parseCrowdsecEnabledEnv } from "./crowdsec/settings.js";
 import { isSet, KEY_SIZES, RUNTIME_RULES, serverOf, WHITESPACE } from "./runtime-rule-table.js";
@@ -253,11 +254,14 @@ const STARTUP_SETTINGS_HEADER =
  * @param   {Object}  env
  * @returns {string}
  */
-const renderStartupSettings = (valuesByGroup, env) => {
+const renderStartupSettings = (valuesByGroup, env, acmeServer = storedAcmeServer()) => {
 	const userSet = userSetEnvNames(env);
 	const lines = RUNTIME_RULES.filter(isRestartRule)
 		.filter((rule) => !userSet.has(rule.env) && valuesByGroup?.[rule.group]?.[rule.key] !== undefined)
 		.map((rule) => `${rule.fileName ?? rule.env}=${rule.toEnv(valuesByGroup[rule.group][rule.key])}\n`);
+	// the instance CA saved in Settings, Certificates: envs.sh reads it when the env does not set ACME_SERVER
+	if (typeof acmeServer === "string" && !acmeEnvSet(env).has("ACME_SERVER"))
+		lines.push(`ACME_SERVER=${acmeServer}\n`);
 	return STARTUP_SETTINGS_HEADER + lines.join("");
 };
 

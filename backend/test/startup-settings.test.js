@@ -216,6 +216,46 @@ it("writes the startup settings file on save of a restart setting, with the othe
 	assert.equal(await readFile(file, "utf8"), "kept\n");
 });
 
+const STORED_ACME_LINE = /^ACME_SERVER=https:\/\/ca\.lan\/dir$/mu;
+const ANY_ACME_SERVER = /ACME_SERVER/u;
+
+it("writes the stored instance CA for envs.sh, unless the env sets ACME_SERVER", () => {
+	const groups = { advanced: { time_zone: "UTC" } };
+	assert.match(renderStartupSettings(groups, BOOT_ENV, "https://ca.lan/dir"), STORED_ACME_LINE);
+	assert.doesNotMatch(renderStartupSettings(groups, BOOT_ENV, null), ANY_ACME_SERVER);
+	assert.doesNotMatch(
+		renderStartupSettings(groups, userEnv({ ACME_SERVER: "https://x/dir" }), "https://ca.lan/dir"),
+		ANY_ACME_SERVER,
+	);
+});
+
+const readSetting = async (text, name) => {
+	const work = await mkdtemp(path.join(tmpdir(), "startup-settings-acme-"));
+	const file = path.join(work, "startup-settings.env");
+	await writeFile(file, text);
+	const out = spawnSync("sh", ["-c", '. "$HELPER"; startup_setting "$F" "$N"'], {
+		env: { PATH: process.env.PATH, HELPER, F: file, N: name },
+		encoding: "utf8",
+	});
+	return out.status === 0 ? out.stdout : out.stderr;
+};
+
+it("reads ACME_SERVER with the shell helper only for an https URL of the backend's characters", async () => {
+	const lines = {
+		"ACME_SERVER=https://ca.lan/dir": "https://ca.lan/dir",
+		"ACME_SERVER=https://pebble:14000/dir": "https://pebble:14000/dir",
+		"ACME_SERVER=http://ca.lan/dir": "",
+		"ACME_SERVER=https://": "",
+		"ACME_SERVER=https:///dir": "",
+		"ACME_SERVER=https://ca.lan/$(id)": "",
+		"ACME_SERVER=https://ca.lan/a b": "",
+		[`ACME_SERVER=https://ca.lan/${"a".repeat(250)}`]: "",
+	};
+	for (const [line, expected] of Object.entries(lines)) {
+		assert.equal(await readSetting(`${line}\n`, "ACME_SERVER"), expected, line);
+	}
+});
+
 it("reads the startup settings in envs.sh after NPMPRO_USER_ENV and before the TZ and GOA defaults and checks", () => {
 	const text = readFileSync(new URL("envs.sh", BIN), "utf8");
 	const at = (needle) => {
