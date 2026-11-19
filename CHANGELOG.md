@@ -43,7 +43,7 @@ below as its release notes.
 - **API:** API tokens in the Account window (a compact new token form with expiry and permissions capped at your own,
   the token shown once with its header and the Claude Code command to copy, revoke) and every token in Settings, API
   access, with the API reference, the authentication header and the MCP client setup.
-- **Account:** one Account window for your profile, password, MFA and API tokens, opened on the matching part from the
+- **Account:** one Account window for your profile, password, MFA and API tokens, opened from the one Account entry of the
   user menu; edits stay when switching parts and closing asks before discarding them. Administrators edit another user
   in the same window, with Profile and a Sign-in part.
 - **MCP:** an MCP server at `/api/mcp` for AI assistants, using API tokens: 28 tools for hosts, access

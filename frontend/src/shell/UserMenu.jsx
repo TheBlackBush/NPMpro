@@ -1,4 +1,4 @@
-import { ChevronsUpDown, KeyRound, Lock, LogOut, MonitorSmartphone, ShieldCheck, User } from "lucide-react";
+import { ChevronsUpDown, CircleUser, LogOut, MonitorSmartphone } from "lucide-react";
 import { useRef } from "react";
 import { TruncatedText } from "src/components/TruncatedText";
 import { UserAvatar } from "src/components/UserAvatar";
@@ -131,20 +131,8 @@ export function UserMenu({ variant = "topbar" }) {
 				}}
 			>
 				<DropdownMenuItem onSelect={openPart("profile")}>
-					<User aria-hidden="true" />
-					<T id="user.edit-profile" />
-				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={openPart("password")}>
-					<Lock aria-hidden="true" />
-					<T id="user.change-password" />
-				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={openPart("mfa")}>
-					<ShieldCheck aria-hidden="true" />
-					<T id="user.mfa" />
-				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={openPart("api-tokens")}>
-					<KeyRound aria-hidden="true" />
-					<T id="user.api-tokens" />
+					<CircleUser aria-hidden="true" />
+					<T id="account.title" />
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuLabel>

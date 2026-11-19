@@ -32,8 +32,8 @@ works whether password login is off, OIDC is the only sign-in, or the user has M
 
 ## Creating a token
 
-Open the user menu (your avatar, top right) and choose **API tokens**: the **Account** window opens on its **API
-tokens** part, which lists your tokens, each with its marks (**Administrator**, **Allow delete**, **Expired**), its
+Open the user menu (your avatar, top right) and choose **Account**, then **API tokens** in the list on the left: the
+that part lists your tokens, each with its marks (**Administrator**, **Allow delete**, **Expired**), its
 permissions as "Section | Level" chips, and its expiry, last use and creation date. Below the list, **Send the token in
 this header** shows the header with a copy button and a link to the API reference. To make one:
 
