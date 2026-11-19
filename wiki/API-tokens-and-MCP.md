@@ -32,9 +32,11 @@ works whether password login is off, OIDC is the only sign-in, or the user has M
 
 ## Creating a token
 
-Open the user menu (your avatar, top right) and choose **Account**, then **API tokens** in the list on the left: the
-that part lists your tokens, each with its marks (**Administrator**, **Allow delete**, **Expired**), its
-permissions as "Section | Level" chips, and its expiry, last use and creation date. Below the list, **Send the token in
+Open the user menu (your avatar, top right) and choose **Account**, then **API tokens** in the list on the left. That
+part lists your tokens, each with its marks (**Administrator**, **Allow delete**, **Expired**), a summary line of its
+permissions ("Manage all", "Read only" or for example "Manage 1 · View 1 · 4 hidden"), and its expiry, last use and
+creation date. The **Permissions** button next to the summary opens a popover (a bottom sheet on a phone) with the six
+sections and their levels, Item Visibility, Administrator and Allow delete. Below the list, **Send the token in
 this header** shows the header with a copy button and a link to the API reference. To make one:
 
 1. Choose **New token**.
