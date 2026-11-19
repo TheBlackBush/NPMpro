@@ -1,3 +1,4 @@
+import { Lock } from "lucide-react";
 import { useState } from "react";
 import { updateAuth } from "src/api/backend";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, NoticeAlert } from "src/components";
@@ -51,7 +52,8 @@ const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 		<AppModal size="sm" show={visible} onHide={isSubmitting ? undefined : remove} backdrop="static">
 			<HookForm methods={methods} onSubmit={onSubmit}>
 				<AppModal.Header closeButton={!isSubmitting}>
-					<AppModal.Title>
+					<AppModal.Title className="flex items-center gap-2">
+						<Lock className="size-5 shrink-0" aria-hidden="true" />
 						<T id="user.change-password" />
 					</AppModal.Title>
 				</AppModal.Header>

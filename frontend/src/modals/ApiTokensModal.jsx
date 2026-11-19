@@ -1,4 +1,4 @@
-import { BookOpen, ExternalLink, TerminalSquare } from "lucide-react";
+import { BookOpen, ExternalLink, KeyRound, TerminalSquare } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
@@ -71,7 +71,13 @@ function ListStep({ focus, onNew, onRevoke, onClose }) {
 	return (
 		<>
 			<AppModal.Header closeButton>
-				<AppModal.Title ref={title} tabIndex={-1} className="outline-none" data-window-start="">
+				<AppModal.Title
+					ref={title}
+					tabIndex={-1}
+					className="flex items-center gap-2 outline-none"
+					data-window-start=""
+				>
+					<KeyRound className="size-5 shrink-0" aria-hidden="true" />
 					<T id="api-tokens.title" />
 				</AppModal.Title>
 			</AppModal.Header>
@@ -186,7 +192,8 @@ function NewStep({ focus, user, onCancel, onCreated }) {
 	return (
 		<HookForm methods={methods} onSubmit={onSubmit}>
 			<AppModal.Header closeButton={!isSubmitting}>
-				<AppModal.Title ref={title} tabIndex={-1} className="outline-none">
+				<AppModal.Title ref={title} tabIndex={-1} className="flex items-center gap-2 outline-none">
+					<KeyRound className="size-5 shrink-0" aria-hidden="true" />
 					<T id="api-tokens.new" />
 				</AppModal.Title>
 			</AppModal.Header>
@@ -262,7 +269,8 @@ function SecretStep({ focus, token, onDone }) {
 	return (
 		<>
 			<AppModal.Header closeButton={false}>
-				<AppModal.Title>
+				<AppModal.Title className="flex items-center gap-2">
+					<KeyRound className="size-5 shrink-0" aria-hidden="true" />
 					<T id="api-tokens.title" />
 				</AppModal.Title>
 			</AppModal.Header>
@@ -346,7 +354,8 @@ function RevokeStep({ focus, token, onCancel, onRevoked }) {
 	return (
 		<>
 			<AppModal.Header closeButton={!revoke.isPending}>
-				<AppModal.Title ref={title} tabIndex={-1} className="outline-none">
+				<AppModal.Title ref={title} tabIndex={-1} className="flex items-center gap-2 outline-none">
+					<KeyRound className="size-5 shrink-0" aria-hidden="true" />
 					<T id="api-tokens.revoke" />
 				</AppModal.Title>
 			</AppModal.Header>

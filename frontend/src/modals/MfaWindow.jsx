@@ -1,4 +1,4 @@
-import { CopyIcon } from "lucide-react";
+import { CopyIcon, ShieldCheck } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotpSetup } from "src/api/backend";
@@ -308,7 +308,8 @@ export default function MfaWindow({ id, visible, remove }) {
 	return (
 		<AppModal size="sm" show={visible} onHide={closable ? remove : undefined} backdrop="static" keyboard={closable}>
 			<AppModal.Header closeButton={closable}>
-				<AppModal.Title>
+				<AppModal.Title className="flex items-center gap-2">
+					<ShieldCheck className="size-5 shrink-0" aria-hidden="true" />
 					<T id="mfa.title" />
 				</AppModal.Title>
 			</AppModal.Header>

@@ -37,3 +37,33 @@ export function lastInput() {
 export function returnFocusOnlyForKeyboard(event) {
 	if (last !== "keyboard") event.preventDefault();
 }
+
+// set on an element that got the focus back after a pointer close: the stylesheet hides its focus ring until a key is
+// pressed or the focus moves on
+export const QUIET_FOCUS_ATTRIBUTE = "data-focus-quiet";
+
+/** Pure: whether a focus given back after a window closed should hide its ring */
+export function quietFocus(input) {
+	return input === "pointer";
+}
+
+/**
+ * Gives the focus back to an element after a window closed: keyboard users go on from there, and after a pointer close
+ * the element shows no focus ring (Chrome treats the scripted focus as keyboard focus) until the next key press
+ *
+ * @param {HTMLElement | null | undefined} element
+ */
+export function focusBack(element) {
+	if (!element) return;
+	if (quietFocus(last)) {
+		element.setAttribute(QUIET_FOCUS_ATTRIBUTE, "");
+		const clear = () => {
+			element.removeAttribute(QUIET_FOCUS_ATTRIBUTE);
+			element.removeEventListener("blur", clear);
+			document.removeEventListener("keydown", clear, true);
+		};
+		element.addEventListener("blur", clear);
+		document.addEventListener("keydown", clear, true);
+	}
+	element.focus();
+}

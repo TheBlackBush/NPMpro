@@ -1,3 +1,5 @@
+import { focusBack } from "./InputModality.js";
+
 // Where keyboard focus goes back to after a row action or a window, when the element that had it is gone.
 //
 // A row's action menu button carries data-row-actions="<key>" (for instance proxy-host-12), and the row's edit (or
@@ -108,7 +110,7 @@ function restoreRowFocus(key, attr = ROW_ACTIONS_ATTR) {
 /** After a window closed: if focus fell to the body, put it on returnTarget(captured) */
 function restoreWindowFocus(captured) {
 	afterPaint(() => {
-		if (focusLost(document)) returnTarget(document, captured)?.focus();
+		if (focusLost(document)) focusBack(returnTarget(document, captured));
 	});
 }
 

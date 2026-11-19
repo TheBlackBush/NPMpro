@@ -355,3 +355,10 @@
 		transform: translateX(250%);
 	}
 }
+
+/* a control that got the focus back after a window closed by the pointer (modules/InputModality.js focusBack): no focus
+   ring until a key is pressed. Outside the layers, so it wins over the focus-visible ring utilities */
+[data-focus-quiet]:focus-visible {
+	--tw-ring-color: transparent;
+	outline: none;
+}
