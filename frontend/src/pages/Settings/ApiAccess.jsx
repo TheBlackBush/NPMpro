@@ -148,7 +148,9 @@ function TokensCard() {
 		<SettingsCard
 			title={<T id="settings.api-access.tokens" />}
 			info={<T id="settings.api-access.tokens.info" />}
-			bodyClassName="space-y-0 p-0"
+			// in table mode (the table stacks into cards below 42rem, @2xl) the outer columns start and end at the card's 16 px
+			// inset like the titles and lines of the other cards; a sortable header has 8 px in its button already
+			bodyClassName="space-y-0 p-0 @2xl:[&_td:first-child]:pl-4 @2xl:[&_td:last-child]:pr-4 @2xl:[&_th:first-child]:pl-2 @2xl:[&_th:last-child]:pr-4"
 		>
 			{error ? (
 				<div className="p-4">
