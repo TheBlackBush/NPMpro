@@ -13,6 +13,7 @@ function Tabs({
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
+      // NPMpro: forward orientation to Radix (the generated wrapper dropped it)
       orientation={orientation}
       data-orientation={orientation}
       className={cn(
