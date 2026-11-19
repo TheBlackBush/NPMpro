@@ -314,33 +314,28 @@
 			]
 		},
 		{
-			"name": "profile window",
+			"name": "account window: every part",
 			"route": "/",
 			"steps": [
 				{ "click": "header >> role=button[name='Open user menu']" },
 				{ "click": "role=menuitem[name='Edit Profile']" },
-				{ "waitFor": "[role=dialog]" },
+				{ "waitFor": "[role=dialog] [data-account-part=profile]" },
+				{ "click": "[role=dialog] [data-account-tab=password]" },
+				{ "waitFor": "[role=dialog] [data-account-part=password]" },
+				{ "click": "[role=dialog] [data-account-tab=mfa]" },
+				{ "waitFor": "[role=dialog] [data-account-part=mfa] [data-mfa-step=status]" },
+				{ "click": "[role=dialog] [data-account-tab=api-tokens]" },
+				{ "waitFor": "[role=dialog] [data-account-part=api-tokens]" },
 				{ "press": "Escape" }
 			]
 		},
 		{
-			"name": "change password window",
-			"route": "/",
-			"steps": [
-				{ "click": "header >> role=button[name='Open user menu']" },
-				{ "click": "role=menuitem[name='Change Password']" },
-				{ "waitFor": "[role=dialog]" },
-				{ "press": "Escape" }
-			]
-		},
-		{
-			"name": "mfa window",
+			"name": "account window: mfa entry",
 			"route": "/",
 			"steps": [
 				{ "click": "header >> role=button[name='Open user menu']" },
 				{ "click": "role=menuitem[name='MFA']" },
-				{ "waitFor": "[role=dialog]" },
-				{ "waitFor": "[role=dialog] svg, [role=dialog] canvas" },
+				{ "waitFor": "[role=dialog] [data-account-part=mfa]" },
 				{ "press": "Escape" }
 			]
 		},
