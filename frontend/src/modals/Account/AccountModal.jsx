@@ -12,11 +12,12 @@ import { askDiscard } from "src/modals/DiscardChangesModal";
 import { ACCOUNT_PARTS, frameState, partOf, reportPart, startsOnHeading, visitPart } from "src/modules/AccountWindow";
 import EasyModal from "src/modules/easyModal";
 import { AccountContext } from "./AccountPart";
+import { PasswordPart } from "./PasswordPart";
 import { ProfilePart } from "./ProfilePart";
 
 const ICONS = { profile: User, password: Lock, mfa: ShieldCheck, "api-tokens": KeyRound };
 // the parts built so far (6.3 to 6.5 add the others; 6.5 removes this filter and uses ACCOUNT_PARTS)
-const VIEWS = { profile: ProfilePart };
+const VIEWS = { profile: ProfilePart, password: PasswordPart };
 const PARTS = ACCOUNT_PARTS.filter((part) => VIEWS[part.id]);
 
 /** Opens the Account window on a part ("profile", "password", "mfa" or "api-tokens") */

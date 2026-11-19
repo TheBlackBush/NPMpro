@@ -3,7 +3,6 @@ export * from "./Account/AccountModal";
 export * from "./ApiTokensModal";
 export * from "./BackupScheduleModal";
 export * from "./ChangeDnsCredentialModal";
-export * from "./ChangePasswordModal";
 export * from "./CustomCertificateModal";
 export * from "./DatabaseMoveModal";
 export * from "./DeadHostModal";
