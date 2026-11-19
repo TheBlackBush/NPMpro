@@ -1,10 +1,11 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { ExternalLink } from "lucide-react";
+import { BookOpen, ExternalLink } from "lucide-react";
 import { useMemo, useState } from "react";
 import { revokeApiToken } from "src/api/backend";
-import { Button as AppButton, ErrorAlert, Loading } from "src/components";
+import { ErrorAlert, Loading } from "src/components";
 import { TokenBadges, TokenCreated, TokenExpiry, TokenLastUsed, TokenPermissions } from "src/components/ApiTokenCells";
-import { SettingLine, SettingLineNote } from "src/components/Form/SettingLine";
+import { CodeBox } from "src/components/CodeBox";
+import { SettingLine } from "src/components/Form/SettingLine";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { PagedTable } from "src/components/Table/TablePagination";
 import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
@@ -12,6 +13,7 @@ import { Button } from "src/components/ui/button";
 import { useAllApiTokens, usePaging } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
+import { authHeader, tokenMarks } from "src/modules/ApiTokens";
 import { showSuccess } from "src/notifications";
 import { McpCard } from "./McpCard";
 import { SettingsCard } from "./SettingsCard";
@@ -38,8 +40,12 @@ function Owner({ owner }) {
 	if (!owner) return <span className="text-muted-foreground">{label("user.deleted")}</span>;
 	return (
 		<div className="min-w-0">
-			<div className="break-words">{owner.name}</div>
-			<div className="break-all text-muted-foreground text-sm">{owner.email}</div>
+			<div className="max-w-64 truncate" title={owner.name}>
+				{owner.name}
+			</div>
+			<div className="max-w-64 truncate text-muted-foreground text-sm" title={owner.email}>
+				{owner.email}
+			</div>
 		</div>
 	);
 }
@@ -55,9 +61,13 @@ function TokensTable({ data }) {
 				meta: { mobile: "title" },
 				header: label("api-tokens.name"),
 				cell: (info) => (
-					<div className="flex flex-wrap items-center gap-2">
+					<div className="flex min-w-0 flex-col gap-1.5">
 						<span className="break-words font-medium">{info.getValue()}</span>
-						<TokenBadges token={info.row.original} now={now} />
+						{tokenMarks(info.row.original, now).length > 0 ? (
+							<div className="flex flex-wrap gap-1.5">
+								<TokenBadges token={info.row.original} now={now} />
+							</div>
+						) : null}
 					</div>
 				),
 			}),
@@ -70,7 +80,7 @@ function TokensTable({ data }) {
 			columnHelper.display({
 				id: "permissions",
 				header: label("api-tokens.permissions"),
-				cell: (info) => <TokenPermissions token={info.row.original} />,
+				cell: (info) => <TokenPermissions token={info.row.original} visibility />,
 			}),
 			columnHelper.accessor((row) => row.expiresOn ?? "", {
 				id: "expires",
@@ -92,6 +102,7 @@ function TokensTable({ data }) {
 			}),
 			columnHelper.accessor((row) => row.createdOn ?? "", {
 				id: "created",
+				meta: { mobile: "hide" },
 				header: label("api-tokens.created"),
 				cell: (info) => (
 					<span className="whitespace-nowrap">
@@ -103,13 +114,14 @@ function TokensTable({ data }) {
 				id: "actions",
 				meta: { mobile: "title-end", className: "text-right whitespace-nowrap" },
 				cell: (info) => (
-					<AppButton
+					<Button
+						variant="destructive-outline"
 						size="sm"
 						aria-label={label("api-tokens.revoke-name", { name: info.row.original.name })}
 						onClick={() => revoke(info.row.original)}
 					>
 						<T id="api-tokens.revoke" />
-					</AppButton>
+					</Button>
 				),
 			}),
 		];
@@ -136,7 +148,9 @@ function TokensCard() {
 		<SettingsCard
 			title={<T id="settings.api-access.tokens" />}
 			info={<T id="settings.api-access.tokens.info" />}
-			bodyClassName="space-y-0 p-0"
+			// in table mode (the table stacks into cards below 42rem, @2xl) the outer columns start and end at the card's 16 px
+			// inset like the titles and lines of the other cards; a sortable header has 8 px in its button already
+			bodyClassName="space-y-0 p-0 @2xl:[&_td:first-child]:pl-4 @2xl:[&_td:last-child]:pr-4 @2xl:[&_th:first-child]:pl-2 @2xl:[&_th:last-child]:pr-4"
 		>
 			{error ? (
 				<div className="p-4">
@@ -162,20 +176,36 @@ function DocsCard() {
 	return (
 		<SettingsCard title={<T id="settings.api-access.docs" />} lines>
 			<SettingLine
-				id="api-access-docs"
-				title={<T id="settings.api-access.docs.openapi" />}
+				id="api-access-reference"
+				title={<T id="api-tokens.reference" />}
+				hint={<T id="settings.api-access.docs.reference.hint" />}
+				controlClassName="@lg:w-auto"
 				control={
 					<Button asChild variant="outline" size="sm">
 						<a href="/api-reference" target="_blank" rel="noopener noreferrer">
-							<T id="api-tokens.docs" />
+							<BookOpen aria-hidden="true" />
+							<T id="settings.api-access.docs.open" />
 							<ExternalLink aria-hidden="true" />
+							<span className="sr-only">
+								{" "}
+								<T id="api-tokens.new-tab" />
+							</span>
 						</a>
 					</Button>
 				}
 			/>
-			<SettingLineNote className="text-muted-foreground text-sm">
-				<T id="api-tokens.docs.note" /> <code className="font-mono">Authorization: Bearer YOUR_TOKEN</code>
-			</SettingLineNote>
+			<SettingLine
+				id="api-access-header"
+				layout="block"
+				title={<T id="settings.api-access.docs.header" />}
+				hint={<T id="settings.api-access.docs.header.hint" />}
+				control={
+					<CodeBox
+						text={authHeader()}
+						label={intl.formatMessage({ id: "settings.api-access.docs.header" })}
+					/>
+				}
+			/>
 		</SettingsCard>
 	);
 }

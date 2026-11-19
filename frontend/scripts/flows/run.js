@@ -36,21 +36,34 @@ const flows = [...hostFlows, ...windowFlows, ...appFlows].filter(
 // the smoke test launches Chromium itself. The URL holds a token: no message prints it.
 // biome-ignore lint/style/noProcessEnv: the switch is read once
 const cdp = process.env.FLOWS_CDP;
+// FLOWS_WEBKIT_WS (a remote Playwright WebKit server's WebSocket URL, with its token) does the same for WebKit
+// biome-ignore lint/style/noProcessEnv: the switch is read once
+const webkitWs = process.env.FLOWS_WEBKIT_WS;
 const firstLine = (error) =>
 	String(error.message)
 		.split("\n")[0]
-		.replaceAll(cdp || "\u0000", "<FLOWS_CDP>");
+		.replaceAll(cdp || "\u0000", "<FLOWS_CDP>")
+		.replaceAll(webkitWs || "\u0000", "<FLOWS_WEBKIT_WS>");
 const failed = [];
 let browser;
 let admin;
+let remote = null;
 try {
 	try {
-		browser = cdp ? await chromium.connectOverCDP(cdp) : await (engine === "webkit" ? webkit : chromium).launch();
+		if (engine === "webkit" && webkitWs) {
+			remote = "FLOWS_WEBKIT_WS";
+			browser = await webkit.connect(webkitWs);
+		} else if (cdp) {
+			remote = "FLOWS_CDP";
+			browser = await chromium.connectOverCDP(cdp);
+		} else {
+			browser = await (engine === "webkit" ? webkit : chromium).launch();
+		}
 	} catch (error) {
-		// with FLOWS_CDP the error holds the browser URL and its token, so it is not passed on as the cause
+		// a remote connect error holds the browser URL and its token, so it is not passed on as the cause
 		// biome-ignore lint/style/useErrorCause: the token stays out of the log
-		throw new Error(`the browser did not start: ${cdp ? "FLOWS_CDP did not connect" : firstLine(error)}`, {
-			cause: cdp ? undefined : error,
+		throw new Error(`the browser did not start: ${remote ? `${remote} did not connect` : firstLine(error)}`, {
+			cause: remote ? undefined : error,
 		});
 	}
 	admin = await signIn(browser, base, ADMIN_EMAIL, password);

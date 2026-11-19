@@ -118,7 +118,8 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 					<AppModal.Body>
 						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 						{id !== "new" && (
-							<div className="mb-3 flex items-center gap-2">
+							// the window starts on Name: the picture's tooltip would open on a focused avatar
+							<div className="mb-3 flex items-center gap-2" data-window-start-skip="">
 								<GravatarFormatter url={data?.avatar} name={data?.name} email={data?.email} size="lg" />
 
 								<input

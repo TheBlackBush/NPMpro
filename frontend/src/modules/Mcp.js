@@ -1,4 +1,5 @@
-const PLACEHOLDER = "YOUR_TOKEN";
+import { authHeader, TOKEN_PLACEHOLDER } from "./ApiTokens.js";
+
 const NEEDS = ["view", "manage", "delete", "admin"];
 
 /**
@@ -10,13 +11,15 @@ const NEEDS = ["view", "manage", "delete", "admin"];
 const endpointOf = (origin) => `${origin}/api/mcp`;
 
 /**
- * The Claude Code command that adds the server; the token is a placeholder
+ * The Claude Code command that adds the server, with the token filled in (the placeholder without one); the address
+ * is quoted, so an IPv6 address in brackets is not taken for a shell pattern
  *
  * @param {string} endpoint
+ * @param {string} [token]
  * @returns {string}
  */
-const claudeCodeCommand = (endpoint) =>
-	`claude mcp add --transport http npmpro ${endpoint} --header "Authorization: Bearer ${PLACEHOLDER}"`;
+const claudeCodeCommand = (endpoint, token) =>
+	`claude mcp add --transport http npmpro "${endpoint}" --header "${authHeader(token)}"`;
 
 /**
  * The client configuration for Claude Desktop and other clients that start a local command (mcp-remote); the token is a
@@ -38,7 +41,7 @@ const desktopConfig = (endpoint) =>
 					// no space inside an argument (it breaks on Windows): the header value comes from env, as mcp-remote
 					// recommends
 					args: ["-y", "mcp-remote", endpoint, "--header", `Authorization:${AUTH_HEADER_REF}`],
-					env: { AUTH_HEADER: `Bearer ${PLACEHOLDER}` },
+					env: { AUTH_HEADER: `Bearer ${TOKEN_PLACEHOLDER}` },
 				},
 			},
 		},

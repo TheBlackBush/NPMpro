@@ -32,25 +32,28 @@ works whether password login is off, OIDC is the only sign-in, or the user has M
 
 ## Creating a token
 
-Open the user menu (your avatar, top right) and choose **API tokens**. The window lists your tokens with their
-permissions, expiry, last use and creation date. To make one:
+Open the user menu (your avatar, top right) and choose **API tokens**. The window lists your tokens, each with its marks
+(**Administrator**, **Allow delete**, **Expired**), its permissions as "Section | Level" chips, and its expiry, last use
+and creation date. Below the list, **Send the token in this header** shows the header with a copy button and a link to
+the API reference. To make one:
 
 1. Choose **New token**.
-2. **Name**: up to 100 characters, to tell the token apart from your others.
-3. **Expiry**: **30 days**, **90 days** (the default), **365 days**, **On a date** (then **Expiry date**, tomorrow or
-   later) or **No expiry**.
-4. **Item Visibility**: **Created Items Only** or **All Items**. **All Items** is offered only when your own
-   visibility is all items.
-5. **Permissions**: for each of proxy hosts, redirection hosts, 404 hosts, streams, access lists and certificates,
-   **Manage**, **View Only** or **Hidden**. A level above your own cannot be chosen. Choosing a section turns on what
-   it needs, such as access lists for proxy hosts, when your own permissions allow it: the caps above still apply.
-6. **Administrator** (only for administrators): the token acts as an administrator for settings, the audit log,
+2. **Name** (up to 100 characters, to tell the token apart from your others) and **Expiry**: **30 days**, **90 days**
+   (the default), **365 days**, **On a date** (then **Expiry date**, tomorrow or later) or **No expiry**.
+3. **Item Visibility**: **Created Items Only** or **All Items**, one choice of a segmented control. **All Items** is
+   offered only when your own visibility is all items.
+4. **Permissions**: one row per section (proxy hosts, redirection hosts, 404 hosts, streams, access lists and
+   certificates) with **Manage**, **View Only** and **Hidden**. **Set all** at the top sets every section at once. A
+   level above your own cannot be chosen, also through Set all (a section then gets your own level). Choosing a section
+   turns on what it needs, such as access lists for proxy hosts, when your own permissions allow it.
+5. **Administrator** (only for administrators): the token acts as an administrator for settings, the audit log,
    backups and monitoring, but never for users or the sign-in settings. It is off by default; keep such a token like
    your password.
-7. **Allow delete**: lets the token delete (delete requests, replace restores and the MCP delete tools). It is off by
+6. **Allow delete**: lets the token delete (delete requests, replace restores and the MCP delete tools). It is off by
    default.
-8. **Create**. The token is shown once in a window with **Copy** and the note "This token is shown only once": copy
-   it then and choose **Done**.
+7. **Create**. The token is shown once, with the note "Copy your token now": copy the token, or the header with the
+   token in it, or choose **Copy the Claude Code command**, which copies the command that adds this instance to Claude
+   Code with the new token filled in. Then choose **Done**.
 
 To end a token, choose **Revoke** on its row in the list and confirm. It stops working at once.
 
@@ -62,7 +65,8 @@ needs a signed-in session, so scripts do not create tokens: a token cannot creat
 Administrators see every API token of every user in Settings, **API access** (under Administration). The table gives
 each token's owner, permissions, expiry, last use and creation date, and **Revoke** stops any token at once, including
 another user's. Users create their own tokens in the user menu; administrators cannot create or edit a token for
-someone else. The section links to the API documentation.
+someone else. The **API documentation** card opens the API reference and shows the authentication header; on a
+phone each token is a card.
 
 ## Using a token
 
@@ -111,11 +115,12 @@ JSON. It offers 28 tools for hosts, access lists, certificates, monitoring and t
 
 ### Setup
 
-Replace the address with your admin address and `YOUR_TOKEN` with a token from the user menu. The API access section of
-Settings shows the same commands with your address.
+Replace the address with your admin address and `YOUR_TOKEN` with a token from the user menu. Settings, API access
+shows the same setup with your address under **Connect a client**, one tab for **Claude Code** and one for **Claude
+Desktop and other clients**; the token window copies the Claude Code command with a new token already in it.
 
 ```sh
-claude mcp add --transport http npmpro https://npm.example.com:81/api/mcp --header "Authorization: Bearer YOUR_TOKEN"
+claude mcp add --transport http npmpro "https://npm.example.com:81/api/mcp" --header "Authorization: Bearer YOUR_TOKEN"
 ```
 
 For clients that start a local command (a desktop app, for example), add this to the client's configuration:

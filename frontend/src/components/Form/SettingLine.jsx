@@ -1,5 +1,5 @@
 import { cn } from "src/lib/utils";
-import { settingLineClass } from "src/modules/SettingLayout";
+import { settingLineClass, settingNoteClass } from "src/modules/SettingLayout";
 import { FieldMessage } from "./FieldMessage";
 
 /**
@@ -94,11 +94,27 @@ function SettingLines({ className, children }) {
 	return <div className={cn("divide-y overflow-hidden rounded-lg border bg-card", className)}>{children}</div>;
 }
 
-/** A padded row of a lines body that is not a setting: a note, an alert, a link, the result of an action. */
-function SettingLineNote({ className, children, ...props }) {
+/**
+ * A padded row of a lines body that is not a setting: a note, an alert, a link, the result of an action. With icon
+ * (a lucide component) and lead (a bold first word or two) it is a muted note: icon, lead, text.
+ */
+function SettingLineNote({ icon: Icon, lead, className, children, ...props }) {
+	const note = settingNoteClass({ icon: Boolean(Icon) });
+	if (!Icon) {
+		return (
+			<div {...props} className={cn(note.container, className)}>
+				{children}
+			</div>
+		);
+	}
 	return (
-		<div {...props} className={cn("px-4 py-3", className)}>
-			{children}
+		<div {...props} className={cn(note.container, className)}>
+			<Icon aria-hidden="true" className={note.icon} />
+			<p className={cn("m-0", note.text)}>
+				{lead ? <strong className={note.lead}>{lead}</strong> : null}
+				{lead ? " " : null}
+				{children}
+			</p>
 		</div>
 	);
 }

@@ -8,6 +8,7 @@ import {
 	legendClass,
 	numberInputValue,
 	sectionClass,
+	segmentedClass,
 	switchListClass,
 	valueAt,
 } from "./FormFields.js";
@@ -101,4 +102,16 @@ it("names the parts of a field the way SettingLine uses them", () => {
 		aria["aria-describedby"],
 		"runtime-workerProcesses-error runtime-workerProcesses-hint runtime-workerProcesses-badges",
 	);
+});
+
+it("builds a segmented control: a muted track and equal segments, the checked one raised", () => {
+	const full = segmentedClass();
+	assert.equal(full.group, "grid w-full grid-flow-col auto-cols-fr gap-0.5 rounded-lg border bg-muted p-0.5");
+	assert.equal(
+		segmentedClass({ full: false }).group,
+		"inline-grid w-auto grid-flow-col auto-cols-fr gap-0.5 rounded-lg border bg-muted p-0.5",
+	);
+	assert.ok(full.item.includes("data-[state=checked]:bg-background"));
+	assert.ok(full.item.includes("disabled:opacity-50"));
+	assert.ok(full.item.includes("focus-visible:ring-3"));
 });

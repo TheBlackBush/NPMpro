@@ -112,3 +112,20 @@ export function openOnRefusedSave(state, { submitCount, errors, names }) {
 	if (submitCount === state.seenSubmits) return state;
 	return { ...state, open: state.open || hasErrorIn(errors, names), seenSubmits: submitCount };
 }
+
+/**
+ * The classes of a note row of a lines body: with an icon a muted row (icon, bold lead word, text), else only padded
+ *
+ * @param   {Object}  [options]
+ * @param   {boolean} [options.icon]
+ * @returns {{ container: string, icon: string, text: string, lead: string }}
+ */
+export function settingNoteClass({ icon = false } = {}) {
+	if (!icon) return { container: "px-4 py-3", icon: "", text: "", lead: "" };
+	return {
+		container: "flex gap-2.5 px-4 py-3 text-sm text-muted-foreground",
+		icon: "mt-0.5 size-4 shrink-0",
+		text: "min-w-0",
+		lead: "font-semibold text-foreground",
+	};
+}

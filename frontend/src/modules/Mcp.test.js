@@ -12,7 +12,7 @@ it("endpointOf appends the MCP path to the origin", () => {
 it("claudeCodeCommand is the add command with a token placeholder", () => {
 	assert.equal(
 		claudeCodeCommand(ENDPOINT),
-		`claude mcp add --transport http npmpro ${ENDPOINT} --header "Authorization: Bearer YOUR_TOKEN"`,
+		`claude mcp add --transport http npmpro "${ENDPOINT}" --header "Authorization: Bearer YOUR_TOKEN"`,
 	);
 });
 
@@ -53,4 +53,18 @@ it("toolsByNeed of nothing has four empty groups", () => {
 
 it("every need has its translation", () => {
 	for (const need of NEEDS) assert.ok(en[`settings.api-access.mcp.needs.${need}`]);
+});
+
+it("claudeCodeCommand fills in a real token and refuses an odd one", () => {
+	assert.equal(
+		claudeCodeCommand(ENDPOINT, "npmpro_ab12_Xy-z9"),
+		`claude mcp add --transport http npmpro "${ENDPOINT}" --header "Authorization: Bearer npmpro_ab12_Xy-z9"`,
+	);
+	assert.ok(claudeCodeCommand(ENDPOINT, 'a"; echo hi').endsWith('"Authorization: Bearer YOUR_TOKEN"'));
+});
+
+it("claudeCodeCommand quotes an IPv6 address so a shell does not expand its brackets", () => {
+	assert.ok(
+		claudeCodeCommand("https://[fd00::5]:81/api/mcp").includes(' npmpro "https://[fd00::5]:81/api/mcp" --header '),
+	);
 });

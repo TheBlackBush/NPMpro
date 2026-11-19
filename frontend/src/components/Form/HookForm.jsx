@@ -36,6 +36,8 @@ const PendingNamesContext = createContext(NO_PENDING);
  * @param   {Object}   [options.values]       loaded values (a query's data): they become the defaultValues once
  *                                            they arrive (and whenever they change)
  * @param   {Function} [options.validate]     (values) => errors
+ * @param   {string}   [options.mode]         when the first error shows: onTouched (default) or onSubmit, for a form
+ *                                            that opens with the focus in an empty required field
  * @param   {boolean}  [options.keepEdits]    when new values arrive or reset() runs, keep the fields the user
  *                                            already changed (default); false: every field takes the new values
  *                                            (as a Settings section shows the saved settings again after its save,
@@ -43,7 +45,7 @@ const PendingNamesContext = createContext(NO_PENDING);
  *                                            stays submitted unless reset says otherwise
  * @returns {Object}   useForm's methods
  */
-function useAppForm({ defaultValues, values, validate, keepEdits = true }) {
+function useAppForm({ defaultValues, values, validate, keepEdits = true, mode = "onTouched" }) {
 	const validateRef = useRef(validate);
 	// before any event handler runs, so the resolver always uses the validate of the last render
 	useLayoutEffect(() => {
@@ -55,7 +57,7 @@ function useAppForm({ defaultValues, values, validate, keepEdits = true }) {
 		values,
 		resetOptions: resetOptionsOf(keepEdits),
 		resolver,
-		mode: "onTouched",
+		mode,
 		reValidateMode: "onChange",
 		// HookForm focuses the first error in field order; React Hook Form's own focus follows registration order,
 		// where fields with register() come before controllers

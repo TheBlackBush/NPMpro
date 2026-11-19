@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { hasErrorIn, openOnRefusedSave, settingLineClass, settingsCardClass } from "./SettingLayout.js";
+import {
+	hasErrorIn,
+	openOnRefusedSave,
+	settingLineClass,
+	settingNoteClass,
+	settingsCardClass,
+} from "./SettingLayout.js";
 
 const has = (classes, ...names) => {
 	const list = classes.split(" ");
@@ -124,4 +130,14 @@ it("opens a card on a refused save with an error inside, once per save", () => {
 			shown: "x",
 		},
 	);
+});
+
+it("a note with an icon is a muted row with the icon, a bold lead and the text; a plain note is only padded", () => {
+	assert.deepEqual(settingNoteClass(), { container: "px-4 py-3", icon: "", text: "", lead: "" });
+	assert.deepEqual(settingNoteClass({ icon: true }), {
+		container: "flex gap-2.5 px-4 py-3 text-sm text-muted-foreground",
+		icon: "mt-0.5 size-4 shrink-0",
+		text: "min-w-0",
+		lead: "font-semibold text-foreground",
+	});
 });

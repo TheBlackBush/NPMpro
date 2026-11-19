@@ -8,4 +8,4 @@ Tokens werden von ihren Besitzern im Benutzermenü unter **API-Tokens** erstellt
 - Ein Token hat nie mehr Berechtigungen als sein Besitzer. Das Token eines Administrators handelt nur mit eingeschaltetem Schalter **Administrator** als Administrator, und kein Token verwaltet Benutzer.
 - Erstellen, Widerrufen, Ablauf und die erste Verwendung eines Tokens stehen im Audit-Log, mit dem Namen des Tokens neben dem Benutzer.
 
-Die API-Dokumentation öffnet sich in einem neuen Tab.
+**API-Dokumentation** öffnet die API-Referenz aller Endpunkte in einem neuen Tab und zeigt den Header, in dem ein Token gesendet wird. **MCP-Server** zeigt den Endpunkt, die Einrichtung für Claude Code sowie für Claude Desktop und andere Clients und die Tools, die ein Token nutzen kann.
