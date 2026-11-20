@@ -395,6 +395,21 @@
 			]
 		},
 		{
+			"name": "acme account card",
+			"route": "/settings/certificates",
+			"steps": [
+				{ "waitFor": "[data-acme-card]" },
+				{ "click": "#acme-ca" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-slot=select-content]" },
+				{ "hover": "[data-acme-card] button[aria-labelledby$=-title]" },
+				{ "waitFor": "[data-slot=tooltip-content]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-slot=tooltip-content]" }
+			]
+		},
+		{
 			"name": "list tooltips",
 			"route": "/access",
 			"steps": [

@@ -1262,9 +1262,115 @@ async function apiReference({ admin, base }) {
 	if (admin.errors.length > 0) throw new Error(`page error: ${admin.errors[0]}`);
 }
 
+const ACME_CARD = "[data-acme-card]";
+const ACME_STATES = ["none", "pending", "failed", "registered"];
+const ACME_URL_A = "https://127.0.0.1/acme/directory";
+const ACME_URL_B = "https://127.0.0.1/acme/other";
+const UNSAVED_QUESTION = { name: "Unsaved changes" };
+
+/**
+ * The ACME account card of Settings, Certificates: its state, a locked email, the refused custom URL (nothing saved),
+ * the profile field, the unsaved-changes question and (on an instance with a registered account) the Replace window.
+ */
+async function acmeAccount({ admin }) {
+	const { page, api } = admin;
+	const before = await api("GET", "/settings/acme");
+	const replaceRequests = [];
+	page.on("request", (sent) => {
+		if (sent.url().includes("/api/settings/acme/replace")) replaceRequests.push(sent.method());
+	});
+	await page.goto("/settings/certificates");
+	const card = page.locator(ACME_CARD);
+	await card.waitFor();
+	const state = await card.locator("[data-acme-state]").getAttribute("data-acme-state");
+	if (!ACME_STATES.includes(state)) throw new Error(`the card shows the state "${state}"`);
+	console.log(`  acme account: state ${state}`);
+
+	// 2. a locked email: the badge and a field that cannot be edited
+	const emailLocked = (before.locked ?? []).includes("email");
+	if (emailLocked) {
+		await card.getByText("Set by environment").first().waitFor();
+		const email = card.locator("#acme-email");
+		if (!((await email.isDisabled()) || (await email.getAttribute("readonly")) !== null))
+			throw new Error("the locked email can be edited");
+		console.log("  acme account: email locked, checked the badge and the field");
+	} else {
+		console.log("  acme account: email not locked, lock check skipped");
+	}
+
+	// 3. a refused custom URL: the confirmation, the error on the field, nothing saved
+	const selectCa = async (name) => {
+		await card.locator("#acme-ca").click();
+		await page.getByRole("option", { name, exact: true }).click();
+	};
+	await selectCa("Custom URL");
+	await card.locator("#acme-url").fill(ACME_URL_A);
+	await card.getByRole("button", { name: "Save", exact: true }).click();
+	const ask = page.getByRole("alertdialog").filter({ hasText: "Change the certificate authority?" });
+	await ask.waitFor();
+	await ask.getByRole("button", { name: "Change CA", exact: true }).click();
+	await card.getByText("This address is not allowed").first().waitFor();
+	const after = await api("GET", "/settings/acme");
+	if (after.server !== before.server) throw new Error(`the refused save changed the server to ${after.server}`);
+	if (JSON.stringify(after.accounts) !== JSON.stringify(before.accounts))
+		throw new Error("the refused save changed the accounts");
+
+	// 4. the profile field of the request card: a select or the text field
+	const profile = page.locator("#runtime-profile");
+	await profile.waitFor();
+	if ((await profile.evaluate((el) => el.tagName)) === "INPUT") {
+		console.log("  acme account: profile is a text field");
+	} else {
+		await profile.click();
+		await page.getByRole("option", { name: "Server default", exact: true }).first().waitFor();
+		await page.keyboard.press("Escape");
+		await page.getByRole("option", { name: "Server default", exact: true }).first().waitFor({ state: "hidden" });
+		console.log("  acme account: profile is a select");
+	}
+
+	// 5. another custom URL, then a link away: the question, Keep editing stays, Discard changes leaves
+	await card.locator("#acme-url").fill(ACME_URL_B);
+	const networkLink = page.locator("a[href='/settings/network']").filter({ visible: true }).first();
+	await networkLink.click();
+	await page.getByRole("heading", UNSAVED_QUESTION).waitFor();
+	await page.getByRole("button", { name: "Keep editing", exact: true }).click();
+	await page.getByRole("heading", UNSAVED_QUESTION).waitFor({ state: "hidden" });
+	if (!page.url().endsWith("/settings/certificates")) throw new Error("Keep editing left the page");
+	if ((await card.locator("#acme-url").inputValue()) !== ACME_URL_B) throw new Error("Keep editing lost the URL");
+	await networkLink.click();
+	await page.getByRole("heading", UNSAVED_QUESTION).waitFor();
+	await page.getByRole("button", { name: "Discard changes", exact: true }).click();
+	await page.waitForURL("**/settings/network");
+	const kept = await api("GET", "/settings/acme");
+	if (kept.server !== before.server || JSON.stringify(kept.accounts) !== JSON.stringify(before.accounts))
+		throw new Error("discarding changed the stored settings");
+
+	// 6. the Replace window of a registered account: opens filled, Cancel sends nothing
+	const account = (before.accounts ?? []).find((entry) => entry.server === before.server);
+	if (account?.state === "registered") {
+		await page.goto("/settings/certificates");
+		await page.locator("#acme-replace").click();
+		const replace = page.locator("[data-acme-replace]");
+		await replace.waitFor();
+		if ((await replace.locator("#acme-replace-email").inputValue()) !== (account.email ?? ""))
+			throw new Error("the Replace window does not show the account email");
+		if (await page.evaluate(switchOn, "#acme-replace-deactivate")) throw new Error("the deactivate switch is on");
+		await replace.getByRole("button", { name: "Cancel", exact: true }).click();
+		await windowClosed(page);
+		const same = await api("GET", "/settings/acme");
+		if (JSON.stringify(same.accounts) !== JSON.stringify(before.accounts))
+			throw new Error("Cancel changed the account");
+		if (replaceRequests.length > 0) throw new Error(`Cancel sent ${replaceRequests.length} replace request(s)`);
+	} else {
+		console.log("  acme account: no registered account, Replace step not run");
+	}
+	if (admin.errors.length > 0) throw new Error(`page error: ${admin.errors[0]}`);
+}
+
 export const appFlows = [
 	{ name: "api reference", run: apiReference },
 	{ name: "settings save", run: settingsSave },
+	{ name: "acme account", run: acmeAccount },
 	{ name: "log format", run: logFormat },
 	{ name: "tls handshake log", run: tlsHandshakeLog },
 	{ name: "crowdsec settings", run: crowdsecSettings },
