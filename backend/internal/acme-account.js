@@ -768,7 +768,7 @@ const fillCertificateServers = async () => {
 		(await listRenewalConfs()).filter((conf) => conf.server).map((conf) => [conf.certificateId, conf.server]),
 	);
 	for (const row of rows) {
-		const server = servers.has(row.id) ? spelled(servers.get(row.id)) : instanceServer();
+		const server = spelled(servers.has(row.id) ? servers.get(row.id) : instanceServer());
 		await certificateModel.query().where("id", row.id).patch({ npmpro_acme_server: server });
 	}
 	return rows.length;

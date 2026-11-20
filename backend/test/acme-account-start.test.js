@@ -160,6 +160,36 @@ it("fills the CA of each certificate from its renewal conf, else the instance CA
 	assert.deepEqual(await normalizedCalls(api), []);
 });
 
+it("stores the instance CA of a certificate without a conf in its normalized form", async () => {
+	const { fillCertificateServers } = await import("../internal/acme-account.js");
+	const insert = (id) =>
+		api.db("certificate").insert({
+			id,
+			owner_user_id: 1,
+			created_on: "2026-01-01 00:00:00",
+			modified_on: "2026-01-01 00:00:00",
+			provider: "letsencrypt",
+			nice_name: `c${id}`,
+			domain_names: "[]",
+			expires_on: "2099-01-01 00:00:00",
+			meta: "{}",
+		});
+	const saved = process.env.ACME_SERVER;
+	try {
+		for (const [id, instance, expected] of [
+			[21, "https://PEBBLE.test:14000/dir/", PEBBLE],
+			[22, "https://Nowhere.Test/dir/", "https://nowhere.test/dir"],
+		]) {
+			await insert(id);
+			process.env.ACME_SERVER = instance;
+			assert.equal(await fillCertificateServers(), 1);
+			assert.equal((await api.db("certificate").where({ id }).first()).npmpro_acme_server, expected);
+		}
+	} finally {
+		process.env.ACME_SERVER = saved;
+	}
+});
+
 it("updates the recorded email from ACME_EMAIL in the background; a failure stays on the row", async () => {
 	const { syncEnvEmail } = await import("../internal/acme-account.js");
 	await certbotSucceeds(api, await makeCertificate(api.root, "a.example.com"));
