@@ -24,4 +24,29 @@ const getCompiledSchema = async () => {
 const getValidationSchema = (path, method) =>
 	compiledSchema?.paths[path]?.[method]?.requestBody?.content?.["application/json"]?.schema ?? null;
 
-export { getCompiledSchema, getValidationSchema };
+const querySchemas = new Map();
+
+/**
+ * Returns the query parameters of a path and method as one object schema (no other parameter allowed), built once
+ * from the documented parameters so validation and the docs cannot drift.
+ *
+ * @param {string} path
+ * @param {string} method
+ * @returns {Object|null}
+ */
+const getQuerySchema = (path, method) => {
+	const key = `${method} ${path}`;
+	if (querySchemas.has(key)) return querySchemas.get(key);
+	const parameters = compiledSchema?.paths[path]?.[method]?.parameters?.filter((param) => param.in === "query");
+	if (!parameters) return null;
+	const schema = {
+		type: "object",
+		additionalProperties: false,
+		properties: Object.fromEntries(parameters.map((param) => [param.name, param.schema])),
+		required: parameters.filter((param) => param.required).map((param) => param.name),
+	};
+	querySchemas.set(key, schema);
+	return schema;
+};
+
+export { getCompiledSchema, getQuerySchema, getValidationSchema };

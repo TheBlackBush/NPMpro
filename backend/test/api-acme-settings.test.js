@@ -408,3 +408,21 @@ it("answers busy and changes nothing while certbot holds its lock, on a save and
 		service.setBusyRetry({ retries: 3, delayMs: 3000 });
 	}
 });
+
+it("validates the profiles query with the documented parameters", async () => {
+	const { getCompiledSchema, getQuerySchema } = await import("../schema/index.js");
+	const documented = (await getCompiledSchema()).paths["/settings/acme/profiles"].get.parameters;
+	const schema = getQuerySchema("/settings/acme/profiles", "get");
+	assert.deepEqual(
+		Object.keys(schema.properties),
+		documented.map((param) => param.name),
+	);
+	assert.deepEqual(schema.properties.server, documented[0].schema);
+	assert.equal(schema.additionalProperties, false);
+	assert.equal(getQuerySchema("/settings/acme/profiles", "get"), schema);
+	const long = `https://good.lan/${"a".repeat(255)}`;
+	assert.equal((await admin.get(`${SETTINGS}/profiles?server=${long}`)).status, 400);
+	acmeDirectory(api, GOOD, { persist: false });
+	const other = await admin.get(`${SETTINGS}/profiles?server=${GOOD}&cache=1`);
+	assert.equal(other.status, 200, other.text);
+});

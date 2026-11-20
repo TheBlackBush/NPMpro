@@ -3,21 +3,13 @@ import internalAcmeAccount from "../internal/acme-account.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
 import apiValidator from "../lib/validator/api.js";
 import validator from "../lib/validator/index.js";
-import { getValidationSchema } from "../schema/index.js";
+import { getQuerySchema, getValidationSchema } from "../schema/index.js";
 
 const router = express.Router({
 	caseSensitive: true,
 	strict: true,
 	mergeParams: true,
 });
-
-const profilesSchema = {
-	type: "object",
-	additionalProperties: false,
-	properties: {
-		server: { type: "string", maxLength: 255 },
-	},
-};
 
 /**
  * /api/settings/acme: the instance CA and its account (administrators only; an Administrator API token may use these
@@ -52,7 +44,16 @@ router
 	.route("/profiles")
 	.all(jwtdecode())
 	.get(async (req, res) => {
-		const query = validator(profilesSchema, "server" in req.query ? { server: req.query.server } : {});
+		// the documented query parameters (schema/paths/settings/acme/profiles/get.json); other names are ignored
+		const schema = getQuerySchema("/settings/acme/profiles", "get");
+		const query = validator(
+			schema,
+			Object.fromEntries(
+				Object.keys(schema.properties)
+					.filter((name) => name in req.query)
+					.map((name) => [name, req.query[name]]),
+			),
+		);
 		res.status(200).send(await internalAcmeAccount.listProfiles(res.locals.access, query));
 	});
 
