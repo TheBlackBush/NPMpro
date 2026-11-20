@@ -539,6 +539,79 @@ const withRenewalLock = async (certificateId, fn, { access = null, strict = fals
 };
 
 /**
+ * Runs fn while holding the locks of all the given CAs, taken in sorted serverKey order: every other caller holds one
+ * lock at a time, so the order rules out a deadlock. fn may not take any of these locks again (they are not
+ * re-entrant): it uses the Locked variants.
+ *
+ * @param   {string[]}  servers
+ * @param   {Function}  fn
+ * @returns {Promise<*>}  fn's result
+ */
+const withAccountLocks = (servers, fn) => {
+	const keys = [...new Set(servers.map(serverKey))].sort((a, b) => a.localeCompare(b));
+	const from = (index) => (index === keys.length ? fn() : withAccountLock(keys[index], () => from(index + 1)));
+	return from(0);
+};
+
+/**
+ * Before certbot renews: each renewal conf names an account that exists (prepareRenewalLocked). A conf whose CA has
+ * no usable account is reported and left as it is: certbot then fails that certificate only. The caller holds the
+ * locks of the confs' CAs.
+ *
+ * @param   {Object[]}  confs   from listRenewalConfs
+ * @param   {Object}    [options]
+ * @param   {Access}    [options.access]
+ * @returns {Promise<{certificateId: number, server: string, message: string}[]>}
+ */
+const prepareRenewals = async (confs, { access = null } = {}) => {
+	const problems = [];
+	for (const conf of confs) {
+		try {
+			await prepareRenewalLocked(conf, { access });
+		} catch (err) {
+			problems.push({ certificateId: conf.certificateId, server: conf.server, message: err.message });
+			logger.warn(
+				`Certificate #${conf.certificateId} has no usable ACME account on ${conf.server}: ${err.message}`,
+			);
+		}
+	}
+	return problems;
+};
+
+/**
+ * Runs fn, one certbot renewal of all due certificates, while holding the lock of every CA that has an account row or
+ * a renewal conf (withAccountLocks): a Replace account of any of them waits for it, and it for a Replace account, so
+ * certbot never writes back a conf naming a replaced account. The confs are prepared under the locks first. When the
+ * CAs cannot be listed, fn runs without the locks and without the preparation.
+ *
+ * @param   {Function}  fn
+ * @returns {Promise<*>}  fn's result
+ */
+const withRenewalLocks = async (fn) => {
+	let servers;
+	try {
+		const confs = await listRenewalConfs();
+		const rows = await acmeAccountModel.query();
+		servers = [...rows.map((row) => row.server), ...confs.map((conf) => conf.server ?? LETSENCRYPT_SERVER)];
+	} catch (err) {
+		logger.warn(`The ACME accounts and renewal confs could not be listed, renewing without their checks: ${err}`);
+		return await fn();
+	}
+	const held = new Set(servers.map(serverKey));
+	return await withAccountLocks(servers, async () => {
+		try {
+			// read again under the locks: a Replace account may have rewritten a conf meanwhile; a conf of a CA that
+			// appeared since is left to certbot as it is (its lock is not held)
+			const confs = (await listRenewalConfs()).filter((conf) => conf.server && held.has(serverKey(conf.server)));
+			await prepareRenewals(confs);
+		} catch (err) {
+			logger.warn(`The renewal confs could not be prepared: ${err}`);
+		}
+		return await fn();
+	});
+};
+
+/**
  * Changes the contact of a registered account at its CA (fact 3); "" removes every contact. Refused while the CA
  * cannot be reached (D13). The caller holds the CA's lock.
  *
@@ -1159,6 +1232,7 @@ export {
 	lockedKeys,
 	open,
 	prepareRenewalLocked,
+	prepareRenewals,
 	readAcmeSetting,
 	readDirectory,
 	refused,
@@ -1183,7 +1257,9 @@ export {
 	updateEmailLocked,
 	upsertRow,
 	withAccountLock,
+	withAccountLocks,
 	withRenewalLock,
+	withRenewalLocks,
 	writeRunConfig,
 };
 

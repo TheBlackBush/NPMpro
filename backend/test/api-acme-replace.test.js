@@ -467,13 +467,13 @@ it("a replace waits for a running renew of the CA, and the renewed conf then nam
 	}
 });
 
-it("a replace waits for the timer's renewal of a certificate of the CA", async () => {
+it("a replace waits for the timer's renewal, one certbot run under the CA locks", async () => {
 	const { default: internalCertificate } = await import("../internal/certificate.js");
 	await writeFile(path.join(api.root, "fake/hold-renew"), "");
 	internalCertificate.intervalProcessing = false;
 	try {
 		const run = internalCertificate.processExpiringHosts();
-		await waitFor(async () => (await calls()).some((line) => line.includes(" renew --cert-name npm-1 ")));
+		await waitFor(async () => (await calls()).some((line) => line.endsWith(" renew --quiet")));
 		const replaced = admin.post(REPLACE, BODY);
 		await wait(300);
 		assert.deepEqual(
@@ -485,10 +485,40 @@ it("a replace waits for the timer's renewal of a certificate of the CA", async (
 		await run;
 		const res = await replaced;
 		assert.equal(res.status, 200, res.text);
+		assert.equal((await calls()).filter((line) => line.includes(" renew ")).length, 1, "one certbot renew");
 		for (const id of [1, 2]) assert.match(await readConf(id), new RegExp(`account = ${NEW}`, "u"));
 	} finally {
 		await rm(path.join(api.root, "fake/hold-renew"), { force: true });
-		for (const id of [1, 2, 3]) await rm(certbotDir(`live/npm-${id}`), { recursive: true, force: true });
+		internalCertificate.intervalProcessing = false;
+	}
+});
+
+it("a renew holds the locks of two CAs, and a Replace on either waits", async () => {
+	const { default: internalCertificate } = await import("../internal/certificate.js");
+	await model.query().insert({ server: OTHER, account_id: OTHER_ACCOUNT, state: "registered" });
+	acmeDirectory(api, OTHER, { persist: false });
+	await writeFile(path.join(api.root, "fake/hold-renew"), "");
+	internalCertificate.intervalProcessing = false;
+	try {
+		const run = internalCertificate.processExpiringHosts();
+		await waitFor(async () => (await calls()).some((line) => line.endsWith(" renew --quiet")));
+		const onCa = admin.post(REPLACE, BODY);
+		const onOther = admin.post(REPLACE, { server: OTHER, email: "other@example.com" });
+		await wait(300);
+		assert.deepEqual(
+			(await calls()).filter((line) => line.includes(" register ")),
+			[],
+			"neither CA registers while the renewal runs",
+		);
+		await rm(path.join(api.root, "fake/hold-renew"));
+		await run;
+		assert.equal((await onCa).status, 200);
+		assert.equal((await onOther).status, 200);
+		assert.equal((await calls()).filter((line) => line.includes(" register ")).length, 2);
+		assert.notEqual((await model.query().where("server", OTHER).first()).account_id, OTHER_ACCOUNT);
+		assert.doesNotMatch(await readConf(3), new RegExp(`account = ${OTHER_ACCOUNT}`, "u"));
+	} finally {
+		await rm(path.join(api.root, "fake/hold-renew"), { force: true });
 		internalCertificate.intervalProcessing = false;
 	}
 });
