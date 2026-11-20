@@ -82,7 +82,7 @@ function AppSelect({
 	};
 	const clearPointerFocus = (event) => event.currentTarget.removeAttribute("data-pointer-focus");
 	return (
-		<Select value={selected} onValueChange={(item) => onValueChange(fromItemValue(item))} disabled={disabled}>
+		<Select value={selected} onValueChange={(chosen) => onValueChange(fromItemValue(chosen))} disabled={disabled}>
 			<SelectTrigger
 				id={id}
 				name={name}
