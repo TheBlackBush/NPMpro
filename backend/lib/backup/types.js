@@ -59,6 +59,9 @@ const isPlainPath = (rel) =>
 	rel !== "" &&
 	rel.split("/").every((part) => part !== "" && part !== "." && part !== "..");
 
+// the temporary folder of a Replace account (it holds the EAB pair): never part of a backup, wherever it is
+const isReplaceFolder = (part) => part.startsWith(".replace-");
+
 const isUnder = (root) => (rel) => rel === root || rel.startsWith(`${root}/`);
 
 const parentsOf = (paths) =>
@@ -82,7 +85,9 @@ const fileRules = ({ roots, matches, secret = () => false, importOnly = [] }) =>
 		roots,
 		importOnly,
 		allow: (rel) =>
-			isPlainPath(rel) && (parents.has(rel) || roots.includes(rel) || matches.some((match) => match(rel))),
+			isPlainPath(rel) &&
+			!rel.split("/").some(isReplaceFolder) &&
+			(parents.has(rel) || roots.includes(rel) || matches.some((match) => match(rel))),
 		secret: (rel) => isPlainPath(rel) && secret(rel),
 	};
 };

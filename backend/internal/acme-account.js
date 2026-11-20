@@ -408,27 +408,29 @@ const adoptUsableAccount = async (server, row) => {
  * @param   {Access}  [options.access]  whose request caused it; none: the system (the renewal timer)
  * @returns {Promise<string>}
  */
-const ensureAccount = (server, { access = null } = {}) =>
-	withAccountLock(server, async () => {
-		const row = await adoptUsableAccount(server, await accountRow(server));
-		if (row?.state === "registered" && (await accountExists(row.server, row.account_id))) return row.account_id;
-		const values = registrationValues(server, row);
-		let result;
-		try {
-			result = await attemptRegistration(server, values);
-		} catch (err) {
-			if (isBusy(err)) throw err;
-			const saved = await upsertRow(server, row, { state: "failed", error: err.message });
-			await audit(access, "registration-failed", saved, { error: err.message });
-			throw err;
-		}
-		if (result.outcome === "unreachable") {
-			await upsertRow(server, row, { state: "pending", error: result.message });
-			throw new errs.ValidationError(result.message, "error.acme-unreachable", { values: { server } });
-		}
-		return (await storeRegistered(server, row, { email: values.email, accountId: result.accountId, access }))
-			.account_id;
-	});
+const ensureAccountLocked = async (server, { access = null } = {}) => {
+	const row = await adoptUsableAccount(server, await accountRow(server));
+	if (row?.state === "registered" && (await accountExists(row.server, row.account_id))) return row.account_id;
+	const values = registrationValues(server, row);
+	let result;
+	try {
+		result = await attemptRegistration(server, values);
+	} catch (err) {
+		if (isBusy(err)) throw err;
+		const saved = await upsertRow(server, row, { state: "failed", error: err.message });
+		await audit(access, "registration-failed", saved, { error: err.message });
+		throw err;
+	}
+	if (result.outcome === "unreachable") {
+		await upsertRow(server, row, { state: "pending", error: result.message });
+		throw new errs.ValidationError(result.message, "error.acme-unreachable", { values: { server } });
+	}
+	return (await storeRegistered(server, row, { email: values.email, accountId: result.accountId, access }))
+		.account_id;
+};
+
+/** ensureAccount for a caller that already holds the CA's lock (the lock is not re-entrant) */
+const ensureAccount = (server, options) => withAccountLock(server, () => ensureAccountLocked(server, options));
 
 /**
  * Before certbot renews: each renewal conf (all, or those of ids) names an account that exists, its CA's registered
@@ -537,7 +539,10 @@ const sweepRunFolders = async () => {
 	}
 };
 
-/** Removes the temporary folders of a Replace account that a crash or restart interrupted (they may hold the EAB pair) */
+/**
+ * At the start only (nothing runs yet; a running Replace account would lose its folder): removes the temporary folders
+ * of a Replace account that a crash interrupted, since they may hold the EAB pair
+ */
 const sweepReplaceFolders = async () => {
 	let entries;
 	try {
@@ -560,7 +565,6 @@ const sweepReplaceFolders = async () => {
  * File checks only: no network, no certbot.
  */
 const syncAccountsWithFiles = async () => {
-	await sweepReplaceFolders();
 	const confs = await listRenewalConfs();
 	for (const server of knownServers(await acmeAccountModel.query(), confs, await serverFolders())) {
 		// under the CA's lock, so a registration running (after a restore or merge) is not overwritten
@@ -984,8 +988,9 @@ const replaceAccount = async (access, body) => {
 			const [created] = await listAccountIds(server, { accountsDir: path.join(temp, "config/accounts") });
 			if (!created) throw new Error("certbot registered no account");
 			// 2. its folder moves next to the old one (the real folder may be the one a symlink points to)
-			moved = path.join(await accountsHome(server), created.id);
-			await rename(created.dir, moved);
+			const target = path.join(await accountsHome(server), created.id);
+			await rename(created.dir, target);
+			moved = target;
 			// 3. the CA's confs name it, then the row follows
 			const confs = (await listRenewalConfs()).filter(
 				(conf) => conf.server && serverKey(conf.server) === serverKey(server),
@@ -1008,7 +1013,11 @@ const replaceAccount = async (access, body) => {
 		} catch (err) {
 			if (moved) await rm(moved, { recursive: true, force: true });
 			const failure = err instanceof errs.ValidationError ? err : refused(err, secrets);
-			if (!isBusy(failure)) await audit(access, "replace-failed", row, { error: failure.message });
+			if (!isBusy(failure)) {
+				await audit(access, "replace-failed", row, { error: failure.message }).catch((auditErr) => {
+					logger.warn(`Could not record the failed Replace account: ${auditErr.message}`);
+				});
+			}
 			throw failure;
 		} finally {
 			await rm(temp, { recursive: true, force: true });
@@ -1053,6 +1062,7 @@ export {
 	audit,
 	baseIni,
 	ensureAccount,
+	ensureAccountLocked,
 	getSettings,
 	inRunFolder,
 	instanceServer,
@@ -1076,6 +1086,7 @@ export {
 	setBusyRetry,
 	setInstanceServer,
 	storeRegistered,
+	sweepReplaceFolders,
 	sweepRunFolders,
 	syncAccountsWithFiles,
 	syncEnvEmail,

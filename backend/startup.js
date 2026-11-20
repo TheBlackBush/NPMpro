@@ -1,4 +1,10 @@
-import { loadAcmeServer, sweepRunFolders, syncAccountsWithFiles, syncEnvEmail } from "./internal/acme-account.js";
+import {
+	loadAcmeServer,
+	sweepReplaceFolders,
+	sweepRunFolders,
+	syncAccountsWithFiles,
+	syncEnvEmail,
+} from "./internal/acme-account.js";
 import { startExpirySweep } from "./internal/api-token.js";
 import { backupStore } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
@@ -44,6 +50,7 @@ const prepareApp = async ({ background = true } = {}) => {
 	// run folders a crash left behind may hold an email or an EAB pair
 	try {
 		await sweepRunFolders();
+		await sweepReplaceFolders();
 	} catch (err) {
 		logger.warn(`Could not remove old ACME run folders: ${err.message}`);
 	}

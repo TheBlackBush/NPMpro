@@ -247,3 +247,16 @@ it("exports only the chosen items and marks the backup partial", async () => {
 	await knex.destroy();
 	await rm(paths.root, { recursive: true });
 });
+
+it("never exports the temporary folder of a Replace account", async () => {
+	const knex = await sqlite();
+	const paths = await setup();
+	await put(path.join(paths.dataDir, "tls/certbot/.replace-abc/certbot.ini"), "eab-kid = secret");
+	await put(path.join(paths.dataDir, "tls/certbot/accounts/.replace-def/x/private_key.json"), "{}");
+	const { manifest } = await run(knex, paths, { secrets: true });
+	assert.ok(manifest.files.length > 0);
+	assert.ok(!manifest.files.some((file) => file.path.includes(".replace-")));
+	assert.ok(!existsSync(path.join(paths.stageDir, "files/tls/certbot/.replace-abc")));
+	assert.ok(!existsSync(path.join(paths.stageDir, "files/tls/certbot/accounts/.replace-def")));
+	await knex.destroy();
+});

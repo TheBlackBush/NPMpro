@@ -245,13 +245,138 @@ it("needs the EAB pair of a CA that requires one", async () => {
 	assert.deepEqual(await calls(), []);
 });
 
-it("the start removes a leftover temporary folder and points a conf at the row's account", async () => {
+it("the start removes a leftover temporary folder, and the sync points a conf at the row's account", async () => {
 	const { syncAccountsWithFiles } = await import("../internal/acme-account.js");
 	await mkdir(certbotDir(".replace-abc/config/accounts/ca.lan/dir"), { recursive: true });
 	await writeFile(certbotDir(".replace-abc/certbot.ini"), "eab-kid = secret\n");
 	await writeFile(confPath(1), confText("c".repeat(32), CA));
+	const { sweepReplaceFolders } = await import("../internal/acme-account.js");
+	await sweepReplaceFolders();
 	await syncAccountsWithFiles();
 	assert.deepEqual(await leftovers(), []);
 	assert.match(await readConf(1), new RegExp(`account = ${OLD}`, "u"));
 	assert.equal((await row()).account_id, OLD);
+});
+
+it("a restore reload during a replace keeps its temporary folder", async () => {
+	const { syncAccountsWithFiles } = await import("../internal/acme-account.js");
+	await mkdir(certbotDir(".replace-running"), { recursive: true });
+	await syncAccountsWithFiles();
+	assert.deepEqual(await leftovers(), [".replace-running"]);
+	await rm(certbotDir(".replace-running"), { recursive: true });
+});
+
+it("restores everything when the new account's folder cannot be moved", async () => {
+	// a folder with the new id and content is in the way: the rename fails, and it is not ours to remove
+	await mkdir(accountFolder(NEW), { recursive: true });
+	await writeFile(path.join(accountFolder(NEW), "mine"), "x");
+	const res = await admin.post(REPLACE, BODY);
+	assert.equal(res.status, 400, res.text);
+	for (const id of [1, 2]) assert.equal(await readConf(id), confText(OLD, CA));
+	assert.equal((await row()).account_id, OLD);
+	assert.ok(await exists(path.join(accountFolder(NEW), "mine")));
+	assert.ok(await exists(accountFolder(OLD)));
+	assert.deepEqual(await leftovers(), []);
+	assert.ok(await auditOf("replace-failed"));
+});
+
+it("puts the confs back, removes the moved folder and keeps the row when the row update fails", async () => {
+	// the failure comes from a SQLite trigger
+	if (api.db.client.config.client !== "better-sqlite3") return;
+	await api.db.raw(
+		"CREATE TRIGGER fail_replace BEFORE UPDATE ON npmpro_acme_account BEGIN SELECT RAISE(ABORT, 'row update failed'); END",
+	);
+	try {
+		const res = await admin.post(REPLACE, BODY);
+		assert.equal(res.status, 400, res.text);
+	} finally {
+		await api.db.raw("DROP TRIGGER fail_replace");
+	}
+	for (const id of [1, 2]) assert.equal(await readConf(id), confText(OLD, CA));
+	assert.ok(!(await exists(accountFolder(NEW))));
+	assert.ok(await exists(accountFolder(OLD)));
+	assert.equal((await row()).account_id, OLD);
+	assert.deepEqual(await leftovers(), []);
+});
+
+it("a failing audit does not hide the CA's refusal", async () => {
+	await writeFile(path.join(api.root, "fake/register.fail"), "invalidContact: nope");
+	const audit = (await import("../internal/audit-log.js")).default;
+	const original = audit.add;
+	audit.add = () => Promise.reject(new Error("audit down"));
+	try {
+		const res = await admin.post(REPLACE, BODY);
+		assert.equal(res.status, 400, res.text);
+		assert.equal(res.body.error.message_i18n, "error.acme-refused");
+		assert.ok(res.body.error.message_values.message.includes("invalidContact"));
+	} finally {
+		audit.add = original;
+	}
+});
+
+const settle = (promise) => {
+	const state = { done: false };
+	promise.then(
+		() => {
+			state.done = true;
+		},
+		() => {
+			state.done = true;
+		},
+	);
+	return state;
+};
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const waitFor = async (check) => {
+	for (let attempt = 0; attempt < 100 && !(await check()); attempt += 1) await wait(50);
+};
+
+it("serializes a replace with an account lookup and a second replace on the same CA", async () => {
+	const { ensureAccount } = await import("../internal/acme-account.js");
+	await writeFile(path.join(api.root, "fake/hold"), CA);
+	acmeDirectory(api, CA, {
+		body: { newNonce: "https://ca.lan/nonce", meta: { externalAccountRequired: true } },
+		persist: false,
+	});
+	const first = admin.post(REPLACE, BODY);
+	await waitFor(() => exists(path.join(api.root, "fake/register-1.ini")));
+	const lookup = ensureAccount(CA);
+	const lookupState = settle(lookup);
+	const second = admin.post(REPLACE, { ...BODY, email: "third@example.com" });
+	await wait(300);
+	assert.equal(lookupState.done, false, "the lookup waits for the replace");
+	assert.equal((await calls()).filter((line) => line.includes(" register ")).length, 1);
+	await rm(path.join(api.root, "fake/hold"));
+	assert.equal((await first).status, 200);
+	assert.equal(await lookup, NEW, "the lookup sees the replaced account");
+	assert.equal((await second).status, 200);
+	assert.equal((await calls()).filter((line) => line.includes(" register ")).length, 2);
+	assert.equal((await row()).account_id, "00000000000000000000000000000002");
+});
+
+it("a replace waits for a running certonly of the CA", async () => {
+	const { default: certificateAcme } = await import("../internal/certificate-acme.js");
+	await writeFile(path.join(api.root, "fake/hold-certonly"), "");
+	const issued = certificateAcme.requestCertbot(
+		{ id: 50, domain_names: ["x.example.com"], npmpro_acme_server: CA, npmpro_reuse_key: false },
+		null,
+	);
+	const issuedState = settle(issued);
+	await waitFor(async () => (await calls()).some((line) => line.includes(" certonly ")));
+	const replaced = admin.post(REPLACE, BODY);
+	await wait(300);
+	assert.equal(issuedState.done, false);
+	assert.deepEqual(
+		(await calls()).filter((line) => line.includes(" register ")),
+		[],
+		"nothing registers while the certonly runs",
+	);
+	assert.ok(await exists(accountFolder(OLD)));
+	await rm(path.join(api.root, "fake/hold-certonly"));
+	await issued;
+	const res = await replaced;
+	assert.equal(res.status, 200, res.text);
+	assert.equal(res.body.replaced.moved, 3, "the certificate issued meanwhile is moved too");
+	assert.match(await readConf(50), new RegExp(`account = ${NEW}`, "u"));
+	await rm(confPath(50), { force: true });
 });

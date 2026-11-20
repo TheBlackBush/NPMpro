@@ -178,6 +178,7 @@ if [ "$action" = delete ]; then
 	rm -rf "$live" "$conf"
 	exit 0
 fi
+while [ -f "$root/fake/hold-$action" ]; do sleep 0.1; done
 fail "$action"
 mkdir -p "$live"
 cp "${certificate}" "$live/fullchain.pem"
