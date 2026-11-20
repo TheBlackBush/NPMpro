@@ -98,6 +98,8 @@ function SelectLabel({
   )
 }
 
+// NPMpro: description, an optional second line under the label (the trigger shows the label only); used by AppSelect
+// options
 function SelectItem({
   className,
   children,
