@@ -50,9 +50,13 @@ const prepareApp = async ({ background = true } = {}) => {
 	// run folders a crash left behind may hold an email or an EAB pair
 	try {
 		await sweepRunFolders();
-		await sweepReplaceFolders();
 	} catch (err) {
 		logger.warn(`Could not remove old ACME run folders: ${err.message}`);
+	}
+	try {
+		await sweepReplaceFolders();
+	} catch (err) {
+		logger.warn(`Could not remove old ACME replace folders: ${err.message}`);
 	}
 
 	// restore stages, unfinished writes and pending downloads of the previous run

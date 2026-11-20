@@ -334,49 +334,58 @@ const waitFor = async (check) => {
 it("serializes a replace with an account lookup and a second replace on the same CA", async () => {
 	const { ensureAccount } = await import("../internal/acme-account.js");
 	await writeFile(path.join(api.root, "fake/hold"), CA);
-	acmeDirectory(api, CA, {
-		body: { newNonce: "https://ca.lan/nonce", meta: { externalAccountRequired: true } },
-		persist: false,
-	});
-	const first = admin.post(REPLACE, BODY);
-	await waitFor(() => exists(path.join(api.root, "fake/register-1.ini")));
-	const lookup = ensureAccount(CA);
-	const lookupState = settle(lookup);
-	const second = admin.post(REPLACE, { ...BODY, email: "third@example.com" });
-	await wait(300);
-	assert.equal(lookupState.done, false, "the lookup waits for the replace");
-	assert.equal((await calls()).filter((line) => line.includes(" register ")).length, 1);
-	await rm(path.join(api.root, "fake/hold"));
-	assert.equal((await first).status, 200);
-	assert.equal(await lookup, NEW, "the lookup sees the replaced account");
-	assert.equal((await second).status, 200);
-	assert.equal((await calls()).filter((line) => line.includes(" register ")).length, 2);
-	assert.equal((await row()).account_id, "00000000000000000000000000000002");
+	try {
+		acmeDirectory(api, CA, {
+			body: { newNonce: "https://ca.lan/nonce", meta: { externalAccountRequired: true } },
+			persist: false,
+		});
+		const first = admin.post(REPLACE, BODY);
+		await waitFor(() => exists(path.join(api.root, "fake/register-1.ini")));
+		const lookup = ensureAccount(CA);
+		const lookupState = settle(lookup);
+		const second = admin.post(REPLACE, { ...BODY, email: "third@example.com" });
+		await wait(300);
+		assert.equal(lookupState.done, false, "the lookup waits for the replace");
+		assert.equal((await calls()).filter((line) => line.includes(" register ")).length, 1);
+		await rm(path.join(api.root, "fake/hold"));
+		assert.equal((await first).status, 200);
+		assert.equal(await lookup, NEW, "the lookup sees the replaced account");
+		assert.equal((await second).status, 200);
+		assert.equal((await calls()).filter((line) => line.includes(" register ")).length, 2);
+		assert.equal((await row()).account_id, "00000000000000000000000000000002");
+	} finally {
+		await rm(path.join(api.root, "fake/hold"), { force: true });
+	}
 });
 
 it("a replace waits for a running certonly of the CA", async () => {
 	const { default: certificateAcme } = await import("../internal/certificate-acme.js");
 	await writeFile(path.join(api.root, "fake/hold-certonly"), "");
-	const issued = certificateAcme.requestCertbot(
-		{ id: 50, domain_names: ["x.example.com"], npmpro_acme_server: CA, npmpro_reuse_key: false },
-		null,
-	);
-	const issuedState = settle(issued);
-	await waitFor(async () => (await calls()).some((line) => line.includes(" certonly ")));
-	const replaced = admin.post(REPLACE, BODY);
-	await wait(300);
-	assert.equal(issuedState.done, false);
-	assert.deepEqual(
-		(await calls()).filter((line) => line.includes(" register ")),
-		[],
-		"nothing registers while the certonly runs",
-	);
-	assert.ok(await exists(accountFolder(OLD)));
-	await rm(path.join(api.root, "fake/hold-certonly"));
-	await issued;
-	const res = await replaced;
-	assert.equal(res.status, 200, res.text);
-	assert.equal(res.body.replaced.moved, 3, "the certificate issued meanwhile is moved too");
-	assert.match(await readConf(50), new RegExp(`account = ${NEW}`, "u"));
-	await rm(confPath(50), { force: true });
+	try {
+		const issued = certificateAcme.requestCertbot(
+			{ id: 50, domain_names: ["x.example.com"], npmpro_acme_server: CA, npmpro_reuse_key: false },
+			null,
+		);
+		const issuedState = settle(issued);
+		await waitFor(async () => (await calls()).some((line) => line.includes(" certonly ")));
+		const replaced = admin.post(REPLACE, BODY);
+		await wait(300);
+		assert.equal(issuedState.done, false);
+		assert.deepEqual(
+			(await calls()).filter((line) => line.includes(" register ")),
+			[],
+			"nothing registers while the certonly runs",
+		);
+		assert.ok(await exists(accountFolder(OLD)));
+		await rm(path.join(api.root, "fake/hold-certonly"));
+		await issued;
+		const res = await replaced;
+		assert.equal(res.status, 200, res.text);
+		assert.equal(res.body.replaced.moved, 3, "the certificate issued meanwhile is moved too");
+		assert.match(await readConf(50), new RegExp(`account = ${NEW}`, "u"));
+	} finally {
+		await rm(path.join(api.root, "fake/hold-certonly"), { force: true });
+		await rm(certbotDir("live/npm-50"), { recursive: true, force: true });
+		await rm(confPath(50), { force: true });
+	}
 });

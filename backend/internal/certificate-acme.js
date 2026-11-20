@@ -33,11 +33,11 @@ const renewalParamsOf = async (id) => {
  * The CA of a request (the certificate's, else the instance CA), its account (registered lazily) and the options the
  * request passes for that CA (rule 6)
  *
+ * @param   {string}  server  the request's CA
  * @returns {Promise<{server: string, args: string[]}>}
  */
-const acmeTarget = async (certificate, access) => {
+const acmeTarget = async (server, access) => {
 	const instance = instanceServer();
-	const server = certificate.npmpro_acme_server ?? instance;
 	// the caller holds the CA's lock (withAcmeTarget)
 	const accountId = await ensureAccountLocked(server, { access });
 	const { values } = await getRuntimeConfig("certificates");
@@ -57,10 +57,11 @@ const acmeTarget = async (certificate, access) => {
  * Runs fn(target) with the CA's account lock held, so a Replace account cannot move or deactivate the account while
  * the certbot run of fn uses it
  */
-const withAcmeTarget = (certificate, access, fn) =>
-	withAccountLock(certificate.npmpro_acme_server ?? instanceServer(), async () =>
-		fn(await acmeTarget(certificate, access)),
-	);
+const withAcmeTarget = (certificate, access, fn) => {
+	// the CA is resolved once: the lock and the account are always the same CA's
+	const server = certificate.npmpro_acme_server ?? instanceServer();
+	return withAccountLock(server, async () => fn(await acmeTarget(server, access)));
+};
 
 /** Revokes by the account first, then with the certificate's own key (fact 12); both best effort */
 const revokeBestEffort = async ({ server, account, certName, certPath, keyPath, reason }) => {
