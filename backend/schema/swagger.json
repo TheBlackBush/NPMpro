@@ -422,6 +422,11 @@
 				"$ref": "./paths/settings/acme/register/post.json"
 			}
 		},
+		"/settings/acme/replace": {
+			"post": {
+				"$ref": "./paths/settings/acme/replace/post.json"
+			}
+		},
 		"/settings/acme/profiles": {
 			"get": {
 				"$ref": "./paths/settings/acme/profiles/get.json"

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import dayjs from "dayjs";
 import { readAcmeDirectory, unreachableReason, zeroSslEab } from "../lib/acme-directory.js";
@@ -20,12 +20,14 @@ import {
 	accountConfigText,
 	accountDirsOf,
 	accountExists,
+	CERTBOT_DIR,
 	listAccountIds,
 	listRenewalConfs,
 	registerArgs,
 	serverFolders,
 	serverOfFolder,
 	setRenewalParams,
+	unregisterArgs,
 	updateEmailArgs,
 	writeFileAtomic,
 } from "../lib/certbot-account.js";
@@ -53,6 +55,9 @@ const RUN_DIR = rooted("/tmp");
 const RUN_PREFIX = "acme-register-";
 // certbot's answer while another run holds its config-dir lock (the start's renew, a request, the timer)
 const LOCK_BUSY = /already running/iu;
+// Replace account registers into a folder of this name under the certbot folder (the same filesystem, so the new
+// account folder moves by rename); a crash may leave one, the start removes it
+const REPLACE_PREFIX = ".replace-";
 
 const locks = new Map();
 
@@ -532,6 +537,22 @@ const sweepRunFolders = async () => {
 	}
 };
 
+/** Removes the temporary folders of a Replace account that a crash or restart interrupted (they may hold the EAB pair) */
+const sweepReplaceFolders = async () => {
+	let entries;
+	try {
+		entries = await readdir(CERTBOT_DIR, { withFileTypes: true });
+	} catch (err) {
+		if (err.code === "ENOENT") return;
+		throw err;
+	}
+	for (const entry of entries) {
+		if (!(entry.isDirectory() && entry.name.startsWith(REPLACE_PREFIX))) continue;
+		await rm(path.join(CERTBOT_DIR, entry.name), { recursive: true, force: true });
+		logger.warn(`Removed the leftover Replace account folder ${entry.name}`);
+	}
+};
+
 /**
  * The start (and a restore or merge): a row for an account folder whose CA has no registered row (the account most
  * confs of the CA name, then the oldest; the email is ACME_EMAIL for the instance CA, else not recorded), registered
@@ -539,6 +560,7 @@ const sweepRunFolders = async () => {
  * File checks only: no network, no certbot.
  */
 const syncAccountsWithFiles = async () => {
+	await sweepReplaceFolders();
 	const confs = await listRenewalConfs();
 	for (const server of knownServers(await acmeAccountModel.query(), confs, await serverFolders())) {
 		// under the CA's lock, so a registration running (after a restore or merge) is not overwritten
@@ -850,7 +872,179 @@ const listProfiles = async (access, { server } = {}) => {
 	};
 };
 
-const internalAcmeAccount = { getSettings, listProfiles, registerNow, saveSettings };
+/** Writes the original text back to confs (best effort: a conf that cannot be written stays for the start repair) */
+const restoreConfs = async (confs) => {
+	for (const conf of confs) {
+		await writeFileAtomic(conf.path, conf.text).catch((err) => {
+			logger.warn(`Could not restore ${conf.path} after a failed Replace account: ${err.message}`);
+		});
+	}
+};
+
+/**
+ * Rewrites account = in the given renewal confs. When one write fails, the confs written so far get their text back
+ * and the error is thrown.
+ *
+ * @param   {{path: string, text: string}[]}  confs
+ * @param   {string}  accountId
+ * @param   {Object}  [options]
+ * @param   {Function}  [options.write]  (file, text): writes a file (tests inject a failing one)
+ * @returns {Promise<number>}  how many confs were rewritten
+ */
+const rewriteAccountConfs = async (confs, accountId, { write = writeFileAtomic } = {}) => {
+	const done = [];
+	try {
+		for (const conf of confs) {
+			await write(conf.path, setRenewalParams(conf.text, { account: accountId }));
+			done.push(conf);
+		}
+	} catch (err) {
+		await restoreConfs(done);
+		throw err;
+	}
+	return done.length;
+};
+
+/** The folder that holds server's account folders: the one certbot already uses (a symlink is followed), else its own */
+const accountsHome = async (server) => {
+	for (const dir of accountDirsOf(server)) {
+		try {
+			return await realpath(dir);
+		} catch {
+			// not there: the next one, else the own folder
+		}
+	}
+	const own = accountDirsOf(server)[0];
+	await mkdir(own, { recursive: true });
+	return own;
+};
+
+/** The EAB pair a Replace account registers with, null when the CA needs none */
+const replaceEab = async (server, body, email) => {
+	const directory = await readDirectory(server, { fresh: true });
+	if (!directory.reachable) {
+		throw new errs.ValidationError(`The ACME server ${server} cannot be reached`, "error.acme-unreachable", {
+			values: { server },
+		});
+	}
+	if (!directory.directory) {
+		throw new errs.ValidationError(`${server} is not an ACME directory`, "error.acme-not-directory", {
+			values: { server },
+		});
+	}
+	const entered = body.eab_kid && body.eab_hmac_key ? { kid: body.eab_kid, hmac: body.eab_hmac_key } : null;
+	if (!directory.external_account_required) return null;
+	if (entered) return entered;
+	if (isZeroSsl(server) && email) return await zeroSslEab(email);
+	return refuseValue("eab", "this CA needs an EAB key ID and HMAC key", "error.acme-eab-pair");
+};
+
+/**
+ * Replace account (D11): a new account at the same CA, the CA's certificates moved to it, the old account kept or
+ * deactivated. It all runs under the CA's lock. The new account is registered into a temporary config folder first, so
+ * nothing changes when the CA refuses; its folder is then moved next to the old one, the renewal confs name it and the
+ * row follows. Only after that is the old account deactivated, when asked; a failure there undoes nothing.
+ *
+ * @param   {Access}  access
+ * @param   {Object}  body
+ * @param   {string}  body.server
+ * @param   {string}  [body.email]  default the account's current one
+ * @param   {string}  [body.eab_kid]
+ * @param   {string}  [body.eab_hmac_key]
+ * @param   {boolean} [body.deactivate_old]
+ * @returns {Promise<Object>}  the GET answer plus replaced: { moved, old_account, deactivation_error? }
+ */
+const replaceAccount = async (access, body) => {
+	access.canAdmin();
+	const server = body.server;
+	return await withAccountLock(server, async () => {
+		const row = await accountRow(server);
+		if (!(await isRegistered(row))) {
+			throw new errs.ValidationError("Only a registered account can be replaced", "error.acme-not-registered");
+		}
+		const email = body.email === undefined ? (row.email ?? null) : body.email.trim() || null;
+		if (email && !(email.length <= MAX_EMAIL && EMAIL.test(email))) {
+			refuseValue("email", "must be an email address", "error.acme-email");
+		}
+		const eab = await replaceEab(server, body, email);
+		const secrets = [email, eab?.kid, eab?.hmac];
+		const oldId = row.account_id;
+		await mkdir(CERTBOT_DIR, { recursive: true });
+		const temp = await mkdtemp(path.join(CERTBOT_DIR, REPLACE_PREFIX));
+		let moved = null;
+		let count = 0;
+		try {
+			// 1. register into the temporary config folder: nothing in the real one changes
+			const config = await writeRunConfig(temp, {
+				configDir: path.join(temp, "config"),
+				email: email || undefined,
+				eab: eab || undefined,
+			});
+			await runAccountCertbot(registerArgs(config, server, { withEmail: Boolean(email) }), secrets);
+			const [created] = await listAccountIds(server, { accountsDir: path.join(temp, "config/accounts") });
+			if (!created) throw new Error("certbot registered no account");
+			// 2. its folder moves next to the old one (the real folder may be the one a symlink points to)
+			moved = path.join(await accountsHome(server), created.id);
+			await rename(created.dir, moved);
+			// 3. the CA's confs name it, then the row follows
+			const confs = (await listRenewalConfs()).filter(
+				(conf) => conf.server && serverKey(conf.server) === serverKey(server),
+			);
+			count = await rewriteAccountConfs(confs, created.id);
+			try {
+				await acmeAccountModel.query().patchAndFetchById(row.id, {
+					account_id: created.id,
+					email,
+					registered_on: now(),
+					eab_kid: null,
+					eab_hmac_key: null,
+					error: null,
+				});
+			} catch (err) {
+				await restoreConfs(confs);
+				throw err;
+			}
+			moved = null;
+		} catch (err) {
+			if (moved) await rm(moved, { recursive: true, force: true });
+			const failure = err instanceof errs.ValidationError ? err : refused(err, secrets);
+			if (!isBusy(failure)) await audit(access, "replace-failed", row, { error: failure.message });
+			throw failure;
+		} finally {
+			await rm(temp, { recursive: true, force: true });
+		}
+		// 4. only now, when asked: the old account is deactivated at the CA
+		let oldState = "kept";
+		let deactivationError;
+		if (body.deactivate_old === true) {
+			try {
+				await runAccountCertbot(unregisterArgs(CERTBOT_INI, server, oldId), []);
+				oldState = "deactivated";
+			} catch (err) {
+				oldState = "deactivation-failed";
+				deactivationError = scrub(err.message, secrets);
+			}
+		}
+		const saved = await accountRow(server);
+		await audit(access, "replaced", saved, {
+			old_account: oldId,
+			new_account: saved.account_id,
+			moved: count,
+			old_account_state: oldState,
+			...(deactivationError ? { error: deactivationError } : {}),
+		});
+		return {
+			...(await getSettings(access)),
+			replaced: {
+				moved: count,
+				old_account: oldState,
+				...(deactivationError ? { deactivation_error: deactivationError } : {}),
+			},
+		};
+	});
+};
+
+const internalAcmeAccount = { getSettings, listProfiles, registerNow, replaceAccount, saveSettings };
 
 export {
 	accountRow,
@@ -873,6 +1067,8 @@ export {
 	registerNow,
 	registrationValues,
 	reloadAcmeAfterRestore,
+	replaceAccount,
+	rewriteAccountConfs,
 	saveAcmeSetting,
 	saveSettings,
 	scrub,
