@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, copyFile, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { startApi } from "./support/api.js";
@@ -198,10 +198,11 @@ it("hides the email in any letter case and URL-encoded", () => {
 	assert.equal(service.scrub("", ["a"]), "certbot failed without a message");
 });
 
-it("shares one lock between the spellings of a CA URL", async () => {
+it("shares one lock and one account between the spellings of a CA URL", async () => {
 	acmeDirectory(api, CA);
-	const other = "https://ACME.test/directory";
+	const other = "https://ACME.test/directory/";
 	await writeFile(path.join(api.root, "fake/hold"), CA);
+	let ids;
 	try {
 		const first = service.ensureAccount(CA);
 		await waitForRegisterCalls(1);
@@ -209,11 +210,26 @@ it("shares one lock between the spellings of a CA URL", async () => {
 		await sleep(300);
 		assert.equal((await registerCalls()).length, 1);
 		await rm(path.join(api.root, "fake/hold"));
-		await Promise.all([first, second]);
+		ids = await Promise.all([first, second]);
 	} finally {
 		await rm(path.join(api.root, "fake/hold"), { force: true });
 	}
-	assert.equal((await registerCalls()).length, 2);
+	// the second spelling finds the first one's row and account: no second registration, no second row
+	assert.deepEqual(ids, [ID1, ID1]);
+	assert.equal((await registerCalls()).length, 1);
+	assert.equal(await model.query().resultSize(), 1);
+});
+
+it("maps a Let's Encrypt URL with a trailing slash and the v01 URL to the one row of the CA", async () => {
+	const LE = "https://acme-v02.api.letsencrypt.org/directory";
+	const id = "f".repeat(32);
+	await seedAccount(api, LE, id);
+	await model.query().insert({ server: LE, state: "registered", account_id: id });
+	assert.equal(await service.ensureAccount(`${LE}/`), id);
+	assert.equal(await service.ensureAccount("https://acme-v01.api.letsencrypt.org/directory"), id);
+	assert.equal((await service.accountRow("https://acme-v01.api.letsencrypt.org/directory/")).server, LE);
+	assert.equal(await model.query().resultSize(), 1);
+	assert.deepEqual(await registerCalls(), []);
 });
 
 it("does not hold a registration of one CA behind a slow registration of another", async () => {
@@ -307,4 +323,56 @@ it("changes and removes the email of a registered account, and refuses while the
 		(err) => err.message_i18n === "error.acme-email-offline",
 	);
 	assert.equal((await model.query().where("server", LAN).first()).email, "keep@example.com");
+});
+
+const BUSY = "Another instance of Certbot is already running.";
+
+it("retries a registration while certbot is busy with another run, and stores nothing while it stays busy", async () => {
+	service.setBusyRetry({ retries: 2, delayMs: 5 });
+	const hook = path.join(api.root, "fake/certbot.hook");
+	const real = path.join(api.root, "fake/certbot-real");
+	const count = path.join(api.root, "fake/busy-count");
+	await copyFile(hook, real);
+	await chmod(real, 0o755);
+	try {
+		// busy once, then the real fake certbot
+		await writeFile(count, "");
+		await writeFile(
+			hook,
+			`#!/bin/sh\necho x >> "${count}"\nif [ "$(wc -l < "${count}")" -le 1 ]; then echo "${BUSY}" >&2; exit 1; fi\nexec "${real}" "$@"\n`,
+		);
+		acmeDirectory(api, CA);
+		assert.equal(await service.ensureAccount(CA), ID1);
+		assert.equal((await model.query().where("server", CA).first()).state, "registered");
+		// busy every time: the caller gets the busy error, the row is not marked failed and no audit entry is written
+		await model.query().delete();
+		await api.db("audit_log").where("object_type", "acme-account").delete();
+		await writeFile(hook, `#!/bin/sh\necho x >> "${count}"\necho "${BUSY}" >&2\nexit 1\n`);
+		await writeFile(count, "");
+		acmeDirectory(api, LAN, { persist: false });
+		await assert.rejects(service.ensureAccount(LAN), (err) => err.message_i18n === "error.acme-busy");
+		assert.equal((await readFile(count, "utf8")).trim().split("\n").length, 3);
+		assert.equal(await model.query().where("server", LAN).first(), undefined);
+		assert.deepEqual(await api.db("audit_log").where("object_type", "acme-account"), []);
+	} finally {
+		await copyFile(real, hook);
+		await rm(real, { force: true });
+		service.setBusyRetry({ retries: 3, delayMs: 3000 });
+	}
+});
+
+it("adopts a usable account folder instead of registering again", async () => {
+	const id = "e".repeat(32);
+	await seedAccount(api, LAN, id);
+	await model.query().insert({ server: LAN, state: "failed", error: "killed after certbot wrote the account" });
+	assert.equal(await service.ensureAccount(LAN), id);
+	const row = await model.query().where("server", LAN).first();
+	assert.equal(row.state, "registered");
+	assert.equal(row.account_id, id);
+	assert.equal(row.error, null);
+	// no row at all: the folder is adopted too
+	await model.query().delete();
+	assert.equal(await service.ensureAccount(LAN), id);
+	assert.equal(await model.query().resultSize(), 1);
+	assert.deepEqual(await registerCalls(), []);
 });

@@ -90,18 +90,30 @@ const isZeroSsl = (server) => {
 	}
 };
 
+// certbot's LE_REUSE_SERVERS: the v01 directories are the same CA as their v02 ones
+const LE_V01 = {
+	"https://acme-v01.api.letsencrypt.org/directory": LETSENCRYPT_SERVER,
+	"https://acme-staging.api.letsencrypt.org/directory": LETSENCRYPT_STAGING_SERVER,
+};
+
 /**
- * @returns {string}  one key for the spellings of a CA URL (scheme and host in lower case, no trailing slash): what
- *          the per-CA lock is keyed on
+ * @returns {string}  one key for the spellings of a CA URL (scheme and host in lower case, no default port, no
+ *          trailing slash, the v02 URL for a Let's Encrypt v01 one): what the account rows, the renewal conf checks and
+ *          the per-CA lock compare
  */
 const serverKey = (server) => {
+	let key;
 	try {
 		const url = new URL(server);
-		return `${url.protocol}//${url.host}${url.pathname.replace(TRAILING_SLASHES, "")}${url.search}`;
+		key = `${url.protocol}//${url.host}${url.pathname.replace(TRAILING_SLASHES, "")}${url.search}`;
 	} catch {
 		return String(server);
 	}
+	return LE_V01[key] ?? key;
 };
+
+/** @returns {boolean}  two spellings of one CA */
+const sameServer = (a, b) => serverKey(a) === serverKey(b);
 
 /** @returns {string|null}  the preset id of a directory URL */
 const presetOf = (server) => ACME_PRESETS.find((preset) => preset.server === server)?.id ?? null;
@@ -116,7 +128,7 @@ const presetOf = (server) => ACME_PRESETS.find((preset) => preset.server === ser
  * @returns {{profile: string, must_staple: boolean}}
  */
 const requestOptionsFor = (server, instance, values) =>
-	server === instance
+	sameServer(server, instance)
 		? { profile: values.profile ?? "", must_staple: values.must_staple === true }
 		: { profile: "", must_staple: STAPLING_SERVERS.has(server) };
 
@@ -133,6 +145,7 @@ export {
 	requestOptionsFor,
 	resolveAcmeServer,
 	STAPLING_SERVERS,
+	sameServer,
 	serverKey,
 	setStoredAcmeServer,
 	storedAcmeServer,

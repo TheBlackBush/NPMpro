@@ -10,6 +10,7 @@ import {
 	presetOf,
 	requestOptionsFor,
 	resolveAcmeServer,
+	sameServer,
 	serverKey,
 	setStoredAcmeServer,
 	storedAcmeServer,
@@ -113,4 +114,11 @@ it("gives the spellings of one CA URL one key", () => {
 	assert.equal(serverKey("https://acme.test:443/directory"), "https://acme.test/directory");
 	assert.notEqual(serverKey("https://acme.test/a"), serverKey("https://acme.test/b"));
 	assert.equal(serverKey("not a url"), "not a url");
+	assert.equal(serverKey("https://acme-v01.api.letsencrypt.org/directory/"), LETSENCRYPT_SERVER);
+	assert.equal(
+		serverKey("https://acme-staging.api.letsencrypt.org/directory"),
+		"https://acme-staging-v02.api.letsencrypt.org/directory",
+	);
+	assert.ok(sameServer(`${LETSENCRYPT_SERVER}/`, "https://acme-v01.api.letsencrypt.org/directory"));
+	assert.ok(!sameServer("https://acme.test/a", "https://acme.test/b"));
 });

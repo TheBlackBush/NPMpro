@@ -8,6 +8,7 @@ import { blockedError, createGuardedAgent, isBlockedAddress } from "./outbound-g
 // undici version (UND_ERR_INVALID_ARG).
 // The one read of an ACME directory: the profile check of a save, the profile list, the EAB requirement and whether
 // a CA can be reached before it registers. A URL typed in the UI is guarded (D6); an ACME_SERVER env value is not.
+// Also ZeroSSL's EAB request, always guarded.
 
 const DIRECTORY_TIMEOUT = 10_000;
 const CACHE_MS = 5 * 60_000;
@@ -16,6 +17,8 @@ const PROFILE_NAME = /^[A-Za-z0-9._-]{1,64}$/u;
 const MAX_DESCRIPTION = 500;
 const MAX_BODY_BYTES = 1024 * 1024;
 const MAX_CACHE_ENTRIES = 32;
+const ZEROSSL_EAB_URL = "https://api.zerossl.com/acme/eab-credentials-email";
+const ZEROSSL_TIMEOUT = 10_000;
 
 const cache = new Map();
 const agents = new Map();
@@ -210,7 +213,44 @@ const unreachableReason = (code) => {
 	return "the connection failed";
 };
 
+/**
+ * An EAB pair from ZeroSSL for an email (its public endpoint, read through the outbound guard)
+ *
+ * @param   {string}  email
+ * @param   {Object}  [options]  tests: another URL and dispatcher
+ * @returns {Promise<{kid: string, hmac: string}>}
+ */
+const zeroSslEab = async (
+	email,
+	{ url = ZEROSSL_EAB_URL, dispatcher = dispatcherFor({ guarded: true, verify: true }) } = {},
+) => {
+	let body = null;
+	try {
+		const res = await fetch(url, {
+			method: "POST",
+			body: new URLSearchParams({ email }),
+			signal: AbortSignal.timeout(ZEROSSL_TIMEOUT),
+			dispatcher,
+		});
+		body = await res.json();
+	} catch {
+		body = null;
+	}
+	if (body?.success !== true || typeof body.eab_kid !== "string" || typeof body.eab_hmac_key !== "string") {
+		throw new errs.ValidationError("ZeroSSL did not return EAB credentials for this email", "error.acme-zerossl");
+	}
+	return { kid: body.eab_kid, hmac: body.eab_hmac_key };
+};
+
 const clearAcmeDirectoryCache = () => cache.clear();
 const cacheSize = () => cache.size;
 
-export { assertAllowedHost, cacheSize, clearAcmeDirectoryCache, dispatcherFor, readAcmeDirectory, unreachableReason };
+export {
+	assertAllowedHost,
+	cacheSize,
+	clearAcmeDirectoryCache,
+	dispatcherFor,
+	readAcmeDirectory,
+	unreachableReason,
+	zeroSslEab,
+};

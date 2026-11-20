@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
@@ -248,6 +248,31 @@ it("a backup that holds an acme row replaces the instance CA", async () => {
 	});
 	assert.equal((await admin.get("/settings/acme")).body.server, LE);
 	assert.doesNotMatch(await startup(), STARTUP_CA);
+});
+
+it("a restore that changes the instance CA computes the runtime defaults and renewal options with the restored CA", async () => {
+	const ZEROSSL = "https://acme.zerossl.com/v2/DV90";
+	const conf = path.join(api.root, "data/tls/certbot/renewal/npm-99.conf");
+	await mkdir(path.dirname(conf), { recursive: true });
+	await writeFile(conf, `[renewalparams]\naccount = ${ACCOUNT_ID}\nserver = ${ZEROSSL}\nauthenticator = webroot\n`);
+	const name = await keep(true);
+	try {
+		assert.equal((await admin.get("/settings/runtime/certificates")).body.must_staple, false);
+		await replaceCrafted(name, async ({ data, writeData }) => {
+			const runtime = await data("settings_runtime");
+			runtime.setting = runtime.setting.map((row) =>
+				row.id === "acme" ? { ...row, meta: { ...row.meta, server: ZEROSSL } } : row,
+			);
+			await writeData("settings_runtime", runtime);
+		});
+		assert.equal((await admin.get("/settings/acme")).body.server, ZEROSSL);
+		const runtime = await admin.get("/settings/runtime/certificates");
+		assert.equal(runtime.body.must_staple, true);
+		assert.equal(runtime.body.ocsp_stapling, true);
+		assert.ok((await readFile(conf, "utf8")).split("\n").includes("must_staple = True"));
+	} finally {
+		await rm(conf, { force: true });
+	}
 });
 
 // a merge of the backup into an instance that lost its ACME settings and account files

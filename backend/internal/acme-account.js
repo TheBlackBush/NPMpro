@@ -1,8 +1,7 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import dayjs from "dayjs";
-import { fetch } from "undici";
-import { dispatcherFor, readAcmeDirectory, unreachableReason } from "../lib/acme-directory.js";
+import { readAcmeDirectory, unreachableReason, zeroSslEab } from "../lib/acme-directory.js";
 import {
 	ACME_PRESETS,
 	acmeEnvSet,
@@ -11,6 +10,7 @@ import {
 	isZeroSsl,
 	LETSENCRYPT_SERVER,
 	resolveAcmeServer,
+	sameServer,
 	serverKey,
 	setStoredAcmeServer,
 	storedAcmeServer,
@@ -48,11 +48,11 @@ import internalRuntimeSetting, { reapplyRuntimeGroup } from "./runtime-setting.j
 // checks (syncAccountsWithFiles), so the start never waits on a CA.
 
 const RUN_TIMEOUT = 60_000;
-const ZEROSSL_TIMEOUT = 10_000;
 const MAX_MESSAGE = 2000;
 const RUN_DIR = rooted("/tmp");
 const RUN_PREFIX = "acme-register-";
-const ZEROSSL_EAB_URL = "https://api.zerossl.com/acme/eab-credentials-email";
+// certbot's answer while another run holds its config-dir lock (the start's renew, a request, the timer)
+const LOCK_BUSY = /already running/iu;
 
 const locks = new Map();
 
@@ -93,7 +93,11 @@ const loadAcmeServer = async () => setStoredAcmeServer(await readAcmeSetting());
 /** @returns {string}  the instance CA (a user-set ACME_SERVER, the stored one, Let's Encrypt) */
 const instanceServer = () => resolveAcmeServer(process.env);
 
-const accountRow = (server) => acmeAccountModel.query().where("server", server).first();
+/** The row of a CA, whatever the spelling of either (serverKey): one row per CA */
+const accountRow = async (server) => {
+	const wanted = serverKey(server);
+	return (await acmeAccountModel.query()).find((row) => serverKey(row.server) === wanted);
+};
 
 /** The API form of a row: no EAB value, only whether one is stored */
 const accountView = (row) => ({
@@ -170,33 +174,18 @@ const envPair = () => {
 /**
  * What a registration of server uses: on the instance CA the env email and EAB pair when set (D5), else the row's
  *
+ * @param   {string}   server
+ * @param   {Object}   [row]
+ * @param   {Object}   [options]
+ * @param   {boolean}  [options.asInstance]  server is the instance CA (a Settings save switching to it)
  * @returns {{email: string|null, eab: {kid: string, hmac: string}|null}}
  */
-const registrationValues = (server, row) => {
-	const instance = server === instanceServer();
+const registrationValues = (server, row, { asInstance = false } = {}) => {
+	const instance = asInstance || sameServer(server, instanceServer());
 	const email = instance && acmeEnvSet(process.env).has("ACME_EMAIL") ? process.env.ACME_EMAIL : (row?.email ?? null);
 	const stored = { kid: open(row?.eab_kid), hmac: open(row?.eab_hmac_key) };
 	const eab = (instance && envPair()) || (stored.kid && stored.hmac ? stored : null);
 	return { email, eab };
-};
-
-const zeroSslEab = async (email) => {
-	let body = null;
-	try {
-		const res = await fetch(ZEROSSL_EAB_URL, {
-			method: "POST",
-			body: new URLSearchParams({ email }),
-			signal: AbortSignal.timeout(ZEROSSL_TIMEOUT),
-			dispatcher: dispatcherFor({ guarded: true, verify: true }),
-		});
-		body = await res.json();
-	} catch {
-		body = null;
-	}
-	if (body?.success !== true || typeof body.eab_kid !== "string" || typeof body.eab_hmac_key !== "string") {
-		throw new errs.ValidationError("ZeroSSL did not return EAB credentials for this email", "error.acme-zerossl");
-	}
-	return { kid: body.eab_kid, hmac: body.eab_hmac_key };
 };
 
 /**
@@ -231,6 +220,56 @@ const refused = (err, secrets) => {
 	const message = scrub(err.message, secrets);
 	return new errs.ValidationError(message, "error.acme-refused", { values: { message } });
 };
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const busyError = () =>
+	new errs.ValidationError(
+		"Certbot is already running another task: nothing was changed, try again in a minute",
+		"error.acme-busy",
+	);
+
+const isBusy = (err) => err?.message_i18n === "error.acme-busy";
+
+// how often a Settings save, Register now or a certificate request retries while certbot is busy (tests: shorter)
+let busyRetry = { retries: 3, delayMs: 3000 };
+
+/** @param {{retries: number, delayMs: number}} options */
+const setBusyRetry = (options) => {
+	busyRetry = { ...options };
+};
+
+/**
+ * Runs fn again after delayMs while it fails because certbot is busy (isBusy), at most retries more times; then the
+ * busy error is thrown
+ *
+ * @param   {Function}  fn
+ * @param   {{retries: number, delayMs: number}}  options
+ */
+const retryWhileBusy = async (fn, { retries, delayMs }) => {
+	for (let attempt = 0; ; attempt += 1) {
+		try {
+			return await fn();
+		} catch (err) {
+			if (!(attempt < retries && isBusy(err))) throw err;
+			await sleep(delayMs);
+		}
+	}
+};
+
+/**
+ * One certbot run of an account action: certbot's lock answer is retried (retryWhileBusy) and then thrown as the busy
+ * error, any other failure as the CA's refusal without the secrets
+ */
+const runAccountCertbot = (args, secrets, retry = busyRetry) =>
+	retryWhileBusy(async () => {
+		try {
+			return await runCertbot(args, { timeout: RUN_TIMEOUT });
+		} catch (err) {
+			if (LOCK_BUSY.test(String(err.message))) throw busyError();
+			throw refused(err, secrets);
+		}
+	}, retry);
 
 /**
  * Registers an account for server with certbot. Stores nothing: the caller decides what an outcome changes.
@@ -277,11 +316,11 @@ const attemptRegistration = async (server, { email, eab }, { blockedIsUnreachabl
 	return inRunFolder(async (run) => {
 		const config = await writeRunConfig(run, { email: email || undefined, eab: pair || undefined });
 		const before = new Set((await listAccountIds(server)).map((entry) => entry.id));
-		try {
-			await runCertbot(registerArgs(config, server, { withEmail: Boolean(email) }), { timeout: RUN_TIMEOUT });
-		} catch (err) {
-			throw refused(err, [email, pair?.kid, pair?.hmac]);
-		}
+		await runAccountCertbot(registerArgs(config, server, { withEmail: Boolean(email) }), [
+			email,
+			pair?.kid,
+			pair?.hmac,
+		]);
 		const created = (await listAccountIds(server)).find((entry) => !before.has(entry.id));
 		if (!created) {
 			throw new errs.ValidationError("certbot registered no account", "error.acme-refused", {
@@ -320,9 +359,44 @@ const storeRegistered = async (server, row, { email, accountId, access }) => {
 	return saved;
 };
 
+const sqlTime = (ms) => dayjs(ms).format("YYYY-MM-DD HH:mm:ss");
+
+/** The email recorded for an adopted account folder: the row's, else ACME_EMAIL on the instance CA, else unknown */
+const adoptedEmail = (server, row) =>
+	row?.email ??
+	(sameServer(server, instanceServer()) && acmeEnvSet(process.env).has("ACME_EMAIL") ? process.env.ACME_EMAIL : null);
+
+/** Records an account folder certbot has for server as its registered account (no EAB pair is kept, D7) */
+const adoptAccount = (server, row, chosen) =>
+	upsertRow(server, row, {
+		email: adoptedEmail(server, row),
+		account_id: chosen.id,
+		eab_kid: null,
+		eab_hmac_key: null,
+		state: "registered",
+		error: null,
+		registered_on: chosen.created === null ? now() : sqlTime(chosen.created),
+	});
+
+/**
+ * A row that is not registered while certbot has a usable folder for its CA (a run killed after certbot wrote the
+ * account, a restore): the oldest folder becomes the row's account, so certbot is not asked to register again (it
+ * refuses an existing account). The caller holds the CA's lock.
+ *
+ * @returns {Promise<Object|undefined>}  the row, adopted or as it was
+ */
+const adoptUsableAccount = async (server, row) => {
+	if (row?.state === "registered" && (await accountExists(row.server, row.account_id))) return row;
+	const [oldest] = await listAccountIds(row?.server ?? server);
+	if (!oldest) return row;
+	logger.info(`Adopted the ACME account ${oldest.id} of ${server}`);
+	return await adoptAccount(server, row, oldest);
+};
+
 /**
  * The account id of server, registering it first when it has none (or its folder is gone). A lazy registration's
- * outcome is stored: pending (not reachable) or failed (refused), both refuse the caller's request.
+ * outcome is stored: pending (not reachable) or failed (refused), both refuse the caller's request. While certbot is
+ * busy with another run nothing is stored.
  *
  * @param   {string}  server
  * @param   {Object}  [options]
@@ -331,13 +405,14 @@ const storeRegistered = async (server, row, { email, accountId, access }) => {
  */
 const ensureAccount = (server, { access = null } = {}) =>
 	withAccountLock(server, async () => {
-		const row = await accountRow(server);
-		if (row?.state === "registered" && (await accountExists(server, row.account_id))) return row.account_id;
+		const row = await adoptUsableAccount(server, await accountRow(server));
+		if (row?.state === "registered" && (await accountExists(row.server, row.account_id))) return row.account_id;
 		const values = registrationValues(server, row);
 		let result;
 		try {
 			result = await attemptRegistration(server, values);
 		} catch (err) {
+			if (isBusy(err)) throw err;
 			const saved = await upsertRow(server, row, { state: "failed", error: err.message });
 			await audit(access, "registration-failed", saved, { error: err.message });
 			throw err;
@@ -383,13 +458,26 @@ const prepareRenewals = async (ids, { access = null, strict = false } = {}) => {
 /**
  * Changes the contact of a registered account at its CA (fact 3); "" removes every contact. Refused while the CA
  * cannot be reached (D13). The caller holds the CA's lock.
+ *
+ * @param {string}  server
+ * @param {string}  email
+ * @param {Object}  [options]
+ * @param {Access}  [options.access]
+ * @param {{retries: number, delayMs: number}}  [options.retry]  while certbot is busy (default busyRetry)
  */
-const updateEmailLocked = async (server, email, { access = null } = {}) => {
+const updateEmailLocked = async (server, email, { access = null, retry = busyRetry } = {}) => {
 	const row = await accountRow(server);
-	if (!(row?.state === "registered" && (await accountExists(server, row.account_id)))) {
+	if (!(row?.state === "registered" && (await accountExists(row.server, row.account_id)))) {
 		throw new errs.ValidationError("The ACME account is not registered", "error.acme-not-registered");
 	}
-	const directory = await readDirectory(server, { fresh: true });
+	let directory;
+	try {
+		directory = await readDirectory(server, { fresh: true });
+	} catch (err) {
+		// the account's CA is kept: a name the guard now blocks counts as not reachable (rule 2)
+		if (err.message_i18n !== "error.acme-blocked") throw err;
+		directory = { reachable: false };
+	}
 	if (!directory.reachable) {
 		throw new errs.ValidationError(
 			`The ACME server ${server} cannot be reached: the email can only change while it answers`,
@@ -399,13 +487,11 @@ const updateEmailLocked = async (server, email, { access = null } = {}) => {
 	}
 	await inRunFolder(async (run) => {
 		const config = await writeRunConfig(run, { email: email || undefined });
-		try {
-			await runCertbot(updateEmailArgs(config, server, row.account_id, { withEmail: Boolean(email) }), {
-				timeout: RUN_TIMEOUT,
-			});
-		} catch (err) {
-			throw refused(err, [email]);
-		}
+		await runAccountCertbot(
+			updateEmailArgs(config, server, row.account_id, { withEmail: Boolean(email) }),
+			[email],
+			retry,
+		);
 	});
 	const saved = await acmeAccountModel.query().patchAndFetchById(row.id, { email: email || null, error: null });
 	await audit(access, "email-updated", saved);
@@ -415,35 +501,16 @@ const updateEmailLocked = async (server, email, { access = null } = {}) => {
 const updateEmail = (server, email, options) =>
 	withAccountLock(server, () => updateEmailLocked(server, email, options));
 
-const sqlTime = (ms) => dayjs(ms).format("YYYY-MM-DD HH:mm:ss");
-
-// certbot's LE_REUSE_SERVERS: the v01 directories are the same CA as their v02 ones
-const LE_V01 = {
-	"https://acme-v01.api.letsencrypt.org/directory": "https://acme-v02.api.letsencrypt.org/directory",
-	"https://acme-staging.api.letsencrypt.org/directory": "https://acme-staging-v02.api.letsencrypt.org/directory",
-};
-
-/** One spelling per CA: no trailing slash, the v02 Let's Encrypt URLs */
-const canonicalServer = (server) => {
-	const key = serverKey(server);
-	return LE_V01[key] ?? key;
-};
-
 /** The canonical servers the rows, files and settings name: the instance CA, every row, every conf, every folder */
 const knownServers = (rows, confs, folders) => {
 	const servers = new Set(
 		[instanceServer(), ...rows.map((row) => row.server), ...confs.map((conf) => conf.server).filter(Boolean)].map(
-			canonicalServer,
+			serverKey,
 		),
 	);
 	const covered = new Set([...servers].flatMap((server) => accountDirsOf(server, "")));
-	for (const rel of folders) if (!covered.has(rel)) servers.add(canonicalServer(serverOfFolder(rel)));
+	for (const rel of folders) if (!covered.has(rel)) servers.add(serverKey(serverOfFolder(rel)));
 	return servers;
-};
-
-const rowOf = async (server) => {
-	const wanted = canonicalServer(server);
-	return (await acmeAccountModel.query()).find((row) => canonicalServer(row.server) === wanted);
 };
 
 /**
@@ -473,32 +540,18 @@ const sweepRunFolders = async () => {
  */
 const syncAccountsWithFiles = async () => {
 	const confs = await listRenewalConfs();
-	const instance = canonicalServer(instanceServer());
 	for (const server of knownServers(await acmeAccountModel.query(), confs, await serverFolders())) {
 		// under the CA's lock, so a registration running (after a restore or merge) is not overwritten
 		await withAccountLock(server, async () => {
-			const row = await rowOf(server);
+			const row = await accountRow(server);
 			const accounts = await listAccountIds(server);
 			if (row?.state !== "registered" && accounts.length > 0) {
 				const named = (id) =>
-					confs.filter(
-						(conf) => conf.server && canonicalServer(conf.server) === server && conf.account === id,
-					).length;
+					confs.filter((conf) => conf.server && serverKey(conf.server) === server && conf.account === id)
+						.length;
 				// a stable sort keeps the oldest first among accounts named equally often
 				const chosen = accounts.toSorted((a, b) => named(b.id) - named(a.id))[0];
-				const email =
-					row?.email ??
-					(server === instance && acmeEnvSet(process.env).has("ACME_EMAIL") ? process.env.ACME_EMAIL : null);
-				await upsertRow(server, row, {
-					email,
-					account_id: chosen.id,
-					// the account exists: no EAB pair is kept (D7)
-					eab_kid: null,
-					eab_hmac_key: null,
-					state: "registered",
-					error: null,
-					registered_on: chosen.created === null ? now() : sqlTime(chosen.created),
-				});
+				await adoptAccount(server, row, chosen);
 				logger.info(`Adopted the ACME account ${chosen.id} of ${server}`);
 			} else if (row?.state === "registered" && !accounts.some((entry) => entry.id === row.account_id)) {
 				await acmeAccountModel.query().patchAndFetchById(row.id, {
@@ -512,22 +565,23 @@ const syncAccountsWithFiles = async () => {
 	}
 	for (const conf of confs) {
 		if (!conf.server || (await accountExists(conf.server, conf.account))) continue;
-		const row = await rowOf(conf.server);
+		const row = await accountRow(conf.server);
 		if (row?.state === "registered" && (await accountExists(row.server, row.account_id))) {
 			await writeFileAtomic(conf.path, setRenewalParams(conf.text, { account: row.account_id }));
 		}
 	}
 };
 
-/** After a restore or a merge of certificates or runtime settings: the stored CA, rows and files, envs.sh's line */
+/**
+ * After a restore or a merge of certificates or runtime settings, once the runtime settings are loaded with the
+ * restored CA (loadAcmeServer runs before them): rows and files, the renewal options of the CA's certificates and
+ * envs.sh's line
+ */
 const reloadAcmeAfterRestore = async () => {
-	await loadAcmeServer();
 	await syncAccountsWithFiles();
+	await syncRenewalOptions();
 	await writeStartupSettings();
 };
-
-const LOCK_BUSY = /already running/iu;
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * In the background after the start: the instance account's contact follows a set ACME_EMAIL. The start's own
@@ -543,20 +597,14 @@ const syncEnvEmail = async ({ retries = 6, delayMs = 20_000 } = {}) => {
 	const server = instanceServer();
 	const row = await accountRow(server);
 	if (row?.state !== "registered" || row.email === process.env.ACME_EMAIL) return;
-	for (let attempt = 0; ; attempt += 1) {
-		try {
-			await updateEmail(server, process.env.ACME_EMAIL);
-			logger.info(`The email of the ACME account of ${server} now follows ACME_EMAIL`);
-			return;
-		} catch (err) {
-			if (attempt < retries && LOCK_BUSY.test(err.message)) {
-				await sleep(delayMs);
-				continue;
-			}
-			await acmeAccountModel.query().patchAndFetchById(row.id, { error: err.message });
-			logger.warn(`Could not set the email of the ACME account of ${server} from ACME_EMAIL: ${err.message}`);
-			return;
-		}
+	try {
+		// each try takes the CA's lock on its own, so a Settings save is not kept waiting through the delays
+		const once = { retries: 0, delayMs: 0 };
+		await retryWhileBusy(() => updateEmail(server, process.env.ACME_EMAIL, { retry: once }), { retries, delayMs });
+		logger.info(`The email of the ACME account of ${server} now follows ACME_EMAIL`);
+	} catch (err) {
+		await acmeAccountModel.query().patchAndFetchById(row.id, { error: err.message });
+		logger.warn(`Could not set the email of the ACME account of ${server} from ACME_EMAIL: ${err.message}`);
 	}
 };
 
@@ -604,7 +652,7 @@ const getSettings = async (access) => {
 	const locked = lockedKeys();
 	const envSet = acmeEnvSet(process.env);
 	const rows = await acmeAccountModel.query().orderBy("server");
-	const own = rows.find((row) => row.server === server);
+	const own = rows.find((row) => sameServer(row.server, server));
 	return {
 		server,
 		server_source: serverSource(),
@@ -710,14 +758,14 @@ const saveSettings = async (access, body) => {
 	const changes = pickEditable(body ?? {}, lockedKeys(), ACME_KEYS);
 	const before = instanceServer();
 	const target = changes.server ?? before;
-	const serverChanged = target !== before;
+	const serverChanged = !sameServer(target, before);
 	if (serverChanged && !isDirectoryUrl(target)) {
 		refuseValue("server", "must be an https ACME directory URL", "error.acme-url");
 	}
 	const prevValues = (await getRuntimeConfig("certificates")).values;
 	let warning;
 	await withAccountLock(target, async () => {
-		const row = await accountRow(target);
+		const row = await adoptUsableAccount(target, await accountRow(target));
 		const registered = await isRegistered(row);
 		const mail = checkedEmail(changes, row);
 		const eab = checkedEab(changes, row, registered);
@@ -726,7 +774,8 @@ const saveSettings = async (access, body) => {
 		if (registered) {
 			if (mail.changed) await updateEmailLocked(target, mail.email, { access });
 		} else if (serverChanged || mail.changed || eab.entered) {
-			const values = registrationValues(target, row);
+			// the save's target is the instance CA from now on: the env email and EAB pair count for it (D5)
+			const values = registrationValues(target, row, { asInstance: true });
 			if (mail.given) values.email = mail.email;
 			if (eab.entered) values.eab = { kid: eab.kid, hmac: eab.hmac };
 			const result = await attemptRegistration(target, values, { blockedIsUnreachable: !serverChanged });
@@ -765,7 +814,7 @@ const saveSettings = async (access, body) => {
 const registerNow = async (access, { server } = {}) => {
 	access.canAdmin();
 	const target = server ?? instanceServer();
-	if (target !== instanceServer() && !(await accountRow(target))) {
+	if (!sameServer(target, instanceServer()) && !(await accountRow(target))) {
 		throw new errs.ValidationError("This CA has no account in Settings", "error.acme-unknown-ca");
 	}
 	let warning;
@@ -828,6 +877,7 @@ export {
 	saveSettings,
 	scrub,
 	seal,
+	setBusyRetry,
 	setInstanceServer,
 	storeRegistered,
 	sweepRunFolders,

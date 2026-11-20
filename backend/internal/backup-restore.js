@@ -129,10 +129,14 @@ const createRestore = (
 		await regenerate.rebuildAccessListFiles();
 		await regenerate.regenerateAllHostsNow(await regenerate.loadEnabledHosts());
 		await regenerate.regenerateDefaultSite();
+		const acme = types.includes("certificates") || types.includes("settings_runtime");
+		// the restored instance CA first: the runtime defaults that follow it (D8) are computed with it
+		if (acme) await reloadSettings.acmeServer?.();
 		await runtime.loadRuntimeConfig();
 		const failed = await runtime.applyAllRuntime();
-		// after the runtime config is loaded and applied: the startup settings are written from what the restore brought
-		if (types.includes("certificates") || types.includes("settings_runtime")) await reloadSettings.acme?.();
+		// after the runtime config is loaded and applied: the accounts, the renewal options and the startup settings
+		// from what the restore brought
+		if (acme) await reloadSettings.acme?.();
 		for (const [group, error] of Object.entries(failed ?? {})) {
 			log.error(`Could not apply the ${group} runtime settings after the restore: ${error.message}`);
 		}

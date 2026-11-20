@@ -199,9 +199,15 @@ it("ignores EAB values for a registered account", async () => {
 
 it("never refuses a stored server a save keeps, a blocked name counts as unreachable", async () => {
 	await registeredCa();
-	await model.query().where("server", CA).patch({ state: "pending" });
 	api.outside.dns.set("ca.lan", "127.0.0.1");
 	try {
+		// registered: the email change needs the CA, which counts as not reachable (D13), not as a refused server
+		const offline = await admin.put(SETTINGS, { email: "y@example.com" });
+		assert.equal(offline.status, 400, offline.text);
+		assert.equal(offline.body.error.message_i18n, "error.acme-email-offline");
+		// no account folder: the row is really pending, and is stored as pending again
+		await rm(path.join(api.root, "data/tls/certbot/accounts"), { recursive: true, force: true });
+		await model.query().where("server", CA).patch({ state: "pending", account_id: null });
 		const res = await admin.put(SETTINGS, { email: "x@example.com" });
 		assert.equal(res.status, 200, res.text);
 		assert.equal(res.body.warning, "unreachable");
@@ -378,4 +384,27 @@ it("makes the runtime defaults follow the CA without a restart", async () => {
 	const runtime = await admin.get("/settings/runtime/certificates");
 	assert.equal(runtime.body.must_staple, true);
 	assert.equal(runtime.body.ocsp_stapling, true);
+});
+
+it("answers busy and changes nothing while certbot holds its lock, on a save and on Register now", async () => {
+	const service = await import("../internal/acme-account.js");
+	service.setBusyRetry({ retries: 1, delayMs: 5 });
+	try {
+		await writeFile(path.join(api.root, "fake/register.fail"), "Another instance of Certbot is already running.");
+		acmeDirectory(api, CA);
+		const saved = await admin.put(SETTINGS, { server: CA, email: "ops@example.com" });
+		assert.equal(saved.status, 400, saved.text);
+		assert.equal(saved.body.error.message_i18n, "error.acme-busy");
+		assert.equal(await account(CA), undefined);
+		assert.equal((await admin.get(SETTINGS)).body.server, LE);
+		assert.equal((await registeredCalls()).length, 2);
+		acmeDirectory(api, LE);
+		const now = await admin.post(`${SETTINGS}/register`, {});
+		assert.equal(now.status, 400, now.text);
+		assert.equal(now.body.error.message_i18n, "error.acme-busy");
+		assert.equal(await account(LE), undefined);
+		assert.deepEqual(await api.db("audit_log").where("object_type", "acme-account"), []);
+	} finally {
+		service.setBusyRetry({ retries: 3, delayMs: 3000 });
+	}
 });

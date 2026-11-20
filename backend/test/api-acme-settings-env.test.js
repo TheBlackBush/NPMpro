@@ -75,7 +75,7 @@ it("reads the env CA on a loopback address without the guard", async () => {
 	assert.equal(res.body.reachable, true);
 });
 
-it("registers with the env email and EAB pair and never stores them", async () => {
+it("registers with the env email and EAB pair, stores the email and never the EAB pair", async () => {
 	acmeDirectory(api, ENV_SERVER, { body: { newNonce: "n", meta: { externalAccountRequired: true } } });
 	const res = await admin.post(`${SETTINGS}/register`, {});
 	assert.equal(res.status, 200, res.text);
@@ -84,6 +84,8 @@ it("registers with the env email and EAB pair and never stores them", async () =
 	assert.ok(ini.includes("eab-kid = env-kid"));
 	const row = await model.query().where("server", ENV_SERVER).first();
 	assert.equal(row.state, "registered");
+	// the email is no secret (D19): it is stored with the account
+	assert.equal(row.email, "env@example.com");
 	assert.equal(row.eab_kid, null);
 	assert.equal(row.eab_hmac_key, null);
 });

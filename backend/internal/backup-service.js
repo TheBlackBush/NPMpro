@@ -10,7 +10,7 @@ import { loadRuntimeConfig } from "../lib/runtime-config.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { global as logger } from "../logger.js";
 import pjson from "../package.json" with { type: "json" };
-import { reloadAcmeAfterRestore } from "./acme-account.js";
+import { loadAcmeServer, reloadAcmeAfterRestore } from "./acme-account.js";
 import internalAuditLog from "./audit-log.js";
 import { createBackupService } from "./backup.js";
 import { createScheduleService } from "./backup-schedules.js";
@@ -60,6 +60,7 @@ const internalBackup = createBackupService({
 		monitoring: () => geoip.reload(),
 		landingPages: reloadLandingPagesAfterRestore,
 		crowdsec: reloadCrowdsecAfterRestore,
+		acmeServer: loadAcmeServer,
 		acme: reloadAcmeAfterRestore,
 	},
 	dnsCredentials: {

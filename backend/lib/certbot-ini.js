@@ -1,4 +1,5 @@
 import nodeFs from "node:fs/promises";
+import { sameServer } from "./acme-server.js";
 import { parseRenewalConf } from "./backup/renewal-conf.js";
 import { listRenewalConfs, RENEWAL_DIR, setRenewalParams } from "./certbot-account.js";
 import { rooted } from "./paths.js";
@@ -62,7 +63,7 @@ const renderCertbotIni = (values, base = CERTBOT_INI_BASE) => {
 const renewalOptionEdits = async ({ server, profile, mustStaple, dir = RENEWAL_DIR, fs = nodeFs }) => {
 	const edits = [];
 	for (const conf of await listRenewalConfs({ dir, fs })) {
-		if (conf.server !== server) continue;
+		if (!(conf.server && sameServer(conf.server, server))) continue;
 		const wanted = { required_profile: profile || null, must_staple: mustStaple ? "True" : "False" };
 		const { params } = parseRenewalConf(conf.text);
 		// a conf that already holds the wanted values is left alone, whatever the order of its lines
