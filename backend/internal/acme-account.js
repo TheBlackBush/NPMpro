@@ -752,7 +752,7 @@ const checkedEmail = (changes, row) => {
 	const email = given ? changes.email.trim() || null : (row?.email ?? null);
 	const changed = given && email !== (row?.email ?? null);
 	if (changed && email !== null && !(email.length <= MAX_EMAIL && EMAIL.test(email))) {
-		refuseValue("email", "must be an email address", "error.acme-email");
+		refuseValue("email", "must be an email address", "error.invalid-email");
 	}
 	return { given, email, changed };
 };
@@ -968,7 +968,7 @@ const replaceAccount = async (access, body) => {
 		}
 		const email = body.email === undefined ? (row.email ?? null) : body.email.trim() || null;
 		if (email && !(email.length <= MAX_EMAIL && EMAIL.test(email))) {
-			refuseValue("email", "must be an email address", "error.acme-email");
+			refuseValue("email", "must be an email address", "error.invalid-email");
 		}
 		const eab = await replaceEab(server, body, email);
 		const secrets = [email, eab?.kid, eab?.hmac];
