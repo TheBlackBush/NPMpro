@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
@@ -16,6 +16,7 @@ const account = (rel, id, created) => ({
 const conf = (server, id) =>
 	`version = 5.10.0\n[renewalparams]\naccount = ${id}\nserver = ${server}\nauthenticator = webroot\n`;
 const REFUSED = /refused/u;
+const LOCK_MESSAGE = /already running/u;
 const OLD_RUN = "tmp/acme-register-crashed";
 let api;
 let model;
@@ -131,4 +132,39 @@ it("updates the recorded email from ACME_EMAIL in the background; a failure stay
 	assert.equal(row.state, "registered");
 	assert.equal(row.email, "old@example.com");
 	assert.match(row.error, REFUSED);
+});
+
+it("retries the start email update while another certbot run holds the lock, without storing that as the error", async () => {
+	const { syncEnvEmail } = await import("../internal/acme-account.js");
+	acmeDirectory(api, PEBBLE);
+	await model.query().where("server", PEBBLE).patch({ email: "old@example.com", error: null });
+	await rm(path.join(api.root, "fake/update_account.fail"), { force: true });
+	const hook = path.join(api.root, "fake/certbot.hook");
+	const count = path.join(api.root, "fake/lock-count");
+	await writeFile(count, "");
+	await writeFile(
+		hook,
+		`#!/bin/sh\necho x >> "${count}"\nif [ "$(wc -l < "${count}")" -le 2 ]; then echo "Another instance of Certbot is already running." >&2; exit 1; fi\n`,
+	);
+	await chmod(hook, 0o755);
+	try {
+		await syncEnvEmail({ retries: 3, delayMs: 5 });
+		let row = await model.query().where("server", PEBBLE).first();
+		assert.equal(row.email, "ops@example.com");
+		assert.equal(row.error, null);
+		assert.equal((await readFile(count, "utf8")).trim().split("\n").length, 3);
+		await model.query().where("server", PEBBLE).patch({ email: "old@example.com" });
+		await writeFile(count, "");
+		await writeFile(
+			hook,
+			`#!/bin/sh\necho x >> "${count}"\necho "Another instance of Certbot is already running." >&2\nexit 1\n`,
+		);
+		await syncEnvEmail({ retries: 1, delayMs: 5 });
+		row = await model.query().where("server", PEBBLE).first();
+		assert.equal(row.email, "old@example.com");
+		assert.match(row.error, LOCK_MESSAGE);
+		assert.equal((await readFile(count, "utf8")).trim().split("\n").length, 2);
+	} finally {
+		await rm(hook, { force: true });
+	}
 });

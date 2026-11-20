@@ -526,18 +526,37 @@ const reloadAcmeAfterRestore = async () => {
 	await writeStartupSettings();
 };
 
-/** In the background after the start: the instance account's contact follows a set ACME_EMAIL */
-const syncEnvEmail = async () => {
+const LOCK_BUSY = /already running/iu;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * In the background after the start: the instance account's contact follows a set ACME_EMAIL. The start's own
+ * `certbot renew` holds certbot's config-dir lock meanwhile, so a "Another instance of Certbot is already running"
+ * answer is retried after a delay and is stored as the account error only when the retries run out.
+ *
+ * @param {Object}  [options]
+ * @param {number}  [options.retries]  retries after the first try
+ * @param {number}  [options.delayMs]  wait before each retry
+ */
+const syncEnvEmail = async ({ retries = 6, delayMs = 20_000 } = {}) => {
 	if (!acmeEnvSet(process.env).has("ACME_EMAIL")) return;
 	const server = instanceServer();
 	const row = await accountRow(server);
 	if (row?.state !== "registered" || row.email === process.env.ACME_EMAIL) return;
-	try {
-		await updateEmail(server, process.env.ACME_EMAIL);
-		logger.info(`The email of the ACME account of ${server} now follows ACME_EMAIL`);
-	} catch (err) {
-		await acmeAccountModel.query().patchAndFetchById(row.id, { error: err.message });
-		logger.warn(`Could not set the email of the ACME account of ${server} from ACME_EMAIL: ${err.message}`);
+	for (let attempt = 0; ; attempt += 1) {
+		try {
+			await updateEmail(server, process.env.ACME_EMAIL);
+			logger.info(`The email of the ACME account of ${server} now follows ACME_EMAIL`);
+			return;
+		} catch (err) {
+			if (attempt < retries && LOCK_BUSY.test(err.message)) {
+				await sleep(delayMs);
+				continue;
+			}
+			await acmeAccountModel.query().patchAndFetchById(row.id, { error: err.message });
+			logger.warn(`Could not set the email of the ACME account of ${server} from ACME_EMAIL: ${err.message}`);
+			return;
+		}
 	}
 };
 
