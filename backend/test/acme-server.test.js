@@ -81,6 +81,11 @@ it("trusts only the user-set env URL and names ZeroSSL and the presets", () => {
 	const env = { ACME_SERVER: "https://127.0.0.1:14000/dir", NPMPRO_USER_ENV: "ACME_SERVER" };
 	assert.equal(isTrustedServer("https://127.0.0.1:14000/dir", env), true);
 	assert.equal(isTrustedServer(PEBBLE, env), false);
+	assert.equal(
+		isTrustedServer("https://127.0.0.1:14000/dir", { ...env, ACME_SERVER: "https://LOCAL.lan/dir" }),
+		false,
+	);
+	assert.equal(isTrustedServer("https://local.lan/dir", { ...env, ACME_SERVER: "https://LOCAL.lan/dir" }), true);
 	assert.equal(isTrustedServer("https://127.0.0.1:14000/dir", { ...env, NPMPRO_USER_ENV: "" }), false);
 	assert.equal(isZeroSsl(ZEROSSL_SERVER), true);
 	assert.equal(isZeroSsl("https://acme.zerossl.com/v2/other"), true);

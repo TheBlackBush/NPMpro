@@ -211,10 +211,20 @@ it("marks the EAB key ID when the CA's message is about the binding and a pair w
 });
 
 it("shows the CA's own sentence in the refused box", () => {
-	assert.equal(refusalText({ message_values: { message: "bad email" } }, "The CA refused: bad email"), "bad email");
-	assert.equal(refusalText({ message_values: {} }, "shown"), "shown");
-	assert.equal(refusalText({ message_values: { message: "" } }, "shown"), "shown");
+	const refused = (values) => ({ message_i18n: "error.acme-refused", message_values: values });
+	assert.equal(refusalText(refused({ message: "bad email" }), "The CA refused: bad email"), "bad email");
+	assert.equal(refusalText(refused({}), "shown"), "shown");
+	assert.equal(refusalText(refused({ message: "" }), "shown"), "shown");
+	assert.equal(refusalText({ message_i18n: "error.acme-url", message_values: { message: "x" } }, "shown"), "shown");
 	assert.equal(refusalText(undefined, "shown"), "shown");
+});
+
+it("finds an account whatever the case of the scheme and host, not of the path", () => {
+	const accounts = [{ server: "https://Ca.LAN:14000/Dir", state: "registered" }];
+	assert.equal(accountOf(data({ accounts }), "https://ca.lan:14000/Dir")?.state, "registered");
+	assert.equal(accountOf(data({ accounts }), "HTTPS://CA.lan:14000/Dir")?.state, "registered");
+	assert.equal(accountOf(data({ accounts }), "https://ca.lan:14000/dir"), null);
+	assert.equal(accountOf(data({ accounts }), undefined), null);
 });
 
 it("resets the window's email to the picked CA's account email, the env value when locked, else empty", () => {

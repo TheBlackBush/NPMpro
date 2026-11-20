@@ -93,7 +93,7 @@ const resolveAcmeServer = (env, storedValue = stored) => {
 /**
  * @returns {boolean}  the URL is the ACME_SERVER the operator set: read without the outbound guard (D6)
  */
-const isTrustedServer = (server, env) => acmeEnvSet(env).has("ACME_SERVER") && env.ACME_SERVER === server;
+const isTrustedServer = (server, env) => acmeEnvSet(env).has("ACME_SERVER") && sameServer(env.ACME_SERVER, server);
 
 const isZeroSsl = (server) => {
 	try {

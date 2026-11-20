@@ -30,12 +30,16 @@ const dropMarkers = (line) => {
  * The readable part of certbot's output: the text after "Error returned by the ACME server:" or "An unexpected error
  * occurred:" and certbot's own reasons, without the debug-log line, the warning blocks (a warning line and its
  * indented lines), the "Ask for help" and "See the logfile" text and empty lines, joined by one space and cut at 500
- * characters. Without anything left: a short generic text.
+ * characters. Without anything left: a short generic text. With keepLines the lines stay on their own lines and max
+ * is the cut (a certificate request needs the domain and hint lines of a failed authentication).
  *
  * @param   {*}       output  certbot's combined stdout and stderr (or an error message)
+ * @param   {Object}  [options]
+ * @param   {boolean} [options.keepLines]
+ * @param   {number}  [options.max]
  * @returns {string}
  */
-const cleanCertbotMessage = (output) => {
+const cleanCertbotMessage = (output, { keepLines = false, max = MAX_CLEAN } = {}) => {
 	const kept = [];
 	let inWarning = false;
 	for (const raw of String(output ?? "").split(LINE_BREAK)) {
@@ -48,8 +52,11 @@ const cleanCertbotMessage = (output) => {
 		const line = dropMarkers(raw);
 		if (line) kept.push(line);
 	}
-	const text = kept.join(" ").replace(SPACES, " ").trim().replace(LEAD_IN, "");
-	return (text.length > MAX_CLEAN ? `${text.slice(0, MAX_CLEAN - 3).trimEnd()}...` : text) || GENERIC;
+	const joined = keepLines ? kept.map((line) => line.replace(SPACES, " ")).join("\n") : kept.join(" ");
+	const text = (keepLines ? joined : joined.replace(SPACES, " ")).trim().replace(LEAD_IN, "");
+	return (text.length > max ? `${text.slice(0, max - 3).trimEnd()}...` : text) || GENERIC;
 };
 
-export { cleanCertbotMessage, GENERIC, MAX_CLEAN };
+const REQUEST_MAX = 4000;
+
+export { cleanCertbotMessage, GENERIC, MAX_CLEAN, REQUEST_MAX };

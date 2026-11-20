@@ -8,14 +8,14 @@ import { parseRenewalConf } from "../lib/backup/renewal-conf.js";
 import { installPlugin, runCertbot } from "../lib/certbot.js";
 import { requestOptionArgs } from "../lib/certbot-account.js";
 import { CERTBOT_INI } from "../lib/certbot-ini.js";
-import { cleanCertbotMessage } from "../lib/certbot-message.js";
+import { cleanCertbotMessage, REQUEST_MAX } from "../lib/certbot-message.js";
 import { liveCertPath } from "../lib/certificate-files.js";
 import errs from "../lib/error.js";
 import { rooted } from "../lib/paths.js";
 import { getRuntimeConfig } from "../lib/runtime-config.js";
 import { ssl as logger } from "../logger.js";
 import pjson from "../package.json" with { type: "json" };
-import { ensureAccountLocked, instanceServer, prepareRenewals, scrub, withAccountLock } from "./acme-account.js";
+import { ensureAccountLocked, instanceServer, prepareRenewals, withAccountLock } from "./acme-account.js";
 import internalDnsCredential from "./dns-credential.js";
 
 const renewalConfOf = (id) => rooted(`/data/tls/certbot/renewal/npm-${id}.conf`);
@@ -39,7 +39,9 @@ const runCertbotCleaned = async (args) => {
 		return await runCertbot(args);
 	} catch (err) {
 		if (!(err instanceof errs.CommandError)) throw err;
-		throw new errs.CommandError(scrub(cleanCertbotMessage(err.message), []), { cause: err });
+		throw new errs.CommandError(cleanCertbotMessage(err.message, { keepLines: true, max: REQUEST_MAX }), {
+			cause: err,
+		});
 	}
 };
 

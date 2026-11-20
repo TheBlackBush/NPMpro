@@ -62,7 +62,18 @@ export function acmePayload(values, data) {
 	return out;
 }
 
-export const accountOf = (data, server) => (data.accounts ?? []).find((account) => account.server === server) ?? null;
+const SCHEME_AND_HOST = /^(?<scheme>[A-Za-z]+:\/\/)(?<host>[^/?#]*)/u;
+
+// a CA URL with its scheme and host in lower case (the backend's rule: the path keeps its case)
+const lowerHost = (server) =>
+	typeof server === "string"
+		? server.replace(SCHEME_AND_HOST, (_, scheme, host) => `${scheme.toLowerCase()}${host.toLowerCase()}`)
+		: server;
+
+export const accountOf = (data, server) => {
+	const wanted = lowerHost(server);
+	return (data.accounts ?? []).find((account) => lowerHost(account.server) === wanted) ?? null;
+};
 
 /**
  * The email the window shows for a CA picked in its select: the env value while ACME_EMAIL locks it, else the email of
@@ -218,9 +229,9 @@ export function saveFailureOf(raw, message, { eabSent = false } = {}) {
 	return { message: fromMessage ? fromMessage.groups.text : message, field: field ?? (aboutEab ? "eabKid" : null) };
 }
 
-/** The CA's own sentence of a refusal (message_values.message) for the refused box, else the shown message */
+/** The CA's own sentence of a refusal (error.acme-refused, message_values.message) for the refused box, else the shown message */
 export const refusalText = (apiError, shown) => {
-	const own = apiError?.message_values?.message;
+	const own = apiError?.message_i18n === "error.acme-refused" ? apiError.message_values?.message : undefined;
 	return typeof own === "string" && own !== "" ? own : shown;
 };
 
