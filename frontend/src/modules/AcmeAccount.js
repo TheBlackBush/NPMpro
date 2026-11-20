@@ -80,7 +80,47 @@ export function acmeState(account) {
 	return { kind: "failed", date: account.modifiedOn, error: account.error ?? null };
 }
 
-export const canRegisterNow = (account) => account?.state !== "registered";
+// the buttons of the status card per state, in order; a registered account's Replace account lives in the more menu
+const CARD_BUTTONS = {
+	registered: [{ key: "change", primary: false }],
+	pending: [
+		{ key: "retry", primary: false },
+		{ key: "change", primary: false },
+	],
+	failed: [
+		{ key: "change", primary: true },
+		{ key: "retry", primary: false },
+	],
+	none: [{ key: "connect", primary: true }],
+};
+
+export const cardButtons = (kind) => CARD_BUTTONS[kind];
+
+/**
+ * What Connect does with the window's values: nothing (a registered account without a change), a register (a stored
+ * account that is not registered and has nothing new to send) or a save (the values changed)
+ */
+export function connectPlan(values, data) {
+	if (Object.keys(acmePayload(values, data)).length > 0) return "save";
+	return accountOf(data, serverOfForm(values))?.state === "registered" ? "nothing" : "register";
+}
+
+/** Whether the CA's directory is read before Connect saves: a changed CA or one without a registered account */
+export function connectNeedsCheck(values, data) {
+	if (connectPlan(values, data) === "nothing") return false;
+	const server = serverOfForm(values);
+	return server !== data.server || accountOf(data, server)?.state !== "registered";
+}
+
+/** The outcome of a save or a register answer: "waiting" (stored, connects at the next request) or "connected" */
+export const connectOutcome = (result) => (result?.warning === "unreachable" ? "waiting" : "connected");
+
+/** Whether the directory read of a CA answered */
+export const directoryReachable = (result) => result?.reachable === true;
+
+/** Whether the window cannot tell if a custom CA needs EAB keys: its directory could not be read */
+export const directoryUnreadable = ({ custom, probed, error, result }) =>
+	custom && probed && (Boolean(error) || (result !== undefined && !directoryReachable(result)));
 
 export function profileChoices({ result, stored }) {
 	if (!(result?.reachable && result.directory)) return { mode: "text" };
@@ -98,8 +138,9 @@ export function profileChoices({ result, stored }) {
 	return { mode: "select", options };
 }
 
-export const replaceDefaults = (account) => ({
-	email: account?.email ?? "",
+// a locked email (ACME_EMAIL) is the one the new account is registered with, the backend takes only a sent value
+export const replaceDefaults = (account, data) => ({
+	email: lockedSet(data?.locked).has("email") ? (data.email ?? "") : (account?.email ?? ""),
 	eabKid: "",
 	eabHmacKey: "",
 	deactivateOld: false,

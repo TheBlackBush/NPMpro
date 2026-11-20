@@ -9,7 +9,12 @@ import {
 	acmeServerLabel,
 	acmeState,
 	CUSTOM,
-	canRegisterNow,
+	cardButtons,
+	connectNeedsCheck,
+	connectOutcome,
+	connectPlan,
+	directoryReachable,
+	directoryUnreadable,
 	eabLockEnv,
 	eabShown,
 	lockedSet,
@@ -98,7 +103,7 @@ it("shows the EAB fields for a CA that requires them until its account is regist
 	assert.equal(eabShown({ preset: "letsencrypt", externalAccountRequired: false, account: null }), false);
 });
 
-it("describes the account state and when Register now is offered", () => {
+it("describes the account state", () => {
 	assert.deepEqual(acmeState(null), { kind: "none" });
 	assert.deepEqual(acmeState({ state: "registered", registeredOn: "2026-11-19 10:00:00", email: "", error: null }), {
 		kind: "registered",
@@ -120,9 +125,6 @@ it("describes the account state and when Register now is offered", () => {
 		error: "refused",
 	});
 	assert.deepEqual(acmeState({ state: "failed", modifiedOn: "d" }), { kind: "failed", date: "d", error: null });
-	assert.equal(canRegisterNow(null), true);
-	assert.equal(canRegisterNow({ state: "pending" }), true);
-	assert.equal(canRegisterNow({ state: "registered" }), false);
 });
 
 it("offers the CA's profiles with Server default, keeps a stored profile it no longer lists, else free text", () => {
@@ -150,6 +152,8 @@ it("starts the Replace window with the current email and the deactivate switch o
 		deactivateOld: false,
 	});
 	assert.equal(replaceDefaults(null).email, "");
+	assert.equal(replaceDefaults({ email: "old@b.c" }, data({ locked: ["email"], email: "env@b.c" })).email, "env@b.c");
+	assert.equal(replaceDefaults({ email: "old@b.c" }, data({ email: "env@b.c" })).email, "old@b.c");
 	assert.deepEqual(replacePayload(ZEROSSL, { email: " a@b.c ", eabKid: "", eabHmacKey: "", deactivateOld: true }), {
 		server: ZEROSSL,
 		email: "a@b.c",
@@ -190,4 +194,54 @@ it("names the env var of a half-locked EAB pair on both fields", () => {
 	assert.equal(eabLockEnv({ eabHmacKey: "H" }, "eabKid"), "H");
 	assert.equal(eabLockEnv({ eabKid: "K", eabHmacKey: "H" }, "eabKid"), "K");
 	assert.equal(eabLockEnv(undefined, "eabKid"), undefined);
+});
+
+it("gives each card state its buttons, Change first on a failed account", () => {
+	assert.deepEqual(cardButtons("registered"), [{ key: "change", primary: false }]);
+	assert.deepEqual(
+		cardButtons("pending").map((b) => b.key),
+		["retry", "change"],
+	);
+	assert.deepEqual(cardButtons("failed"), [
+		{ key: "change", primary: true },
+		{ key: "retry", primary: false },
+	]);
+	assert.deepEqual(cardButtons("none"), [{ key: "connect", primary: true }]);
+});
+
+it("plans Connect: nothing, a register of the stored account, or a save", () => {
+	const registered = data({ accounts: [{ server: LE, state: "registered" }] });
+	const form = toAcmeForm(registered);
+	assert.equal(connectPlan(form, registered), "nothing");
+	assert.equal(connectPlan({ ...form, email: "x@y.z" }, registered), "save");
+	const failed = data({ accounts: [{ server: LE, state: "failed" }] });
+	assert.equal(connectPlan(toAcmeForm(failed), failed), "register");
+	assert.equal(connectPlan({ ...toAcmeForm(failed), eabKid: "k" }, failed), "save");
+	assert.equal(connectPlan(toAcmeForm(data()), data()), "register");
+});
+
+it("reads the directory before Connect only for a changed CA or an account that is not registered", () => {
+	const registered = data({ accounts: [{ server: LE, state: "registered" }] });
+	const form = toAcmeForm(registered);
+	assert.equal(connectNeedsCheck(form, registered), false);
+	assert.equal(connectNeedsCheck({ ...form, email: "x@y.z" }, registered), false);
+	assert.equal(connectNeedsCheck({ ...form, preset: "zerossl" }, registered), true);
+	const pending = data({ accounts: [{ server: LE, state: "pending" }] });
+	assert.equal(connectNeedsCheck(toAcmeForm(pending), pending), true);
+});
+
+it("maps answers to outcomes and tells an unreadable directory", () => {
+	assert.equal(connectOutcome({ warning: "unreachable" }), "waiting");
+	assert.equal(connectOutcome({}), "connected");
+	assert.equal(connectOutcome(undefined), "connected");
+	assert.equal(directoryReachable({ reachable: true }), true);
+	assert.equal(directoryReachable({ reachable: false }), false);
+	assert.equal(directoryReachable(undefined), false);
+	const base = { custom: true, probed: true };
+	assert.equal(directoryUnreadable({ ...base, error: new Error("x") }), true);
+	assert.equal(directoryUnreadable({ ...base, result: { reachable: false } }), true);
+	assert.equal(directoryUnreadable({ ...base, result: { reachable: true } }), false);
+	assert.equal(directoryUnreadable({ ...base }), false);
+	assert.equal(directoryUnreadable({ custom: false, probed: true, error: new Error("x") }), false);
+	assert.equal(directoryUnreadable({ custom: true, probed: false, error: new Error("x") }), false);
 });

@@ -17,18 +17,26 @@ import {
 import { DirtyTracker, useAcmeProfiles, useReplaceAcmeAccount, useUnsavedChangesGuard } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
-import { acmeServerLabel, eabShown, presetOf, replaceDefaults, replacePayload } from "src/modules/AcmeAccount";
+import {
+	acmeServerLabel,
+	eabShown,
+	lockedSet,
+	presetOf,
+	replaceDefaults,
+	replacePayload,
+} from "src/modules/AcmeAccount";
 import EasyModal from "src/modules/easyModal";
 import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
 import { showSuccess, showWarning } from "src/notifications";
+import { LockedBadge } from "src/pages/Settings/Authentication/LockedBadge";
 import { sectionIcon } from "src/shell/useNavItems";
 
 const accent = sectionAccent("certificates");
 const Icon = sectionIcon("certificates");
 
-const showReplaceAcmeAccountModal = ({ server, account }) => {
-	EasyModal.show(ReplaceAcmeAccountModal, { server, account });
+const showReplaceAcmeAccountModal = ({ server, account, data }) => {
+	EasyModal.show(ReplaceAcmeAccountModal, { server, account, data });
 };
 
 const t = (id, values) => intl.formatMessage({ id }, values);
@@ -69,7 +77,7 @@ const showReplaced = (replaced) => {
 	}
 };
 
-const ReplaceAcmeAccountModal = EasyModal.create(({ server, account, visible, remove }) => {
+const ReplaceAcmeAccountModal = EasyModal.create(({ server, account, data, visible, remove }) => {
 	const { mutateAsync: replace } = useReplaceAcmeAccount();
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const [errorMsg, setErrorMsg] = useState(null);
@@ -80,13 +88,18 @@ const ReplaceAcmeAccountModal = EasyModal.create(({ server, account, visible, re
 		externalAccountRequired: preset === "custom" ? directory?.externalAccountRequired : undefined,
 		account: null,
 	});
-	const methods = useAppForm({ defaultValues: replaceDefaults(account), validate: replaceValidate(showEab) });
+	const methods = useAppForm({ defaultValues: replaceDefaults(account, data), validate: replaceValidate(showEab) });
 	const { isSubmitting } = methods.formState;
+	// ACME_EMAIL wins (D5): shown read-only, and sent, since the backend registers without an email when none is sent
+	const emailLocked = lockedSet(data?.locked).has("email");
+	const emailEnv = data?.lockedBy?.email;
 
 	const onSubmit = async (formValues) => {
 		setErrorMsg(null);
 		try {
-			const result = await replace(replacePayload(server, formValues));
+			const result = await replace(
+				replacePayload(server, emailLocked ? { ...formValues, email: data.email ?? "" } : formValues),
+			);
 			showReplaced(result?.replaced);
 			remove();
 		} catch (err) {
@@ -124,9 +137,16 @@ const ReplaceAcmeAccountModal = EasyModal.create(({ server, account, visible, re
 							name="email"
 							type="email"
 							label={<T id="settings.certificates.acme.email" />}
-							hint={<T id="settings.certificates.acme.email.hint" />}
+							hint={
+								emailLocked ? (
+									<T id="settings.certificates.acme.env-hint" data={{ env: emailEnv }} />
+								) : (
+									<T id="settings.certificates.acme.email.hint" />
+								)
+							}
+							badges={emailLocked ? <LockedBadge env={emailEnv} /> : null}
 							autoComplete="off"
-							disabled={isSubmitting}
+							disabled={emailLocked || isSubmitting}
 						/>
 						{preset === "zerossl" ? (
 							<SettingLineNote icon={Info}>

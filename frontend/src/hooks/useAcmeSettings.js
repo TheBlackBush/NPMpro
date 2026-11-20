@@ -35,12 +35,12 @@ const useInvalidateAcme = () => {
 
 const useSaveAcmeSettings = () => {
 	const invalidate = useInvalidateAcme();
-	return useMutation({ mutationFn: (values) => updateAcmeSettings(values), onSuccess: invalidate });
+	return useMutation({ mutationFn: (values) => updateAcmeSettings(values), onSettled: invalidate });
 };
 
 const useRegisterAcmeAccount = () => {
 	const invalidate = useInvalidateAcme();
-	return useMutation({ mutationFn: (server) => registerAcmeAccount(server), onSuccess: invalidate });
+	return useMutation({ mutationFn: (server) => registerAcmeAccount(server), onSettled: invalidate });
 };
 
 const useReplaceAcmeAccount = () => {

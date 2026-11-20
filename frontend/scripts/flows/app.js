@@ -1269,8 +1269,9 @@ const ACME_URL_B = "https://127.0.0.1/acme/other";
 const UNSAVED_QUESTION = { name: "Unsaved changes" };
 
 /**
- * The ACME account card of Settings, Certificates: its state, a locked email, the refused custom URL (nothing saved),
- * the profile field, the unsaved-changes question and (on an instance with a registered account) the Replace window.
+ * The ACME account card of Settings, Certificates: its state, the Connect window (a locked email, the refused custom
+ * URL with nothing saved, the unsaved-changes question on Escape), the profile field and (on an instance with a
+ * registered account) the Replace window from the more menu.
  */
 async function acmeAccount({ admin }) {
 	const { page, api } = admin;
@@ -1286,11 +1287,14 @@ async function acmeAccount({ admin }) {
 	if (!ACME_STATES.includes(state)) throw new Error(`the card shows the state "${state}"`);
 	console.log(`  acme account: state ${state}`);
 
-	// 2. a locked email: the badge and a field that cannot be edited
+	// 2. Change (or Connect) opens the window; a locked email shows read-only with the badge
+	await card.locator("[data-acme-action=change], [data-acme-action=connect]").first().click();
+	const connect = page.locator("[data-acme-connect]");
+	await connect.waitFor();
 	const emailLocked = (before.locked ?? []).includes("email");
 	if (emailLocked) {
-		await card.getByText("Set by environment").first().waitFor();
-		const email = card.locator("#acme-email");
+		await connect.getByText("Set by environment").first().waitFor();
+		const email = connect.locator("#acme-email");
 		if (!((await email.isDisabled()) || (await email.getAttribute("readonly")) !== null))
 			throw new Error("the locked email can be edited");
 		console.log("  acme account: email locked, checked the badge and the field");
@@ -1298,24 +1302,34 @@ async function acmeAccount({ admin }) {
 		console.log("  acme account: email not locked, lock check skipped");
 	}
 
-	// 3. a refused custom URL: the confirmation, the error on the field, nothing saved
-	const selectCa = async (name) => {
-		await card.locator("#acme-ca").click();
-		await page.getByRole("option", { name, exact: true }).click();
-	};
-	await selectCa("Custom URL");
-	await card.locator("#acme-url").fill(ACME_URL_A);
-	await card.getByRole("button", { name: "Save", exact: true }).click();
-	const ask = page.getByRole("alertdialog").filter({ hasText: "Change the certificate authority?" });
-	await ask.waitFor();
-	await ask.getByRole("button", { name: "Change CA", exact: true }).click();
-	await card.getByText("This address is not allowed").first().waitFor();
+	// 3. a refused custom URL: the error stays in the window, nothing is saved
+	await connect.locator("#acme-ca").click();
+	await page.getByRole("option", { name: "Custom URL", exact: true }).click();
+	await connect.locator("#acme-url").fill(ACME_URL_A);
+	await connect.getByRole("button", { name: "Connect", exact: true }).click();
+	await connect.locator("[data-acme-refused]").waitFor();
+	await connect.getByText("This address is not allowed").first().waitFor();
 	const after = await api("GET", "/settings/acme");
 	if (after.server !== before.server) throw new Error(`the refused save changed the server to ${after.server}`);
 	if (JSON.stringify(after.accounts) !== JSON.stringify(before.accounts))
 		throw new Error("the refused save changed the accounts");
 
-	// 4. the profile field of the request card: a select or the text field
+	// 4. another custom URL, then Escape: the question, Keep editing stays, Discard changes closes the window
+	await connect.locator("#acme-url").fill(ACME_URL_B);
+	await page.keyboard.press("Escape");
+	await page.getByRole("heading", UNSAVED_QUESTION).waitFor();
+	await page.getByRole("button", { name: "Keep editing", exact: true }).click();
+	await page.getByRole("heading", UNSAVED_QUESTION).waitFor({ state: "hidden" });
+	if ((await connect.locator("#acme-url").inputValue()) !== ACME_URL_B) throw new Error("Keep editing lost the URL");
+	await page.keyboard.press("Escape");
+	await page.getByRole("heading", UNSAVED_QUESTION).waitFor();
+	await page.getByRole("button", { name: "Discard changes", exact: true }).click();
+	await windowClosed(page);
+	const kept = await api("GET", "/settings/acme");
+	if (kept.server !== before.server || JSON.stringify(kept.accounts) !== JSON.stringify(before.accounts))
+		throw new Error("discarding changed the stored settings");
+
+	// 5. the profile field of the request card: a select or the text field
 	const profile = page.locator("#runtime-profile");
 	await profile.waitFor();
 	if ((await profile.evaluate((el) => el.tagName)) === "INPUT") {
@@ -1328,31 +1342,16 @@ async function acmeAccount({ admin }) {
 		console.log("  acme account: profile is a select");
 	}
 
-	// 5. another custom URL, then a link away: the question, Keep editing stays, Discard changes leaves
-	await card.locator("#acme-url").fill(ACME_URL_B);
-	const networkLink = page.locator("a[href='/settings/network']").filter({ visible: true }).first();
-	await networkLink.click();
-	await page.getByRole("heading", UNSAVED_QUESTION).waitFor();
-	await page.getByRole("button", { name: "Keep editing", exact: true }).click();
-	await page.getByRole("heading", UNSAVED_QUESTION).waitFor({ state: "hidden" });
-	if (!page.url().endsWith("/settings/certificates")) throw new Error("Keep editing left the page");
-	if ((await card.locator("#acme-url").inputValue()) !== ACME_URL_B) throw new Error("Keep editing lost the URL");
-	await networkLink.click();
-	await page.getByRole("heading", UNSAVED_QUESTION).waitFor();
-	await page.getByRole("button", { name: "Discard changes", exact: true }).click();
-	await page.waitForURL("**/settings/network");
-	const kept = await api("GET", "/settings/acme");
-	if (kept.server !== before.server || JSON.stringify(kept.accounts) !== JSON.stringify(before.accounts))
-		throw new Error("discarding changed the stored settings");
-
-	// 6. the Replace window of a registered account: opens filled, Cancel sends nothing
+	// 6. the Replace window of a registered account (more menu): opens filled, Cancel sends nothing
 	const account = (before.accounts ?? []).find((entry) => entry.server === before.server);
 	if (account?.state === "registered") {
 		await page.goto("/settings/certificates");
-		await page.locator("#acme-replace").click();
+		await card.locator("[data-acme-action=more]").click();
+		await page.getByRole("menuitem", { name: "Replace account", exact: true }).click();
 		const replace = page.locator("[data-acme-replace]");
 		await replace.waitFor();
-		if ((await replace.locator("#acme-replace-email").inputValue()) !== (account.email ?? ""))
+		const expected = emailLocked ? before.email : (account.email ?? "");
+		if ((await replace.locator("#acme-replace-email").inputValue()) !== expected)
 			throw new Error("the Replace window does not show the account email");
 		if (await page.evaluate(switchOn, "#acme-replace-deactivate")) throw new Error("the deactivate switch is on");
 		await replace.getByRole("button", { name: "Cancel", exact: true }).click();

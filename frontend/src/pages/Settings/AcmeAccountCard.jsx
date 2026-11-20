@@ -1,45 +1,21 @@
-import { Info } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useWatch } from "react-hook-form";
+import { ChevronDown, CircleCheck, CircleDashed, CircleX, Clock, Ellipsis, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { Button, ErrorAlert, Loading, StatusBadge } from "src/components";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "src/components/ui/collapsible";
 import {
-	Button,
-	ErrorAlert,
-	HookForm,
-	Loading,
-	PasswordField,
-	SelectField,
-	SettingLine,
-	SettingLineNote,
-	TextField,
-	useAppForm,
-} from "src/components";
-import { LeaveGuard, useAcmeProfiles, useAcmeSettings, useRegisterAcmeAccount, useSaveAcmeSettings } from "src/hooks";
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "src/components/ui/dropdown-menu";
+import { useAcmeSettings, useRegisterAcmeAccount } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
-import { showDeleteConfirmModal, showReplaceAcmeAccountModal } from "src/modals";
-import {
-	ACME_PRESETS,
-	accountOf,
-	acmeFormValidate,
-	acmePayload,
-	acmeServerLabel,
-	acmeState,
-	CUSTOM,
-	canRegisterNow,
-	eabLockEnv,
-	eabShown,
-	lockedSet,
-	saveFailureOf,
-	serverOfForm,
-	toAcmeForm,
-} from "src/modules/AcmeAccount";
-import { formatApiError } from "src/modules/ApiError";
-import { validations } from "src/modules/Validations";
-import { showApiError, showError, showObjectSuccess, showSuccess, showWarning } from "src/notifications";
-import { LockedBadge } from "./Authentication/LockedBadge";
+import { showAcmeConnectModal, showReplaceAcmeAccountModal } from "src/modals";
+import { accountOf, acmeServerLabel, acmeState, cardButtons, connectOutcome } from "src/modules/AcmeAccount";
+import { showApiError, showSuccess, showWarning } from "src/notifications";
 import { SettingsCard } from "./SettingsCard";
 
-const hasMessage = (id) => Boolean(intl.messages[id]);
-const formatMessage = (id, values) => intl.formatMessage({ id }, values);
 const t = (id, values) => intl.formatMessage({ id }, values);
 
 const caName = (server) => {
@@ -47,309 +23,189 @@ const caName = (server) => {
 	return labelId ? t(labelId) : text;
 };
 
-/** The message of a failed save and the field it belongs to (null for a general one) */
-const saveFailure = (err) =>
-	saveFailureOf(err?.payload?.error?.message, formatApiError(err, hasMessage, formatMessage).message);
-
 const formatDate = (value) => (value ? intl.formatDate(value, { dateStyle: "medium" }) : "");
 
-function AccountState({ state }) {
-	const date = formatDate(state.date);
-	let main;
-	if (state.kind === "registered") {
-		main = (
-			<>
-				<span className="block">
-					<T id="settings.certificates.acme.state.registered" data={{ date }} />
-				</span>
-				<span className="block">
-					{state.email ? (
-						<T id="settings.certificates.acme.state.email" data={{ email: state.email }} />
-					) : (
-						<T id="settings.certificates.acme.state.email-none" />
-					)}
-				</span>
-			</>
-		);
-	} else if (state.kind === "pending") {
-		main = <T id="settings.certificates.acme.state.pending" />;
-	} else if (state.kind === "failed") {
-		main = <T id="settings.certificates.acme.state.failed" data={{ date }} />;
-	} else {
-		main = <T id="settings.certificates.acme.state.none" />;
-	}
+// the badge of each state: tone and icon
+const BADGES = {
+	registered: { tone: "success", icon: CircleCheck, id: "settings.certificates.acme.status.connected" },
+	pending: { tone: "warning", icon: Clock, id: "settings.certificates.acme.status.waiting" },
+	failed: { tone: "destructive", icon: CircleX, id: "settings.certificates.acme.status.failed" },
+	none: { tone: "muted", icon: CircleDashed, id: "settings.certificates.acme.status.none" },
+};
+
+/** The CA's own message in a muted box, collapsed to one line with Show details / Hide details */
+function CaMessage({ message }) {
+	const [open, setOpen] = useState(false);
 	return (
-		<>
-			{main}
-			{state.error ? (
-				<span className="mt-0.5 block text-[0.8rem] break-words text-muted-foreground">{state.error}</span>
-			) : null}
-		</>
+		<Collapsible open={open} onOpenChange={setOpen} className="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
+			<div className="flex items-start gap-3">
+				<div className="min-w-0 flex-1 text-muted-foreground">
+					{open ? null : <p className="m-0 truncate">{message}</p>}
+					<CollapsibleContent>
+						<p className="m-0 break-words">{message}</p>
+					</CollapsibleContent>
+				</div>
+				<CollapsibleTrigger asChild>
+					<button
+						type="button"
+						className="inline-flex shrink-0 items-center gap-1 rounded-sm text-foreground underline-offset-2 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+					>
+						<T
+							id={
+								open
+									? "settings.certificates.acme.details.hide"
+									: "settings.certificates.acme.details.show"
+							}
+						/>
+						<ChevronDown
+							aria-hidden="true"
+							className={cn("size-3 transition-transform", open && "rotate-180")}
+						/>
+					</button>
+				</CollapsibleTrigger>
+			</div>
+		</Collapsible>
 	);
 }
 
-/**
- * The line that shows the account of the chosen CA with its Register now or Replace account button
- */
-function AccountLine({ data, server }) {
+function Details({ state }) {
+	if (state.kind === "registered") {
+		return (
+			<p className="m-0 text-sm text-muted-foreground">
+				<T id="settings.certificates.acme.state.registered" data={{ date: formatDate(state.date) }} />
+				<span aria-hidden="true" className="mx-1.5">
+					·
+				</span>
+				{state.email ? state.email : <T id="settings.certificates.acme.state.email-none" />}
+			</p>
+		);
+	}
+	if (state.kind === "pending") {
+		return (
+			<p className="m-0 text-sm text-muted-foreground">
+				<T id="settings.certificates.acme.waiting" />
+			</p>
+		);
+	}
+	if (state.kind === "failed") {
+		return (
+			<>
+				<p className="m-0 text-sm text-muted-foreground">
+					<T id="settings.certificates.acme.state.failed" data={{ date: formatDate(state.date) }} />
+				</p>
+				{state.error ? <CaMessage message={state.error} /> : null}
+			</>
+		);
+	}
+	return (
+		<p className="m-0 text-sm text-muted-foreground">
+			<T id="settings.certificates.acme.none" />
+		</p>
+	);
+}
+
+function AcmeStatus({ data }) {
 	const { mutate: register, isPending } = useRegisterAcmeAccount();
-	const account = accountOf(data, server);
+	const account = accountOf(data, data.server);
 	const state = acmeState(account);
-	// a CA without an account row can only register when it is the saved instance CA
-	const canRegister = server !== "" && (account !== null || server === data.server);
-	const onRegister = () =>
-		register(server, {
+	const badge = BADGES[state.kind];
+	const BadgeIcon = badge.icon;
+	const ca = caName(data.server);
+
+	// the answer shows at once: the mutation refetches the account whatever came of it
+	const onRetry = () =>
+		register(data.server, {
 			onSuccess: (result) => {
-				if (result?.warning === "unreachable") showWarning(t("settings.certificates.acme.unreachable"));
-				else showSuccess(t("settings.certificates.acme.registered"));
+				if (connectOutcome(result) === "waiting") showWarning(t("settings.certificates.acme.unreachable"));
+				else showSuccess(t("settings.certificates.acme.toast.connected", { ca }));
 			},
 			onError: showApiError,
 		});
-	let action = null;
-	if (state.kind === "registered") {
-		action = (
-			<Button
-				outline
-				color="secondary"
-				id="acme-replace"
-				onClick={() => showReplaceAcmeAccountModal({ server, account })}
-			>
-				<T id="settings.certificates.acme.replace" />
-			</Button>
-		);
-	} else if (canRegisterNow(account)) {
-		action = (
-			<Button
-				outline
-				color="secondary"
-				id="acme-register"
-				isLoading={isPending}
-				disabled={isPending || !canRegister}
-				onClick={onRegister}
-			>
-				<T id="settings.certificates.acme.register" />
-			</Button>
-		);
-	}
+	const onChange = () => showAcmeConnectModal({ data });
+
+	const actions = {
+		change: { id: "settings.certificates.acme.change", onClick: onChange },
+		connect: { id: "settings.certificates.acme.connect", onClick: onChange },
+		retry: { id: "settings.certificates.acme.retry", onClick: onRetry, loading: isPending },
+	};
+
 	return (
-		<SettingLine
-			id="acme-account"
-			layout="value"
-			title={<T id="settings.certificates.acme.account" />}
-			control={<AccountState state={state} />}
-			aside={action}
+		<div
+			className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-start md:justify-between md:gap-6"
 			data-acme-state={state.kind}
-		/>
-	);
-}
-
-function AcmeFields({ data, methods, values, locked }) {
-	const { setError, trigger } = methods;
-	const server = serverOfForm(values);
-	const custom = values.preset === CUSTOM;
-	const account = accountOf(data, server);
-
-	// the CA's answer about a typed directory URL, asked once it was left (and for the saved custom CA at once)
-	const [probeUrl, setProbeUrl] = useState(toAcmeForm(data).customUrl);
-	const probed = probeUrl !== "" && probeUrl === server && custom;
-	const { data: directory, error: probeError } = useAcmeProfiles(probeUrl, { enabled: probed });
-	useEffect(() => {
-		if (!(probed && probeError)) return;
-		const { message } = formatApiError(probeError, hasMessage, formatMessage);
-		setError("customUrl", { type: "server", message });
-	}, [probed, probeError, setError]);
-	const onUrlBlur = async (event) => {
-		const url = event.target.value.trim();
-		if (url !== "" && (await trigger("customUrl"))) setProbeUrl(url);
-	};
-
-	const showEab = eabShown({
-		preset: values.preset,
-		externalAccountRequired: probed ? directory?.externalAccountRequired : undefined,
-		account,
-	});
-	const lockedBy = data.lockedBy ?? {};
-	const eabLocked = locked.has("eabKid");
-
-	return (
-		<>
-			<AccountLine data={data} server={server} />
-			<SelectField
-				line="inline"
-				id="acme-ca"
-				name="preset"
-				label={<T id="settings.certificates.acme.ca" />}
-				hint={<T id="settings.certificates.acme.ca.hint" />}
-				badges={locked.has("server") ? <LockedBadge env={lockedBy.server} /> : null}
-				disabled={locked.has("server")}
-			>
-				{ACME_PRESETS.map((preset) => (
-					<option key={preset.id} value={preset.id}>
-						{t(`acme.preset.${preset.id}`)}
-					</option>
+		>
+			<div className="min-w-0 flex-1">
+				<div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+					<StatusBadge tone={badge.tone} dot={false} data-acme-badge>
+						<BadgeIcon aria-hidden="true" className="size-3" />
+						<T id={badge.id} />
+					</StatusBadge>
+					<span className="min-w-0 font-medium wrap-anywhere">{ca}</span>
+				</div>
+				<Details state={state} />
+			</div>
+			<div className="flex shrink-0 items-center gap-2 max-md:w-full max-md:[&>button]:flex-1">
+				{cardButtons(state.kind).map(({ key, primary }) => (
+					<Button
+						key={key}
+						color={primary ? "primary" : "secondary"}
+						outline={!primary}
+						data-acme-action={key}
+						isLoading={actions[key].loading}
+						disabled={actions[key].loading}
+						onClick={actions[key].onClick}
+					>
+						{key === "retry" ? <RefreshCw aria-hidden="true" className="size-4" /> : null}
+						<T id={actions[key].id} />
+					</Button>
 				))}
-				<option value={CUSTOM}>{t("settings.certificates.acme.ca.custom")}</option>
-			</SelectField>
-			{custom ? (
-				<TextField
-					line="block"
-					id="acme-url"
-					name="customUrl"
-					type="url"
-					label={<T id="settings.certificates.acme.url" />}
-					hint={<T id="settings.certificates.acme.url.hint" />}
-					badges={locked.has("server") ? <LockedBadge env={lockedBy.server} /> : null}
-					placeholder="https://"
-					autoComplete="off"
-					disabled={locked.has("server")}
-					registerOptions={{ onBlur: onUrlBlur }}
-				/>
-			) : null}
-			<TextField
-				line="inline"
-				id="acme-email"
-				name="email"
-				type="email"
-				label={<T id="settings.certificates.acme.email" />}
-				hint={<T id="settings.certificates.acme.email.hint" />}
-				badges={locked.has("email") ? <LockedBadge env={lockedBy.email} /> : null}
-				autoComplete="off"
-				disabled={locked.has("email")}
-			/>
-			{values.preset === "zerossl" ? (
-				<SettingLineNote icon={Info}>
-					<T id="settings.certificates.acme.email.zerossl" />
-				</SettingLineNote>
-			) : null}
-			{showEab ? (
-				<>
-					<TextField
-						line="inline"
-						id="acme-eab-kid"
-						name="eabKid"
-						label={<T id="settings.certificates.acme.eab-kid" />}
-						hint={<T id="settings.certificates.acme.eab-kid.hint" />}
-						badges={eabLocked ? <LockedBadge env={eabLockEnv(lockedBy, "eabKid")} /> : null}
-						autoComplete="off"
-						disabled={eabLocked}
-					/>
-					<PasswordField
-						line="inline"
-						id="acme-eab-hmac"
-						name="eabHmacKey"
-						label={<T id="settings.certificates.acme.eab-hmac" />}
-						hint={
-							data.eabHmacKeySet ? (
-								<T id="settings.certificates.acme.eab-hmac.saved" />
-							) : (
-								<T id="settings.certificates.acme.eab-hmac.hint" />
-							)
-						}
-						badges={eabLocked ? <LockedBadge env={eabLockEnv(lockedBy, "eabHmacKey")} /> : null}
-						autoComplete="new-password"
-						disabled={eabLocked}
-					/>
-				</>
-			) : null}
-		</>
-	);
-}
-
-function AcmeForm({ data }) {
-	const { mutateAsync: save } = useSaveAcmeSettings();
-	const [failure, setFailure] = useState(null);
-	const locked = lockedSet(data.locked);
-	const saved = toAcmeForm(data);
-	const methods = useAppForm({
-		defaultValues: saved,
-		values: saved,
-		keepEdits: false,
-		validate: acmeFormValidate(validations, data),
-	});
-	const values = useWatch({ control: methods.control });
-	const payload = acmePayload({ ...saved, ...values }, data);
-	const { isSubmitting } = methods.formState;
-
-	const doSave = async (body) => {
-		setFailure(null);
-		try {
-			const result = await save(body);
-			showObjectSuccess("setting", "saved");
-			if (result?.warning === "unreachable") showWarning(t("settings.certificates.acme.unreachable"));
-		} catch (err) {
-			const { message, field } = saveFailure(err);
-			if (field) {
-				methods.setError(field, { type: "server", message });
-				showError(message);
-			} else {
-				setFailure(message);
-				showApiError(err);
-			}
-		}
-	};
-
-	const onSubmit = async (formValues) => {
-		const body = acmePayload(formValues, data);
-		if (Object.keys(body).length === 0) return;
-		if (!body.server) {
-			await doSave(body);
-			return;
-		}
-		// the question never throws: doSave reports its own failure in the card
-		showDeleteConfirmModal({
-			tTitle: "settings.certificates.acme.change-ca.title",
-			confirmLabel: t("settings.certificates.acme.change-ca.confirm"),
-			confirmVariant: "default",
-			invalidations: [],
-			onConfirm: () => doSave(body),
-			children: (
-				<T
-					id="settings.certificates.acme.change-ca.text"
-					data={{ new: caName(body.server), old: caName(data.server) }}
-				/>
-			),
-		});
-	};
-
-	return (
-		<div data-acme-card>
-			<HookForm methods={methods} onSubmit={onSubmit}>
-				<LeaveGuard />
-				<SettingsCard
-					id="acme-account-card"
-					title={<T id="settings.certificates.acme" />}
-					info={<T id="settings.certificates.acme.info" />}
-					lines
-					actions={
-						<Button
-							color="primary"
-							type="submit"
-							isLoading={isSubmitting}
-							disabled={isSubmitting || Object.keys(payload).length === 0}
-						>
-							<T id="save" />
-						</Button>
-					}
-				>
-					{failure ? (
-						<SettingLineNote>
-							<ErrorAlert onClose={() => setFailure(null)}>{failure}</ErrorAlert>
-						</SettingLineNote>
-					) : null}
-					<AcmeFields data={data} methods={methods} values={{ ...saved, ...values }} locked={locked} />
-				</SettingsCard>
-			</HookForm>
+				{state.kind === "registered" ? (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								className="max-md:flex-none"
+								data-acme-action="more"
+								aria-label={t("settings.certificates.acme.more")}
+							>
+								<Ellipsis aria-hidden="true" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem
+								data-acme-action="replace"
+								onSelect={() => showReplaceAcmeAccountModal({ server: data.server, account, data })}
+							>
+								<RefreshCw aria-hidden="true" />
+								<T id="settings.certificates.acme.replace" />
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				) : null}
+			</div>
 		</div>
 	);
 }
 
 /**
- * The ACME account card of Settings, Certificates: the CA, its account and the email and EAB keys, with its own Save
- * (a save registers the account, so it is not part of the section's Save bar). Replace account opens its window.
+ * The ACME account card of Settings, Certificates: the instance CA's account as a connection (status, CA, details)
+ * with Change, Try again or Connect and a menu holding Replace account. The values change in the Connect window.
  */
 export default function AcmeAccountCard() {
 	const { data, isPending, error } = useAcmeSettings();
 	if (error) return <ErrorAlert error={error} />;
 	if (isPending) return <Loading noLogo />;
-	return <AcmeForm data={data} />;
+	return (
+		<div data-acme-card>
+			<SettingsCard
+				id="acme-account-card"
+				title={<T id="settings.certificates.acme" />}
+				info={<T id="settings.certificates.acme.info" />}
+				lines
+			>
+				<AcmeStatus data={data} />
+			</SettingsCard>
+		</div>
+	);
 }

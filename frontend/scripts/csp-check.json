@@ -399,14 +399,30 @@
 			"route": "/settings/certificates",
 			"steps": [
 				{ "waitFor": "[data-acme-card]" },
+				{ "click": "[data-acme-action=change], [data-acme-action=connect]" },
+				{ "waitFor": "[data-acme-connect]" },
 				{ "click": "#acme-ca" },
 				{ "waitFor": "[data-slot=select-content]" },
 				{ "press": "Escape" },
 				{ "gone": "[data-slot=select-content]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-acme-connect]" },
 				{ "hover": "[data-acme-card] button[aria-labelledby$=-title]" },
 				{ "waitFor": "[data-slot=tooltip-content]" },
 				{ "press": "Escape" },
 				{ "gone": "[data-slot=tooltip-content]" }
+			]
+		},
+		{
+			"name": "acme account more menu",
+			"route": "/settings/certificates",
+			"steps": [
+				{ "waitFor": "[data-acme-card]" },
+				{ "skipIfMissing": "[data-acme-action=more]" },
+				{ "click": "[data-acme-action=more]" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-slot=dropdown-menu-content]" }
 			]
 		},
 		{
