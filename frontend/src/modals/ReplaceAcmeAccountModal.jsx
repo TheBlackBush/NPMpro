@@ -57,7 +57,11 @@ const replaceValidate = (showEab) => (values) => {
 /** The toast after a replace: what moved and what became of the old account */
 const showReplaced = (replaced) => {
 	const oldAccount = replaced?.oldAccount ?? "kept";
-	const text = t("acme-replace.done", { count: replaced?.moved ?? 0, old: oldAccount });
+	// ICU select keys cannot hold a hyphen
+	const text = t("acme-replace.done", {
+		count: replaced?.moved ?? 0,
+		old: oldAccount === "deactivation-failed" ? "failed" : oldAccount,
+	});
 	if (oldAccount === "deactivation-failed") {
 		showWarning(replaced.deactivationError ? `${text} ${replaced.deactivationError}` : text);
 	} else {

@@ -4,13 +4,17 @@ Standaardwaarden voor de certificaten die NPMpro bij uw ACME-server aanvraagt (L
 
 Een variabele die op de container is gezet, gaat voor op de interface en vergrendelt het veld (het veld toont een slotbadge zoals „Ingesteld door ACME_KEY_TYPE”). Sommige velden volgen een ander: een alleenstaande `ACME_KEY_SIZE` die een ECDSA-curve is, houdt het sleuteltype op ECDSA, en Must-Staple houdt OCSP-stapling aan. Gebruik de interface voor alles wat niet in de container is ingesteld.
 
+### ACME-account
+
+**ACME-account.** Kies de certificeringsinstantie (CA) voor nieuwe certificaten: Let's Encrypt, ZeroSSL, Google Trust Services of de directory-URL van een andere CA (https, niet deze host). Elke CA heeft een eigen account; certificaten blijven bij de CA die ze heeft uitgegeven tot ze opnieuw worden uitgegeven. ZeroSSL heeft een e-mailadres nodig, Google een e-mailadres en EAB-sleutels. Het account wordt bij het opslaan geregistreerd, of bij de eerste certificaataanvraag als de CA niet bereikbaar is. **Account vervangen** registreert een nieuw account en verplaatst de certificaten van de CA ernaartoe; deactiveer het oude alleen als de sleutel is uitgelekt.
+
 ### Certificaataanvragen
 
 Deze gelden vanaf de volgende certificaataanvraag.
 
 - **Sleuteltype**: `ECDSA` (standaard, aanbevolen: kleinere sleutels, snellere handshakes) of `RSA` voor clients die ECDSA niet kunnen gebruiken. Variabele: `ACME_KEY_TYPE`.
 - **Sleutelgrootte**: de curve voor ECDSA (`secp256r1`, `secp384r1`, `secp521r1`; standaard `secp384r1`) of de bits voor RSA (`2048`, `3072`, `4096`; standaard `4096`). Variabele: `ACME_KEY_SIZE`.
-- **ACME-profiel**: het profiel dat bij de server wordt aangevraagd, bij het opslaan met de server gecontroleerd. Leeg gebruikt de standaard van de server. Bij Let's Encrypt is de standaard `shortlived`; clients die een Common Name nodig hebben, werken niet met `shortlived`- en `tlsserver`-certificaten. Variabele: `ACME_PROFILE` (`none` voor leeg).
+- **ACME-profiel**: het profiel dat bij de server wordt aangevraagd, bij het opslaan met de server gecontroleerd. Leeg gebruikt de standaard van de server. Bij Let's Encrypt is de standaard `shortlived`; clients die een Common Name nodig hebben, werken niet met `shortlived`- en `tlsserver`-certificaten. De lijst toont de profielen die de CA aanbiedt; Serverstandaard laat de CA kiezen. Variabele: `ACME_PROFILE` (`none` voor leeg).
 - **OCSP Must-Staple**: markeert nieuwe certificaten als must-staple en houdt OCSP-stapling aan. Alleen voor CA's die het ondersteunen (ZeroSSL); Let's Encrypt weigert zulke aanvragen. Standaard: aan voor Google Trust Services en ZeroSSL, anders uit. Variabele: `ACME_MUST_STAPLE`.
 - **Certificaat van de ACME-server controleren**: standaard aan. Zet het alleen uit voor een privé ACME-server met een zelfondertekend certificaat. Variabele: `ACME_SERVER_TLS_VERIFY`.
 

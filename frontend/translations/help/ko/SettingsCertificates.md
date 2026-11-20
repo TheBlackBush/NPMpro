@@ -4,13 +4,17 @@ ACME 서버(`ACME_SERVER`로 다른 서버를 지정하지 않으면 Let's Encry
 
 컨테이너에 설정된 변수는 UI보다 우선하며 해당 필드를 잠급니다(필드에 "ACME_KEY_TYPE(으)로 설정됨"과 같은 잠금 배지가 표시됩니다). 일부 필드는 다른 필드를 따릅니다. ECDSA 곡선인 `ACME_KEY_SIZE`만 단독으로 설정되어 있으면 키 유형은 ECDSA로 유지되며, Must-Staple은 OCSP 스테이플링을 켜진 상태로 유지합니다. 컨테이너에 설정되지 않은 항목은 UI에서 설정하세요.
 
+### ACME 계정
+
+**ACME 계정.** 새 인증서에 사용할 인증 기관(CA)을 선택합니다. Let's Encrypt, ZeroSSL, Google Trust Services 또는 다른 CA의 디렉터리 URL(https, 이 호스트는 불가)입니다. CA마다 자체 계정이 있으며, 인증서는 다시 발급될 때까지 발급한 CA에 남습니다. ZeroSSL에는 이메일이, Google에는 이메일과 EAB 키가 필요합니다. 계정은 저장할 때 등록되며, CA에 연결할 수 없으면 첫 인증서 요청 시 등록됩니다. **계정 교체**는 새 계정을 등록하고 해당 CA의 인증서를 그 계정으로 옮깁니다. 이전 계정은 키가 유출된 경우에만 비활성화하세요.
+
 ### 인증서 요청
 
 이 설정은 다음 인증서 요청부터 적용됩니다.
 
 - **키 유형**: `ECDSA`(기본값, 권장: 키가 작고 핸드셰이크가 빠름) 또는 ECDSA를 사용할 수 없는 클라이언트를 위한 `RSA`. 변수: `ACME_KEY_TYPE`.
 - **키 크기**: ECDSA에서는 곡선(`secp256r1`, `secp384r1`, `secp521r1`, 기본값 `secp384r1`), RSA에서는 비트 수(`2048`, `3072`, `4096`, 기본값 `4096`). 변수: `ACME_KEY_SIZE`.
-- **ACME 프로필**: 서버에 요청하는 프로필이며, 저장할 때 서버에서 확인됩니다. 비워 두면 서버 기본값을 사용합니다. Let's Encrypt의 기본값은 `shortlived`입니다. Common Name이 필요한 클라이언트는 `shortlived` 및 `tlsserver` 인증서에서 작동하지 않습니다. 변수: `ACME_PROFILE`(비우려면 `none`).
+- **ACME 프로필**: 서버에 요청하는 프로필이며, 저장할 때 서버에서 확인됩니다. 비워 두면 서버 기본값을 사용합니다. Let's Encrypt의 기본값은 `shortlived`입니다. Common Name이 필요한 클라이언트는 `shortlived` 및 `tlsserver` 인증서에서 작동하지 않습니다. 목록에는 CA가 제공하는 프로필이 표시되며, 서버 기본값을 고르면 CA가 선택합니다. 변수: `ACME_PROFILE`(비우려면 `none`).
 - **OCSP Must-Staple**: 새 인증서에 must-staple을 표시하고 OCSP 스테이플링을 켜진 상태로 유지합니다. 이를 지원하는 CA(ZeroSSL)에서만 사용할 수 있으며, Let's Encrypt는 이런 요청을 거부합니다. 기본값: Google Trust Services와 ZeroSSL에서는 켜짐, 그 외에는 꺼짐. 변수: `ACME_MUST_STAPLE`.
 - **ACME 서버 인증서 검증**: 기본값은 켜짐입니다. 자체 서명 인증서를 사용하는 사설 ACME 서버일 때만 끄세요. 변수: `ACME_SERVER_TLS_VERIFY`.
 

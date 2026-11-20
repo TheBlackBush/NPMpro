@@ -4,13 +4,17 @@ Predefinições para os certificados que o NPMpro pede ao seu servidor ACME (Let
 
 Uma variável definida no contentor tem prioridade sobre a interface e bloqueia o campo (o campo mostra um selo com cadeado, como "Definido por ACME_KEY_TYPE"). Alguns campos seguem outro: um `ACME_KEY_SIZE` isolado que seja uma curva ECDSA mantém o tipo de chave em ECDSA, e o Must-Staple mantém o OCSP stapling ativo. Use a interface para tudo o que não esteja definido no contentor.
 
+### Conta ACME
+
+**Conta ACME.** Escolha a autoridade de certificação (CA) dos novos certificados: Let's Encrypt, ZeroSSL, Google Trust Services ou o URL do diretório de outra CA (https, não este host). Cada CA tem a sua própria conta; os certificados ficam na CA que os emitiu até serem emitidos novamente. O ZeroSSL precisa de um e-mail, a Google de um e-mail e de chaves EAB. A conta é registada ao guardar, ou no primeiro pedido de certificado se não for possível contactar a CA. **Substituir conta** regista uma conta nova e move para ela os certificados da CA; desative a antiga apenas se a sua chave tiver vazado.
+
 ### Pedidos de certificado
 
 Aplicam-se a partir do próximo pedido de certificado.
 
 - **Tipo de chave**: `ECDSA` (predefinição, recomendado: chaves mais pequenas, handshakes mais rápidos) ou `RSA` para clientes que não conseguem usar ECDSA. Variável: `ACME_KEY_TYPE`.
 - **Tamanho da chave**: a curva para ECDSA (`secp256r1`, `secp384r1`, `secp521r1`; predefinição `secp384r1`) ou os bits para RSA (`2048`, `3072`, `4096`; predefinição `4096`). Variável: `ACME_KEY_SIZE`.
-- **Perfil ACME**: o perfil pedido ao servidor, verificado com o servidor ao guardar. Vazio usa a predefinição do servidor. Com o Let's Encrypt a predefinição é `shortlived`; clientes que precisam de um Common Name não funcionam com certificados `shortlived` e `tlsserver`. Variável: `ACME_PROFILE` (`none` para vazio).
+- **Perfil ACME**: o perfil pedido ao servidor, verificado com o servidor ao guardar. Vazio usa a predefinição do servidor. Com o Let's Encrypt a predefinição é `shortlived`; clientes que precisam de um Common Name não funcionam com certificados `shortlived` e `tlsserver`. A lista mostra os perfis que a CA oferece; Predefinição do servidor deixa a CA escolher. Variável: `ACME_PROFILE` (`none` para vazio).
 - **OCSP Must-Staple**: marca os novos certificados como must-staple e mantém o OCSP stapling ativo. Só para CAs que o suportam (ZeroSSL); o Let's Encrypt recusa esses pedidos. Predefinição: ativado para Google Trust Services e ZeroSSL, caso contrário desativado. Variável: `ACME_MUST_STAPLE`.
 - **Verificar o certificado do servidor ACME**: predefinição ativado. Desative só para um servidor ACME privado com certificado autoassinado. Variável: `ACME_SERVER_TLS_VERIFY`.
 

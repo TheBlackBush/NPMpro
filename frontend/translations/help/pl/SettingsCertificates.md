@@ -4,13 +4,17 @@ Wartości domyślne dla certyfikatów, o które NPMpro prosi Twój serwer ACME (
 
 Zmienna ustawiona w kontenerze ma pierwszeństwo przed interfejsem i blokuje pole (pole pokazuje znaczek z kłódką, taki jak "Ustawione przez ACME_KEY_TYPE"). Niektóre pola zależą od innych: samotny `ACME_KEY_SIZE`, który jest krzywą ECDSA, utrzymuje typ klucza na ECDSA, a Must-Staple utrzymuje włączony OCSP stapling. Używaj interfejsu dla wszystkiego, czego nie ustawiono w kontenerze.
 
+### Konto ACME
+
+**Konto ACME.** Wybierz urząd certyfikacji (CA) dla nowych certyfikatów: Let's Encrypt, ZeroSSL, Google Trust Services albo adres URL katalogu innego urzędu (https, nie ten host). Każdy urząd ma własne konto; certyfikaty pozostają przy urzędzie, który je wystawił, dopóki nie zostaną wystawione ponownie. ZeroSSL wymaga adresu e-mail, Google adresu e-mail i kluczy EAB. Konto rejestruje się przy zapisie albo przy pierwszym żądaniu certyfikatu, gdy urząd jest nieosiągalny. **Zamień konto** rejestruje nowe konto i przenosi na nie certyfikaty urzędu; dezaktywuj stare tylko wtedy, gdy jego klucz wyciekł.
+
 ### Żądania certyfikatów
 
 Działają od następnego żądania certyfikatu.
 
 - **Typ klucza**: `ECDSA` (domyślnie, zalecane: mniejsze klucze, szybsze uzgadnianie) lub `RSA` dla klientów, które nie mogą używać ECDSA. Zmienna: `ACME_KEY_TYPE`.
 - **Rozmiar klucza**: krzywa dla ECDSA (`secp256r1`, `secp384r1`, `secp521r1`; domyślnie `secp384r1`) lub liczba bitów dla RSA (`2048`, `3072`, `4096`; domyślnie `4096`). Zmienna: `ACME_KEY_SIZE`.
-- **Profil ACME**: profil żądany od serwera, sprawdzany z serwerem przy zapisie. Puste używa wartości domyślnej serwera. W Let's Encrypt domyślny jest `shortlived`; klienci, którzy wymagają Common Name, nie działają z certyfikatami `shortlived` i `tlsserver`. Zmienna: `ACME_PROFILE` (`none` dla pustego).
+- **Profil ACME**: profil żądany od serwera, sprawdzany z serwerem przy zapisie. Puste używa wartości domyślnej serwera. W Let's Encrypt domyślny jest `shortlived`; klienci, którzy wymagają Common Name, nie działają z certyfikatami `shortlived` i `tlsserver`. Lista pokazuje profile oferowane przez urząd; Domyślny serwera pozwala urzędowi wybrać. Zmienna: `ACME_PROFILE` (`none` dla pustego).
 - **OCSP Must-Staple**: oznacza nowe certyfikaty jako must-staple i utrzymuje włączony OCSP stapling. Tylko dla urzędów certyfikacji, które to obsługują (ZeroSSL); Let's Encrypt odrzuca takie żądania. Domyślnie: włączone dla Google Trust Services i ZeroSSL, w pozostałych przypadkach wyłączone. Zmienna: `ACME_MUST_STAPLE`.
 - **Weryfikuj certyfikat serwera ACME**: domyślnie włączone. Wyłącz tylko dla prywatnego serwera ACME z certyfikatem samopodpisanym. Zmienna: `ACME_SERVER_TLS_VERIFY`.
 
