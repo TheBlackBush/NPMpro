@@ -40,7 +40,7 @@ it("Try again registers the instance CA without a server, and with its http URL"
 it("Replace account takes the instance CA's http URL", async () => {
 	const conf = path.join(api.root, "data/tls/certbot/renewal/npm-7.conf");
 	await mkdir(path.dirname(conf), { recursive: true });
-	const before = (await admin.get(SETTINGS)).body.account;
+	const previous = (await admin.get(SETTINGS)).body.account;
 	const { default: model } = await import("../models/acme_account.js");
 	const old = (await model.query().where("server", SERVER).first()).account_id;
 	await writeFile(conf, `version = 5.10.0\n[renewalparams]\naccount = ${old}\nserver = ${SERVER}\n`);
@@ -49,6 +49,6 @@ it("Replace account takes the instance CA's http URL", async () => {
 	assert.equal(res.body.replaced.moved, 1);
 	assert.equal(res.body.account.state, "registered");
 	assert.notEqual(res.body.account.registered_on, null);
-	assert.equal(before.server, SERVER);
+	assert.equal(previous.server, SERVER);
 	assert.notEqual((await model.query().where("server", SERVER).first()).account_id, old);
 });
