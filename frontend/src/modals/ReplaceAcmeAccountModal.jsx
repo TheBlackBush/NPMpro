@@ -93,6 +93,8 @@ const ReplaceAcmeAccountModal = EasyModal.create(({ server, account, data, visib
 	// ACME_EMAIL wins (D5): shown read-only, and sent, since the backend registers without an email when none is sent
 	const emailLocked = lockedSet(data?.locked).has("email");
 	const emailEnv = data?.lockedBy?.email;
+	// a set ACME_EAB_* pair is not used here: the first registration used it, and a CA takes a pair only once
+	const eabEnvSet = lockedSet(data?.locked).has("eabKid");
 
 	const onSubmit = async (formValues) => {
 		setErrorMsg(null);
@@ -155,6 +157,11 @@ const ReplaceAcmeAccountModal = EasyModal.create(({ server, account, data, visib
 						) : null}
 						{showEab ? (
 							<>
+								{eabEnvSet ? (
+									<SettingLineNote icon={Info} data-acme-replace-eab-env>
+										<T id="acme-replace.eab-env" />
+									</SettingLineNote>
+								) : null}
 								<TextField
 									id="acme-replace-eab-kid"
 									name="eabKid"

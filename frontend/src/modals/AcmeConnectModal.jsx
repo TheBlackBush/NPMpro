@@ -41,6 +41,7 @@ import {
 	refusalText,
 	saveFailureOf,
 	serverOfForm,
+	serverParam,
 	toAcmeForm,
 	visibleEabValues,
 } from "src/modules/AcmeAccount";
@@ -157,7 +158,8 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 		const eabSent = formValues.eabKid.trim() !== "" && formValues.eabHmacKey.trim() !== "";
 		if (!anyway && connectNeedsCheck(formValues, data)) {
 			try {
-				if (!directoryReachable(await getAcmeProfiles(target))) {
+				// read now: a cached answer from the URL field's check may be minutes old
+				if (!directoryReachable(await getAcmeProfiles(serverParam(data, target), { fresh: true }))) {
 					setOutcome({ kind: "unreachable" });
 					return;
 				}
@@ -167,7 +169,10 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 			}
 		}
 		try {
-			const result = plan === "register" ? await register(target) : await save(acmePayload(formValues, data));
+			const result =
+				plan === "register"
+					? await register(serverParam(data, target))
+					: await save(acmePayload(formValues, data));
 			if (connectOutcome(result) === "waiting") showSuccess(t("settings.certificates.acme.toast.waiting"));
 			else showSuccess(t("settings.certificates.acme.toast.connected", { ca: caName(target) }));
 			remove();

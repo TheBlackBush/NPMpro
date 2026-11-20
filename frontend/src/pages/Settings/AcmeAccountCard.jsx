@@ -13,9 +13,9 @@ import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { showAcmeConnectModal, showReplaceAcmeAccountModal } from "src/modals";
 import {
-	accountOf,
 	acmeServerLabel,
 	acmeState,
+	cardButtonKey,
 	cardButtons,
 	connectOutcome,
 	messageIsCut,
@@ -116,15 +116,17 @@ function Details({ state }) {
 
 function AcmeStatus({ data }) {
 	const { mutate: register, isPending } = useRegisterAcmeAccount();
-	const account = accountOf(data, data.server);
+	// the backend matched the instance CA's account in any spelling (sameServer)
+	const account = data.account ?? null;
 	const state = acmeState(account);
 	const badge = BADGES[state.kind];
 	const BadgeIcon = badge.icon;
 	const ca = caName(data.server);
 
-	// the answer shows at once: the mutation refetches the account whatever came of it
+	// the answer shows at once: the mutation refetches the account whatever came of it. No server is sent: the backend
+	// takes the instance CA, also an ACME_SERVER the request schema of a typed URL would refuse
 	const onRetry = () =>
-		register(data.server, {
+		register(undefined, {
 			onSuccess: (result) => {
 				if (connectOutcome(result) === "waiting") showWarning(t("settings.certificates.acme.unreachable"));
 				else showSuccess(t("settings.certificates.acme.toast.connected", { ca }));
@@ -157,7 +159,7 @@ function AcmeStatus({ data }) {
 			<div className="flex shrink-0 items-center gap-2 max-md:w-full max-md:[&>button:not([data-acme-action=more])]:flex-1">
 				{cardButtons(state.kind).map(({ key, primary }) => (
 					<Button
-						key={key}
+						key={cardButtonKey(key)}
 						color={primary ? "primary" : "secondary"}
 						outline={!primary}
 						data-acme-action={key}

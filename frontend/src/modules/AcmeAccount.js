@@ -62,18 +62,43 @@ export function acmePayload(values, data) {
 	return out;
 }
 
-const SCHEME_AND_HOST = /^(?<scheme>[A-Za-z]+:\/\/)(?<host>[^/?#]*)/u;
-
-// a CA URL with its scheme and host in lower case (the backend's rule: the path keeps its case)
-const lowerHost = (server) =>
-	typeof server === "string"
-		? server.replace(SCHEME_AND_HOST, (_, scheme, host) => `${scheme.toLowerCase()}${host.toLowerCase()}`)
-		: server;
-
-export const accountOf = (data, server) => {
-	const wanted = lowerHost(server);
-	return (data.accounts ?? []).find((account) => lowerHost(account.server) === wanted) ?? null;
+const TRAILING_SLASHES = /\/+$/u;
+// certbot's LE_REUSE_SERVERS: the v01 directories are the same CA as their v02 ones
+const LE_V01 = {
+	"https://acme-v01.api.letsencrypt.org/directory": "https://acme-v02.api.letsencrypt.org/directory",
+	"https://acme-staging.api.letsencrypt.org/directory": "https://acme-staging-v02.api.letsencrypt.org/directory",
 };
+
+/**
+ * One key for the spellings of a CA URL, the backend's serverKey: scheme and host in lower case, no default port, no
+ * trailing slash, the v02 URL for a Let's Encrypt v01 one (the path keeps its case)
+ */
+export const serverKey = (server) => {
+	let key;
+	try {
+		const url = new URL(server);
+		key = `${url.protocol}//${url.host}${url.pathname.replace(TRAILING_SLASHES, "")}${url.search}`;
+	} catch {
+		return String(server);
+	}
+	return LE_V01[key] ?? key;
+};
+
+/**
+ * The account of a CA: for the instance CA the one the backend matched (data.account), else the stored account whose
+ * URL is a spelling of server (serverKey)
+ */
+export const accountOf = (data, server) => {
+	if (data.account !== undefined && serverKey(server) === serverKey(data.server)) return data.account;
+	const wanted = serverKey(server);
+	return (data.accounts ?? []).find((account) => serverKey(account.server) === wanted) ?? null;
+};
+
+/**
+ * The server a register or profiles call names: none for the instance CA (the backend takes its own, also an
+ * ACME_SERVER a typed URL could not be, such as an http one), else the URL
+ */
+export const serverParam = (data, server) => (server === data.server ? undefined : server);
 
 /**
  * The email the window shows for a CA picked in its select: the env value while ACME_EMAIL locks it, else the email of
@@ -114,6 +139,12 @@ const CARD_BUTTONS = {
 };
 
 export const cardButtons = (kind) => CARD_BUTTONS[kind];
+
+/**
+ * The React key of a card button: Connect and Change open the same window and share one, so the button stays the same
+ * element when the state changes and the window gives the focus back to it
+ */
+export const cardButtonKey = (key) => (key === "retry" ? "retry" : "window");
 
 /**
  * What Connect does with the window's values: nothing (a registered account without a change), a register (a stored

@@ -9,6 +9,7 @@ import {
 	acmeServerLabel,
 	acmeState,
 	CUSTOM,
+	cardButtonKey,
 	cardButtons,
 	connectNeedsCheck,
 	connectOutcome,
@@ -26,7 +27,9 @@ import {
 	replaceDefaults,
 	replacePayload,
 	saveFailureOf,
+	serverKey,
 	serverOfForm,
+	serverParam,
 	toAcmeForm,
 	visibleEabValues,
 } from "./AcmeAccount.js";
@@ -315,4 +318,47 @@ it("does not offer the EAB switch for a registered account, empties hidden EAB v
 	assert.equal(messageIsCut("short one"), false);
 	assert.equal(messageIsCut("two\nlines"), true);
 	assert.equal(messageIsCut("x".repeat(61)), true);
+});
+
+it("takes the instance CA's account the backend matched, also when no listed URL is spelled like the CA", () => {
+	// adopted at the start under the backend's key: no trailing slash, no default port
+	const own = { server: "https://ca.lan/dir", state: "registered" };
+	const upgraded = data({ server: "https://ca.lan:443/dir/", account: own, accounts: [own] });
+	assert.equal(accountOf(upgraded, upgraded.server), own);
+	assert.equal(accountOf(data({ server: "https://ca.lan/dir/", account: null }), "https://ca.lan/dir/"), null);
+	// another CA of the window: the backend's spelling rules
+	const other = { server: "https://other.lan/dir", state: "pending" };
+	const withOther = data({ account: null, accounts: [other] });
+	assert.equal(accountOf(withOther, "https://OTHER.lan:443/dir/"), other);
+	const v01 = { server: LE, state: "registered" };
+	assert.equal(
+		accountOf(
+			data({ server: ZEROSSL, account: null, accounts: [v01] }),
+			"https://acme-v01.api.letsencrypt.org/directory",
+		),
+		v01,
+	);
+});
+
+it("keys a CA URL like the backend", () => {
+	assert.equal(serverKey("HTTPS://CA.LAN:443/Dir//"), "https://ca.lan/Dir");
+	assert.equal(serverKey("http://step_ca:9000/acme/acme/directory"), "http://step_ca:9000/acme/acme/directory");
+	assert.equal(
+		serverKey("https://acme-staging.api.letsencrypt.org/directory"),
+		"https://acme-staging-v02.api.letsencrypt.org/directory",
+	);
+	assert.equal(serverKey("not a url"), "not a url");
+});
+
+it("names no server for the instance CA in a register or profiles call", () => {
+	const http = data({ server: "http://step_ca:9000/acme/acme/directory" });
+	assert.equal(serverParam(http, http.server), undefined);
+	assert.equal(serverParam(http, ZEROSSL), ZEROSSL);
+});
+
+it("keeps one button key for Connect and Change, so the button keeps the focus when the state changes", () => {
+	assert.equal(cardButtonKey("connect"), cardButtonKey("change"));
+	assert.notEqual(cardButtonKey("retry"), cardButtonKey("change"));
+	const window = (kind) => cardButtons(kind).filter(({ key }) => cardButtonKey(key) === "window").length;
+	for (const kind of ["registered", "pending", "failed", "none"]) assert.equal(window(kind), 1, kind);
 });
