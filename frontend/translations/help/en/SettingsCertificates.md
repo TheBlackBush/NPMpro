@@ -4,13 +4,17 @@ Defaults for the certificates NPMpro requests from your ACME server (Let's Encry
 
 A variable set on the container wins over the UI and locks the field (the field shows a lock badge such as "Set by ACME_KEY_TYPE"). Some fields follow another: a lone `ACME_KEY_SIZE` that is an ECDSA curve keeps the key type on ECDSA, and Must-Staple keeps OCSP stapling on. Use the UI for anything not set in the container.
 
+### ACME account
+
+**ACME account.** The card shows the connection to your certificate authority (CA): Connected, Waiting (the CA could not be reached yet), Failed (with the CA's message) or Not connected. **Change** or **Connect** opens a window where you choose the CA (Let's Encrypt, ZeroSSL, Google Trust Services or the directory URL of another CA, https, not this host), the email and the EAB keys. ZeroSSL needs an email, Google an email and EAB keys. **Connect** registers the account; a CA that cannot be reached can be saved anyway and connects at the next certificate request. **Try again** retries the connection. Each CA keeps its own account; certificates stay with the CA that issued them until they are re-issued. **Replace account** is a button next to **Change**: it registers a new account and moves the CA's certificates to it; deactivate the old one only when its key leaked.
+
 ### Certificate requests
 
 These apply from the next certificate request.
 
 - **Key type**: `ECDSA` (default, recommended: smaller keys, faster handshakes) or `RSA` for clients that cannot use ECDSA. Variable: `ACME_KEY_TYPE`.
 - **Key size**: the curve for ECDSA (`secp256r1`, `secp384r1`, `secp521r1`; default `secp384r1`) or the bits for RSA (`2048`, `3072`, `4096`; default `4096`). Variable: `ACME_KEY_SIZE`.
-- **ACME profile**: the profile requested from the server, checked with the server when you save. Empty uses the server default. With Let's Encrypt the default is `shortlived`; clients that need a Common Name do not work with `shortlived` and `tlsserver` certificates. Variable: `ACME_PROFILE` (`none` for empty).
+- **ACME profile**: the profile requested from the server, checked with the server when you save. Empty uses the server default. With Let's Encrypt the default is `shortlived`; clients that need a Common Name do not work with `shortlived` and `tlsserver` certificates. The list shows the profiles the CA offers; Server default lets the CA choose. Variable: `ACME_PROFILE` (`none` for empty).
 - **OCSP Must-Staple**: marks new certificates as must-staple and keeps OCSP stapling on. Only for CAs that support it (ZeroSSL); Let's Encrypt refuses such requests. Default: on for Google Trust Services and ZeroSSL, otherwise off. Variable: `ACME_MUST_STAPLE`.
 - **Verify the ACME server certificate**: default on. Turn it off only for a private ACME server with a self-signed certificate. Variable: `ACME_SERVER_TLS_VERIFY`.
 

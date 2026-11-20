@@ -6,15 +6,22 @@ import { Button } from "src/components/Button";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { useAppTable } from "src/components/Table/useAppTable";
 import { formatDateTime, intl } from "src/locale";
+import { auditActorName } from "src/modules/AuditLog";
+
+const actorName = (row) =>
+	auditActorName(row, {
+		system: intl.formatMessage({ id: "auditlog.system" }),
+		deleted: intl.formatMessage({ id: "user.deleted" }),
+	});
 
 // what a row shows first: the object (its type and name or domains), the user and the date, so each button has its own name
 function eventName(row) {
 	const type = intl.formatMessage({ id: row.objectType, defaultMessage: row.objectType });
-	const value = row.meta?.domainNames?.join(", ") || row.meta?.name || row.meta?.id || "";
+	const value = row.meta?.domainNames?.join(", ") || row.meta?.name || row.meta?.id || row.meta?.server || "";
 	const via = row.npmproApiTokenName
 		? intl.formatMessage({ id: "audit.via-token" }, { name: row.npmproApiTokenName })
 		: "";
-	return [`${type} ${value}`.trim(), row.user?.name, via, formatDateTime(row.createdOn)].filter(Boolean).join(", ");
+	return [`${type} ${value}`.trim(), actorName(row), via, formatDateTime(row.createdOn)].filter(Boolean).join(", ");
 }
 
 export default function Table({ data, isFetching, onSelectItem }) {
@@ -25,13 +32,8 @@ export default function Table({ data, isFetching, onSelectItem }) {
 				id: "avatar",
 				enableSorting: false,
 				cell: (info) => {
-					const value = info.row.original.user;
-					return (
-						<GravatarFormatter
-							url={value ? value.avatar : ""}
-							name={value ? value.name : intl.formatMessage({ id: "user.deleted" })}
-						/>
-					);
+					const row = info.row.original;
+					return <GravatarFormatter url={row.user ? row.user.avatar : ""} name={actorName(row)} />;
 				},
 				meta: {
 					className: "w-px whitespace-nowrap pr-4",

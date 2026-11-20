@@ -10,7 +10,7 @@ NPMpro saves your hosts, certificates, users and settings to a single `.npmpro` 
 ## What a backup holds
 
 - Hosts: proxy hosts (with their custom locations and access list links), redirection hosts, 404 hosts and streams
-- Certificates: Let's Encrypt, custom and mTLS CA certificates with their files. ACME accounts are part of the certificates: the account files (their keys only in a backup with secrets) and NPMpro's record of each CA (server, email, state). EAB keys are never in a backup. An account restored from a backup without secrets registers again at the next certificate request; a CA that needs EAB then asks for its keys in Settings, Certificates.
+- Certificates: Let's Encrypt, custom and mTLS CA certificates with their files. ACME accounts are part of the certificates: the account files (their keys only in a backup with secrets) and NPMpro's record of each CA (server, email, state). EAB keys are never in a backup. An account restored from a backup without secrets registers again at the next certificate request; a CA that needs EAB then asks for its keys in the Connect window of Settings, Certificates, ACME account.
 - Access lists, DNS credentials and users
 - Settings: runtime settings, Landing pages (the default site, the page choices and custom pages), OIDC sign-in, monitoring and GeoIP, backup schedules and the CrowdSec settings
 - Custom files: everything in `custom_nginx/`, and the CrowdSec pages `ban.html` and `captcha.html` of older versions

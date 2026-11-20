@@ -4,6 +4,7 @@ import { getGeoipConfig, getMonitoringConfig } from "../lib/monitoring-config.js
 import { getOidcConfig } from "../lib/oidc-config.js";
 import { getRuntimeConfig } from "../lib/runtime-config.js";
 import { RUNTIME_GROUPS } from "../lib/runtime-rules.js";
+import { lockedKeys as acmeLockedKeys } from "./acme-account.js";
 
 const internalEnvironment = {
 	/**
@@ -25,6 +26,7 @@ const internalEnvironment = {
 		locked.push(
 			...settingLocksOf({
 				oidc: (await getOidcConfig()).locked,
+				acme: acmeLockedKeys(),
 				monitoring: (await getMonitoringConfig()).locked,
 				geoip: (await getGeoipConfig()).locked,
 				crowdsec: (await getCrowdsecConfig()).locked,

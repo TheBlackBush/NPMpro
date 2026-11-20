@@ -25,6 +25,7 @@ const PROVIDERS = {
 // where each settings group lives (the logs group is shown in Logs & monitoring, OIDC in Authentication)
 const SECTION_OF_GROUP = {
 	oidc: "authentication",
+	acme: "certificates",
 	certificates: "certificates",
 	network: "network",
 	nginx: "nginx",
@@ -45,6 +46,10 @@ const LABELS = {
 	"oidc/require_verified_email": "settings.authentication.require-verified-email",
 	"oidc/skip_mfa": "settings.authentication.skip-mfa",
 	"oidc/disable_password": "settings.authentication.disable-password",
+	"acme/server": "settings.certificates.acme.ca",
+	"acme/email": "settings.certificates.acme.email",
+	"acme/eab_kid": "settings.certificates.acme.eab-kid",
+	"acme/eab_hmac_key": "settings.certificates.acme.eab-hmac",
 	"crowdsec/enabled": "settings.crowdsec.enabled",
 	"crowdsec/api_url": "settings.crowdsec.api-url",
 	"crowdsec/api_key": "settings.crowdsec.api-key",

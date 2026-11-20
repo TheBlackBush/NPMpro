@@ -8,6 +8,10 @@ below as its release notes.
 
 ### Added
 
+- **Certificates:** the ACME account in Settings, Certificates as a connection: a status card (Connected, Waiting, Failed or Not
+  connected) with Change, Try again and Connect, and a Connect window for the CA (Let's Encrypt, ZeroSSL, Google Trust
+  Services or a directory URL), email and EAB keys; Replace account is a button next to Change. The ACME profile is a
+  list of the profiles the CA offers. A set `ACME_*` variable locks its field.
 - **Hosts:** a one-line description on proxy, redirection and 404 hosts and up to 10 tags on every host type, shown in
   automatic brand colours picked from the tag's name, with a Tags filter and search in the lists.
 - **Hosts:** a custom location with exactly `/.well-known/acme-challenge/` passes the ACME challenges to its own

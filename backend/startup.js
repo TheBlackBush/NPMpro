@@ -1,4 +1,10 @@
-import { loadAcmeServer, sweepRunFolders, syncAccountsWithFiles, syncEnvEmail } from "./internal/acme-account.js";
+import {
+	loadAcmeServer,
+	sweepReplaceFolders,
+	sweepRunFolders,
+	syncAccountsWithFiles,
+	syncEnvEmail,
+} from "./internal/acme-account.js";
 import { startExpirySweep } from "./internal/api-token.js";
 import { backupStore } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
@@ -46,6 +52,11 @@ const prepareApp = async ({ background = true } = {}) => {
 		await sweepRunFolders();
 	} catch (err) {
 		logger.warn(`Could not remove old ACME run folders: ${err.message}`);
+	}
+	try {
+		await sweepReplaceFolders();
+	} catch (err) {
+		logger.warn(`Could not remove old ACME replace folders: ${err.message}`);
 	}
 
 	// restore stages, unfinished writes and pending downloads of the previous run

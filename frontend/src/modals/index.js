@@ -1,5 +1,6 @@
 export * from "./AccessListModal";
 export * from "./Account/AccountModal";
+export * from "./AcmeConnectModal";
 export * from "./BackupScheduleModal";
 export * from "./ChangeDnsCredentialModal";
 export * from "./CustomCertificateModal";
@@ -17,6 +18,7 @@ export * from "./ProxyHostModal";
 export * from "./ReachabilityModal";
 export * from "./RedirectionHostModal";
 export * from "./RenewCertificateModal";
+export * from "./ReplaceAcmeAccountModal";
 export * from "./RestoreBackupModal";
 export * from "./SetPasswordModal";
 export * from "./StreamModal";

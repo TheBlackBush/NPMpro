@@ -22,7 +22,7 @@ import proxyHostModel from "../models/proxy_host.js";
 import redirectionHostModel from "../models/redirection_host.js";
 import streamModel from "../models/stream.js";
 import { getValidationSchema } from "../schema/index.js";
-import { prepareRenewals } from "./acme-account.js";
+import { withRenewalLocks } from "./acme-account.js";
 import internalAuditLog from "./audit-log.js";
 import certificateAcme from "./certificate-acme.js";
 import certificateCustom, { ALLOWED_SSL_FILES } from "./certificate-custom.js";
@@ -42,6 +42,21 @@ const getNiceName = (domainNames) => {
 	}
 	return [...shown, "..."].join(", ");
 };
+
+/**
+ * The timer's renewal: one `certbot renew` for every due certificate, run while the lock of every CA is held
+ * (withRenewalLocks), so a Replace account never runs while certbot may write a renewal conf back. The confs are made
+ * to name usable accounts first (prepareRenewals); a failure is logged.
+ */
+const renewDue = () =>
+	withRenewalLocks(async () => {
+		try {
+			const result = await runCertbot(["--config", CERTBOT_INI, "renew", "--quiet"]);
+			if (result) logger.info(`Renew Result: ${result}`);
+		} catch (err) {
+			logger.warn(`Certbot completed with errors: ${err}`);
+		}
+	});
 
 // the startup apply sets the runtime setting (restartTimer) before initTimer runs; env (envs.sh default 3) until then
 const renewalTimer = createRenewalTimer({
@@ -96,18 +111,7 @@ const internalCertificate = {
 		logger.info("Renewing Certbot TLS certs close to expiry...");
 
 		try {
-			try {
-				await prepareRenewals(null);
-			} catch (err) {
-				logger.warn(`The renewal confs could not be prepared: ${err}`);
-			}
-			try {
-				const result = await runCertbot(["--config", CERTBOT_INI, "renew", "--quiet"]);
-
-				if (result) logger.info(`Renew Result: ${result}`);
-			} catch (err) {
-				logger.warn(`Certbot completed with errors: ${err}`);
-			}
+			await renewDue();
 
 			try {
 				await internalNginx.reload();

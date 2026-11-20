@@ -124,6 +124,37 @@
 			],
 			"description": "unreachable: the CA could not be reached, the account is stored as pending",
 			"example": "unreachable"
+		},
+		"replaced": {
+			"type": "object",
+			"description": "Only after Replace account: what the replacement did",
+			"additionalProperties": false,
+			"required": [
+				"moved",
+				"old_account"
+			],
+			"properties": {
+				"moved": {
+					"type": "integer",
+					"description": "How many renewal configurations now use the new account",
+					"example": 2
+				},
+				"old_account": {
+					"type": "string",
+					"enum": [
+						"kept",
+						"deactivated",
+						"deactivation-failed"
+					],
+					"description": "kept: the old account is unused but still active at the CA; deactivated: it was deactivated; deactivation-failed: the switch is done, the CA refused to deactivate it",
+					"example": "kept"
+				},
+				"deactivation_error": {
+					"type": "string",
+					"description": "The CA's message when the deactivation failed",
+					"example": "server error"
+				}
+			}
 		}
 	}
 }

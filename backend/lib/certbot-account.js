@@ -183,21 +183,38 @@ const requestOptionArgs = ({ profile, must_staple: mustStaple }) => [
 	...(mustStaple ? ["--must-staple"] : []),
 ];
 
+/** The renewal conf of a certificate */
+const renewalConfPath = (certificateId, dir = RENEWAL_DIR) => path.join(dir, `npm-${certificateId}.conf`);
+
+/**
+ * @returns {Promise<{path: string, certificateId: number, text: string, server: ?string, account: ?string}|null>}
+ *          one renewal conf, null when the file does not exist
+ */
+const readRenewalConf = async (file, { fs = nodeFs } = {}) => {
+	let text;
+	try {
+		text = await fs.readFile(file, "utf8");
+	} catch (err) {
+		if (err.code === "ENOENT") return null;
+		throw err;
+	}
+	const { params } = parseRenewalConf(text);
+	return {
+		path: file,
+		certificateId: Number(CONF_NAME.exec(path.basename(file))?.groups.id),
+		text,
+		server: params.get("server") ?? null,
+		account: params.get("account") ?? null,
+	};
+};
+
 /** @returns {Promise<{path: string, certificateId: number, text: string, server: ?string, account: ?string}[]>} */
 const listRenewalConfs = async ({ dir = RENEWAL_DIR, fs = nodeFs } = {}) => {
 	const out = [];
 	const entries = (await readDirOrEmpty(fs, dir)).filter((entry) => entry.isFile() && CONF_NAME.test(entry.name));
 	for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-		const file = path.join(dir, entry.name);
-		const text = await fs.readFile(file, "utf8");
-		const { params } = parseRenewalConf(text);
-		out.push({
-			path: file,
-			certificateId: Number(CONF_NAME.exec(entry.name).groups.id),
-			text,
-			server: params.get("server") ?? null,
-			account: params.get("account") ?? null,
-		});
+		const conf = await readRenewalConf(path.join(dir, entry.name), { fs });
+		if (conf) out.push(conf);
 	}
 	return out;
 };
@@ -249,7 +266,9 @@ export {
 	listAccountIds,
 	listRenewalConfs,
 	RENEWAL_DIR,
+	readRenewalConf,
 	registerArgs,
+	renewalConfPath,
 	requestOptionArgs,
 	serverFolders,
 	serverOfFolder,

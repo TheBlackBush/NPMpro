@@ -4,13 +4,17 @@
 
 在容器上设置的变量优先于界面，并会锁定对应字段（字段上会显示锁定徽章，例如“由 ACME_KEY_TYPE 设置”）。有些字段会跟随另一个字段：单独设置且为 ECDSA 曲线的 `ACME_KEY_SIZE` 会让密钥类型保持为 ECDSA，Must-Staple 会让 OCSP 装订保持开启。凡是没有在容器中设置的内容，请在界面中设置。
 
+### ACME 账户
+
+**ACME 账户。** 卡片显示与证书颁发机构（CA）的连接状态：已连接、等待中（暂时无法访问 CA）、失败（附 CA 的消息）或未连接。**更改**或**连接**会打开一个窗口，在其中选择 CA（Let's Encrypt、ZeroSSL、Google Trust Services，或其他 CA 的目录 URL，https，不能是本主机）、邮箱和 EAB 密钥。ZeroSSL 需要邮箱，Google 需要邮箱和 EAB 密钥。**连接**会注册账户；无法访问的 CA 也可以先保存，并在下次证书申请时连接。**重试**会再次尝试连接。每个 CA 都有自己的账户；证书会保留在签发它的 CA，直到重新签发。**替换账户**是**更改**旁边的按钮：它会注册新账户，并将该 CA 的证书移到新账户；仅在旧账户的密钥已泄露时才停用它。
+
 ### 证书申请
 
 这些设置从下一次证书申请起生效。
 
 - **密钥类型**：`ECDSA`（默认，推荐：密钥更小、握手更快）或用于无法使用 ECDSA 的客户端的 `RSA`。变量：`ACME_KEY_TYPE`。
 - **密钥长度**：ECDSA 时为曲线（`secp256r1`、`secp384r1`、`secp521r1`；默认 `secp384r1`），RSA 时为位数（`2048`、`3072`、`4096`；默认 `4096`）。变量：`ACME_KEY_SIZE`。
-- **ACME 配置文件**：向服务器申请的配置文件，保存时会与服务器核对。留空则使用服务器默认值。使用 Let's Encrypt 时默认为 `shortlived`；需要 Common Name 的客户端无法使用 `shortlived` 和 `tlsserver` 证书。变量：`ACME_PROFILE`（`none` 表示留空）。
+- **ACME 配置文件**：向服务器申请的配置文件，保存时会与服务器核对。留空则使用服务器默认值。使用 Let's Encrypt 时默认为 `shortlived`；需要 Common Name 的客户端无法使用 `shortlived` 和 `tlsserver` 证书。列表显示 CA 提供的配置文件；服务器默认值由 CA 自行选择。变量：`ACME_PROFILE`（`none` 表示留空）。
 - **OCSP Must-Staple**：把新证书标记为 must-staple，并让 OCSP 装订保持开启。仅适用于支持它的 CA（ZeroSSL）；Let's Encrypt 会拒绝此类请求。默认值：Google Trust Services 和 ZeroSSL 为开启，其他为关闭。变量：`ACME_MUST_STAPLE`。
 - **验证 ACME 服务器证书**：默认开启。仅在使用带自签名证书的私有 ACME 服务器时才将其关闭。变量：`ACME_SERVER_TLS_VERIFY`。
 

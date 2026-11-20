@@ -4,13 +4,17 @@ Valeurs par défaut pour les certificats que NPMpro demande à votre serveur ACM
 
 Une variable définie sur le conteneur l'emporte sur l'interface et verrouille le champ (le champ affiche un badge cadenas comme « Défini par ACME_KEY_TYPE »). Certains champs en suivent un autre : un `ACME_KEY_SIZE` seul qui est une courbe ECDSA garde le type de clé sur ECDSA, et Must-Staple garde l'agrafage OCSP activé. Utilisez l'interface pour tout ce qui n'est pas défini dans le conteneur.
 
+### Compte ACME
+
+**Compte ACME.** La carte montre la connexion à votre autorité de certification (AC) : Connecté, En attente (l'AC n'était pas encore joignable), Échec (avec le message de l'AC) ou Non connecté. **Modifier** ou **Connecter** ouvre une fenêtre où vous choisissez l'AC (Let's Encrypt, ZeroSSL, Google Trust Services ou l'URL d'annuaire d'une autre AC, https, pas cet hôte), l'e-mail et les clés EAB. ZeroSSL exige un e-mail, Google un e-mail et des clés EAB. **Connecter** enregistre le compte ; une AC injoignable peut être enregistrée quand même et se connecte à la prochaine demande de certificat. **Réessayer** relance la connexion. Chaque AC a son propre compte ; les certificats restent chez l'AC qui les a émis jusqu'à leur réémission. **Remplacer le compte** est un bouton à côté de **Modifier** : il enregistre un nouveau compte et y déplace les certificats de l'AC ; ne désactivez l'ancien que si sa clé a fuité.
+
 ### Demandes de certificat
 
 Elles s'appliquent à partir de la prochaine demande de certificat.
 
 - **Type de clé** : `ECDSA` (par défaut, recommandé : clés plus petites, négociations plus rapides) ou `RSA` pour les clients qui ne peuvent pas utiliser ECDSA. Variable : `ACME_KEY_TYPE`.
 - **Taille de clé** : la courbe pour ECDSA (`secp256r1`, `secp384r1`, `secp521r1` ; par défaut `secp384r1`) ou les bits pour RSA (`2048`, `3072`, `4096` ; par défaut `4096`). Variable : `ACME_KEY_SIZE`.
-- **Profil ACME** : le profil demandé au serveur, vérifié auprès du serveur à l'enregistrement. Vide utilise la valeur par défaut du serveur. Avec Let's Encrypt, la valeur par défaut est `shortlived` ; les clients qui ont besoin d'un Common Name ne fonctionnent pas avec les certificats `shortlived` et `tlsserver`. Variable : `ACME_PROFILE` (`none` pour vide).
+- **Profil ACME** : le profil demandé au serveur, vérifié auprès du serveur à l'enregistrement. Vide utilise la valeur par défaut du serveur. Avec Let's Encrypt, la valeur par défaut est `shortlived` ; les clients qui ont besoin d'un Common Name ne fonctionnent pas avec les certificats `shortlived` et `tlsserver`. La liste affiche les profils proposés par l'AC ; Valeur par défaut du serveur laisse l'AC choisir. Variable : `ACME_PROFILE` (`none` pour vide).
 - **OCSP Must-Staple** : marque les nouveaux certificats comme must-staple et garde l'agrafage OCSP activé. Seulement pour les AC qui le prennent en charge (ZeroSSL) ; Let's Encrypt refuse ces demandes. Par défaut : activé pour Google Trust Services et ZeroSSL, sinon désactivé. Variable : `ACME_MUST_STAPLE`.
 - **Vérifier le certificat du serveur ACME** : activé par défaut. Ne le désactivez que pour un serveur ACME privé avec un certificat auto-signé. Variable : `ACME_SERVER_TLS_VERIFY`.
 

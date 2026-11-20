@@ -252,7 +252,8 @@ it("does not hold a registration of one CA behind a slow registration of another
 
 it("refuses a CA that needs EAB without a pair, and stores the failure for a lazy registration", async () => {
 	acmeDirectory(api, LAN, { body: EAB_REQUIRED, persist: false });
-	await assert.rejects(service.ensureAccount(LAN), (err) => err.message_i18n === "error.acme-set-up");
+	// a certificate request or renewal: the message names the Settings card, the requester has no Change button
+	await assert.rejects(service.ensureAccount(LAN), (err) => err.message_i18n === "error.acme-set-up-request");
 	assert.equal((await model.query().where("server", LAN).first()).state, "failed");
 	assert.deepEqual(await normalizedCalls(api), []);
 });

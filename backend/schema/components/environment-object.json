@@ -103,6 +103,7 @@
 						"type": "string",
 						"enum": [
 							"oidc",
+							"acme",
 							"certificates",
 							"network",
 							"nginx",

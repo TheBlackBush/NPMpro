@@ -171,6 +171,7 @@ case "$action" in
 		[ -z "$keypath" ] && fail revoke
 		exit 0 ;;
 esac
+if [ "$action" = renew ]; then while [ -f "$root/fake/hold-renew" ]; do sleep 0.1; done; fi
 [ -z "$name" ] && exit 0
 live="$root/data/tls/certbot/live/$name"
 conf="$root/data/tls/certbot/renewal/$name.conf"
@@ -178,6 +179,7 @@ if [ "$action" = delete ]; then
 	rm -rf "$live" "$conf"
 	exit 0
 fi
+while [ -f "$root/fake/hold-$action" ]; do sleep 0.1; done
 fail "$action"
 mkdir -p "$live"
 cp "${certificate}" "$live/fullchain.pem"

@@ -395,6 +395,37 @@
 			]
 		},
 		{
+			"name": "acme account card",
+			"route": "/settings/certificates",
+			"steps": [
+				{ "waitFor": "[data-acme-card]" },
+				{ "click": "[data-acme-action=change], [data-acme-action=connect]" },
+				{ "waitFor": "[data-acme-connect]" },
+				{ "click": "#acme-ca" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-slot=select-content]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-acme-connect]" },
+				{ "hover": "[data-acme-card] button[aria-labelledby$=-title]" },
+				{ "waitFor": "[data-slot=tooltip-content]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-slot=tooltip-content]" }
+			]
+		},
+		{
+			"name": "acme account replace window",
+			"route": "/settings/certificates",
+			"steps": [
+				{ "waitFor": "[data-acme-card]" },
+				{ "skipIfMissing": "[data-acme-action=replace]" },
+				{ "click": "[data-acme-action=replace]" },
+				{ "waitFor": "[data-acme-replace]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-acme-replace]" }
+			]
+		},
+		{
 			"name": "list tooltips",
 			"route": "/access",
 			"steps": [

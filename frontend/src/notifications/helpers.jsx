@@ -10,6 +10,10 @@ const showError = (message) => {
 	toast.error(intl.formatMessage({ id: "notification.error" }), { description: message, duration: 10_000 });
 };
 
+const showWarning = (message) => {
+	toast.warning(intl.formatMessage({ id: "notification.warning" }), { description: message, duration: 10_000 });
+};
+
 const showApiError = (err) => {
 	showError(<ApiErrorContent error={err} />);
 };
@@ -54,4 +58,5 @@ export {
 	showNginxConfigError,
 	showObjectSuccess,
 	showSuccess,
+	showWarning,
 };

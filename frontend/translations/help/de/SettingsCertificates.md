@@ -4,13 +4,17 @@ Standardwerte für die Zertifikate, die NPMpro bei Ihrem ACME-Server anfordert (
 
 Eine am Container gesetzte Variable hat Vorrang vor der Oberfläche und sperrt das Feld (das Feld zeigt ein Schloss-Badge wie „Gesetzt durch ACME_KEY_TYPE“). Einige Felder folgen einem anderen: Ein alleiniges `ACME_KEY_SIZE`, das eine ECDSA-Kurve ist, hält den Schlüsseltyp auf ECDSA, und Must-Staple hält OCSP-Stapling an. Verwenden Sie die Oberfläche für alles, was nicht im Container gesetzt ist.
 
+### ACME-Konto
+
+**ACME-Konto.** Die Karte zeigt die Verbindung zu Ihrer Zertifizierungsstelle (CA): Verbunden, Wartet (die CA war noch nicht erreichbar), Fehlgeschlagen (mit der Meldung der CA) oder Nicht verbunden. **Ändern** oder **Verbinden** öffnet ein Fenster, in dem Sie die CA (Let's Encrypt, ZeroSSL, Google Trust Services oder die Verzeichnis-URL einer anderen CA, https, nicht dieser Host), die E-Mail-Adresse und die EAB-Schlüssel wählen. ZeroSSL benötigt eine E-Mail-Adresse, Google eine E-Mail-Adresse und EAB-Schlüssel. **Verbinden** registriert das Konto; eine nicht erreichbare CA lässt sich trotzdem speichern und verbindet sich bei der nächsten Zertifikatsanforderung. **Erneut versuchen** wiederholt die Verbindung. Jede CA führt ein eigenes Konto; Zertifikate bleiben bei der CA, die sie ausgestellt hat, bis sie neu ausgestellt werden. **Konto ersetzen** steht als Schaltfläche neben **Ändern**: Es registriert ein neues Konto und überträgt die Zertifikate der CA darauf; deaktivieren Sie das alte nur, wenn sein Schlüssel kompromittiert ist.
+
 ### Zertifikatsanforderungen
 
 Diese gelten ab der nächsten Zertifikatsanforderung.
 
 - **Schlüsseltyp**: `ECDSA` (Standard, empfohlen: kleinere Schlüssel, schnellere Handshakes) oder `RSA` für Clients, die ECDSA nicht nutzen können. Variable: `ACME_KEY_TYPE`.
 - **Schlüsselgröße**: die Kurve für ECDSA (`secp256r1`, `secp384r1`, `secp521r1`; Standard `secp384r1`) oder die Bits für RSA (`2048`, `3072`, `4096`; Standard `4096`). Variable: `ACME_KEY_SIZE`.
-- **ACME-Profil**: das beim Server angeforderte Profil, beim Speichern mit dem Server geprüft. Leer verwendet den Standard des Servers. Bei Let's Encrypt ist der Standard `shortlived`; Clients, die einen Common Name brauchen, funktionieren nicht mit `shortlived`- und `tlsserver`-Zertifikaten. Variable: `ACME_PROFILE` (`none` für leer).
+- **ACME-Profil**: das beim Server angeforderte Profil, beim Speichern mit dem Server geprüft. Leer verwendet den Standard des Servers. Bei Let's Encrypt ist der Standard `shortlived`; Clients, die einen Common Name brauchen, funktionieren nicht mit `shortlived`- und `tlsserver`-Zertifikaten. Die Liste zeigt die Profile, die die CA anbietet; Serverstandard überlässt die Wahl der CA. Variable: `ACME_PROFILE` (`none` für leer).
 - **OCSP Must-Staple**: markiert neue Zertifikate als Must-Staple und hält OCSP-Stapling an. Nur für CAs, die es unterstützen (ZeroSSL); Let's Encrypt lehnt solche Anforderungen ab. Standard: an für Google Trust Services und ZeroSSL, sonst aus. Variable: `ACME_MUST_STAPLE`.
 - **Zertifikat des ACME-Servers prüfen**: Standard an. Schalten Sie es nur für einen privaten ACME-Server mit selbstsigniertem Zertifikat aus. Variable: `ACME_SERVER_TLS_VERIFY`.
 

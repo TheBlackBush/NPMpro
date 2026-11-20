@@ -7,6 +7,7 @@ import {
 	isTrustedServer,
 	isZeroSsl,
 	LETSENCRYPT_SERVER,
+	normalizeServer,
 	presetOf,
 	requestOptionsFor,
 	resolveAcmeServer,
@@ -80,6 +81,11 @@ it("trusts only the user-set env URL and names ZeroSSL and the presets", () => {
 	const env = { ACME_SERVER: "https://127.0.0.1:14000/dir", NPMPRO_USER_ENV: "ACME_SERVER" };
 	assert.equal(isTrustedServer("https://127.0.0.1:14000/dir", env), true);
 	assert.equal(isTrustedServer(PEBBLE, env), false);
+	assert.equal(
+		isTrustedServer("https://127.0.0.1:14000/dir", { ...env, ACME_SERVER: "https://LOCAL.lan/dir" }),
+		false,
+	);
+	assert.equal(isTrustedServer("https://local.lan/dir", { ...env, ACME_SERVER: "https://LOCAL.lan/dir" }), true);
 	assert.equal(isTrustedServer("https://127.0.0.1:14000/dir", { ...env, NPMPRO_USER_ENV: "" }), false);
 	assert.equal(isZeroSsl(ZEROSSL_SERVER), true);
 	assert.equal(isZeroSsl("https://acme.zerossl.com/v2/other"), true);
@@ -121,4 +127,11 @@ it("gives the spellings of one CA URL one key", () => {
 	);
 	assert.ok(sameServer(`${LETSENCRYPT_SERVER}/`, "https://acme-v01.api.letsencrypt.org/directory"));
 	assert.ok(!sameServer("https://acme.test/a", "https://acme.test/b"));
+});
+
+it("lowers the scheme and host of a typed URL and keeps its path, port and query", () => {
+	assert.equal(normalizeServer(" HTTPS://CA.Example.COM:14000/Dir/X "), "https://ca.example.com:14000/Dir/X");
+	assert.equal(normalizeServer("https://CA.lan"), "https://ca.lan");
+	assert.equal(normalizeServer("https://CA.lan?Q=A"), "https://ca.lan?Q=A");
+	assert.equal(normalizeServer(undefined), undefined);
 });

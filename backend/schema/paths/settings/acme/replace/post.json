@@ -1,0 +1,146 @@
+{
+	"operationId": "replaceAcmeAccount",
+	"summary": "Replace the ACME account of a CA",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "The CA whose account is replaced, and the values of the new account",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"server"
+					],
+					"properties": {
+						"server": {
+							"type": "string",
+							"maxLength": 255,
+							"pattern": "^https?://\\S+$",
+							"description": "The CA's ACME directory URL (the instance CA's ACME_SERVER may also be an http URL); its account must be registered",
+							"example": "https://acme-v02.api.letsencrypt.org/directory"
+						},
+						"email": {
+							"type": "string",
+							"maxLength": 255,
+							"description": "Contact email of the new account, default the current one, empty for none",
+							"example": "ops@example.com"
+						},
+						"eab_kid": {
+							"type": "string",
+							"maxLength": 1024,
+							"writeOnly": true,
+							"description": "EAB key ID of the new account, for a CA that needs one",
+							"example": "YOUR_EAB_KEY_ID"
+						},
+						"eab_hmac_key": {
+							"type": "string",
+							"maxLength": 1024,
+							"writeOnly": true,
+							"description": "EAB HMAC key of the new account, for a CA that needs one",
+							"example": "YOUR_EAB_HMAC_KEY"
+						},
+						"deactivate_old": {
+							"type": "boolean",
+							"default": false,
+							"description": "For a compromised key only: deactivates the old account at the CA, which can then no longer revoke the certificates it issued",
+							"example": false
+						}
+					}
+				},
+				"example": {
+					"server": "https://acme-v02.api.letsencrypt.org/directory",
+					"email": "ops@example.com",
+					"deactivate_old": false
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "The ACME settings after the replacement, with replaced telling what happened to the old account",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"server": "https://acme-v02.api.letsencrypt.org/directory",
+								"server_source": "default",
+								"email": "ops@example.com",
+								"eab_kid_set": false,
+								"eab_hmac_key_set": false,
+								"account": {
+									"id": 1,
+									"server": "https://acme-v02.api.letsencrypt.org/directory",
+									"email": "ops@example.com",
+									"eab_kid_set": false,
+									"eab_hmac_key_set": false,
+									"state": "registered",
+									"error": null,
+									"registered_on": "2026-11-19 10:00:00",
+									"modified_on": "2026-11-19 10:00:00"
+								},
+								"locked": [],
+								"locked_by": {},
+								"presets": [
+									{
+										"id": "letsencrypt",
+										"server": "https://acme-v02.api.letsencrypt.org/directory",
+										"eab": false
+									},
+									{
+										"id": "letsencrypt-staging",
+										"server": "https://acme-staging-v02.api.letsencrypt.org/directory",
+										"eab": false
+									},
+									{
+										"id": "zerossl",
+										"server": "https://acme.zerossl.com/v2/DV90",
+										"eab": true
+									},
+									{
+										"id": "google",
+										"server": "https://dv.acme-v02.api.pki.goog/directory",
+										"eab": true
+									}
+								],
+								"accounts": [
+									{
+										"id": 1,
+										"server": "https://acme-v02.api.letsencrypt.org/directory",
+										"email": "ops@example.com",
+										"eab_kid_set": false,
+										"eab_hmac_key_set": false,
+										"state": "registered",
+										"error": null,
+										"registered_on": "2026-11-19 10:00:00",
+										"modified_on": "2026-11-19 10:00:00"
+									}
+								],
+								"replaced": {
+									"moved": 2,
+									"old_account": "kept"
+								}
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/acme-settings-object.json"
+					}
+				}
+			}
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot be used for this request`."
+		}
+	},
+	"description": "Registers a new account at the same CA and moves the CA's certificates to it: the renewal configurations name the new account and the old account stays on disk, unused. With deactivate_old the old account is also deactivated at the CA, which cannot be undone and which only suits a compromised key. When the CA refuses the new account nothing changes and the answer is 400. When only the deactivation fails the switch stays done and replaced.old_account is deactivation-failed. Only a registered account can be replaced.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only"
+}

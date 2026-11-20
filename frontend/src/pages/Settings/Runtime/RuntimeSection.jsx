@@ -161,7 +161,7 @@ const reportSaveError = (group, err, { setErrorMsg, setError, lead }) => {
  * The form of a loaded group: the saved settings are its values, also after a save or a refetch (new settings
  * replace every field)
  */
-function RuntimeForm({ group, titleId, leadId, data, toForm, toApi, validate, children }) {
+function RuntimeForm({ group, titleId, leadId, top, data, toForm, toApi, validate, children }) {
 	const { mutateAsync: save } = useSaveRuntimeSettings(group);
 	const { alert, setErrorMsg } = useSaveError();
 	const ctx = runtimeContextOf(group, data);
@@ -189,17 +189,20 @@ function RuntimeForm({ group, titleId, leadId, data, toForm, toApi, validate, ch
 
 	return (
 		<RuntimeContext.Provider value={ctx}>
-			<HookForm methods={methods} onSubmit={onSubmit} className="space-y-4">
+			<div className="space-y-4">
 				<Heading titleId={titleId} />
-				{alert}
 				{leadId ? <SettingsLead id={leadId} /> : null}
-				{ctx.anyLocked ? (
-					<StatusAlert variant="info" icon={Lock} id="settings.authentication.status.locked" />
-				) : null}
-				<RestartPendingAlert data={data} />
-				{children}
-				<SaveButton group={group} toApi={toApi} data={data} />
-			</HookForm>
+				{top}
+				<HookForm methods={methods} onSubmit={onSubmit} className="space-y-4">
+					{alert}
+					{ctx.anyLocked ? (
+						<StatusAlert variant="info" icon={Lock} id="settings.authentication.status.locked" />
+					) : null}
+					<RestartPendingAlert data={data} />
+					{children}
+					<SaveButton group={group} toApi={toApi} data={data} />
+				</HookForm>
+			</div>
 		</RuntimeContext.Provider>
 	);
 }
@@ -212,12 +215,13 @@ function RuntimeForm({ group, titleId, leadId, data, toForm, toApi, validate, ch
  * @param {string}    props.group     runtime settings group
  * @param {string}    props.titleId   heading translation id
  * @param {string}    [props.leadId]  the lead note's translation id
+ * @param {*}         [props.top]     rendered after the heading and the lead, outside the section's form (a card with its own form)
  * @param {Function}  props.toForm    (data) => the form's values, in the order the section shows its fields
  * @param {Function}  props.toApi     (form values) => API values (camelCase, comparable with the loaded data)
  * @param {Function}  [props.validate]  (values, data) => errors of translated messages (a locked field's are dropped)
  * @param {*}         props.children  the fields
  */
-function RuntimeSection({ group, titleId, leadId, toForm, toApi, validate, children }) {
+function RuntimeSection({ group, titleId, leadId, top, toForm, toApi, validate, children }) {
 	const { data, isPending, error } = useRuntimeSettings(group);
 
 	return (
@@ -227,6 +231,7 @@ function RuntimeSection({ group, titleId, leadId, toForm, toApi, validate, child
 					group={group}
 					titleId={titleId}
 					leadId={leadId}
+					top={top}
 					data={data}
 					toForm={toForm}
 					toApi={toApi}

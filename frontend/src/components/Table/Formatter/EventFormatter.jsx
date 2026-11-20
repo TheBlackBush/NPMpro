@@ -1,5 +1,6 @@
 import {
 	CalendarClock,
+	CloudCog,
 	Database,
 	Disc,
 	KeyRound,
@@ -36,6 +37,8 @@ const getEventValue = (event) => {
 			return event.meta?.domainNames?.join(", ") || event.meta?.niceName || "N/A";
 		case "setting":
 			return event.meta?.id;
+		case "acme-account":
+			return event.meta?.server;
 		default:
 			break;
 	}
@@ -47,11 +50,14 @@ const getColorForAction = (action) => {
 		case "backup-succeeded":
 		case "moved":
 		case "oidc-linked":
+		case "registered":
 			return "text-success";
 		case "deleted":
 		case "revoked":
 		case "expired":
 		case "backup-failed":
+		case "registration-failed":
+		case "replace-failed":
 		case "move-failed":
 		case "oidc-refused":
 			return "text-destructive";
@@ -96,6 +102,9 @@ const getIcon = (row) => {
 			break;
 		case "api-token":
 			ico = <KeyRound className={c} aria-hidden="true" />;
+			break;
+		case "acme-account":
+			ico = <CloudCog className={c} aria-hidden="true" />;
 			break;
 		case "database":
 			ico = <Database className={c} aria-hidden="true" />;
