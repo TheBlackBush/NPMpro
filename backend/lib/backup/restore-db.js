@@ -96,8 +96,9 @@ const sequenceResetQuery = (knex, table) =>
 			])
 		: null;
 
-// the tables a type's data did not hold at all (not an empty list), kept apart from the rows
-const ABSENT = Symbol("absentTables");
+// tables a backup made before their feature may lack: left out of the checked data (not filled with an empty list),
+// so "absent" and "empty" stay different after any copy of the data (a restore keeps the instance's rows when absent)
+const OPTIONAL_TABLES = new Set(["npmpro_acme_account"]);
 
 // the type's rows as { [table]: rows }: only its tables, each an array of plain objects
 const checkTypeData = (typeId, parsed) => {
@@ -107,10 +108,8 @@ const checkTypeData = (typeId, parsed) => {
 		if (!tables.includes(table)) throw invalid(`data/${typeId}.json holds the table ${table}`);
 	}
 	const out = {};
-	Object.defineProperty(out, ABSENT, {
-		value: [...new Set([...(parsed[ABSENT] ?? []), ...tables.filter((table) => !(table in parsed))])],
-	});
 	for (const table of tables) {
+		if (OPTIONAL_TABLES.has(table) && !(table in parsed)) continue;
 		const rows = parsed[table] ?? [];
 		if (!(Array.isArray(rows) && rows.every(isPlainObject)))
 			throw invalid(`data/${typeId}.json: ${table} is invalid`);
@@ -288,10 +287,7 @@ const createInserter = (trx) => {
 // A backup made before item 15 has no ACME settings: the instance keeps its own (user decision). `kept` names what
 // the backup did not hold: the table npmpro_acme_account, or the setting row "acme".
 const keptOfBackup = (typeId, rowsByTable) => ({
-	table:
-		typeId === "certificates" && rowsByTable[ABSENT]?.includes("npmpro_acme_account")
-			? "npmpro_acme_account"
-			: null,
+	table: typeId === "certificates" && !("npmpro_acme_account" in rowsByTable) ? "npmpro_acme_account" : null,
 	settingId:
 		typeId === "settings_runtime" && !(rowsByTable.setting ?? []).some((row) => row.id === "acme") ? "acme" : null,
 });

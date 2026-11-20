@@ -129,9 +129,10 @@ const createRestore = (
 		await regenerate.rebuildAccessListFiles();
 		await regenerate.regenerateAllHostsNow(await regenerate.loadEnabledHosts());
 		await regenerate.regenerateDefaultSite();
-		if (types.includes("certificates") || types.includes("settings_runtime")) await reloadSettings.acme?.();
 		await runtime.loadRuntimeConfig();
 		const failed = await runtime.applyAllRuntime();
+		// after the runtime config is loaded and applied: the startup settings are written from what the restore brought
+		if (types.includes("certificates") || types.includes("settings_runtime")) await reloadSettings.acme?.();
 		for (const [group, error] of Object.entries(failed ?? {})) {
 			log.error(`Could not apply the ${group} runtime settings after the restore: ${error.message}`);
 		}

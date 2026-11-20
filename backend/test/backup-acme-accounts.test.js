@@ -187,7 +187,7 @@ it("a page export of one certificate holds no account row", async () => {
 		await extractTo({ source: await openBackupFile({ file: target }), dir: out, allow: () => true });
 		const data = JSON.parse(await readFile(path.join(out, "data", "certificates.json"), "utf8"));
 		assert.equal(data.certificate.length, 1);
-		assert.deepEqual(data.npmpro_acme_account ?? [], []);
+		assert.deepEqual(data.npmpro_acme_account, []);
 	} finally {
 		await rm(dir, { recursive: true, force: true });
 	}
@@ -204,6 +204,7 @@ it("a restore of a backup with secrets brings the account back registered, and t
 	assert.deepEqual(eabOf(row), NO_EAB);
 	const shown = await admin.get("/settings/acme");
 	assert.equal(shown.body.server, CA);
+	assert.match(await startup(), STARTUP_CA);
 });
 
 it("a restore of a backup without secrets leaves the account pending", async () => {
@@ -247,4 +248,70 @@ it("a backup that holds an acme row replaces the instance CA", async () => {
 	});
 	assert.equal((await admin.get("/settings/acme")).body.server, LE);
 	assert.doesNotMatch(await startup(), STARTUP_CA);
+});
+
+// a merge of the backup into an instance that lost its ACME settings and account files
+const merge = async (name, types, choices) => {
+	const opened = await admin.post(`${BASE}/${name}/inspect`, { passphrase: PASSPHRASE });
+	if (opened.status !== 200) throw new Error(opened.text);
+	const body = { mode: "merge", types, choices };
+	const plan = await admin.post(`${BASE}/restore/${opened.body.token}/plan`, body);
+	if (plan.status !== 200) throw new Error(plan.text);
+	const done = await admin.post(`${BASE}/restore/${opened.body.token}`, { ...body, plan_hash: plan.body.hash });
+	if (done.status !== 200) throw new Error(done.text);
+	return plan.body;
+};
+
+it("a merge that takes the acme row sets the instance CA and the startup line", async () => {
+	const name = await keep(true);
+	await clearInstance();
+	const plan = await merge(name, ["settings_runtime"], { "setting:acme": "take" });
+	assert.equal(plan.items.find((item) => item.key === "setting:acme").type, "settings_runtime");
+	assert.equal((await admin.get("/settings/acme")).body.server, CA);
+	assert.match(await startup(), STARTUP_CA);
+});
+
+it("a merge of certificates syncs the accounts with the files it brings", async () => {
+	const name = await keep(true);
+	await clearInstance();
+	await merge(name, TYPES, { "setting:acme": "take" });
+	const row = await rowOfCa();
+	// no row came with the merge (rows are not merged); the account folder did, and is adopted
+	assert.equal(row.state, "registered");
+	assert.equal(row.account_id, ACCOUNT_ID);
+	// adopted from the folder: the email is not recorded
+	assert.equal(row.email, null);
+	assert.equal((await admin.get("/settings/acme")).body.server, CA);
+});
+
+const scheduledBackup = async (protection) => {
+	const created = await admin.post("/backups/schedules", {
+		name: `ACME ${protection}`,
+		frequency: "daily",
+		time: "03:00",
+		types: TYPES,
+		protection,
+		...(protection === "passphrase" ? { passphrase: PASSPHRASE } : {}),
+		keep: 1,
+	});
+	if (created.status !== 200) throw new Error(created.text);
+	const ran = await admin.post(`/backups/schedules/${created.body.id}/run`);
+	if (ran.status !== 200) throw new Error(ran.text);
+	return await unpack(ran.body.last_file, protection === "passphrase" ? PASSPHRASE : undefined);
+};
+
+it("a scheduled backup without protection holds no EAB value", async () => {
+	const out = await scheduledBackup("none");
+	const [row] = out.certificates.npmpro_acme_account;
+	assert.equal(row.server, CA);
+	assert.deepEqual(eabOf(row), NO_EAB);
+	assert.equal(JSON.stringify(out).includes("eab-"), false);
+});
+
+it("a scheduled backup with a passphrase holds no EAB value", async () => {
+	const out = await scheduledBackup("passphrase");
+	const [row] = out.certificates.npmpro_acme_account;
+	assert.equal(row.server, CA);
+	assert.deepEqual(eabOf(row), NO_EAB);
+	assert.equal(JSON.stringify(out).includes("eab-"), false);
 });
