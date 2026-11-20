@@ -43,6 +43,7 @@ import { getRuntimeConfig, invalidate } from "../lib/runtime-config.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { ssl as logger } from "../logger.js";
 import acmeAccountModel from "../models/acme_account.js";
+import certificateModel from "../models/certificate.js";
 import now from "../models/now_helper.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
@@ -749,12 +750,38 @@ const syncAccountsWithFiles = async () => {
 };
 
 /**
+ * Certificates from before the column npmpro_acme_server: each Let's Encrypt row without a CA gets the CA of its
+ * renewal conf (in the spelling of that CA's account row, else the CA key: a v01 conf names the v02 CA), else the
+ * instance CA. Files and rows only: no network, no certbot; a missing renewal folder is no error.
+ *
+ * @returns {Promise<number>}  the rows filled
+ */
+const fillCertificateServers = async () => {
+	const rows = await certificateModel.query().where("provider", "letsencrypt").whereNull("npmpro_acme_server");
+	if (rows.length === 0) return 0;
+	const accounts = await acmeAccountModel.query();
+	const spelled = (server) => {
+		const normal = normalizeServer(server);
+		return accounts.find((row) => sameServer(row.server, normal))?.server ?? serverKey(normal);
+	};
+	const servers = new Map(
+		(await listRenewalConfs()).filter((conf) => conf.server).map((conf) => [conf.certificateId, conf.server]),
+	);
+	for (const row of rows) {
+		const server = servers.has(row.id) ? spelled(servers.get(row.id)) : instanceServer();
+		await certificateModel.query().where("id", row.id).patch({ npmpro_acme_server: server });
+	}
+	return rows.length;
+};
+
+/**
  * After a restore or a merge of certificates or runtime settings, once the runtime settings are loaded with the
  * restored CA (loadAcmeServer runs before them): rows and files, the renewal options of the CA's certificates and
  * envs.sh's line
  */
 const reloadAcmeAfterRestore = async () => {
 	await syncAccountsWithFiles();
+	await fillCertificateServers();
 	await syncRenewalOptions();
 	await writeStartupSettings();
 };
@@ -1224,6 +1251,7 @@ export {
 	baseIni,
 	ensureAccount,
 	ensureAccountLocked,
+	fillCertificateServers,
 	getSettings,
 	inRunFolder,
 	instanceServer,

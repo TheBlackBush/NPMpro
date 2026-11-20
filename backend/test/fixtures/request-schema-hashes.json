@@ -9,7 +9,7 @@
 	"put /nginx/access-lists/{listID}": "c0340c441b72e955053f65308e1b1e59ee76df8ba8e2ca19974353d2176e20f6",
 	"delete /nginx/access-lists/{listID}": "1b4b52377add89470dd89bc49250eebbf288f66486a7e771dbb09aa307f1c4e3",
 	"get /nginx/certificates": "8b02a4d628041ad1dd1904eb3ca5e033b40b846a56e29e7f208726119e209dad",
-	"post /nginx/certificates": "093b4c3da6dc2218ba805478d39de65a61ef88aaf5286446b026b5421ad2dee7",
+	"post /nginx/certificates": "dc63264e51810ba26967362cb58bfe968d305aa14b34e46bff2921c7ab90446d",
 	"post /nginx/certificates/validate": "db0489d50d05371a083d7937b21fbc9386b941ed35ac64f1dcb0fd99e1465ce7",
 	"post /nginx/certificates/test-http": "8551016693a8f701dbc8eff0bc4ca22c15d19642f8ae3ca6ca0ea6a82bca81ce",
 	"get /nginx/certificates/{certID}": "5f22edc3a4ca9634e7d89cc0fc5782182730e2a08334e0e77c1dfe901d5bf453",

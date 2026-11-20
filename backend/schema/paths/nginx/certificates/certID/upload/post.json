@@ -47,6 +47,7 @@
 								],
 								"expires_on": "2027-11-17T10:00:00.000Z",
 								"npmpro_reuse_key": false,
+								"npmpro_acme_server": null,
 								"npmpro_dns_challenge": false,
 								"npmpro_dns_provider": "",
 								"npmpro_dns_credential_id": null,
