@@ -1,0 +1,129 @@
+{
+	"type": "object",
+	"description": "The ACME settings: the instance CA, its account and every stored account",
+	"additionalProperties": false,
+	"required": [
+		"server",
+		"server_source",
+		"email",
+		"eab_kid_set",
+		"eab_hmac_key_set",
+		"account",
+		"locked",
+		"locked_by",
+		"presets",
+		"accounts"
+	],
+	"properties": {
+		"server": {
+			"type": "string",
+			"description": "The instance CA's ACME directory URL",
+			"example": "https://acme-v02.api.letsencrypt.org/directory"
+		},
+		"server_source": {
+			"type": "string",
+			"enum": [
+				"env",
+				"setting",
+				"default"
+			],
+			"description": "Where the CA comes from: ACME_SERVER, the saved setting or the Let's Encrypt default",
+			"example": "default"
+		},
+		"email": {
+			"type": "string",
+			"description": "The contact email of the instance CA's account (ACME_EMAIL when set), empty when none",
+			"example": "ops@example.com"
+		},
+		"eab_kid_set": {
+			"type": "boolean",
+			"description": "Whether an EAB key ID is set (by the environment or stored); the value is never returned",
+			"example": false
+		},
+		"eab_hmac_key_set": {
+			"type": "boolean",
+			"description": "Whether an EAB HMAC key is set (by the environment or stored); the value is never returned",
+			"example": false
+		},
+		"account": {
+			"description": "The instance CA's account, null when it has none yet",
+			"oneOf": [
+				{
+					"$ref": "./acme-account-object.json"
+				},
+				{
+					"type": "null"
+				}
+			]
+		},
+		"locked": {
+			"type": "array",
+			"description": "The fields an environment variable sets; a PUT ignores them",
+			"items": {
+				"type": "string",
+				"enum": [
+					"server",
+					"email",
+					"eab_kid",
+					"eab_hmac_key"
+				],
+				"description": "A locked field"
+			},
+			"example": []
+		},
+		"locked_by": {
+			"type": "object",
+			"description": "For each locked field, the environment variable that sets it",
+			"additionalProperties": {
+				"type": "string",
+				"description": "The environment variable name"
+			},
+			"example": {}
+		},
+		"presets": {
+			"type": "array",
+			"description": "The CAs the UI offers",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"server",
+					"eab"
+				],
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "Preset ID",
+						"example": "letsencrypt"
+					},
+					"server": {
+						"type": "string",
+						"description": "The preset's ACME directory URL",
+						"example": "https://acme-v02.api.letsencrypt.org/directory"
+					},
+					"eab": {
+						"type": "boolean",
+						"description": "Whether the CA needs an External Account Binding",
+						"example": false
+					}
+				}
+			}
+		},
+		"accounts": {
+			"type": "array",
+			"description": "Every stored account, one per CA",
+			"items": {
+				"$ref": "./acme-account-object.json"
+			}
+		},
+		"warning": {
+			"type": "string",
+			"enum": [
+				"unreachable"
+			],
+			"description": "unreachable: the CA could not be reached, the account is stored as pending",
+			"example": "unreachable"
+		}
+	}
+}

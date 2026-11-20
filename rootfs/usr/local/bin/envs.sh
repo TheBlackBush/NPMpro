@@ -119,6 +119,14 @@ fi
 if [ -z "$GOACLA" ]; then
     GOACLA="$(startup_settings_goacla /data/npmpro/startup-settings.env)"
 fi
+# the instance CA saved in Settings, Certificates, where the env does not set ACME_SERVER; after NPMPRO_USER_ENV so it
+# does not count as set by the user. A line startup-settings.sh does not accept is reported above and Let's Encrypt
+# applies.
+acme_server_stored=false
+if [ -z "$ACME_SERVER" ]; then
+    ACME_SERVER="$(startup_setting /data/npmpro/startup-settings.env ACME_SERVER)"
+    [ -n "$ACME_SERVER" ] && acme_server_stored=true
+fi
 
 
 if [ -n "$NC_AIO" ] && ! echo "$NC_AIO" | grep -q "^true$\|^false$"; then
@@ -135,6 +143,22 @@ fi
 
 
 export ACME_SERVER="${ACME_SERVER:-https://acme-v02.api.letsencrypt.org/directory}"
+
+# the start log shows which CA is used, where the value came from and whether certbot has an account for it
+# shellcheck source=/dev/null
+. /usr/local/bin/acme-status.sh
+acme_source="default"
+case " $NPMPRO_USER_ENV " in
+    *\ ACME_SERVER\ *) acme_source="env" ;;
+    *)
+        [ "$acme_server_stored" = true ] && acme_source="settings"
+        ;;
+esac
+acme_email_set=false
+[ -n "$ACME_EMAIL" ] && acme_email_set=true
+acme_eab_set=false
+[ -n "$ACME_EAB_KID" ] && [ -n "$ACME_EAB_HMAC_KEY" ] && acme_eab_set=true
+acme_status "$ACME_SERVER" "$acme_source" /data/tls/certbot/accounts "$acme_email_set" "$acme_eab_set"
 
 case "$ACME_SERVER" in
     "https://acme-v02.api.letsencrypt.org/directory")
@@ -459,14 +483,19 @@ if ! echo "$CUSTOM_OCSP_STAPLING" | grep -q "^true$\|^false$"; then
     sleep inf
 fi
 
-if [ "$ACME_PROFILE" != "none" ] && [ "$(curl -sSL "$ACME_SERVER" | jq --arg p "$ACME_PROFILE" '.meta.profiles[$p]')" = "null" ]; then
-    if [ "$(curl -sSL "$ACME_SERVER" | jq -r ".newNonce")" != "null" ]; then
+# acme-profile-check begin
+# only a CA from the env (ACME_SERVER) or the default is read here, and a profile it does not list stops the start. A
+# CA saved in Settings is not read at the start: it was typed in the UI, so only the backend reads it, through the
+# outbound guard (the profile is checked there when it is saved).
+if [ "$acme_server_stored" != true ] && [ "$ACME_PROFILE" != "none" ] && [ "$(curl -sSL --max-time 10 "$ACME_SERVER" | jq --arg p "$ACME_PROFILE" '.meta.profiles[$p]')" = "null" ]; then
+    if [ "$(curl -sSL --max-time 10 "$ACME_SERVER" | jq -r ".newNonce")" = "null" ]; then
+        echo "Cannot check if the ACME_PROFILE is supported by the ACME_SERVER since the ACME_SERVER is down."
+    else
         echo "The ACME_PROFILE seems to be not supported by the ACME_SERVER."
         sleep inf
-    else
-        echo "Cannot check if the ACME_PROFILE is supported by the ACME_SERVER since the ACME_SERVER is down."
     fi
 fi
+# acme-profile-check end
 
 
 if ! echo "$PUID" | grep -q "^[0-9]\+$"; then

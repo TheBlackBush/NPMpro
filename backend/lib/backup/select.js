@@ -85,6 +85,9 @@ const selectRows = (typeId, rowsByTable, ids) => {
 			out[childTable] = rowsByTable[childTable].filter((row) => kept.has(String(row[column])));
 		}
 	}
+	// a partial export (a page export, chosen items) carries no account rows: the email is the administrator's, and a
+	// merge adopts the account folders it brings
+	if (typeId === "certificates" && Array.isArray(out.npmpro_acme_account)) out.npmpro_acme_account = [];
 	return out;
 };
 

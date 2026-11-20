@@ -36,7 +36,6 @@ it("drops hooks, quoted or odd values and a webroot_map outside renewalparams", 
 			"key_type = 'rsa'",
 			"rsa_key_size = 4096 ; rm",
 			"must_staple = True",
-			"server = https://evil.example.com/dir\\nx",
 			"[other]",
 			"deploy_hook = rm -rf /",
 		].join("\n"),
@@ -47,9 +46,26 @@ it("drops hooks, quoted or odd values and a webroot_map outside renewalparams", 
 	assert.equal(conf.includes("x.example.com"), false);
 	assert.equal(conf.includes("key_type"), false);
 	assert.equal(conf.includes("rsa_key_size"), false);
-	assert.equal(conf.includes("server"), false);
 	assert.equal(conf.includes("must_staple = True"), true);
 	assert.equal(conf.includes("archive_dir = /data/tls/certbot/archive/npm-7"), true);
+});
+
+it("keeps the server of a conf, also an http one, and refuses a conf whose server fails the check", () => {
+	for (const server of ["https://acme-v02.api.letsencrypt.org/directory", "http://pebble_ca.lan:14000/dir"]) {
+		const conf = rebuildRenewalConf(`[renewalparams]\nauthenticator = webroot\nserver = ${server}\n`, options);
+		assert.ok(conf.split("\n").includes(`server = ${server}`), conf);
+	}
+	for (const server of ["https://evil.example.com/dir\\nx", "ftp://ca.lan/dir", "https://ca.lan/dir?x=1"]) {
+		assert.throws(
+			() =>
+				rebuildRenewalConf(`[renewalparams]\nauthenticator = webroot\nserver = ${server}\n`, {
+					...options,
+					label: "a.example.com",
+				}),
+			(error) => error.code === "invalid-item" && LABEL.test(error.message),
+			server,
+		);
+	}
 });
 
 it("finds the account ids of a data folder and those renewal confs name", async () => {
@@ -93,4 +109,11 @@ it("refuses a staged renewal conf of an added certificate that is a folder", asy
 	} finally {
 		await rm(stageDir, { recursive: true, force: true });
 	}
+});
+
+it("keeps the required profile of a renewal conf", () => {
+	// biome-ignore lint/security/noSecrets: a renewal conf sample, not a secret
+	const text = "[renewalparams]\nauthenticator = webroot\nrequired_profile = classic\n";
+	const conf = rebuildRenewalConf(text, options);
+	assert.equal(conf.includes("required_profile = classic"), true);
 });

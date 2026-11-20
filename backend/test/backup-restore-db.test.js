@@ -6,6 +6,7 @@ import { it } from "node:test";
 import knexFactory from "knex";
 import { loadStageData, previewReplace, replaceTypes, sequenceResetQuery } from "../lib/backup/restore-db.js";
 import { up as upOidcLink } from "../migrations/20261112120000_oidc_identity_link.js";
+import { up as createAcmeAccountTable } from "../migrations/20261119120000_acme_accounts.js";
 
 process.env.TZ = "UTC";
 
@@ -76,6 +77,7 @@ const sqlite = async () => {
 		t.json("meta").notNull();
 		t.integer("npmpro_dns_credential_id").nullable();
 	});
+	await createAcmeAccountTable(knex);
 	await knex.schema.createTable("npmpro_dns_credential", (t) => {
 		t.increments("id");
 		t.integer("owner_user_id").notNull();
@@ -501,3 +503,53 @@ it("refuses a backup whose item rows have ids that are not positive integers", a
 	assert.equal((await loadStageData(stageDir, ["redirection_hosts"])).redirection_hosts.redirection_host[0].id, "12");
 	await rm(stageDir, { recursive: true });
 });
+
+const ACME_ROW = {
+	id: 1,
+	server: "https://ca.lan/dir",
+	state: "pending",
+	created_on: "2026-01-01 00:00:00",
+	modified_on: "2026-01-01 00:00:00",
+};
+const certificatesData = (extra = {}) => ({ certificates: { certificate: [], ...extra } });
+const acmeServers = async (knex) => (await knex("npmpro_acme_account").orderBy("id")).map((row) => row.server);
+
+for (const [name, copy] of [
+	["as staged", (value) => value],
+	["after a structuredClone", (value) => structuredClone(value)],
+	["after a spread", (value) => ({ ...value, certificates: { ...value.certificates } })],
+]) {
+	it(`a certificates restore without the account table keeps the instance's account rows, ${name}`, async () => {
+		const knex = await sqlite();
+		await knex("npmpro_acme_account").insert({ ...ACME_ROW, server: "https://instance.lan/dir" });
+		const data = copy(certificatesData());
+		await replaceTypes({ knex, data, types: ["certificates"], adminUserId: 1, box, now: NOW });
+		assert.deepEqual(await acmeServers(knex), ["https://instance.lan/dir"]);
+		assert.equal(
+			await knex("certificate")
+				.count({ count: "*" })
+				.first()
+				.then((row) => Number(row.count)),
+			0,
+		);
+		await knex.destroy();
+	});
+
+	it(`a certificates restore with an empty account list replaces the account rows, ${name}`, async () => {
+		const knex = await sqlite();
+		await knex("npmpro_acme_account").insert({ ...ACME_ROW, server: "https://instance.lan/dir" });
+		const data = copy(certificatesData({ npmpro_acme_account: [] }));
+		await replaceTypes({ knex, data, types: ["certificates"], adminUserId: 1, box, now: NOW });
+		assert.deepEqual(await acmeServers(knex), []);
+		await knex.destroy();
+	});
+
+	it(`a certificates restore with account rows replaces them, ${name}`, async () => {
+		const knex = await sqlite();
+		await knex("npmpro_acme_account").insert({ ...ACME_ROW, server: "https://instance.lan/dir" });
+		const data = copy(certificatesData({ npmpro_acme_account: [ACME_ROW] }));
+		await replaceTypes({ knex, data, types: ["certificates"], adminUserId: 1, box, now: NOW });
+		assert.deepEqual(await acmeServers(knex), ["https://ca.lan/dir"]);
+		await knex.destroy();
+	});
+}

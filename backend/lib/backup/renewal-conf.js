@@ -20,11 +20,13 @@ const DOMAIN = /^(?:\*\.)?[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*$|^\[?[0-9A-Fa-f:.]+\
 const BOOLEAN = /^(?:true|false)$/iu;
 
 const CHECKED = {
-	server: /^https:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?(?:\/[A-Za-z0-9._~/-]*)?$/u,
+	// http:// too: envs.sh accepts it for ACME_SERVER (a local test CA)
+	server: /^https?:\/\/[A-Za-z0-9._-]+(?::\d{1,5})?(?:\/[A-Za-z0-9._~/-]*)?$/u,
 	key_type: /^(?:rsa|ecdsa)$/u,
 	elliptic_curve: /^secp(?:256|384|521)r1$/u,
 	rsa_key_size: /^\d{4}$/u,
 	must_staple: BOOLEAN,
+	required_profile: /^[A-Za-z0-9._-]{1,64}$/u,
 	reuse_key: BOOLEAN,
 	preferred_chain: /^[A-Za-z0-9 ._()-]{1,64}$/u,
 	pref_challs: /^[a-z0-9-]+(?:,\s*[a-z0-9-]+)*,?$/u,
@@ -101,6 +103,12 @@ const rebuildRenewalConf = (text, { id, dataDir, accounts, label = `#${id}` }) =
 	const account = params.get("account");
 	if (ACCOUNT_ID.test(account ?? "") && accounts.has(account)) lines.push(`account = ${account}`);
 	lines.push(`authenticator = ${authenticator}`);
+	// renew passes no --server: a conf without its server would renew at certbot's default CA, so a server that fails
+	// the check refuses the conf instead of being left out
+	const server = params.get("server");
+	if (server !== undefined && !CHECKED.server.test(server)) {
+		throw refused(label, "its ACME server is not a plain http or https URL");
+	}
 	for (const [name, check] of Object.entries(CHECKED)) {
 		const value = params.get(name);
 		if (value !== undefined && check.test(value)) lines.push(`${name} = ${value}`);
@@ -183,4 +191,4 @@ const checkStagedRenewals = async ({ stageDir, dataDir, items }) => {
 	}
 };
 
-export { accountIds, checkStagedRenewals, namedAccounts, rebuildRenewalConf };
+export { accountIds, checkStagedRenewals, namedAccounts, parseRenewalConf, rebuildRenewalConf };

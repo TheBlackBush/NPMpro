@@ -1,3 +1,4 @@
+import { loadAcmeServer, sweepRunFolders, syncAccountsWithFiles, syncEnvEmail } from "./internal/acme-account.js";
 import { startExpirySweep } from "./internal/api-token.js";
 import { backupStore } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
@@ -37,6 +38,16 @@ import setup from "./setup.js";
  * @returns {Promise}
  */
 const prepareApp = async ({ background = true } = {}) => {
+	// the stored instance CA first: every write of startup-settings.env below (and the runtime defaults) names it.
+	// A failed read stops this pass (the caller retries) rather than write the file without the stored CA
+	await loadAcmeServer();
+	// run folders a crash left behind may hold an email or an EAB pair
+	try {
+		await sweepRunFolders();
+	} catch (err) {
+		logger.warn(`Could not remove old ACME run folders: ${err.message}`);
+	}
+
 	// restore stages, unfinished writes and pending downloads of the previous run
 	try {
 		await backupStore.cleanup();
@@ -81,6 +92,12 @@ const prepareApp = async ({ background = true } = {}) => {
 		logger.error(`Could not apply the runtime settings at startup: ${err.message}`);
 	}
 
+	try {
+		await syncAccountsWithFiles();
+	} catch (err) {
+		logger.error(`Could not check the ACME accounts: ${err.message}`);
+	}
+
 	// CrowdSec (Settings, CrowdSec): the one-time import of a hand-edited crowdsec.conf, then the file and the two
 	// includes from the row; the reload at the end loads them.
 	const crowdsecStart = await startCrowdsec();
@@ -93,6 +110,7 @@ const prepareApp = async ({ background = true } = {}) => {
 
 	if (background) internalCertificate.initTimer();
 	if (background) startExpirySweep();
+	if (background) void syncEnvEmail().catch((err) => logger.warn(`ACME email sync failed: ${err.message}`));
 
 	// the status line of Settings, CrowdSec reads the reader's last poll; a save asks for a new poll
 	setCrowdsecHooks({ result: () => crowdsecService.result(), onApplied: () => crowdsecService.poll() });

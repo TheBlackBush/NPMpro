@@ -22,6 +22,7 @@ import proxyHostModel from "../models/proxy_host.js";
 import redirectionHostModel from "../models/redirection_host.js";
 import streamModel from "../models/stream.js";
 import { getValidationSchema } from "../schema/index.js";
+import { prepareRenewals } from "./acme-account.js";
 import internalAuditLog from "./audit-log.js";
 import certificateAcme from "./certificate-acme.js";
 import certificateCustom, { ALLOWED_SSL_FILES } from "./certificate-custom.js";
@@ -96,14 +97,12 @@ const internalCertificate = {
 
 		try {
 			try {
-				const result = await runCertbot([
-					"--config",
-					CERTBOT_INI,
-					"renew",
-					"--server",
-					process.env.ACME_SERVER,
-					"--quiet",
-				]);
+				await prepareRenewals(null);
+			} catch (err) {
+				logger.warn(`The renewal confs could not be prepared: ${err}`);
+			}
+			try {
+				const result = await runCertbot(["--config", CERTBOT_INI, "renew", "--quiet"]);
 
 				if (result) logger.info(`Renew Result: ${result}`);
 			} catch (err) {
@@ -176,9 +175,9 @@ const internalCertificate = {
 		try {
 			if (certificate.provider === "letsencrypt") {
 				if (certificate.npmpro_dns_challenge) {
-					await internalCertificate.requestCertbotWithDnsChallenge(certificate);
+					await internalCertificate.requestCertbotWithDnsChallenge(certificate, access);
 				} else {
-					await internalCertificate.requestCertbot(certificate);
+					await internalCertificate.requestCertbot(certificate, access);
 				}
 
 				// the expiry date comes from the issued file
@@ -527,7 +526,7 @@ const internalCertificate = {
 		const certificate = await internalCertificate.get(access, data);
 
 		if (certificate.provider === "letsencrypt") {
-			await internalCertificate.renewCertbot(certificate);
+			await internalCertificate.renewCertbot(certificate, access);
 			const certInfo = await internalCertificate.getCertificateInfoFromFile(
 				`${internalCertificate.getLiveCertPath(certificate.id)}/fullchain.pem`,
 			);

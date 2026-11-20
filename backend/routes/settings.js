@@ -4,6 +4,7 @@ import jwtdecode from "../lib/express/jwt-decode.js";
 import apiValidator from "../lib/validator/api.js";
 import validator from "../lib/validator/index.js";
 import { getValidationSchema } from "../schema/index.js";
+import acmeRouter from "./settings-acme.js";
 import crowdsecRouter from "./settings-crowdsec.js";
 import environmentRouter from "./settings-environment.js";
 import landingPagesRouter from "./settings-landing-pages.js";
@@ -46,6 +47,7 @@ router
  * /api/settings/oidc has its own router (mounted before /:setting_id)
  */
 router.use("/oidc", settingsOidcRoutes);
+router.use("/acme", acmeRouter);
 router.use("/monitoring", monitoringRouter);
 router.use("/geoip", geoipRouter);
 router.use("/crowdsec", crowdsecRouter);

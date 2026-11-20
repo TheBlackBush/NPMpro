@@ -4,7 +4,7 @@ import { after, before, beforeEach, it } from "node:test";
 import { generateApiToken } from "../lib/api-token.js";
 import { SECRET_KEYS } from "../lib/mcp/redact.js";
 import { startApi } from "./support/api.js";
-import { certbotSucceeds, makeCertificate } from "./support/certbot.js";
+import { acmeDirectory, certbotSucceeds, makeCertificate } from "./support/certbot.js";
 import { addCertificate } from "./support/hosts.js";
 
 const SECTIONS = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams", "access_lists", "certificates"];
@@ -29,6 +29,8 @@ const tokenTexts = [];
 
 before(async () => {
 	api = await startApi({ env: { ACME_SERVER: ACME } });
+	api.outside.dns.set("acme.test", "192.0.2.40");
+	acmeDirectory(api, ACME);
 	admin = await api.admin();
 	adminId = (await admin.get("/users/me")).body.id;
 	const pair = await makeCertificate(path.join(api.root, "fake"), "a.example.com");

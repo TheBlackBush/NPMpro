@@ -13,6 +13,12 @@
 	},
 	{
 		"type": "index",
+		"name": "npmpro_acme_account_server",
+		"table": "npmpro_acme_account",
+		"sql": "CREATE UNIQUE INDEX `npmpro_acme_account_server` on `npmpro_acme_account` (`server`)"
+	},
+	{
+		"type": "index",
 		"name": "npmpro_api_token_lookup_id",
 		"table": "npmpro_api_token",
 		"sql": "CREATE UNIQUE INDEX `npmpro_api_token_lookup_id` on `npmpro_api_token` (`lookup_id`)"
@@ -184,6 +190,12 @@
 		"name": "dead_host",
 		"table": "dead_host",
 		"sql": "CREATE TABLE `dead_host` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `owner_user_id` integer not null, `is_deleted` integer not null default '0', `domain_names` json not null, `certificate_id` integer not null default '0', `ssl_forced` integer not null default '0', `advanced_config` text not null default '', `meta` json not null, `http2_support` integer not null default '0', `enabled` integer not null default '1', `hsts_enabled` integer not null default '0', `hsts_subdomains` integer not null default '0', \"npmpro_http3_support\" integer not null default '0', \"npmpro_nginx_online\" integer not null default '0', \"npmpro_nginx_err\" text not null default '', \"npmpro_directory\" varchar(255) not null default '', \"npmpro_mtls_certificate_id\" integer not null default '0', \"npmpro_mtls_verify_client_optional\" integer not null default '0', `npmpro_page` varchar(16) not null default 'global', `npmpro_page_html` text null, `npmpro_description` varchar(255) not null default '', `npmpro_tags` json not null default '[]')"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_acme_account",
+		"table": "npmpro_acme_account",
+		"sql": "CREATE TABLE `npmpro_acme_account` (`id` integer not null primary key autoincrement, `server` varchar(255) not null, `email` varchar(255) null default null, `eab_kid` text null default null, `eab_hmac_key` text null default null, `account_id` varchar(64) null default null, `state` varchar(16) not null default 'pending', `error` text null default null, `registered_on` datetime null default null, `created_on` datetime not null, `modified_on` datetime not null)"
 	},
 	{
 		"type": "table",

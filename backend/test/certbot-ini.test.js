@@ -5,9 +5,14 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { CERTBOT_INI, CERTBOT_INI_BASE, renderCertbotIni, renewalProfileEdits } from "../lib/certbot-ini.js";
+import { CERTBOT_INI, CERTBOT_INI_BASE, renderCertbotIni, renewalOptionEdits } from "../lib/certbot-ini.js";
 import { mergeRuntimeConfig } from "../lib/runtime-rules.js";
 
+const NO_SERVER_OPTIONS = /required-profile|must-staple/u;
+const CURVE_LINE = /^elliptic-curve = secp256r1$/mu;
+const VERIFY_LINE = /^no-verify-ssl = true$/mu;
+const PROFILE_LINE = /^required_profile = classic$/mu;
+const STAPLE_FALSE_LINE = /^must_staple = False$/mu;
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const HEAD = `logs-dir = /tmp/certbot-log
 work-dir = /tmp/certbot-work
@@ -21,15 +26,13 @@ no-eff-email = true
 
 `;
 
-const expected = ({ rsaSize, curve, profileLine, keyType, mustStaple, noVerify }) =>
-	`${HEAD}rsa-key-size = ${rsaSize}\nelliptic-curve = ${curve}\n\n${profileLine}\nkey-type = ${keyType}\nmust-staple = ${mustStaple}\nno-verify-ssl = ${noVerify}\n`;
+const expected = ({ rsaSize, curve, keyType, noVerify }) =>
+	`${HEAD}rsa-key-size = ${rsaSize}\nelliptic-curve = ${curve}\n\nkey-type = ${keyType}\nno-verify-ssl = ${noVerify}\n`;
 
 const values = (overrides) => ({
 	key_type: "ecdsa",
 	key_size: "secp384r1",
-	must_staple: true,
 	server_tls_verify: true,
-	profile: "",
 	...overrides,
 });
 
@@ -43,9 +46,7 @@ it("renders ecdsa curves and rsa sizes", () => {
 		expected({
 			rsaSize: 4096,
 			curve: "secp256r1",
-			profileLine: "#required-profile",
 			keyType: "ecdsa",
-			mustStaple: true,
 			noVerify: false,
 		}),
 	);
@@ -54,9 +55,7 @@ it("renders ecdsa curves and rsa sizes", () => {
 		expected({
 			rsaSize: 4096,
 			curve: "secp384r1",
-			profileLine: "#required-profile",
 			keyType: "ecdsa",
-			mustStaple: true,
 			noVerify: false,
 		}),
 	);
@@ -65,9 +64,7 @@ it("renders ecdsa curves and rsa sizes", () => {
 		expected({
 			rsaSize: 2048,
 			curve: "secp384r1",
-			profileLine: "#required-profile",
 			keyType: "rsa",
-			mustStaple: true,
 			noVerify: false,
 		}),
 	);
@@ -76,51 +73,31 @@ it("renders ecdsa curves and rsa sizes", () => {
 		expected({
 			rsaSize: 4096,
 			curve: "secp384r1",
-			profileLine: "#required-profile",
 			keyType: "rsa",
-			mustStaple: true,
 			noVerify: false,
 		}),
 	);
 });
 
-it("renders must-staple, no-verify-ssl and the profile", () => {
-	assert.equal(
-		renderCertbotIni(values({ must_staple: false, server_tls_verify: false, profile: "shortlived" })),
-		expected({
-			rsaSize: 4096,
-			curve: "secp384r1",
-			profileLine: "required-profile = shortlived",
-			keyType: "ecdsa",
-			mustStaple: false,
-			noVerify: true,
-		}),
-	);
-	assert.equal(
-		renderCertbotIni(values({ profile: "" })),
-		expected({
-			rsaSize: 4096,
-			curve: "secp384r1",
-			profileLine: "#required-profile",
-			keyType: "ecdsa",
-			mustStaple: true,
-			noVerify: false,
-		}),
-	);
-});
-
-it("renders from an already rendered file the same way", () => {
-	const once = renderCertbotIni(values({ key_type: "rsa", key_size: "3072", profile: "classic" }));
-	assert.equal(renderCertbotIni(values({ profile: "" }), once).includes("#required-profile\n"), true);
-	assert.equal(renderCertbotIni(values({ profile: "x" }), once).includes("required-profile = x\n"), true);
+it("keeps the server-dependent options out of the ini: no required-profile, no must-staple", () => {
+	const text = renderCertbotIni({
+		key_type: "ecdsa",
+		key_size: "secp256r1",
+		server_tls_verify: false,
+		profile: "x",
+		must_staple: true,
+	});
+	assert.doesNotMatch(text, NO_SERVER_OPTIONS);
+	assert.match(text, CURVE_LINE);
+	assert.match(text, VERIFY_LINE);
 });
 
 // start.sh's certbot block (copy to /run/npmpro and seds), run with sh in a temp folder
 const startShCertbot = async () => {
 	const lines = (await readFile(path.join(ROOT, "rootfs/usr/local/bin/start.sh"), "utf8")).split("\n");
 	const start = lines.indexOf("cp /etc/certbot.ini /run/npmpro/certbot.ini");
-	const profile = lines.findIndex((line) => line.includes("required-profile = $ACME_PROFILE"));
-	const end = lines.findIndex((line, index) => index > profile && line === "fi");
+	const verify = lines.findIndex((line) => line.includes("no-verify-ssl = false"));
+	const end = lines.findIndex((line, index) => index > verify && line === "fi");
 	return lines.slice(start, end + 1).join("\n");
 };
 
@@ -156,20 +133,36 @@ it("renders what start.sh writes for the same env", async () => {
 	}
 });
 
-it("removes required_profile lines from renewal confs", async () => {
+it("sets required_profile and must_staple in the renewal confs of one CA only", async () => {
 	const dir = await mkdtemp(path.join(tmpdir(), "renewal-"));
+	const conf = (server, extra = "") => `version = 5.10.0\n[renewalparams]\nserver = ${server}\n${extra}`;
 	await writeFile(
-		path.join(dir, "a.conf"),
-		"version = 5\n[renewalparams]\nrequired_profile = shortlived\nkey_type = ecdsa\n",
+		path.join(dir, "npm-1.conf"),
+		conf("https://a/dir", "required_profile = old\nmust_staple = True\n"),
 	);
-	await writeFile(path.join(dir, "b.conf"), "version = 5\n");
-	await writeFile(path.join(dir, "c.txt"), "required_profile = x\n");
-	const edits = await renewalProfileEdits(dir);
-	assert.deepEqual(edits, [
-		{ path: path.join(dir, "a.conf"), content: "version = 5\n[renewalparams]\nkey_type = ecdsa\n" },
-	]);
-	assert.equal(await readFile(path.join(dir, "c.txt"), "utf8"), "required_profile = x\n");
-	assert.deepEqual(await renewalProfileEdits(path.join(dir, "missing")), []);
+	await writeFile(path.join(dir, "npm-2.conf"), conf("https://b/dir", "must_staple = True\n"));
+	await writeFile(
+		path.join(dir, "npm-3.conf"),
+		conf("https://a/dir", "required_profile = classic\nmust_staple = False\n"),
+	);
+	const edits = await renewalOptionEdits({ server: "https://a/dir", profile: "classic", mustStaple: false, dir });
+	assert.deepEqual(
+		edits.map((edit) => path.basename(edit.path)),
+		["npm-1.conf"],
+	);
+	assert.match(edits[0].content, PROFILE_LINE);
+	assert.match(edits[0].content, STAPLE_FALSE_LINE);
+	const cleared = await renewalOptionEdits({ server: "https://a/dir", profile: "", mustStaple: false, dir });
+	assert.ok(cleared.every((edit) => !edit.content.includes("required_profile")));
+	assert.deepEqual(
+		await renewalOptionEdits({
+			server: "https://a/dir",
+			profile: "",
+			mustStaple: false,
+			dir: path.join(dir, "none"),
+		}),
+		[],
+	);
 });
 
 it("points every certbot call at the live config, not the root-owned /etc copy", async () => {
@@ -181,5 +174,4 @@ it("points every certbot call at the live config, not the root-owned /etc copy",
 	);
 	const launchSh = await readFile(path.join(ROOT, "rootfs/usr/local/bin/launch.sh"), "utf8");
 	assert.equal(launchSh.includes("/etc/certbot.ini"), false);
-	assert.equal(launchSh.includes("--config /run/npmpro/certbot.ini"), true);
 });

@@ -57,7 +57,17 @@ const guardedLookup = (hostname, options, callback) => {
 	});
 };
 
-// for undici fetch: every connection, also after a redirect, goes through the guarded lookup
-const guardedAgent = new Agent({ connect: { lookup: guardedLookup } });
+/**
+ * An undici Agent whose every connection (also after a redirect) goes through the guarded lookup
+ *
+ * @param   {Object}   [options]
+ * @param   {boolean}  [options.rejectUnauthorized]  false: the server's TLS certificate is not verified
+ * @returns {Agent}
+ */
+const createGuardedAgent = ({ rejectUnauthorized = true } = {}) =>
+	new Agent({ connect: { lookup: guardedLookup, rejectUnauthorized } });
 
-export { blockedError, guardedAgent, isBlockedAddress };
+// for undici fetch: every connection, also after a redirect, goes through the guarded lookup
+const guardedAgent = createGuardedAgent();
+
+export { blockedError, createGuardedAgent, guardedAgent, isBlockedAddress };

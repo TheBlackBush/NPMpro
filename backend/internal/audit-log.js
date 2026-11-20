@@ -80,7 +80,7 @@ const internalAuditLog = {
 	 */
 	add: (access, data) => {
 		const { api_token: given, ...entry } = data;
-		entry.user_id ||= access.token.getUserId(1);
+		entry.user_id ||= access ? access.token.getUserId(1) : 0;
 
 		if (!entry.action) throw new errs.InternalValidationError("Audit log entry must contain an Action");
 

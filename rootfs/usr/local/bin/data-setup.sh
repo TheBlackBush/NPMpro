@@ -4,10 +4,6 @@
 
 umask 022
 
-if [ "$ACME_PROFILE" = "none" ]; then
-    find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "/required_profile/d" {} \;
-fi
-
 php_setup() {
     mkdir -vp /data/php
     cp -varnT /etc/php"$1" /data/php/"$1"

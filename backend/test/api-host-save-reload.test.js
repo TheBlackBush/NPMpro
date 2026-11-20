@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
-import { certbotSucceeds, makeCertificate } from "./support/certbot.js";
+import { acmeDirectory, certbotSucceeds, makeCertificate } from "./support/certbot.js";
 import { addCertificate, countRows, created } from "./support/hosts.js";
 
 // A save whose nginx reload fails twice (the cause is outside the saved host): the row is kept, the answer is a public
@@ -13,6 +13,8 @@ let api;
 let admin;
 before(async () => {
 	api = await startApi();
+	api.outside.dns.set("acme-v02.api.letsencrypt.org", "192.0.2.30");
+	acmeDirectory(api, "https://acme-v02.api.letsencrypt.org/directory");
 	admin = await api.admin();
 });
 after(() => api?.stop());

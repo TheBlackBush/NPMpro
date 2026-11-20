@@ -176,6 +176,10 @@ const scheduleSecrets = {
 		),
 };
 
+// EAB values serve one registration only: never in a backup, also not in one with secrets (rule 3)
+const withoutEab = (rowsByTable) =>
+	mapRows(rowsByTable, "npmpro_acme_account", (row) => ({ ...row, eab_kid: null, eab_hmac_key: null }));
+
 const CERTIFICATE_FILES = [
 	/^tls\/certbot\/archive\/npm-\d+$/u,
 	/^tls\/certbot\/archive\/npm-\d+\/[a-z]+\d+\.pem$/u,
@@ -203,7 +207,8 @@ const TYPES = {
 	dead_hosts: { tables: [{ table: "dead_host" }], files: NO_FILES, secrets: NO_SECRETS },
 	streams: { tables: [{ table: "stream" }], files: NO_FILES, secrets: NO_SECRETS },
 	certificates: {
-		tables: [{ table: "certificate" }],
+		// certificate first: its count is the type's count
+		tables: [{ table: "certificate" }, { table: "npmpro_acme_account" }],
 		// live/npm-<id>/ holds symlinks into archive/ and is recreated on restore; only the .der files next to it
 		files: fileRules({
 			roots: [
@@ -219,7 +224,7 @@ const TYPES = {
 				PRIVATE_KEY.test(path.posix.basename(rel)) ||
 				(rel.startsWith("tls/certbot/accounts/") && path.posix.basename(rel) === "private_key.json"),
 		}),
-		secrets: NO_SECRETS,
+		secrets: { export: withoutEab, strip: withoutEab, seal: (rowsByTable) => rowsByTable },
 	},
 	access_lists: {
 		tables: [{ table: "access_list" }, { table: "access_list_auth" }, { table: "access_list_client" }],
@@ -267,7 +272,7 @@ const TYPES = {
 				),
 		},
 	},
-	settings_runtime: { tables: settingRows(RUNTIME_GROUPS), files: NO_FILES, secrets: NO_SECRETS },
+	settings_runtime: { tables: settingRows([...RUNTIME_GROUPS, "acme"]), files: NO_FILES, secrets: NO_SECRETS },
 	settings_default_site: {
 		tables: settingRows(["default-site"]),
 		files: fileRules({ roots: ["public/html"], matches: [isUnder("public/html")] }),

@@ -20,7 +20,22 @@ it("selects the runtime setting groups", () => {
 	const [{ table, where }] = TYPES.settings_runtime.tables;
 	assert.equal(table, "setting");
 	where(qb);
-	assert.deepEqual(ids, ["id", RUNTIME_GROUPS]);
+	assert.deepEqual(ids, ["id", [...RUNTIME_GROUPS, "acme"]]);
+});
+
+it("lists the account table after the certificate table, and never exports the EAB pair", () => {
+	assert.deepEqual(
+		TYPES.certificates.tables.map((entry) => entry.table),
+		["certificate", "npmpro_acme_account"],
+	);
+	const rows = {
+		certificate: [{ id: 1 }],
+		npmpro_acme_account: [{ server: "https://ca.lan/dir", eab_kid: "v1:a", eab_hmac_key: "v1:b", email: "a@b.c" }],
+	};
+	for (const name of ["export", "strip"]) {
+		const [account] = TYPES.certificates.secrets[name](rows, box).npmpro_acme_account;
+		assert.deepEqual([account.eab_kid, account.eab_hmac_key, account.email], [null, null, "a@b.c"]);
+	}
 });
 
 it("allows only the chosen types' files", () => {

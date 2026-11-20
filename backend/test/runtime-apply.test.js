@@ -29,6 +29,10 @@ const CRONTAB =
 const LOGROTATE = "/data/nginx/logs/*.log {\n        daily\n        rotate 3\n        missingok\n}\n";
 
 const hasLine = (text, line) => text.split("\n").includes(line);
+const NO_PROFILE_FLAG = /required-profile/u;
+const PROFILE_LINE = /^required_profile = classic$/mu;
+const STAPLE_TRUE_LINE = /^must_staple = True$/mu;
+const NO_PROFILE_LINE = /required_profile/u;
 const BOOM = /boom/u;
 const EACCES = /EACCES/u;
 
@@ -110,7 +114,7 @@ const applier = (paths, overrides = {}) => {
 		fetchDirectory: (server, options) => {
 			fetched.push(server);
 			verifies.push(options?.verify);
-			return Promise.resolve({ directory: true, profiles: { classic: {}, shortlived: {} } });
+			return Promise.resolve({ reachable: true, directory: true, profiles: { classic: {}, shortlived: {} } });
 		},
 		...overrides,
 	});
@@ -136,7 +140,7 @@ it("withFiles writes atomically, keeps the mode and leaves no temp file", async 
 it("withFiles restores the previous contents when fn fails, and removes new files", async () => {
 	const { dir } = await setup();
 	const a = path.join(dir, "a.conf");
-	const b = path.join(dir, "b.conf");
+	const b = path.join(dir, "npm-2.conf");
 	await writeFile(a, "old a\n");
 	await assert.rejects(
 		withFiles(
@@ -159,7 +163,7 @@ it("withFiles restores the previous contents when fn fails, and removes new file
 it("withFiles restores written files when a later write fails and throws a non-public error", async () => {
 	const { dir } = await setup();
 	const a = path.join(dir, "a.conf");
-	const b = path.join(dir, "b.conf");
+	const b = path.join(dir, "npm-2.conf");
 	await writeFile(a, "old a\n");
 	await writeFile(b, "old b\n");
 	const failing = {
@@ -239,20 +243,33 @@ it("skips the crontab when there is none and logs it once", async () => {
 	assert.equal(a.log.lines.filter((line) => line.includes("No crontab")).length, 1);
 });
 
-it("checks a new profile against the ACME server and cleans the renewal confs", async () => {
-	const conf = "[renewalparams]\nrequired_profile = shortlived\n";
-	const { paths } = await setup({ renewal: { "a.conf": conf } });
+it("checks a new profile against the ACME server and sets it in the renewal confs of the instance CA", async () => {
+	const conf = (server) => `[renewalparams]\nserver = ${server}\nrequired_profile = shortlived\n`;
+	const { paths } = await setup({ renewal: { "npm-1.conf": conf(LE), "npm-2.conf": conf("https://other/dir") } });
 	const a = applier(paths);
 	const prev = certValues();
 	await a.applyGroup("certificates", { ...prev, profile: "classic" }, prev);
 	assert.deepEqual(a.fetched, [LE]);
-	assert.ok(hasLine(await readFile(paths.certbotIni, "utf8"), "required-profile = classic"));
-	assert.equal(await readFile(path.join(paths.renewalDir, "a.conf"), "utf8"), "[renewalparams]\n");
+	const ini = await readFile(paths.certbotIni, "utf8");
+	assert.doesNotMatch(ini, NO_PROFILE_FLAG);
+	assert.match(await readFile(path.join(paths.renewalDir, "npm-1.conf"), "utf8"), PROFILE_LINE);
+	assert.equal(await readFile(path.join(paths.renewalDir, "npm-2.conf"), "utf8"), conf("https://other/dir"));
+});
+
+it("writes must_staple into the renewal confs of the instance CA only and leaves certbot.ini alone", async () => {
+	const conf = (server) => `[renewalparams]\nserver = ${server}\nmust_staple = False\n`;
+	const { paths } = await setup({ renewal: { "npm-1.conf": conf(LE), "npm-2.conf": conf("https://other/dir") } });
+	const a = applier(paths);
+	const prev = certValues();
+	await a.applyGroup("certificates", { ...prev, must_staple: true }, prev);
+	assert.match(await readFile(path.join(paths.renewalDir, "npm-1.conf"), "utf8"), STAPLE_TRUE_LINE);
+	assert.equal(await readFile(path.join(paths.renewalDir, "npm-2.conf"), "utf8"), conf("https://other/dir"));
+	assert.equal(await readFile(paths.certbotIni, "utf8"), "old ini\n");
 });
 
 it("refuses a profile the ACME server does not offer and writes nothing", async () => {
 	const conf = "required_profile = shortlived\n";
-	const { paths } = await setup({ renewal: { "a.conf": conf } });
+	const { paths } = await setup({ renewal: { "npm-1.conf": conf } });
 	const a = applier(paths);
 	const prev = certValues();
 	const err = await a
@@ -261,7 +278,7 @@ it("refuses a profile the ACME server does not offer and writes nothing", async 
 	assert.equal(err.name, "ValidationError");
 	assert.equal(err.message, "profile: The ACME server does not offer this profile");
 	assert.equal(await readFile(paths.certbotIni, "utf8"), "old ini\n");
-	assert.equal(await readFile(path.join(paths.renewalDir, "a.conf"), "utf8"), conf);
+	assert.equal(await readFile(path.join(paths.renewalDir, "npm-1.conf"), "utf8"), conf);
 });
 
 it("reports an unreachable ACME server", async () => {
@@ -273,19 +290,29 @@ it("reports an unreachable ACME server", async () => {
 	const err = await down.applyGroup("certificates", { ...prev, profile: "classic" }, prev).catch((e) => e);
 	assert.equal(err.message, "profile: Could not check the ACME server profiles");
 	assert.equal(err.public, true);
-	const notAcme = applier(paths, { fetchDirectory: async () => ({ directory: false, profiles: {} }) });
+	const notAcme = applier(paths, {
+		fetchDirectory: async () => ({ reachable: true, directory: false, profiles: {} }),
+	});
 	const err2 = await notAcme.applyGroup("certificates", { ...prev, profile: "classic" }, prev).catch((e) => e);
 	assert.equal(err2.message, "profile: Could not check the ACME server profiles");
+	const silent = applier(paths, {
+		fetchDirectory: async () => ({ reachable: false, directory: false, profiles: {} }),
+	});
+	const err3 = await silent.applyGroup("certificates", { ...prev, profile: "classic" }, prev).catch((e) => e);
+	assert.equal(err3.message, "profile: Could not check the ACME server profiles");
 });
 
 it("does not check an empty profile and removes stale renewal profile lines", async () => {
-	const { paths } = await setup({ renewal: { "a.conf": "x = 1\nrequired_profile = shortlived\n" } });
+	const { paths } = await setup({
+		renewal: {
+			"npm-1.conf": `[renewalparams]\nserver = ${LE}\nrequired_profile = shortlived\nmust_staple = True\n`,
+		},
+	});
 	const a = applier(paths);
 	const prev = certValues();
 	await a.applyGroup("certificates", { ...prev, profile: "" }, prev);
 	assert.deepEqual(a.fetched, []);
-	assert.equal(await readFile(path.join(paths.renewalDir, "a.conf"), "utf8"), "x = 1\n");
-	assert.ok(hasLine(await readFile(paths.certbotIni, "utf8"), "#required-profile"));
+	assert.doesNotMatch(await readFile(path.join(paths.renewalDir, "npm-1.conf"), "utf8"), NO_PROFILE_LINE);
 });
 
 it("does nothing when no value changed", async () => {
@@ -378,7 +405,7 @@ it("startup applyAll uses env values for env-set keys over stored ones and does 
 	const ini = await readFile(paths.certbotIni, "utf8");
 	assert.ok(hasLine(ini, "key-type = rsa"));
 	assert.ok(hasLine(ini, "rsa-key-size = 2048"));
-	assert.ok(hasLine(ini, "#required-profile"));
+	assert.doesNotMatch(ini, NO_PROFILE_FLAG);
 	assert.deepEqual(a.restarts, [7]);
 	assert.ok(hasLine(await readFile(path.join(paths.crontabDir, "npmpro"), "utf8"), "0 */4 * * * cron-ech.sh"));
 	assert.deepEqual(a.nginx.calls, []);
@@ -386,17 +413,26 @@ it("startup applyAll uses env values for env-set keys over stored ones and does 
 });
 
 it("startup applyAll applies stored values for keys the env did not set", async () => {
-	const { paths } = await setup();
+	const { paths } = await setup({ renewal: { "npm-1.conf": `[renewalparams]\nserver = ${LE}\n` } });
 	const env = { ...BOOT_ENV, ACME_KEY_TYPE: "ecdsa", ACME_KEY_SIZE: "secp384r1", NPMPRO_USER_ENV: "" };
 	const stored = {
-		certificates: { key_size: "secp256r1", profile: "classic", profile_server: LE, renewal_interval: 20 },
+		certificates: {
+			key_size: "secp256r1",
+			profile: "classic",
+			profile_server: LE,
+			must_staple: true,
+			renewal_interval: 20,
+		},
 	};
 	const config = createRuntimeConfig({ env, readStored: async (group) => stored[group] ?? {}, log: quietLog() });
 	const a = applier(paths, { getConfig: config.getRuntimeConfig });
 	await a.applyAll();
 	const ini = await readFile(paths.certbotIni, "utf8");
 	assert.ok(hasLine(ini, "elliptic-curve = secp256r1"));
-	assert.ok(hasLine(ini, "required-profile = classic"));
+	assert.doesNotMatch(ini, NO_PROFILE_FLAG);
+	const renewal = await readFile(path.join(paths.renewalDir, "npm-1.conf"), "utf8");
+	assert.match(renewal, PROFILE_LINE);
+	assert.match(renewal, STAPLE_TRUE_LINE);
 	assert.deepEqual(a.restarts, [20]);
 });
 

@@ -1,4 +1,5 @@
 import { up as createScheduleTable } from "../../migrations/20261028120000_backup_schedules.js";
+import { up as createAcmeAccountTable } from "../../migrations/20261119120000_acme_accounts.js";
 
 export const createSchema = async (knex) => {
 	const hostTable = (name, extra = () => {}) =>
@@ -90,6 +91,7 @@ export const createSchema = async (knex) => {
 		t.integer("npmpro_dns_credential_id").nullable();
 		t.integer("npmpro_dns_challenge").notNull().defaultTo(0);
 	});
+	await createAcmeAccountTable(knex);
 	await knex.schema.createTable("access_list", (t) => {
 		t.increments("id");
 		t.integer("owner_user_id").notNull().defaultTo(1);

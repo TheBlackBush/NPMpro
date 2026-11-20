@@ -7,6 +7,7 @@ import path from "node:path";
 import { it } from "node:test";
 import knexFactory from "knex";
 import { exportStage, verifyStage } from "../lib/backup/export.js";
+import { up as createAcmeAccountTable } from "../migrations/20261119120000_acme_accounts.js";
 
 process.env.TZ = "UTC";
 
@@ -46,6 +47,7 @@ const sqlite = async () => {
 		t.increments("id");
 		t.string("provider");
 	});
+	await createAcmeAccountTable(knex);
 	await knex("proxy_host").insert({ domain_names: '["a.example.com"]' });
 	await knex("npmpro_dns_credential").insert({ name: "cf", values: "v1:sealed" });
 	await knex("certificate").insert({ provider: "letsencrypt" });

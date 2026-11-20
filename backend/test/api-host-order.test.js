@@ -4,7 +4,7 @@ import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import { startApi } from "./support/api.js";
-import { certbotFails, certbotSucceeds, makeCertificate } from "./support/certbot.js";
+import { acmeDirectory, certbotFails, certbotSucceeds, makeCertificate } from "./support/certbot.js";
 import { countRows, created, fileExists, reloads } from "./support/hosts.js";
 
 // The order of the steps of a host save is behaviour: these tests were written before the host services moved into
@@ -100,6 +100,8 @@ const certbotCalls = async () => (await api.outside.calls()).filter((line) => li
 
 before(async () => {
 	api = await startApi({ env: { ACME_SERVER: "https://acme.example.test/directory" } });
+	api.outside.dns.set("acme.example.test", "192.0.2.50");
+	acmeDirectory(api, "https://acme.example.test/directory");
 	admin = await api.admin();
 	pair = await makeCertificate(path.join(api.root, "fake"), "order.example.com");
 	const credential = await admin.post("/nginx/dns-credentials", {

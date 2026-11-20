@@ -1,21 +1,102 @@
 import { readFile, realpath, rm, writeFile } from "node:fs/promises";
 import net from "node:net";
+import path from "node:path";
 import { domainToASCII } from "node:url";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
+import { requestOptionsFor } from "../lib/acme-server.js";
+import { parseRenewalConf } from "../lib/backup/renewal-conf.js";
 import { installPlugin, runCertbot } from "../lib/certbot.js";
+import { requestOptionArgs } from "../lib/certbot-account.js";
 import { CERTBOT_INI } from "../lib/certbot-ini.js";
 import { liveCertPath } from "../lib/certificate-files.js";
 import errs from "../lib/error.js";
 import { rooted } from "../lib/paths.js";
+import { getRuntimeConfig } from "../lib/runtime-config.js";
 import { ssl as logger } from "../logger.js";
 import pjson from "../package.json" with { type: "json" };
+import { ensureAccount, instanceServer, prepareRenewals } from "./acme-account.js";
 import internalDnsCredential from "./dns-credential.js";
 
-const renewalServerPattern = /^server = (?<server>.+)$/mu;
+const renewalConfOf = (id) => rooted(`/data/tls/certbot/renewal/npm-${id}.conf`);
+const CERT_FILE = /^cert(?<n>\d*)\.pem$/u;
+
+/** server and account of a certificate's renewal conf, empty when it has none */
+const renewalParamsOf = async (id) => {
+	try {
+		return parseRenewalConf(await readFile(renewalConfOf(id), "utf8")).params;
+	} catch {
+		return new Map();
+	}
+};
+
+/**
+ * The CA of a request (the certificate's, else the instance CA), its account (registered lazily) and the options the
+ * request passes for that CA (rule 6)
+ *
+ * @returns {Promise<{server: string, args: string[]}>}
+ */
+const acmeTarget = async (certificate, access) => {
+	const instance = instanceServer();
+	const server = certificate.npmpro_acme_server ?? instance;
+	const accountId = await ensureAccount(server, { access });
+	const { values } = await getRuntimeConfig("certificates");
+	return {
+		server,
+		args: [
+			"--server",
+			server,
+			"--account",
+			accountId,
+			...requestOptionArgs(requestOptionsFor(server, instance, values)),
+		],
+	};
+};
+
+/** Revokes by the account first, then with the certificate's own key (fact 12); both best effort */
+const revokeBestEffort = async ({ server, account, certName, certPath, keyPath, reason }) => {
+	const at = server ? ["--server", server] : [];
+	const tail = ["--reason", reason, "--no-delete-after-revoke"];
+	try {
+		const target = certName ? ["--cert-name", certName] : ["--cert-path", certPath];
+		logger.info(
+			await runCertbot([
+				"--config",
+				CERTBOT_INI,
+				"revoke",
+				...at,
+				...(account ? ["--account", account] : []),
+				...target,
+				...tail,
+			]),
+		);
+		return;
+	} catch (err) {
+		logger.warn(`Revoking through the ACME account failed, trying the certificate's key: ${err.message}`);
+	}
+	// without a known CA the fallback would go to certbot's default one
+	if (!server) return;
+	try {
+		logger.info(
+			await runCertbot([
+				"--config",
+				CERTBOT_INI,
+				"revoke",
+				...at,
+				"--cert-path",
+				certPath,
+				"--key-path",
+				keyPath,
+				...tail,
+			]),
+		);
+	} catch (err) {
+		logger.warn(`Could not revoke the certificate: ${err.message}`);
+	}
+};
 
 const certificateAcme = {
 	/** Requests a certificate through the HTTP challenge */
-	requestCertbot: async (certificate) => {
+	requestCertbot: async (certificate, access) => {
 		logger.info(
 			`Requesting Certbot certificates for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`,
 		);
@@ -25,12 +106,12 @@ const certificateAcme = {
 			net.isIP(entry) === 0 ? "domains" : "ips",
 		);
 
+		const target = await acmeTarget(certificate, access);
 		const result = await runCertbot([
 			"--config",
 			CERTBOT_INI,
 			"certonly",
-			"--server",
-			process.env.ACME_SERVER,
+			...target.args,
 			"--cert-name",
 			`npm-${certificate.id}`,
 			...(domains.length > 0 ? ["--domains", domains.map(domainToASCII).join(",")] : []),
@@ -43,11 +124,13 @@ const certificateAcme = {
 		return result;
 	},
 
-	requestCertbotWithDnsChallenge: async (certificate) => {
+	requestCertbotWithDnsChallenge: async (certificate, access) => {
 		const dnsPlugin = dnsPlugins[certificate.npmpro_dns_provider];
 		if (!dnsPlugin) {
 			throw new errs.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
 		}
+		// the account first: a failed check installs nothing
+		const target = await acmeTarget(certificate, access);
 		await installPlugin(certificate.npmpro_dns_provider);
 
 		logger.info(
@@ -62,8 +145,7 @@ const certificateAcme = {
 				"--config",
 				CERTBOT_INI,
 				"certonly",
-				"--server",
-				process.env.ACME_SERVER,
+				...target.args,
 				"--cert-name",
 				`npm-${certificate.id}`,
 				"--domains",
@@ -85,7 +167,7 @@ const certificateAcme = {
 		}
 	},
 
-	renewCertbot: async (certificate) => {
+	renewCertbot: async (certificate, access) => {
 		const dnsPlugin = certificate.npmpro_dns_challenge ? dnsPlugins[certificate.npmpro_dns_provider] : null;
 		if (certificate.npmpro_dns_challenge && !dnsPlugin) {
 			throw new errs.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
@@ -95,17 +177,14 @@ const certificateAcme = {
 			`Renewing Certbot certificates ${dnsPlugin ? `via ${dnsPlugin.name} ` : ""}for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`,
 		);
 
+		await prepareRenewals([certificate.id], { access, strict: true });
 		const oldCertPath = await realpath(`${liveCertPath(certificate.id)}/cert.pem`);
-		const oldServer = (
-			await readFile(rooted(`/data/tls/certbot/renewal/npm-${certificate.id}.conf`), "utf8")
-		).match(renewalServerPattern)?.groups.server;
+		const params = await renewalParamsOf(certificate.id);
 
 		const renewResult = await runCertbot([
 			"--config",
 			CERTBOT_INI,
 			"renew",
-			"--server",
-			process.env.ACME_SERVER,
 			"--cert-name",
 			`npm-${certificate.id}`,
 			"--new-key",
@@ -113,23 +192,16 @@ const certificateAcme = {
 		]);
 		logger.info(renewResult);
 
-		try {
-			const revokeResult = await runCertbot([
-				"--config",
-				CERTBOT_INI,
-				"revoke",
-				"--server",
-				oldServer,
-				"--cert-path",
-				oldCertPath,
-				"--reason",
-				"superseded",
-				"--no-delete-after-revoke",
-			]);
-			logger.info(revokeResult);
-		} catch {
-			// the revoke is best effort
-		}
+		await revokeBestEffort({
+			server: params.get("server"),
+			account: params.get("account"),
+			certPath: oldCertPath,
+			keyPath: path.join(
+				path.dirname(oldCertPath),
+				path.basename(oldCertPath).replace(CERT_FILE, "privkey$<n>.pem"),
+			),
+			reason: "superseded",
+		});
 
 		return renewResult;
 	},
@@ -139,21 +211,16 @@ const certificateAcme = {
 			`Revoking Certbot certificates for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`,
 		);
 
-		try {
-			const result = await runCertbot([
-				"--config",
-				CERTBOT_INI,
-				"revoke",
-				"--cert-name",
-				`npm-${certificate.id}`,
-				"--reason",
-				"unspecified",
-				"--no-delete-after-revoke",
-			]);
-			logger.info(result);
-		} catch (err) {
-			logger.error(err.message);
-		}
+		const params = await renewalParamsOf(certificate.id);
+		const live = liveCertPath(certificate.id);
+		await revokeBestEffort({
+			server: params.get("server"),
+			account: params.get("account"),
+			certName: `npm-${certificate.id}`,
+			certPath: `${live}/cert.pem`,
+			keyPath: `${live}/privkey.pem`,
+			reason: "unspecified",
+		});
 
 		try {
 			const result = await runCertbot([
@@ -263,4 +330,5 @@ const certificateAcme = {
 	},
 };
 
+export { acmeTarget, revokeBestEffort };
 export default certificateAcme;

@@ -1,9 +1,11 @@
 import nodeFs from "node:fs/promises";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { Agent, fetch as undiciFetch } from "undici";
 import { global as logger } from "../logger.js";
-import { CERTBOT_INI, RENEWAL_DIR, renderCertbotIni, renewalProfileEdits } from "./certbot-ini.js";
+import { readAcmeDirectory } from "./acme-directory.js";
+import { isTrustedServer } from "./acme-server.js";
+import { RENEWAL_DIR } from "./certbot-account.js";
+import { CERTBOT_INI, renderCertbotIni, renewalOptionEdits } from "./certbot-ini.js";
 import { DEFAULT_CERT_CONF, defaultCertificatePaths, renderDefaultCertConf, TLS_DIR } from "./default-cert.js";
 import errs from "./error.js";
 import { AUTH_REQUEST_PROVIDERS } from "./forward-auth.js";
@@ -42,7 +44,7 @@ const PATHS = {
 	nginxCore: NGINX_CORE_FILES,
 };
 
-const CERTBOT_KEYS = ["key_type", "key_size", "must_staple", "server_tls_verify", "profile"];
+const CERTBOT_KEYS = ["key_type", "key_size", "server_tls_verify"];
 const DEFAULT_CERT_KEYS = ["default_certificate_id", "ocsp_stapling", "custom_ocsp_stapling"];
 // stapling key, the OCSP fetcher kind and the env var launch.sh fetched with at boot
 const OCSP_KINDS = [
@@ -50,7 +52,6 @@ const OCSP_KINDS = [
 	{ key: "custom_ocsp_stapling", kind: "custom", env: "CUSTOM_OCSP_STAPLING" },
 ];
 const ECH_LINE = /^\S+ \S+ \S+ \S+ \S+ cron-ech\.sh$/u;
-const PROFILE_TIMEOUT = 10_000;
 
 const readOrNull = async (fs, file) => {
 	try {
@@ -158,29 +159,6 @@ const testAndReload = async (nginx, { reload = true } = {}) => {
 	}
 };
 
-let insecureAgent;
-
-/**
- * meta.profiles (and whether it is an ACME directory) of the ACME server directory, 10 s timeout
- *
- * @param   {string}   server            the directory URL
- * @param   {Object}   [options]
- * @param   {boolean}  [options.verify]  false: the server's TLS certificate is not verified (server_tls_verify)
- * @returns {Promise<{directory: boolean, profiles: Object}>}
- */
-const fetchAcmeDirectory = async (server, { verify = true } = {}) => {
-	const init = { headers: { accept: "application/json" }, signal: AbortSignal.timeout(PROFILE_TIMEOUT) };
-	if (!verify) insecureAgent ??= new Agent({ connect: { rejectUnauthorized: false } });
-	const res = verify ? await fetch(server, init) : await undiciFetch(server, { ...init, dispatcher: insecureAgent });
-	if (!res.ok) throw new Error(`HTTP ${res.status}`);
-	const body = await res.json();
-	const profiles = body?.meta?.profiles;
-	return {
-		directory: typeof body?.newNonce === "string",
-		profiles: profiles !== null && typeof profiles === "object" ? profiles : {},
-	};
-};
-
 const changedKeys = (next, prev) =>
 	Object.keys(next).filter((key) => prev === undefined || !isDeepStrictEqual(next[key], prev[key]));
 
@@ -199,7 +177,7 @@ const changedKeys = (next, prev) =>
  * @param   {Function}  [deps.env]           () => process env, for ACME_SERVER
  * @param   {Function}  [deps.effectiveEnv]
  * @param   {Function}  [deps.getConfig]
- * @param   {Function}  [deps.fetchDirectory] (server) => { directory, profiles }
+ * @param   {Function}  [deps.fetchDirectory] (server, { verify }) => { reachable, directory, profiles }
  * @param   {Function}  [deps.listCertificates] () => [{ id }]
  * @param   {Object}    [deps.ocsp]          { fetch(kind) }
  * @param   {Object}    [deps.ipRanges]      lib/ip-ranges instance; without it the network settings are only stored
@@ -216,7 +194,8 @@ const createRuntimeApplier = ({
 	env = () => process.env,
 	effectiveEnv = defaultEffectiveEnv,
 	getConfig = defaultGetRuntimeConfig,
-	fetchDirectory = fetchAcmeDirectory,
+	fetchDirectory = (server, { verify }) =>
+		readAcmeDirectory(server, { verify, guarded: !isTrustedServer(server, process.env), fresh: true }),
 	listCertificates = async () => [],
 	ocsp = { fetch: async () => {} },
 	ipRanges = null,
@@ -240,6 +219,9 @@ const createRuntimeApplier = ({
 			throw new errs.ValidationError("profile: Could not check the ACME server profiles", undefined, {
 				cause: err,
 			});
+		}
+		if (result.reachable === false) {
+			throw new errs.ValidationError("profile: Could not check the ACME server profiles");
 		}
 		if (Object.hasOwn(result.profiles, profile)) return;
 		if (!result.directory) throw new errs.ValidationError("profile: Could not check the ACME server profiles");
@@ -475,15 +457,25 @@ const createRuntimeApplier = ({
 			}
 			return plan;
 		},
-		certificates: async ({ next, prev, changed, startup, revert }) => {
+		certificates: async ({ next, prev, changed, startup, revert, skipCheck }) => {
 			const plan = { files: [], after: [] };
 			if (CERTBOT_KEYS.some((key) => changed.includes(key))) {
 				plan.files.push({ path: paths.certbotIni, content: renderCertbotIni(next) });
 			}
-			if (changed.includes("profile")) {
-				if (next.profile && !startup) plan.check = () => checkProfile(next.profile, next.server_tls_verify);
-				// renewal conf profile lines go on any profile change on save, at startup only for an empty profile
-				if (!next.profile || !startup) plan.files.push(...(await renewalProfileEdits(paths.renewalDir, fs)));
+			if (changed.includes("profile") && next.profile && !startup && !skipCheck) {
+				plan.check = () => checkProfile(next.profile, next.server_tls_verify);
+			}
+			// the instance CA's certificates renew with these (at startup every key counts as changed)
+			if (changed.includes("profile") || changed.includes("must_staple")) {
+				plan.files.push(
+					...(await renewalOptionEdits({
+						server: acmeServerOf(env()),
+						profile: next.profile,
+						mustStaple: next.must_staple,
+						dir: paths.renewalDir,
+						fs,
+					})),
+				);
 			}
 			if (changed.includes("ech_rotation_interval")) {
 				const crontab = await echCrontab(next.ech_rotation_interval);
@@ -520,14 +512,16 @@ const createRuntimeApplier = ({
 	 * @param   {Object}  [options]
 	 * @param   {boolean} [options.revert]  putting the stored values back after a failed save: no checks, no strict
 	 *                                      default certificate check, no Cloudflare fetch
+	 * @param   {boolean} [options.skipCheck]  a change the instance CA drove (its default profile): the ACME server
+	 *                                      profile check is not run, an unreachable CA never refuses it
 	 * @returns {Promise<{changed: string[], reloaded: boolean}>}
 	 */
-	const applyGroup = async (group, next, prev, { revert = false } = {}) => {
+	const applyGroup = async (group, next, prev, { revert = false, skipCheck = false } = {}) => {
 		const startup = prev === undefined;
 		const changed = changedKeys(next, prev);
 		if (changed.length === 0) return { changed, reloaded: false };
 
-		const plan = (await planners[group]?.({ next, prev, changed, startup, revert })) ?? {};
+		const plan = (await planners[group]?.({ next, prev, changed, startup, revert, skipCheck })) ?? {};
 		if (plan.check && !revert) await plan.check();
 
 		const applies = appliesOf(group);
@@ -615,4 +609,27 @@ const createRuntimeApplier = ({
 	return { applyAll, applyGroup };
 };
 
-export { createRuntimeApplier, PATHS, testAndReload, withFiles };
+/**
+ * Writes the startup settings file now (an ACME settings save: the stored CA changed), with every restart group as
+ * it is in effect
+ */
+const writeStartupSettings = async ({
+	getConfig = defaultGetRuntimeConfig,
+	env = () => process.env,
+	fs = nodeFs,
+	paths = PATHS,
+	log = logger,
+} = {}) => {
+	const valuesByGroup = {};
+	for (const name of RESTART_GROUPS) valuesByGroup[name] = (await getConfig(name)).values;
+	await withFiles(
+		[{ path: paths.startupSettings, content: renderStartupSettings(valuesByGroup, env()) }],
+		async () => {},
+		{
+			fs,
+			log,
+		},
+	);
+};
+
+export { createRuntimeApplier, PATHS, testAndReload, withFiles, writeStartupSettings };

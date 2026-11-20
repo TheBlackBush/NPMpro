@@ -49,14 +49,8 @@ else
         sed -i "s|elliptic-curve = .*|elliptic-curve = $ACME_KEY_SIZE|g" /run/npmpro/certbot.ini
     fi
 fi
-if [ "$ACME_MUST_STAPLE" = "false" ]; then
-    sed -i "s|must-staple = true|must-staple = false|g" /run/npmpro/certbot.ini
-fi
 if [ "$ACME_SERVER_TLS_VERIFY" = "false" ]; then
     sed -i "s|no-verify-ssl = false|no-verify-ssl = true|g" /run/npmpro/certbot.ini
-fi
-if [ "$ACME_PROFILE" != "none" ]; then
-    sed -i "s|#required-profile|required-profile = $ACME_PROFILE|g" /run/npmpro/certbot.ini
 fi
 
 # the live logrotate config; the backend rewrites it when the log rotations setting changes

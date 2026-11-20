@@ -1,0 +1,112 @@
+{
+	"operationId": "registerAcmeAccount",
+	"summary": "Register the ACME account now",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "Optionally the CA to register at",
+		"required": false,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"server": {
+							"type": "string",
+							"maxLength": 255,
+							"pattern": "^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~/-]*)?$",
+							"description": "The CA's ACME directory URL, default the instance CA",
+							"example": "https://acme-v02.api.letsencrypt.org/directory"
+						}
+					}
+				},
+				"example": {
+					"server": "https://acme-v02.api.letsencrypt.org/directory"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "The ACME settings after the registration; warning unreachable means the CA still cannot be reached",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"server": "https://acme-v02.api.letsencrypt.org/directory",
+								"server_source": "default",
+								"email": "ops@example.com",
+								"eab_kid_set": false,
+								"eab_hmac_key_set": false,
+								"account": {
+									"id": 1,
+									"server": "https://acme-v02.api.letsencrypt.org/directory",
+									"email": "ops@example.com",
+									"eab_kid_set": false,
+									"eab_hmac_key_set": false,
+									"state": "registered",
+									"error": null,
+									"registered_on": "2026-11-19 10:00:00",
+									"modified_on": "2026-11-19 10:00:00"
+								},
+								"locked": [],
+								"locked_by": {},
+								"presets": [
+									{
+										"id": "letsencrypt",
+										"server": "https://acme-v02.api.letsencrypt.org/directory",
+										"eab": false
+									},
+									{
+										"id": "letsencrypt-staging",
+										"server": "https://acme-staging-v02.api.letsencrypt.org/directory",
+										"eab": false
+									},
+									{
+										"id": "zerossl",
+										"server": "https://acme.zerossl.com/v2/DV90",
+										"eab": true
+									},
+									{
+										"id": "google",
+										"server": "https://dv.acme-v02.api.pki.goog/directory",
+										"eab": true
+									}
+								],
+								"accounts": [
+									{
+										"id": 1,
+										"server": "https://acme-v02.api.letsencrypt.org/directory",
+										"email": "ops@example.com",
+										"eab_kid_set": false,
+										"eab_hmac_key_set": false,
+										"state": "registered",
+										"error": null,
+										"registered_on": "2026-11-19 10:00:00",
+										"modified_on": "2026-11-19 10:00:00"
+									}
+								],
+								"warning": "unreachable"
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/acme-settings-object.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Registers a pending, failed or missing account at its CA now. When the CA cannot be reached the answer carries warning unreachable and the account stays pending; a refusal answers 400 and stores the account as failed.\n\nNeeds: an administrator (a token needs its Administrator switch)"
+}

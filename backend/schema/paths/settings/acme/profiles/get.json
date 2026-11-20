@@ -1,0 +1,106 @@
+{
+	"operationId": "getAcmeProfiles",
+	"summary": "List the profiles of a CA",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "query",
+			"name": "server",
+			"description": "The CA's ACME directory URL, default the instance CA",
+			"schema": {
+				"type": "string",
+				"maxLength": 255
+			}
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "What the CA's directory offers",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"reachable": true,
+								"directory": true,
+								"external_account_required": false,
+								"profiles": [
+									{
+										"name": "classic",
+										"description": "The same as the default"
+									},
+									{
+										"name": "shortlived",
+										"description": "Certificates valid for six days"
+									}
+								]
+							}
+						}
+					},
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"reachable",
+							"directory",
+							"external_account_required",
+							"profiles"
+						],
+						"properties": {
+							"reachable": {
+								"type": "boolean",
+								"description": "Whether the CA answered",
+								"example": true
+							},
+							"directory": {
+								"type": "boolean",
+								"description": "Whether the answer is an ACME directory",
+								"example": true
+							},
+							"external_account_required": {
+								"type": "boolean",
+								"description": "Whether the CA needs an External Account Binding",
+								"example": false
+							},
+							"profiles": {
+								"type": "array",
+								"description": "The profiles the CA lists (cached for five minutes)",
+								"items": {
+									"type": "object",
+									"additionalProperties": false,
+									"required": [
+										"name",
+										"description"
+									],
+									"properties": {
+										"name": {
+											"type": "string",
+											"description": "Profile name",
+											"example": "classic"
+										},
+										"description": {
+											"type": "string",
+											"description": "What the CA says about it",
+											"example": "The same as the default"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"description": "Reads the CA's directory and lists its profiles. A URL typed here must be https and may not point at a loopback, link-local or reserved address (400 error.acme-blocked); the ACME_SERVER value is read as it is.\n\nNeeds: an administrator (a token needs its Administrator switch)"
+}
