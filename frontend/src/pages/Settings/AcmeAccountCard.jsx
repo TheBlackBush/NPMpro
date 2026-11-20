@@ -15,7 +15,7 @@ import {
 } from "src/components";
 import { LeaveGuard, useAcmeProfiles, useAcmeSettings, useRegisterAcmeAccount, useSaveAcmeSettings } from "src/hooks";
 import { intl, T } from "src/locale";
-import { showDeleteConfirmModal } from "src/modals";
+import { showDeleteConfirmModal, showReplaceAcmeAccountModal } from "src/modals";
 import {
 	ACME_PRESETS,
 	accountOf,
@@ -91,7 +91,7 @@ function AccountState({ state }) {
 /**
  * The line that shows the account of the chosen CA with its Register now or Replace account button
  */
-function AccountLine({ data, server, onReplace }) {
+function AccountLine({ data, server }) {
 	const { mutate: register, isPending } = useRegisterAcmeAccount();
 	const account = accountOf(data, server);
 	const state = acmeState(account);
@@ -112,8 +112,7 @@ function AccountLine({ data, server, onReplace }) {
 				outline
 				color="secondary"
 				id="acme-replace"
-				disabled={!onReplace}
-				onClick={() => onReplace?.({ account, server })}
+				onClick={() => showReplaceAcmeAccountModal({ server, account })}
 			>
 				<T id="settings.certificates.acme.replace" />
 			</Button>
@@ -144,7 +143,7 @@ function AccountLine({ data, server, onReplace }) {
 	);
 }
 
-function AcmeFields({ data, methods, values, locked, onReplace }) {
+function AcmeFields({ data, methods, values, locked }) {
 	const { setError, trigger } = methods;
 	const server = serverOfForm(values);
 	const custom = values.preset === CUSTOM;
@@ -174,7 +173,7 @@ function AcmeFields({ data, methods, values, locked, onReplace }) {
 
 	return (
 		<>
-			<AccountLine data={data} server={server} onReplace={onReplace} />
+			<AccountLine data={data} server={server} />
 			<SelectField
 				line="inline"
 				id="acme-ca"
@@ -256,7 +255,7 @@ function AcmeFields({ data, methods, values, locked, onReplace }) {
 	);
 }
 
-function AcmeForm({ data, onReplace }) {
+function AcmeForm({ data }) {
 	const { mutateAsync: save } = useSaveAcmeSettings();
 	const [failure, setFailure] = useState(null);
 	const locked = lockedSet(data.locked);
@@ -337,13 +336,7 @@ function AcmeForm({ data, onReplace }) {
 							<ErrorAlert onClose={() => setFailure(null)}>{failure}</ErrorAlert>
 						</SettingLineNote>
 					) : null}
-					<AcmeFields
-						data={data}
-						methods={methods}
-						values={{ ...saved, ...values }}
-						locked={locked}
-						onReplace={onReplace}
-					/>
+					<AcmeFields data={data} methods={methods} values={{ ...saved, ...values }} locked={locked} />
 				</SettingsCard>
 			</HookForm>
 		</div>
@@ -352,12 +345,11 @@ function AcmeForm({ data, onReplace }) {
 
 /**
  * The ACME account card of Settings, Certificates: the CA, its account and the email and EAB keys, with its own Save
- * (a save registers the account, so it is not part of the section's Save bar). Replace account opens the window the
- * `onReplace` prop gives ({ account, server }); without it the button is disabled.
+ * (a save registers the account, so it is not part of the section's Save bar). Replace account opens its window.
  */
-export default function AcmeAccountCard({ onReplace }) {
+export default function AcmeAccountCard() {
 	const { data, isPending, error } = useAcmeSettings();
 	if (error) return <ErrorAlert error={error} />;
 	if (isPending) return <Loading noLogo />;
-	return <AcmeForm data={data} onReplace={onReplace} />;
+	return <AcmeForm data={data} />;
 }

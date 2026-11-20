@@ -17,6 +17,7 @@ export * from "./ProxyHostModal";
 export * from "./ReachabilityModal";
 export * from "./RedirectionHostModal";
 export * from "./RenewCertificateModal";
+export * from "./ReplaceAcmeAccountModal";
 export * from "./RestoreBackupModal";
 export * from "./SetPasswordModal";
 export * from "./StreamModal";
