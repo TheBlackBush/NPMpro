@@ -7,6 +7,7 @@ import {
 	isTrustedServer,
 	isZeroSsl,
 	LETSENCRYPT_SERVER,
+	normalizeServer,
 	presetOf,
 	requestOptionsFor,
 	resolveAcmeServer,
@@ -121,4 +122,11 @@ it("gives the spellings of one CA URL one key", () => {
 	);
 	assert.ok(sameServer(`${LETSENCRYPT_SERVER}/`, "https://acme-v01.api.letsencrypt.org/directory"));
 	assert.ok(!sameServer("https://acme.test/a", "https://acme.test/b"));
+});
+
+it("lowers the scheme and host of a typed URL and keeps its path, port and query", () => {
+	assert.equal(normalizeServer(" HTTPS://CA.Example.COM:14000/Dir/X "), "https://ca.example.com:14000/Dir/X");
+	assert.equal(normalizeServer("https://CA.lan"), "https://ca.lan");
+	assert.equal(normalizeServer("https://CA.lan?Q=A"), "https://ca.lan?Q=A");
+	assert.equal(normalizeServer(undefined), undefined);
 });

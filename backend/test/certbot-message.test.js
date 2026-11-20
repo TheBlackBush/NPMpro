@@ -31,7 +31,7 @@ it("keeps the CA's sentence of a Pebble EAB refusal among three warning blocks",
 	);
 });
 
-it("keeps certbot's reason and the CA's sentence of an invalid-email refusal", () => {
+it("drops certbot's lead-in and keeps the CA's sentence of an invalid-email refusal", () => {
 	const out = cleanCertbotMessage(
 		[
 			DEBUG,
@@ -42,9 +42,16 @@ it("keeps certbot's reason and the CA's sentence of an invalid-email refusal", (
 	);
 	assert.equal(
 		out,
-		"Unable to register an account with ACME server. The ACME server believes ops@example.com is an invalid email address. Please ensure it is a valid email and attempt registration again.",
+		"The ACME server believes ops@example.com is an invalid email address. Please ensure it is a valid email and attempt registration again.",
 	);
 	assert.ok(!noise(out));
+});
+
+it("keeps certbot's lead-in when no CA sentence follows it", () => {
+	assert.equal(
+		cleanCertbotMessage("Unable to register an account with ACME server."),
+		"Unable to register an account with ACME server.",
+	);
 });
 
 it("keeps the text after the CA marker of a bad-nonce unregister failure", () => {

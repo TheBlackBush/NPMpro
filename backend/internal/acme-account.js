@@ -9,6 +9,7 @@ import {
 	isTrustedServer,
 	isZeroSsl,
 	LETSENCRYPT_SERVER,
+	normalizeServer,
 	resolveAcmeServer,
 	sameServer,
 	serverKey,
@@ -313,7 +314,7 @@ const attemptRegistration = async (server, { email, eab }, { blockedIsUnreachabl
 		if (isZeroSsl(server) && email) pair = await zeroSslEab(email);
 		else {
 			throw new errs.ValidationError(
-				`${server} needs an EAB key ID and HMAC key: set up its account in Settings, Certificates`,
+				`${server} needs an EAB key ID and HMAC key: open Change and enter them`,
 				"error.acme-set-up",
 				{ values: { server } },
 			);
@@ -783,6 +784,7 @@ const checkedEab = (changes, row, registered) => {
 const saveSettings = async (access, body) => {
 	access.canAdmin();
 	const changes = pickEditable(body ?? {}, lockedKeys(), ACME_KEYS);
+	if (changes.server !== undefined) changes.server = normalizeServer(changes.server);
 	const before = instanceServer();
 	const target = changes.server ?? before;
 	const serverChanged = !sameServer(target, before);
@@ -864,7 +866,7 @@ const registerNow = async (access, { server } = {}) => {
  */
 const listProfiles = async (access, { server } = {}) => {
 	access.canAdmin();
-	const target = server ?? instanceServer();
+	const target = server === undefined || server === null ? instanceServer() : normalizeServer(server);
 	if (!(isDirectoryUrl(target) || isTrustedServer(target, process.env))) {
 		refuseValue("server", "must be an https ACME directory URL", "error.acme-url");
 	}

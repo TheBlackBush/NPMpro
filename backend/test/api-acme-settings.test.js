@@ -142,6 +142,20 @@ it("registers a new CA with EAB on save and keeps every secret out of answers, a
 	assert.equal(settingMeta.id, "acme");
 });
 
+it("saves the host of a typed CA in lower case, so the account row and the card match", async () => {
+	acmeDirectory(api, GOOD, { persist: false });
+	const res = await admin.put(SETTINGS, { server: "https://GOOD.LAN/dir", email: "ops@example.com" });
+	assert.equal(res.status, 200, res.text);
+	assert.equal(res.body.server, "https://good.lan/dir");
+	assert.deepEqual(
+		res.body.accounts.map((entry) => entry.server),
+		["https://good.lan/dir"],
+	);
+	assert.equal((await account("https://good.lan/dir")).state, "registered");
+	assert.ok((await startup()).split("\n").includes("ACME_SERVER=https://good.lan/dir"));
+	assert.equal((await admin.get(SETTINGS)).body.server, "https://good.lan/dir");
+});
+
 it("registers now what a save stored as pending", async () => {
 	acmeDirectory(api, CA, { status: 503, body: "down", persist: false });
 	assert.equal((await admin.put(SETTINGS, { server: CA, email: "ops@example.com" })).body.warning, "unreachable");

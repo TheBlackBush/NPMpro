@@ -179,6 +179,22 @@ it("shows the output of a failed certbot in error.output and removes the new row
 	);
 });
 
+it("returns the readable message of a failed request, without certbot's log path and help text", async () => {
+	await api.outside.hookCommand(
+		"certbot",
+		`#!/bin/sh
+echo "Saving debug log to /tmp/letsencrypt/logs/letsencrypt.log" >&2
+echo "An unexpected error occurred:" >&2
+echo "urn:ietf:params:acme:error:accountDoesNotExist :: Account not found" >&2
+echo "Ask for help or search for solutions at https://community.letsencrypt.org. See the logfile /tmp/letsencrypt/logs/letsencrypt.log or re-run Certbot with -v for more details." >&2
+exit 1
+`,
+	);
+	const failed = await admin.post(CERTS, { provider: "letsencrypt", domain_names: ["clean.example.com"] });
+	assert.equal(failed.status, 500);
+	assert.equal(failed.body.error.output, "urn:ietf:params:acme:error:accountDoesNotExist :: Account not found");
+});
+
 it("refuses a certbot certificate that has no files after a run that did nothing, and removes the row", async () => {
 	await api.outside.hookCommand("certbot", "#!/bin/sh\nexit 0\n");
 	const rows = await countRows(api, "certificate");

@@ -8,6 +8,7 @@ const NOISE_LINES = ["Saving debug log to", "Ask for help or search for solution
 const LINE_BREAK = /\r?\n/u;
 const INDENTED = /^\s/u;
 const SPACES = /\s+/gu;
+const LEAD_IN = /^Unable to register an account with ACME server\.\s+(?=\S)/u;
 const WARNING_MARKS = ["InsecureRequestWarning", "warnings.warn"];
 
 const isNoise = (line) =>
@@ -47,7 +48,7 @@ const cleanCertbotMessage = (output) => {
 		const line = dropMarkers(raw);
 		if (line) kept.push(line);
 	}
-	const text = kept.join(" ").replace(SPACES, " ").trim();
+	const text = kept.join(" ").replace(SPACES, " ").trim().replace(LEAD_IN, "");
 	return (text.length > MAX_CLEAN ? `${text.slice(0, MAX_CLEAN - 3).trimEnd()}...` : text) || GENERIC;
 };
 

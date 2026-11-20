@@ -20,6 +20,7 @@ const STAPLING_SERVERS = new Set([GOOGLE_SERVER, ZEROSSL_SERVER]);
 // a directory URL typed in the UI; rootfs/usr/local/bin/startup-settings.sh accepts the same characters
 const DIRECTORY_URL = /^https:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?(?:\/[A-Za-z0-9._~/-]*)?$/u;
 const MAX_URL_LENGTH = 255;
+const SCHEME_AND_HOST = /^(?<scheme>[A-Za-z]+:\/\/)(?<host>[^/?#]*)/u;
 const WHITESPACE = /\s+/u;
 const TRAILING_SLASHES = /\/+$/u;
 const ACME_ENV_NAMES = ["ACME_SERVER", "ACME_EMAIL", "ACME_EAB_KID", "ACME_EAB_HMAC_KEY", "ACME_PROFILE"];
@@ -30,6 +31,18 @@ const ACME_ENV_NAMES = ["ACME_SERVER", "ACME_EMAIL", "ACME_EAB_KID", "ACME_EAB_H
  */
 const isDirectoryUrl = (value) =>
 	typeof value === "string" && value.length <= MAX_URL_LENGTH && DIRECTORY_URL.test(value);
+
+/**
+ * A typed directory URL with the scheme and the host in lower case (the path keeps its case): what is saved and
+ * compared, so the settings value and the account row are one spelling
+ *
+ * @param   {*}  value
+ * @returns {*}  the value itself when it is not a string
+ */
+const normalizeServer = (value) =>
+	typeof value === "string"
+		? value.trim().replace(SCHEME_AND_HOST, (_, scheme, host) => `${scheme.toLowerCase()}${host.toLowerCase()}`)
+		: value;
 
 /**
  * The ACME variables the user set: non-empty, and listed in NPMPRO_USER_ENV when envs.sh ran (envs.sh exports
@@ -141,6 +154,7 @@ export {
 	isZeroSsl,
 	LETSENCRYPT_SERVER,
 	LETSENCRYPT_STAGING_SERVER,
+	normalizeServer,
 	presetOf,
 	requestOptionsFor,
 	resolveAcmeServer,

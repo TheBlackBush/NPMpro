@@ -8,13 +8,14 @@ import { parseRenewalConf } from "../lib/backup/renewal-conf.js";
 import { installPlugin, runCertbot } from "../lib/certbot.js";
 import { requestOptionArgs } from "../lib/certbot-account.js";
 import { CERTBOT_INI } from "../lib/certbot-ini.js";
+import { cleanCertbotMessage } from "../lib/certbot-message.js";
 import { liveCertPath } from "../lib/certificate-files.js";
 import errs from "../lib/error.js";
 import { rooted } from "../lib/paths.js";
 import { getRuntimeConfig } from "../lib/runtime-config.js";
 import { ssl as logger } from "../logger.js";
 import pjson from "../package.json" with { type: "json" };
-import { ensureAccountLocked, instanceServer, prepareRenewals, withAccountLock } from "./acme-account.js";
+import { ensureAccountLocked, instanceServer, prepareRenewals, scrub, withAccountLock } from "./acme-account.js";
 import internalDnsCredential from "./dns-credential.js";
 
 const renewalConfOf = (id) => rooted(`/data/tls/certbot/renewal/npm-${id}.conf`);
@@ -26,6 +27,19 @@ const renewalParamsOf = async (id) => {
 		return parseRenewalConf(await readFile(renewalConfOf(id), "utf8")).params;
 	} catch {
 		return new Map();
+	}
+};
+
+/**
+ * Runs certbot for a request or a renewal; a failure carries the readable message (the CA's sentence and certbot's
+ * reason, without its log path and warning blocks) as the error output
+ */
+const runCertbotCleaned = async (args) => {
+	try {
+		return await runCertbot(args);
+	} catch (err) {
+		if (!(err instanceof errs.CommandError)) throw err;
+		throw new errs.CommandError(scrub(cleanCertbotMessage(err.message), []), { cause: err });
 	}
 };
 
@@ -118,7 +132,7 @@ const certificateAcme = {
 		);
 
 		const result = await withAcmeTarget(certificate, access, (target) =>
-			runCertbot([
+			runCertbotCleaned([
 				"--config",
 				CERTBOT_INI,
 				"certonly",
@@ -153,7 +167,7 @@ const certificateAcme = {
 			await internalDnsCredential.writeCertificateFile(certificate);
 
 			try {
-				const result = await runCertbot([
+				const result = await runCertbotCleaned([
 					"--config",
 					CERTBOT_INI,
 					"certonly",
@@ -197,7 +211,7 @@ const certificateAcme = {
 		const oldCertPath = await realpath(`${liveCertPath(certificate.id)}/cert.pem`);
 		const params = await renewalParamsOf(certificate.id);
 
-		const renewResult = await runCertbot([
+		const renewResult = await runCertbotCleaned([
 			"--config",
 			CERTBOT_INI,
 			"renew",
