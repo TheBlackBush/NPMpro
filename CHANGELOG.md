@@ -66,6 +66,9 @@ below as its release notes.
   the certificates that already use it.
 - **Landing pages:** the visit time on the built-in pages can show the visitor's local time, or local time with UTC
   (Settings, Landing pages, Page details); UTC stays the default.
+- **Certificates:** the container starts without a reachable ACME server: the account registers at the first
+  certificate request, renewals keep the CA that issued each certificate, and the profile and OCSP Must-Staple apply
+  per CA.
 
 ### Security
 

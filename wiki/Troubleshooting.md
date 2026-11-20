@@ -39,7 +39,7 @@ NPMpro tests the nginx config whenever it writes one. If the test fails, the hos
 - **ACME profile:** when you save a profile in Settings, Certificates & TLS, NPMpro asks the ACME server. "The ACME server does not offer this profile" means it is not available there; "Could not check the ACME server profiles" means the server was not reachable.
 - **Must-Staple:** Let's Encrypt refuses Must-Staple requests. Turn OCSP Must-Staple off with Let's Encrypt.
 - **Rate limits:** Let's Encrypt limits how many certificates you can request; after many failed attempts wait before trying again. See https://letsencrypt.org/docs/rate-limits/.
-- **Other CAs:** ZeroSSL and Google Public CA need `ACME_EMAIL`, and Google Public CA also `ACME_EAB_KID` and `ACME_EAB_HMAC_KEY`.
+- **Other CAs:** ZeroSSL needs an email (NPMpro fetches the EAB pair for it); Google Trust Services needs an email and an EAB key ID and HMAC key (`gcloud publicca external-account-key create`). Set them with the `ACME_*` variables; an account that cannot register shows the CA's message on the certificate request.
 - The backend log in `docker logs npmpro` has the certbot output.
 
 ## HTTP/3 does not work
