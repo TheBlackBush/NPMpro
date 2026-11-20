@@ -6,7 +6,7 @@ Una variable definida en el contenedor tiene prioridad sobre la interfaz y bloqu
 
 ### Cuenta ACME
 
-**Cuenta ACME.** Elija la autoridad de certificación (CA) de los certificados nuevos: Let's Encrypt, ZeroSSL, Google Trust Services o la URL de directorio de otra CA (https, no este host). Cada CA tiene su propia cuenta; los certificados permanecen en la CA que los emitió hasta que se vuelvan a emitir. ZeroSSL necesita un correo, Google un correo y claves EAB. La cuenta se registra al guardar, o en la primera solicitud de certificado si no se puede contactar con la CA. **Reemplazar cuenta** registra una cuenta nueva y mueve a ella los certificados de la CA; desactive la anterior solo si su clave se filtró.
+**Cuenta ACME.** La tarjeta muestra la conexión con su autoridad de certificación (CA): Conectado, En espera (aún no se pudo contactar con la CA), Fallido (con el mensaje de la CA) o No conectado. **Cambiar** o **Conectar** abre una ventana donde elige la CA (Let's Encrypt, ZeroSSL, Google Trust Services o la URL de directorio de otra CA, https, no este host), el correo y las claves EAB. ZeroSSL necesita un correo, Google un correo y claves EAB. **Conectar** registra la cuenta; una CA inaccesible se puede guardar igualmente y se conecta en la próxima solicitud de certificado. **Reintentar** repite la conexión. Cada CA tiene su propia cuenta; los certificados permanecen en la CA que los emitió hasta que se vuelvan a emitir. **Reemplazar cuenta** está en el menú ⋯: registra una cuenta nueva y mueve a ella los certificados de la CA; desactive la anterior solo si su clave se filtró.
 
 ### Solicitudes de certificado
 

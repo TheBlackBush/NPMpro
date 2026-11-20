@@ -6,7 +6,7 @@ Une variable définie sur le conteneur l'emporte sur l'interface et verrouille l
 
 ### Compte ACME
 
-**Compte ACME.** Choisissez l'autorité de certification (AC) des nouveaux certificats : Let's Encrypt, ZeroSSL, Google Trust Services ou l'URL d'annuaire d'une autre AC (https, pas cet hôte). Chaque AC a son propre compte ; les certificats restent chez l'AC qui les a émis jusqu'à leur réémission. ZeroSSL exige un e-mail, Google un e-mail et des clés EAB. Le compte s'enregistre à la sauvegarde, ou à la première demande de certificat si l'AC est injoignable. **Remplacer le compte** enregistre un nouveau compte et y déplace les certificats de l'AC ; ne désactivez l'ancien que si sa clé a fuité.
+**Compte ACME.** La carte montre la connexion à votre autorité de certification (AC) : Connecté, En attente (l'AC n'était pas encore joignable), Échec (avec le message de l'AC) ou Non connecté. **Modifier** ou **Connecter** ouvre une fenêtre où vous choisissez l'AC (Let's Encrypt, ZeroSSL, Google Trust Services ou l'URL d'annuaire d'une autre AC, https, pas cet hôte), l'e-mail et les clés EAB. ZeroSSL exige un e-mail, Google un e-mail et des clés EAB. **Connecter** enregistre le compte ; une AC injoignable peut être enregistrée quand même et se connecte à la prochaine demande de certificat. **Réessayer** relance la connexion. Chaque AC a son propre compte ; les certificats restent chez l'AC qui les a émis jusqu'à leur réémission. **Remplacer le compte** se trouve dans le menu ⋯ : il enregistre un nouveau compte et y déplace les certificats de l'AC ; ne désactivez l'ancien que si sa clé a fuité.
 
 ### Demandes de certificat
 

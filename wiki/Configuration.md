@@ -17,7 +17,7 @@ When a saved setting applies:
 
 | Settings page | Field | Variable | Applies |
 |---|---|---|---|
-| Certificates & TLS | ACME account (CA, email, EAB keys) | `ACME_SERVER`, `ACME_EMAIL`, `ACME_EAB_KID` + `ACME_EAB_HMAC_KEY` | on save (the account registers; a CA that cannot be reached registers at the next certificate request) |
+| Certificates & TLS | ACME account (CA, email, EAB keys) | `ACME_SERVER`, `ACME_EMAIL`, `ACME_EAB_KID` + `ACME_EAB_HMAC_KEY` | on Connect (the account registers; a CA that cannot be reached can be saved anyway and registers at the next certificate request) |
 | Certificates & TLS | Key type | `ACME_KEY_TYPE` | to the next certificate |
 | Certificates & TLS | Key size | `ACME_KEY_SIZE` | to the next certificate |
 | Certificates & TLS | ACME profile | `ACME_PROFILE` | to the next certificate (the list shows the profiles the CA offers) |
