@@ -967,7 +967,10 @@ const replaceAccount = async (access, body) => {
 		if (!(await isRegistered(row))) {
 			throw new errs.ValidationError("Only a registered account can be replaced", "error.acme-not-registered");
 		}
-		const email = body.email === undefined ? (row.email ?? null) : body.email.trim() || null;
+		// D5: on the instance CA a set ACME_EMAIL wins over the body, like everywhere else
+		const envEmail = sameServer(server, instanceServer()) && acmeEnvSet(process.env).has("ACME_EMAIL");
+		let email = body.email === undefined ? (row.email ?? null) : body.email.trim() || null;
+		if (envEmail) email = process.env.ACME_EMAIL;
 		if (email && !(email.length <= MAX_EMAIL && EMAIL.test(email))) {
 			refuseValue("email", "must be an email address", "error.invalid-email");
 		}

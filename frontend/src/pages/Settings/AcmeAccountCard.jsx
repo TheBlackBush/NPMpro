@@ -12,7 +12,14 @@ import { useAcmeSettings, useRegisterAcmeAccount } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { showAcmeConnectModal, showReplaceAcmeAccountModal } from "src/modals";
-import { accountOf, acmeServerLabel, acmeState, cardButtons, connectOutcome } from "src/modules/AcmeAccount";
+import {
+	accountOf,
+	acmeServerLabel,
+	acmeState,
+	cardButtons,
+	connectOutcome,
+	messageIsCut,
+} from "src/modules/AcmeAccount";
 import { showApiError, showSuccess, showWarning } from "src/notifications";
 import { SettingsCard } from "./SettingsCard";
 
@@ -36,33 +43,36 @@ const BADGES = {
 /** The CA's own message in a muted box, collapsed to one line with Show details / Hide details */
 function CaMessage({ message }) {
 	const [open, setOpen] = useState(false);
+	const cut = messageIsCut(message);
 	return (
 		<Collapsible open={open} onOpenChange={setOpen} className="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
 			<div className="flex items-start gap-3">
 				<div className="min-w-0 flex-1 text-muted-foreground">
-					{open ? null : <p className="m-0 truncate">{message}</p>}
+					{open ? null : <p className={cn("m-0", cut ? "truncate" : "break-words")}>{message}</p>}
 					<CollapsibleContent>
 						<p className="m-0 break-words">{message}</p>
 					</CollapsibleContent>
 				</div>
-				<CollapsibleTrigger asChild>
-					<button
-						type="button"
-						className="inline-flex shrink-0 items-center gap-1 rounded-sm text-foreground underline-offset-2 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
-					>
-						<T
-							id={
-								open
-									? "settings.certificates.acme.details.hide"
-									: "settings.certificates.acme.details.show"
-							}
-						/>
-						<ChevronDown
-							aria-hidden="true"
-							className={cn("size-3 transition-transform", open && "rotate-180")}
-						/>
-					</button>
-				</CollapsibleTrigger>
+				{cut ? (
+					<CollapsibleTrigger asChild>
+						<button
+							type="button"
+							className="inline-flex shrink-0 items-center gap-1 rounded-sm text-foreground underline-offset-2 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+						>
+							<T
+								id={
+									open
+										? "settings.certificates.acme.details.hide"
+										: "settings.certificates.acme.details.show"
+								}
+							/>
+							<ChevronDown
+								aria-hidden="true"
+								className={cn("size-3 transition-transform", open && "rotate-180")}
+							/>
+						</button>
+					</CollapsibleTrigger>
+				) : null}
 			</div>
 		</Collapsible>
 	);
@@ -144,7 +154,7 @@ function AcmeStatus({ data }) {
 				</div>
 				<Details state={state} />
 			</div>
-			<div className="flex shrink-0 items-center gap-2 max-md:w-full max-md:[&>button]:flex-1">
+			<div className="flex shrink-0 items-center gap-2 max-md:w-full max-md:[&>button:not([data-acme-action=more])]:flex-1">
 				{cardButtons(state.kind).map(({ key, primary }) => (
 					<Button
 						key={key}

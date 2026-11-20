@@ -116,6 +116,22 @@ it("is for administrators and sessions only", async () => {
 	assert.deepEqual(await calls(), []);
 });
 
+it("registers the instance CA's new account with ACME_EMAIL over the body's email (D5)", async () => {
+	const acmeServer = await import("../lib/acme-server.js");
+	const previous = acmeServer.storedAcmeServer();
+	acmeServer.setStoredAcmeServer(CA);
+	process.env.ACME_EMAIL = "env@example.com";
+	try {
+		const res = await admin.post(REPLACE, BODY);
+		assert.equal(res.status, 200, res.text);
+		assert.ok((await readFake("register-1.ini")).split("\n").includes("email = env@example.com"));
+		assert.equal((await row()).email, "env@example.com");
+	} finally {
+		delete process.env.ACME_EMAIL;
+		acmeServer.setStoredAcmeServer(previous);
+	}
+});
+
 it("registers a new account in a temporary folder, moves it and points the CA's confs at it", async () => {
 	const res = await admin.post(REPLACE, BODY);
 	assert.equal(res.status, 200, res.text);

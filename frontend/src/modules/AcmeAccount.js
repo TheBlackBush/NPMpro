@@ -118,9 +118,23 @@ export const connectOutcome = (result) => (result?.warning === "unreachable" ? "
 /** Whether the directory read of a CA answered */
 export const directoryReachable = (result) => result?.reachable === true;
 
-/** Whether the window cannot tell if a custom CA needs EAB keys: its directory could not be read */
-export const directoryUnreadable = ({ custom, probed, error, result }) =>
-	custom && probed && (Boolean(error) || (result !== undefined && !directoryReachable(result)));
+/**
+ * Whether the window cannot tell if a custom CA needs EAB keys: its directory could not be read (and the account is
+ * not registered yet, a registered one needs no keys)
+ */
+export const directoryUnreadable = ({ custom, probed, error, result, account }) =>
+	account?.state !== "registered" &&
+	custom &&
+	probed &&
+	(Boolean(error) || (result !== undefined && !directoryReachable(result)));
+
+/** The values with the EAB pair emptied while its fields are hidden: typed and then hidden keys are not sent */
+export const visibleEabValues = (values, showEab) => (showEab ? values : { ...values, eabKid: "", eabHmacKey: "" });
+
+const CUT_LENGTH = 60;
+
+/** Whether a CA message needs Show details: several lines or longer than what a one-line box holds */
+export const messageIsCut = (message) => message.includes("\n") || message.length > CUT_LENGTH;
 
 export function profileChoices({ result, stored }) {
 	if (!(result?.reachable && result.directory)) return { mode: "text" };

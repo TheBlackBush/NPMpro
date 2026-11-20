@@ -18,6 +18,7 @@ import {
 	eabLockEnv,
 	eabShown,
 	lockedSet,
+	messageIsCut,
 	presetOf,
 	profileChoices,
 	replaceDefaults,
@@ -25,6 +26,7 @@ import {
 	saveFailureOf,
 	serverOfForm,
 	toAcmeForm,
+	visibleEabValues,
 } from "./AcmeAccount.js";
 import { createValidations } from "./ValidationRules.js";
 
@@ -244,4 +246,16 @@ it("maps answers to outcomes and tells an unreadable directory", () => {
 	assert.equal(directoryUnreadable({ ...base }), false);
 	assert.equal(directoryUnreadable({ custom: false, probed: true, error: new Error("x") }), false);
 	assert.equal(directoryUnreadable({ custom: true, probed: false, error: new Error("x") }), false);
+});
+
+it("does not offer the EAB switch for a registered account, empties hidden EAB values, cuts only long messages", () => {
+	const base = { custom: true, probed: true, error: new Error("x") };
+	assert.equal(directoryUnreadable({ ...base, account: { state: "registered" } }), false);
+	assert.equal(directoryUnreadable({ ...base, account: { state: "failed" } }), true);
+	const values = { preset: "letsencrypt", eabKid: "k", eabHmacKey: "h", email: "a@b.c" };
+	assert.deepEqual(visibleEabValues(values, true), values);
+	assert.deepEqual(visibleEabValues(values, false), { ...values, eabKid: "", eabHmacKey: "" });
+	assert.equal(messageIsCut("short one"), false);
+	assert.equal(messageIsCut("two\nlines"), true);
+	assert.equal(messageIsCut("x".repeat(61)), true);
 });

@@ -40,6 +40,7 @@ import {
 	saveFailureOf,
 	serverOfForm,
 	toAcmeForm,
+	visibleEabValues,
 } from "src/modules/AcmeAccount";
 import { formatApiError } from "src/modules/ApiError";
 import EasyModal from "src/modules/easyModal";
@@ -94,7 +95,13 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 	const [probeUrl, setProbeUrl] = useState(saved.customUrl);
 	const probed = probeUrl !== "" && probeUrl === server && custom;
 	const { data: directory, error: probeError } = useAcmeProfiles(probeUrl, { enabled: probed });
-	const unreadable = directoryUnreadable({ custom, probed, error: probeError, result: directory });
+	const unreadable = directoryUnreadable({
+		custom,
+		probed,
+		error: probeError,
+		result: directory,
+		account: accountOf(data, server),
+	});
 	const onUrlBlur = async (event) => {
 		const url = event.target.value.trim();
 		if (url !== "" && (await methods.trigger("customUrl"))) setProbeUrl(url);
@@ -115,7 +122,9 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 		setOutcome(null);
 	}, [signature]);
 
-	const plan = connectPlan(values, data);
+	// EAB values typed and then hidden are not sent
+	const sent = visibleEabValues(values, showEab);
+	const plan = connectPlan(sent, data);
 	const changedCa = server !== "" && server !== data.server;
 
 	const refuse = (err) => {
@@ -124,7 +133,8 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 		setOutcome({ kind: "refused", message });
 	};
 
-	const onSubmit = async (formValues) => {
+	const onSubmit = async (typed) => {
+		const formValues = visibleEabValues(typed, showEab);
 		if (plan === "nothing") return;
 		const anyway = outcome?.kind === "unreachable";
 		setOutcome(null);
