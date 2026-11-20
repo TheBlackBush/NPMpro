@@ -17,10 +17,12 @@ import {
 	directoryUnreadable,
 	eabLockEnv,
 	eabShown,
+	emailForCa,
 	lockedSet,
 	messageIsCut,
 	presetOf,
 	profileChoices,
+	refusalText,
 	replaceDefaults,
 	replacePayload,
 	saveFailureOf,
@@ -189,6 +191,51 @@ it("splits a field prefix off a failed save", () => {
 	assert.deepEqual(saveFailureOf("plain", "server: translated"), { message: "translated", field: "customUrl" });
 	assert.deepEqual(saveFailureOf("", "nginx failed"), { message: "nginx failed", field: null });
 	assert.deepEqual(saveFailureOf(undefined, "a\nserver: b"), { message: "a\nserver: b", field: null });
+});
+
+it("marks the EAB key ID when the CA's message is about the binding and a pair was sent", () => {
+	const jws = "external account binding JWS verification error: go-jose/go-jose";
+	const sent = { eabSent: true };
+	assert.equal(saveFailureOf(jws, jws, sent).field, "eabKid");
+	assert.equal(saveFailureOf("x", "Error verifying externalAccountBinding JWS", sent).field, "eabKid");
+	assert.equal(saveFailureOf("EAB key not found", "EAB key not found", sent).field, "eabKid");
+	assert.equal(saveFailureOf("urn:ietf:params:acme:error:unauthorized", "x", sent).field, "eabKid");
+	const unknown = "the field 'kid' references a key that is not known to the ACME server";
+	assert.equal(saveFailureOf(unknown, `The CA refused: ${unknown}`, sent).field, "eabKid");
+	// no pair sent: a general error; a word that only contains eab is no match
+	assert.equal(saveFailureOf(jws, jws).field, null);
+	assert.equal(saveFailureOf("rebuilt", "rebuilt", sent).field, null);
+	assert.equal(saveFailureOf("The CA is down", "The CA is down", sent).field, null);
+	// the backend's prefix wins
+	assert.equal(saveFailureOf("email: unauthorized", "email: unauthorized", sent).field, "email");
+});
+
+it("shows the CA's own sentence in the refused box", () => {
+	assert.equal(refusalText({ message_values: { message: "bad email" } }, "The CA refused: bad email"), "bad email");
+	assert.equal(refusalText({ message_values: {} }, "shown"), "shown");
+	assert.equal(refusalText({ message_values: { message: "" } }, "shown"), "shown");
+	assert.equal(refusalText(undefined, "shown"), "shown");
+});
+
+it("resets the window's email to the picked CA's account email, the env value when locked, else empty", () => {
+	const accounts = [
+		{ server: ZEROSSL, email: "z@b.c", state: "registered" },
+		{ server: PEBBLE, email: null, state: "registered" },
+	];
+	assert.equal(emailForCa(data({ accounts }), ZEROSSL), "z@b.c");
+	assert.equal(emailForCa(data({ accounts }), PEBBLE), "");
+	assert.equal(emailForCa(data({ accounts }), LE), "");
+	assert.equal(emailForCa(data({ accounts, locked: ["email"], email: "env@b.c" }), ZEROSSL), "env@b.c");
+	assert.equal(emailForCa(data({ accounts, locked: ["email"], email: null }), ZEROSSL), "");
+});
+
+it("names a query or fragment as the reason a directory URL is refused", () => {
+	const check = (customUrl) => acmeFormValidate(rules, data())({ ...toAcmeForm(data()), preset: CUSTOM, customUrl });
+	const query = en["error.acme-url-query"];
+	assert.equal(check("https://ca.lan/dir?x=1").customUrl, query);
+	assert.equal(check("https://ca.lan/dir#frag").customUrl, query);
+	assert.equal(check("http://ca.lan/dir").customUrl, en["error.acme-url"]);
+	assert.equal(check("https://ca.lan/dir").customUrl, undefined);
 });
 
 it("names the env var of a half-locked EAB pair on both fields", () => {

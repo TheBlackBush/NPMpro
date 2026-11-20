@@ -12,6 +12,7 @@ const EAB_PRESETS = new Set(ACME_PRESETS.filter((preset) => preset.eab).map((pre
 const SNAKE = /_(?<c>[a-z])/gu;
 const DIRECTORY_URL = /^https:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?(?:\/[A-Za-z0-9._~/-]*)?$/u;
 const EMAIL = /^[^\s@]+@[^\s@]+$/u;
+const QUERY_OR_FRAGMENT = /[?#]/u;
 
 export const presetOf = (server) => ACME_PRESETS.find((preset) => preset.server === server)?.id ?? CUSTOM;
 
@@ -62,6 +63,13 @@ export function acmePayload(values, data) {
 }
 
 export const accountOf = (data, server) => (data.accounts ?? []).find((account) => account.server === server) ?? null;
+
+/**
+ * The email the window shows for a CA picked in its select: the env value while ACME_EMAIL locks it, else the email of
+ * that CA's account, else none. What is shown is what Connect applies.
+ */
+export const emailForCa = (data, server) =>
+	lockedSet(data.locked).has("email") ? (data.email ?? "") : (accountOf(data, server)?.email ?? "");
 
 export const eabShown = ({ preset, externalAccountRequired, account }) =>
 	account?.state !== "registered" && (externalAccountRequired === true || EAB_PRESETS.has(preset));
@@ -174,7 +182,8 @@ export const acmeFormValidate = (rules, data) => (values) => {
 	const errors = {};
 	const url = values.customUrl.trim();
 	if (values.preset === CUSTOM && url !== data.server && !DIRECTORY_URL.test(url)) {
-		errors.customUrl = rules.message("error.acme-url");
+		const withQuery = url.startsWith("https://") && QUERY_OR_FRAGMENT.test(url);
+		errors.customUrl = rules.message(withQuery ? "error.acme-url-query" : "error.acme-url");
 	}
 	const email = values.email.trim();
 	if (email !== (data.email ?? "") && email !== "" && !EMAIL.test(email)) {
@@ -185,20 +194,35 @@ export const acmeFormValidate = (rules, data) => (values) => {
 
 const FIELD_OF_PREFIX = { server: "customUrl", email: "email", eab: "eabKid" };
 const PREFIXED = /^(?<prefix>server|email|eab): (?<text>.*)$/su;
+// a CA's refusal about the external account binding (Pebble: "external account binding JWS verification error" or
+// "the field 'kid' references a key that is not known to the ACME server")
+const ABOUT_EAB = /external ?account ?binding|\beab\b|\bkid\b|\bhmac\b|unauthorized/iu;
 
 /**
  * A failed save: the backend names a field by a prefix of its English message ("server: ..."); the translated text
- * may carry it too. Returns the message without the prefix and the form field it belongs to (null: a general error)
+ * may carry it too. Without a prefix, a message about the external account binding (or an unauthorized one) while an
+ * EAB pair was sent marks the key ID field. Returns the message without the prefix and the form field it belongs to
+ * (null: a general error)
+ *
+ * @param {string}  raw      the message of the answer
+ * @param {string}  message  the translated message
+ * @param {Object}  [options]
+ * @param {boolean} [options.eabSent]  the request carried an EAB pair
  */
-export function saveFailureOf(raw, message) {
+export function saveFailureOf(raw, message, { eabSent = false } = {}) {
 	const fromRaw = PREFIXED.exec(raw ?? "");
 	const fromMessage = PREFIXED.exec(message ?? "");
 	const prefix = (fromRaw ?? fromMessage)?.groups.prefix;
-	return {
-		message: fromMessage ? fromMessage.groups.text : message,
-		field: prefix ? FIELD_OF_PREFIX[prefix] : null,
-	};
+	const aboutEab = eabSent && (ABOUT_EAB.test(raw ?? "") || ABOUT_EAB.test(message ?? ""));
+	const field = prefix ? FIELD_OF_PREFIX[prefix] : null;
+	return { message: fromMessage ? fromMessage.groups.text : message, field: field ?? (aboutEab ? "eabKid" : null) };
 }
+
+/** The CA's own sentence of a refusal (message_values.message) for the refused box, else the shown message */
+export const refusalText = (apiError, shown) => {
+	const own = apiError?.message_values?.message;
+	return typeof own === "string" && own !== "" ? own : shown;
+};
 
 /** The env var that locks one key of the EAB pair: the pair is locked together, so either name serves both fields */
 export const eabLockEnv = (lockedBy, key) => {

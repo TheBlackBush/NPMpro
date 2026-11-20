@@ -1,5 +1,5 @@
 import { CircleAlert, Info, TriangleAlert } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { getAcmeProfiles } from "src/api/backend";
 import {
@@ -36,7 +36,9 @@ import {
 	directoryUnreadable,
 	eabLockEnv,
 	eabShown,
+	emailForCa,
 	lockedSet,
+	refusalText,
 	saveFailureOf,
 	serverOfForm,
 	toAcmeForm,
@@ -66,9 +68,17 @@ const caName = (server) => {
 	return labelId ? t(labelId) : text;
 };
 
-/** The message of a failed call and the field it belongs to (null: a general one) */
-const failureOf = (err) =>
-	saveFailureOf(err?.payload?.error?.message, formatApiError(err, hasMessage, formatMessage).message);
+/**
+ * The message of a failed call and the field it belongs to (null: a general one); eabSent: the call carried an EAB
+ * pair. A refusal shows the CA's own sentence, the box title already says it refused.
+ */
+const failureOf = (err, eabSent) => {
+	const apiError = err?.payload?.error;
+	const failure = saveFailureOf(apiError?.message, formatApiError(err, hasMessage, formatMessage).message, {
+		eabSent,
+	});
+	return { ...failure, message: refusalText(apiError, failure.message) };
+};
 
 function EnvHint({ env }) {
 	return <T id="settings.certificates.acme.env-hint" data={{ env }} />;
@@ -102,6 +112,11 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 		result: directory,
 		account: accountOf(data, server),
 	});
+	// the email shown is the one the picked CA's account has (or the env value): what is shown is what Connect applies
+	const onPresetChange = (event) => {
+		const target = serverOfForm({ preset: event.target.value, customUrl: methods.getValues("customUrl") });
+		methods.setValue("email", emailForCa(data, target), { shouldDirty: true });
+	};
 	const onUrlBlur = async (event) => {
 		const url = event.target.value.trim();
 		if (url !== "" && (await methods.trigger("customUrl"))) setProbeUrl(url);
@@ -127,8 +142,8 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 	const plan = connectPlan(sent, data);
 	const changedCa = server !== "" && server !== data.server;
 
-	const refuse = (err) => {
-		const { message, field } = failureOf(err);
+	const refuse = (err, eabSent) => {
+		const { message, field } = failureOf(err, eabSent);
 		if (field) methods.setError(field, { type: "server", message });
 		setOutcome({ kind: "refused", message });
 	};
@@ -139,6 +154,7 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 		const anyway = outcome?.kind === "unreachable";
 		setOutcome(null);
 		const target = serverOfForm(formValues);
+		const eabSent = formValues.eabKid.trim() !== "" && formValues.eabHmacKey.trim() !== "";
 		if (!anyway && connectNeedsCheck(formValues, data)) {
 			try {
 				if (!directoryReachable(await getAcmeProfiles(target))) {
@@ -146,7 +162,7 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 					return;
 				}
 			} catch (err) {
-				refuse(err);
+				refuse(err, eabSent);
 				return;
 			}
 		}
@@ -156,11 +172,18 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 			else showSuccess(t("settings.certificates.acme.toast.connected", { ca: caName(target) }));
 			remove();
 		} catch (err) {
-			refuse(err);
+			refuse(err, eabSent);
 		}
 	};
 
 	const waiting = outcome?.kind === "unreachable";
+	// an outcome box can sit below the fold of the body: it scrolls into view and takes the focus (screen readers too)
+	const outcomeRef = useRef(null);
+	useEffect(() => {
+		if (!outcome) return;
+		outcomeRef.current?.scrollIntoView({ block: "nearest" });
+		outcomeRef.current?.focus({ preventScroll: true });
+	}, [outcome]);
 	return (
 		<AppModal
 			size="md"
@@ -190,8 +213,9 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 									<T id="settings.certificates.acme.ca.hint" />
 								)
 							}
-							badges={locked.has("server") ? <LockedBadge env={lockedBy.server} /> : null}
+							badges={locked.has("server") ? <LockedBadge env={lockedBy.server} windowSkip /> : null}
 							disabled={locked.has("server") || isSubmitting}
+							registerOptions={{ onChange: onPresetChange }}
 						>
 							{ACME_PRESETS.map((preset) => (
 								<option key={preset.id} value={preset.id}>
@@ -207,7 +231,7 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 								type="url"
 								label={<T id="settings.certificates.acme.url" />}
 								hint={<T id="settings.certificates.acme.url.hint" />}
-								badges={locked.has("server") ? <LockedBadge env={lockedBy.server} /> : null}
+								badges={locked.has("server") ? <LockedBadge env={lockedBy.server} windowSkip /> : null}
 								placeholder="https://"
 								autoComplete="off"
 								disabled={locked.has("server") || isSubmitting}
@@ -244,7 +268,7 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 									<T id="settings.certificates.acme.email.hint" />
 								)
 							}
-							badges={locked.has("email") ? <LockedBadge env={lockedBy.email} /> : null}
+							badges={locked.has("email") ? <LockedBadge env={lockedBy.email} windowSkip /> : null}
 							autoComplete="off"
 							disabled={locked.has("email") || isSubmitting}
 						/>
@@ -266,7 +290,11 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 											<T id="settings.certificates.acme.eab-kid.hint" />
 										)
 									}
-									badges={eabLocked ? <LockedBadge env={eabLockEnv(lockedBy, "eabKid")} /> : null}
+									badges={
+										eabLocked ? (
+											<LockedBadge env={eabLockEnv(lockedBy, "eabKid")} windowSkip />
+										) : null
+									}
 									autoComplete="off"
 									disabled={eabLocked || isSubmitting}
 								/>
@@ -283,7 +311,11 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 											<T id="settings.certificates.acme.eab-hmac.hint" />
 										)
 									}
-									badges={eabLocked ? <LockedBadge env={eabLockEnv(lockedBy, "eabHmacKey")} /> : null}
+									badges={
+										eabLocked ? (
+											<LockedBadge env={eabLockEnv(lockedBy, "eabHmacKey")} windowSkip />
+										) : null
+									}
 									autoComplete="new-password"
 									disabled={eabLocked || isSubmitting}
 								/>
@@ -299,8 +331,10 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 						) : null}
 						{outcome?.kind === "refused" ? (
 							<div
+								ref={outcomeRef}
+								tabIndex={-1}
 								role="alert"
-								className="flex gap-2.5 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm"
+								className="flex gap-2.5 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm outline-none"
 								data-acme-refused
 							>
 								<CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
@@ -314,8 +348,10 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 						) : null}
 						{waiting ? (
 							<div
+								ref={outcomeRef}
+								tabIndex={-1}
 								role="status"
-								className="flex gap-2.5 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm"
+								className="flex gap-2.5 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm outline-none"
 								data-acme-unreachable
 							>
 								<TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning" />

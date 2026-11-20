@@ -23,22 +23,21 @@ const REASON_BADGES = {
 /**
  * A direct lock reads "Set by environment" and explains "Set by <ENV>" in the badge's tooltip. An indirect lock
  * `reason` keeps its own wording ("Follows <ENV>", "Off because of <ENV>", "Required by <ENV>") and its tooltip is
- * the reason's sentence. Without `env` the badge is the plain "Set by environment".
+ * the reason's sentence. Without `env` the badge is the plain "Set by environment". `windowSkip` keeps a window from
+ * starting on the badge.
  */
-function LockedBadge({ env, reason, className }) {
+function LockedBadge({ env, reason, className, windowSkip = false }) {
 	const name = <span className="font-mono">{env}</span>;
-	if (env && Object.hasOwn(REASON_BADGES, reason)) {
-		return (
-			<SettingBadge
-				icon={Lock}
-				className={className}
-				description={<T id={`settings.runtime.locked.reason.${reason}`} data={{ env: name }} />}
-			>
-				<T id={REASON_BADGES[reason]} data={{ env: name }} />
-			</SettingBadge>
-		);
-	}
-	return (
+	const indirect = env && Object.hasOwn(REASON_BADGES, reason);
+	const badge = indirect ? (
+		<SettingBadge
+			icon={Lock}
+			className={className}
+			description={<T id={`settings.runtime.locked.reason.${reason}`} data={{ env: name }} />}
+		>
+			<T id={REASON_BADGES[reason]} data={{ env: name }} />
+		</SettingBadge>
+	) : (
 		<SettingBadge
 			icon={Lock}
 			className={className}
@@ -46,6 +45,15 @@ function LockedBadge({ env, reason, className }) {
 		>
 			<T id="settings.authentication.locked" />
 		</SettingBadge>
+	);
+	// windowSkip: in a window the badge's focusable tooltip trigger never takes the first focus (a disabled field
+	// follows it) and its first Escape closes the window, not the tooltip
+	return windowSkip ? (
+		<span className="contents" data-window-start-skip="">
+			{badge}
+		</span>
+	) : (
+		badge
 	);
 }
 

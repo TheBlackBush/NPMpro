@@ -144,7 +144,7 @@ const ReplaceAcmeAccountModal = EasyModal.create(({ server, account, data, visib
 									<T id="settings.certificates.acme.email.hint" />
 								)
 							}
-							badges={emailLocked ? <LockedBadge env={emailEnv} /> : null}
+							badges={emailLocked ? <LockedBadge env={emailEnv} windowSkip /> : null}
 							autoComplete="off"
 							disabled={emailLocked || isSubmitting}
 						/>

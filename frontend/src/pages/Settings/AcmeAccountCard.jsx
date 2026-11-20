@@ -182,7 +182,7 @@ function AcmeStatus({ data }) {
 								<Ellipsis aria-hidden="true" />
 							</Button>
 						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
+						<DropdownMenuContent align="end" className="w-auto min-w-max">
 							<DropdownMenuItem
 								data-acme-action="replace"
 								onSelect={() => showReplaceAcmeAccountModal({ server: data.server, account, data })}
