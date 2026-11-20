@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promis
 import path from "node:path";
 import dayjs from "dayjs";
 import { fetch } from "undici";
-import { dispatcherFor, readAcmeDirectory } from "../lib/acme-directory.js";
+import { dispatcherFor, readAcmeDirectory, unreachableReason } from "../lib/acme-directory.js";
 import {
 	ACME_PRESETS,
 	acmeEnvSet,
@@ -252,7 +252,11 @@ const attemptRegistration = async (server, { email, eab }, { blockedIsUnreachabl
 		throw err;
 	}
 	if (!directory.reachable) {
-		return { outcome: "unreachable", message: `The ACME server ${server} cannot be reached (${directory.error})` };
+		logger.info(`The ACME server ${server} cannot be reached: ${directory.error}`);
+		return {
+			outcome: "unreachable",
+			message: `The ACME server ${server} cannot be reached (${unreachableReason(directory.error)})`,
+		};
 	}
 	if (!directory.directory) {
 		throw new errs.ValidationError(`${server} is not an ACME directory`, "error.acme-not-directory", {

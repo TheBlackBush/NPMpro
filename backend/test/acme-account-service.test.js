@@ -259,7 +259,10 @@ it("fetches a ZeroSSL pair from the email, uses it once and stores it nowhere", 
 
 it("keeps a CA that cannot be reached pending, without running certbot", async () => {
 	acmeDirectory(api, LAN, { status: 503, body: "down", persist: false });
-	await assert.rejects(service.ensureAccount(LAN), (err) => err.message_i18n === "error.acme-unreachable");
+	await assert.rejects(
+		service.ensureAccount(LAN),
+		(err) => err.message_i18n === "error.acme-unreachable" && err.message.endsWith("(it answered with HTTP 503)"),
+	);
 	assert.equal((await model.query().where("server", LAN).first()).state, "pending");
 	assert.deepEqual(await normalizedCalls(api), []);
 });

@@ -7,9 +7,8 @@ import { Agent, MockAgent, setGlobalDispatcher } from "undici";
 // the reads go through the global dispatcher only in the test root with NPMPRO_TEST_OUTBOUND=mock; the host check runs
 process.env.NPMPRO_TEST_ROOT = "/nonexistent-acme-directory-test";
 process.env.NPMPRO_TEST_OUTBOUND = "mock";
-const { assertAllowedHost, cacheSize, clearAcmeDirectoryCache, dispatcherFor, readAcmeDirectory } = await import(
-	"../lib/acme-directory.js"
-);
+const { assertAllowedHost, cacheSize, clearAcmeDirectoryCache, dispatcherFor, readAcmeDirectory, unreachableReason } =
+	await import("../lib/acme-directory.js");
 
 const names = new Map([
 	["ca.lan", "192.168.1.10"],
@@ -136,4 +135,18 @@ it("keeps at most 32 cached answers", async () => {
 	assert.equal(cacheSize(), 32);
 	reply("https://ca.lan", "/n0", 200, DIRECTORY);
 	assert.equal((await readAcmeDirectory("https://ca.lan/n0")).directory, true);
+});
+
+it("gives a plain reason for the codes of an unreachable read, never the raw code", () => {
+	const cases = [
+		["ENOTFOUND", "its name does not resolve"],
+		["ECONNREFUSED", "the connection was refused"],
+		["ETIMEDOUT", "it did not answer in time"],
+		["TimeoutError", "it did not answer in time"],
+		["DEPTH_ZERO_SELF_SIGNED_CERT", "its TLS certificate is not trusted"],
+		["TOO_LARGE", "its answer is too large"],
+		["HTTP 503", "it answered with HTTP 503"],
+		["UND_ERR_INVALID_ARG", "the connection failed"],
+	];
+	for (const [code, reason] of cases) assert.equal(unreachableReason(code), reason);
 });

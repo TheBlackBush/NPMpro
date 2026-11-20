@@ -187,7 +187,30 @@ const readAcmeDirectory = async (url, { verify = true, guarded = true, fresh = f
 	return structuredClone(result);
 };
 
+const CERTIFICATE_CODES = /^(?:CERT_|DEPTH_ZERO_|SELF_SIGNED_|UNABLE_TO_|ERR_TLS_CERT|ERR_SSL_)/u;
+
+/**
+ * A plain reason for the error of an unreachable read (its cause code, TOO_LARGE or "HTTP <status>"), for a message
+ * a user reads; the code itself belongs in the log
+ *
+ * @param   {string}  code
+ * @returns {string}
+ */
+const unreachableReason = (code) => {
+	const text = String(code);
+	if (text === "ENOTFOUND" || text === "EAI_AGAIN") return "its name does not resolve";
+	if (text === "ECONNREFUSED") return "the connection was refused";
+	if (text === "ECONNRESET" || text === "EPIPE") return "the connection was closed";
+	if (["ETIMEDOUT", "UND_ERR_CONNECT_TIMEOUT", "TimeoutError", "AbortError"].includes(text)) {
+		return "it did not answer in time";
+	}
+	if (CERTIFICATE_CODES.test(text)) return "its TLS certificate is not trusted";
+	if (text === "TOO_LARGE") return "its answer is too large";
+	if (text.startsWith("HTTP ")) return `it answered with ${text}`;
+	return "the connection failed";
+};
+
 const clearAcmeDirectoryCache = () => cache.clear();
 const cacheSize = () => cache.size;
 
-export { assertAllowedHost, cacheSize, clearAcmeDirectoryCache, dispatcherFor, readAcmeDirectory };
+export { assertAllowedHost, cacheSize, clearAcmeDirectoryCache, dispatcherFor, readAcmeDirectory, unreachableReason };
