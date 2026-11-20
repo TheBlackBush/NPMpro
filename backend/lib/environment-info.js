@@ -7,7 +7,6 @@ const ENVIRONMENT_GROUPS = ["network", "users", "modules", "goaccess", "database
 
 const GOACLA_DEFAULT =
 	"--agent-list --real-os --double-decode --anonymize-ip --anonymize-level=1 --keep-last=30 --with-output-resolver --no-query-string";
-const LETSENCRYPT_SERVER = "https://acme-v02.api.letsencrypt.org/directory";
 
 const item = (group, name, fallback = "", secret = false) => ({
 	group,
@@ -82,10 +81,6 @@ const ENVIRONMENT_ITEMS = [
 	// read by entrypoint.sh, before envs.sh
 	flag("database", "ENABLE_PRERUN"),
 
-	item("certificates-account", "ACME_SERVER", LETSENCRYPT_SERVER),
-	secretItem("certificates-account", "ACME_EMAIL"),
-	secretItem("certificates-account", "ACME_EAB_KID"),
-	secretItem("certificates-account", "ACME_EAB_HMAC_KEY"),
 	item("certificates-account", "NODE_TLS_REJECT_UNAUTHORIZED"),
 ];
 
@@ -93,6 +88,7 @@ const ENVIRONMENT_NAMES = ENVIRONMENT_ITEMS.map((entry) => entry.name);
 
 const LOCK_GROUP_ORDER = [
 	"oidc",
+	"acme",
 	"certificates",
 	"network",
 	"nginx",
@@ -103,6 +99,18 @@ const LOCK_GROUP_ORDER = [
 	"geoip",
 	"advanced",
 ];
+
+/**
+ * The variables that lock the ACME account keys of Settings, Certificates (the card). They are not items of this page
+ * (the card shows them); envs.sh still lists them in NPMPRO_STARTUP_ENVS and NPMPRO_SECRET_ENVS for NPMPRO_USER_ENV and
+ * the _FILE variants. The email is no secret (the card shows it), the EAB pair is.
+ */
+const ACME_ENV_KEYS = {
+	server: "ACME_SERVER",
+	email: "ACME_EMAIL",
+	eab_kid: "ACME_EAB_KID",
+	eab_hmac_key: "ACME_EAB_HMAC_KEY",
+};
 
 const ENV_OF_RUNTIME = new Map(RUNTIME_RULES.map((rule) => [`${rule.group}/${rule.key}`, rule.env]));
 
@@ -133,16 +141,17 @@ const lockedRuntimeOf = (runtimeLocked) =>
 		.map(({ entry }) => entry);
 
 /**
- * The OIDC, monitoring, GeoIP and CrowdSec settings an env var locks, in the form of the runtime ones (each by its own variable)
+ * The OIDC, ACME account, monitoring, GeoIP and CrowdSec settings an env var locks, in the form of the runtime ones (each by its own variable)
  *
  * @param   {Object}  locked
  * @param   {string[]}  [locked.oidc]
+ * @param   {string[]}  [locked.acme]
  * @param   {string[]}  [locked.monitoring]
  * @param   {string[]}  [locked.geoip]
  * @param   {string[]}  [locked.crowdsec]
  * @returns {{group: string, key: string, env: string, reason: string|null}[]}
  */
-const settingLocksOf = ({ oidc = [], monitoring = [], geoip = [], crowdsec = [] } = {}) => {
+const settingLocksOf = ({ oidc = [], acme = [], monitoring = [], geoip = [], crowdsec = [] } = {}) => {
 	const entries = [];
 	const add = (group, keys, names) => {
 		for (const key of keys) {
@@ -150,6 +159,7 @@ const settingLocksOf = ({ oidc = [], monitoring = [], geoip = [], crowdsec = [] 
 		}
 	};
 	add("oidc", oidc, OIDC_ENV_KEYS);
+	add("acme", acme, ACME_ENV_KEYS);
 	add("monitoring", monitoring, MONITORING_ENV_KEYS);
 	add("geoip", geoip, GEOIP_ENV_KEYS);
 	add("crowdsec", crowdsec, CROWDSEC_ENV_KEYS);
@@ -220,4 +230,12 @@ const environmentInfo = (env, runtimeLocked) => {
 	return { groups, locked_runtime: lockedRuntimeOf(runtimeLocked) };
 };
 
-export { ENVIRONMENT_GROUPS, ENVIRONMENT_ITEMS, environmentInfo, LOCK_GROUP_ORDER, lockedByOf, settingLocksOf };
+export {
+	ACME_ENV_KEYS,
+	ENVIRONMENT_GROUPS,
+	ENVIRONMENT_ITEMS,
+	environmentInfo,
+	LOCK_GROUP_ORDER,
+	lockedByOf,
+	settingLocksOf,
+};

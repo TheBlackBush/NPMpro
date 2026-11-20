@@ -1,7 +1,8 @@
 import { decamelizeKeys } from "src/api/backend/caseConvert";
 import { AppModal, Button, ErrorAlert, EventFormatter, GravatarFormatter, Loading } from "src/components";
 import { useAuditLog } from "src/hooks";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
+import { auditActorName } from "src/modules/AuditLog";
 import EasyModal from "src/modules/easyModal";
 
 const showEventDetailsModal = (id) => {
@@ -26,7 +27,10 @@ const EventDetailsModal = EasyModal.create(({ id, visible, remove }) => {
 						<div className="mb-3 flex flex-wrap items-center gap-3">
 							<GravatarFormatter
 								url={data.user?.avatar}
-								name={data.user?.name}
+								name={auditActorName(data, {
+									system: intl.formatMessage({ id: "auditlog.system" }),
+									deleted: intl.formatMessage({ id: "user.deleted" }),
+								})}
 								email={data.user?.email}
 							/>
 							<EventFormatter row={data} />

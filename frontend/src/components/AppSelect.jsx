@@ -15,7 +15,12 @@ import { lastInput } from "src/modules/InputModality";
 import { flattenOptions, fromItemValue, toItemValue } from "src/modules/SelectOptions";
 
 const renderItem = (option) => (
-	<SelectItem key={option.value} value={toItemValue(option.value)} disabled={option.disabled}>
+	<SelectItem
+		key={option.value}
+		value={toItemValue(option.value)}
+		disabled={option.disabled}
+		description={option.description}
+	>
 		{option.label}
 	</SelectItem>
 );
@@ -28,8 +33,9 @@ const renderItem = (option) => (
  * @param {Object}   props
  * @param {string|number} props.value
  * @param {(value: string) => void} props.onValueChange  the chosen option's value ("" for an empty one)
- * @param {({ value: string, label: *, disabled?: boolean } | { label: *, options: { value: string, label: *, disabled?: boolean }[] })[]} props.options
- *   an item with `options` is a group: a labelled SelectGroup
+ * @param {({ value: string, label: *, description?: *, disabled?: boolean } | { label: *, options: { value: string, label: *, disabled?: boolean }[] })[]} props.options
+ *   an item with `options` is a group: a labelled SelectGroup; a `description` is a second line in the list (the
+ *   trigger shows the label only)
  * @param {string}   [props.id]           of the trigger (a label's htmlFor)
  * @param {boolean}  [props.disabled]
  * @param {"default"|"sm"} [props.size]

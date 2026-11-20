@@ -1,6 +1,7 @@
 import { useFormContext, useWatch } from "react-hook-form";
-import { useCertificates } from "src/hooks";
+import { useAcmeProfiles, useAcmeSettings, useCertificates } from "src/hooks";
 import { intl, T } from "src/locale";
+import { profileChoices } from "src/modules/AcmeAccount";
 import { defaultKeySize, isServableCertificate, keySizeOptions } from "src/modules/RuntimeSettings";
 import { certificatesValidate, ECH, RENEWAL } from "src/modules/SettingsForms";
 import { validations } from "src/modules/Validations";
@@ -33,6 +34,54 @@ const toApi = (values) => ({
 
 const validate = certificatesValidate(validations);
 
+const profileLabel = (option) => {
+	if (option.labelId) return intl.formatMessage({ id: option.labelId });
+	if (option.missing)
+		return intl.formatMessage({ id: "settings.certificates.profile.missing" }, { name: option.label });
+	return option.label;
+};
+
+const profileOption = (option) => ({
+	value: option.value,
+	label: profileLabel(option),
+	description: option.description,
+});
+
+/**
+ * The profile: a select of what the instance CA offers, the stored value kept even when the CA no longer lists it
+ * (opening the page never changes it); a text field when the CA's list cannot be read
+ */
+function ProfileField() {
+	const { data: acme } = useAcmeSettings();
+	const server = acme?.server;
+	const profiles = useAcmeProfiles(server, { enabled: Boolean(server) });
+	const stored = useWatch({ name: "profile" });
+	const label = <T id="settings.certificates.profile" />;
+	const hint = <T id="settings.certificates.profile.hint" />;
+	if (!server || profiles.isPending) {
+		// while the list loads: the default and the stored value, no text field that turns into a select
+		const options = [{ value: "", labelId: "settings.certificates.profile.placeholder" }];
+		if (stored) options.push({ value: stored, label: stored });
+		return <RuntimeSelect name="profile" label={label} hint={hint} options={options.map(profileOption)} />;
+	}
+	const choices = profileChoices({ result: profiles.data, stored });
+	if (choices.mode === "select") {
+		return <RuntimeSelect name="profile" label={label} hint={hint} options={choices.options.map(profileOption)} />;
+	}
+	return (
+		<RuntimeText
+			name="profile"
+			label={label}
+			hint={
+				<>
+					{hint} <T id="settings.certificates.profile.text-note" />
+				</>
+			}
+			placeholder={intl.formatMessage({ id: "settings.certificates.profile.placeholder" })}
+		/>
+	);
+}
+
 function RequestFields() {
 	const { getValues, setValue } = useFormContext();
 	const keyType = useWatch({ name: "keyType" });
@@ -63,12 +112,7 @@ function RequestFields() {
 				hint={<T id="settings.certificates.key-size.hint" />}
 				options={sizes}
 			/>
-			<RuntimeText
-				name="profile"
-				label={<T id="settings.certificates.profile" />}
-				hint={<T id="settings.certificates.profile.hint" />}
-				placeholder={intl.formatMessage({ id: "settings.certificates.profile.placeholder" })}
-			/>
+			<ProfileField />
 			<RuntimeSwitch
 				name="mustStaple"
 				label={<T id="settings.certificates.must-staple" />}

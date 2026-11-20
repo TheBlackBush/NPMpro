@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
 import {
+	ACME_ENV_KEYS,
 	ENVIRONMENT_GROUPS,
 	ENVIRONMENT_ITEMS,
 	environmentInfo,
@@ -13,9 +14,10 @@ import { mergeMonitoringConfig } from "../lib/monitoring-rules.js";
 import { RUNTIME_ENV_NAMES, userSetEnvNames } from "../lib/runtime-rules.js";
 
 const RUNTIME_LINE = /^NPMPRO_RUNTIME_ENVS="(?<names>[^"]*)"$/mu;
+const SECRET_LINE = /^NPMPRO_SECRET_ENVS="(?<names>[^"]*)"$/mu;
 const STARTUP_LINE = /^NPMPRO_STARTUP_ENVS="(?<names>[^"]*)"$/mu;
 const ENVS_SH = new URL("../../rootfs/usr/local/bin/envs.sh", import.meta.url);
-const SECRET_NAMES = ["DB_MYSQL_PASSWORD", "DB_POSTGRES_PASSWORD", "INITIAL_ADMIN_PASSWORD", "ACME_EAB_HMAC_KEY"];
+const SECRET_NAMES = ["DB_MYSQL_PASSWORD", "DB_POSTGRES_PASSWORD", "INITIAL_ADMIN_PASSWORD"];
 const sorted = (list) => [...list].sort((a, b) => a.localeCompare(b));
 const itemOf = (info, name) => info.groups.flatMap((group) => group.items).find((entry) => entry.name === name);
 
@@ -32,6 +34,37 @@ it("never returns a value for a secret item, set or not", () => {
 		}
 		assert.equal(JSON.stringify(info).includes("hunter2"), false);
 	}
+});
+
+it("leaves the ACME account variables to the card: no item, in the startup and secret lists, locks as acme settings", () => {
+	const names = ENVIRONMENT_ITEMS.map((entry) => entry.name);
+	const envs = readFileSync(ENVS_SH, "utf8");
+	const startup = STARTUP_LINE.exec(envs).groups.names.split(" ");
+	const secrets = SECRET_LINE.exec(envs).groups.names.split(" ");
+	for (const name of Object.values(ACME_ENV_KEYS)) {
+		assert.equal(names.includes(name), false, name);
+		assert.ok(startup.includes(name), name);
+		// the variables that can also be given as a file (envs.sh): the email stays, so ACME_EMAIL__FILE keeps working
+		assert.equal(secrets.includes(name), name !== "ACME_SERVER", name);
+	}
+	const env = {
+		NPMPRO_USER_ENV: "ACME_SERVER ACME_EMAIL ACME_EAB_KID ACME_EAB_HMAC_KEY",
+		ACME_EAB_HMAC_KEY: "hunter2",
+	};
+	const locks = settingLocksOf({ acme: ["server", "email", "eab_kid", "eab_hmac_key"] });
+	const info = environmentInfo(env, [{ group: "certificates", key: "key_type" }, ...locks]);
+	assert.deepEqual(
+		info.locked_runtime.map(({ group, key, env: name, reason }) => [group, key, name, reason]),
+		[
+			["acme", "server", "ACME_SERVER", null],
+			["acme", "email", "ACME_EMAIL", null],
+			["acme", "eab_kid", "ACME_EAB_KID", null],
+			["acme", "eab_hmac_key", "ACME_EAB_HMAC_KEY", null],
+			["certificates", "key_type", "ACME_KEY_TYPE", null],
+		],
+	);
+	assert.equal(JSON.stringify(info).includes("hunter2"), false);
+	assert.deepEqual(settingLocksOf({ acme: [] }), []);
 });
 
 it("keeps the Global Constraints secrets secret", () => {
@@ -168,7 +201,12 @@ it("lists the runtime and environment names once in envs.sh", () => {
 	const names = [...runtime, ...startup];
 	assert.equal(new Set(names).size, names.length);
 	assert.deepEqual(sorted(runtime), sorted(RUNTIME_ENV_NAMES));
-	assert.deepEqual(sorted(startup), sorted(ENVIRONMENT_ITEMS.map((entry) => entry.name)));
+	// the ACME account variables stay in the list (user env, _FILE) but the card shows them, not this page
+	const acme = Object.values(ACME_ENV_KEYS);
+	assert.deepEqual(
+		sorted(startup.filter((name) => !acme.includes(name))),
+		sorted(ENVIRONMENT_ITEMS.map((entry) => entry.name)),
+	);
 });
 
 it("envs.sh hashes only the runtime vars the env sets: startup vars like TZ or PUID do not regenerate hosts", () => {
