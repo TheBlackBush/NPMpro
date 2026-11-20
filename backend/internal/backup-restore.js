@@ -129,6 +129,7 @@ const createRestore = (
 		await regenerate.rebuildAccessListFiles();
 		await regenerate.regenerateAllHostsNow(await regenerate.loadEnabledHosts());
 		await regenerate.regenerateDefaultSite();
+		if (types.includes("certificates") || types.includes("settings_runtime")) await reloadSettings.acme?.();
 		await runtime.loadRuntimeConfig();
 		const failed = await runtime.applyAllRuntime();
 		for (const [group, error] of Object.entries(failed ?? {})) {

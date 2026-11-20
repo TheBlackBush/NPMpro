@@ -6,6 +6,7 @@ import { it } from "node:test";
 import knexFactory from "knex";
 import { loadStageData, previewReplace, replaceTypes, sequenceResetQuery } from "../lib/backup/restore-db.js";
 import { up as upOidcLink } from "../migrations/20261112120000_oidc_identity_link.js";
+import { up as createAcmeAccountTable } from "../migrations/20261119120000_acme_accounts.js";
 
 process.env.TZ = "UTC";
 
@@ -76,6 +77,7 @@ const sqlite = async () => {
 		t.json("meta").notNull();
 		t.integer("npmpro_dns_credential_id").nullable();
 	});
+	await createAcmeAccountTable(knex);
 	await knex.schema.createTable("npmpro_dns_credential", (t) => {
 		t.increments("id");
 		t.integer("owner_user_id").notNull();

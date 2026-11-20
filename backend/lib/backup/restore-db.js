@@ -96,6 +96,9 @@ const sequenceResetQuery = (knex, table) =>
 			])
 		: null;
 
+// the tables a type's data did not hold at all (not an empty list), kept apart from the rows
+const ABSENT = Symbol("absentTables");
+
 // the type's rows as { [table]: rows }: only its tables, each an array of plain objects
 const checkTypeData = (typeId, parsed) => {
 	const tables = typeOf(typeId).tables.map(({ table }) => table);
@@ -104,6 +107,9 @@ const checkTypeData = (typeId, parsed) => {
 		if (!tables.includes(table)) throw invalid(`data/${typeId}.json holds the table ${table}`);
 	}
 	const out = {};
+	Object.defineProperty(out, ABSENT, {
+		value: [...new Set([...(parsed[ABSENT] ?? []), ...tables.filter((table) => !(table in parsed))])],
+	});
 	for (const table of tables) {
 		const rows = parsed[table] ?? [];
 		if (!(Array.isArray(rows) && rows.every(isPlainObject)))
@@ -279,7 +285,18 @@ const createInserter = (trx) => {
 	};
 };
 
-const deleteType = async (trx, typeId, adminUserId) => {
+// A backup made before item 15 has no ACME settings: the instance keeps its own (user decision). `kept` names what
+// the backup did not hold: the table npmpro_acme_account, or the setting row "acme".
+const keptOfBackup = (typeId, rowsByTable) => ({
+	table:
+		typeId === "certificates" && rowsByTable[ABSENT]?.includes("npmpro_acme_account")
+			? "npmpro_acme_account"
+			: null,
+	settingId:
+		typeId === "settings_runtime" && !(rowsByTable.setting ?? []).some((row) => row.id === "acme") ? "acme" : null,
+});
+
+const deleteType = async (trx, typeId, adminUserId, kept = {}) => {
 	// the restored users replace these rows, and an id may now name someone else: their API tokens go too
 	const revokedTokens = [];
 	if (typeId === "users") {
@@ -288,9 +305,11 @@ const deleteType = async (trx, typeId, adminUserId) => {
 		await trx("npmpro_api_token").whereNot("user_id", adminUserId).del();
 	}
 	for (const { table, where } of [...typeOf(typeId).tables].reverse()) {
+		if (table === kept.table) continue;
 		const query = trx(table);
 		if (typeId === "users") query.whereNot(table === "user" ? "id" : "user_id", adminUserId);
 		if (where) where(query);
+		if (table === "setting" && kept.settingId) query.whereNot("id", kept.settingId);
 		await query.del();
 	}
 	return revokedTokens;
@@ -397,7 +416,8 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 			const rowsByTable = type.restoreRows
 				? type.restoreRows(sealed, { adminUserId, nowMs: (now ?? Math.floor(Date.now() / 1000)) * 1000 })
 				: sealed;
-			revokedTokens.push(...(await deleteType(trx, typeId, adminUserId)));
+			const kept = keptOfBackup(typeId, typeData(data, typeId));
+			revokedTokens.push(...(await deleteType(trx, typeId, adminUserId, kept)));
 			if (typeId === "users") {
 				const result = await insertUsers({ trx, inserter, rowsByTable, adminUserId, now });
 				({ idMap } = result);
@@ -407,6 +427,7 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 				continue;
 			}
 			for (const { table, where } of type.tables) {
+				if (table === kept.table) continue;
 				await inserter.insert(table, rowsByTable[table]);
 				if (where) await checkTypeRows(trx, table, where, rowsByTable[table]);
 			}

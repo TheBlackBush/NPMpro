@@ -514,6 +514,13 @@ const syncAccountsWithFiles = async () => {
 	}
 };
 
+/** After a restore or a merge of certificates or runtime settings: the stored CA, rows and files, envs.sh's line */
+const reloadAcmeAfterRestore = async () => {
+	await loadAcmeServer();
+	await syncAccountsWithFiles();
+	await writeStartupSettings();
+};
+
 /** In the background after the start: the instance account's contact follows a set ACME_EMAIL */
 const syncEnvEmail = async () => {
 	if (!acmeEnvSet(process.env).has("ACME_EMAIL")) return;
@@ -792,6 +799,7 @@ export {
 	refused,
 	registerNow,
 	registrationValues,
+	reloadAcmeAfterRestore,
 	saveAcmeSetting,
 	saveSettings,
 	scrub,
