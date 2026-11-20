@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import dayjs from "dayjs";
+import { fetch } from "undici";
 import { dispatcherFor, readAcmeDirectory } from "../lib/acme-directory.js";
 import {
 	ACME_PRESETS,

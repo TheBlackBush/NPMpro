@@ -1,9 +1,11 @@
 import dns from "node:dns";
 import { isIP } from "node:net";
-import { Agent } from "undici";
+import { Agent, fetch } from "undici";
 import errs from "./error.js";
 import { blockedError, createGuardedAgent, isBlockedAddress } from "./outbound-guard.js";
 
+// fetch comes from the npm undici package like the dispatchers: Node's built-in fetch rejects an Agent of another
+// undici version (UND_ERR_INVALID_ARG).
 // The one read of an ACME directory: the profile check of a save, the profile list, the EAB requirement and whether
 // a CA can be reached before it registers. A URL typed in the UI is guarded (D6); an ACME_SERVER env value is not.
 
