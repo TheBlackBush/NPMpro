@@ -128,7 +128,7 @@ it("offers the CA's profiles with Server default, keeps a stored profile it no l
 	assert.deepEqual(profileChoices({ result, stored: "tlsserver" }), {
 		mode: "select",
 		options: [
-			{ value: "", labelId: "settings.certificates.profile.server-default" },
+			{ value: "", labelId: "settings.certificates.profile.placeholder" },
 			{ value: "classic", label: "classic", description: "Classic" },
 			{ value: "tlsserver", label: "tlsserver", missing: true },
 		],
@@ -167,10 +167,10 @@ it("checks a custom URL and an email only when they differ from the saved ones",
 	const validate = acmeFormValidate(rules, saved);
 	const same = { preset: CUSTOM, customUrl: PEBBLE, email: "bad" };
 	assert.deepEqual(validate(same), {});
-	assert.deepEqual(Object.keys(validate({ ...same, customUrl: "http://x", email: "no-at" })).sort(), [
-		"customUrl",
-		"email",
-	]);
+	assert.deepEqual(
+		Object.keys(validate({ ...same, customUrl: "http://x", email: "no-at" })).sort((a, b) => a.localeCompare(b)),
+		["customUrl", "email"],
+	);
 	assert.deepEqual(validate({ ...same, customUrl: "https://ca.example/dir", email: "" }), {});
 	assert.deepEqual(validate({ preset: "zerossl", customUrl: "junk", email: "x@y.z" }), {});
 });

@@ -22,13 +22,15 @@ const showDeleteConfirmModal = (props) => {
 
 /**
  * A confirmation of a destructive action (delete, disable, reset): title, text, the item (subject, details), an
- * optional warning under them and the red confirm button
+ * optional warning under them and the red confirm button (confirmVariant "default": the primary button and a
+ * neutral icon, for a question that is not destructive)
  */
 const DeleteConfirmModal = EasyModal.create(
 	({
 		title,
 		tTitle,
 		confirmLabel,
+		confirmVariant = "destructive",
 		children,
 		subject,
 		details,
@@ -42,6 +44,7 @@ const DeleteConfirmModal = EasyModal.create(
 		const giveFocusBack = useWindowFocusReturn();
 		const [error, setError] = useState(null);
 		const [isSubmitting, setIsSubmitting] = useState(false);
+		const destructive = confirmVariant !== "default";
 
 		const closeAndRefresh = async () => {
 			remove();
@@ -79,7 +82,13 @@ const DeleteConfirmModal = EasyModal.create(
 			<AlertDialog open={visible} onOpenChange={onOpenChange}>
 				<AlertDialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
 					<AlertDialogHeader>
-						<div className="flex size-10 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+						<div
+							className={
+								destructive
+									? "flex size-10 items-center justify-center rounded-full bg-destructive/10 text-destructive"
+									: "flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary"
+							}
+						>
 							<TriangleAlertIcon className="size-5" aria-hidden="true" />
 						</div>
 						<AlertDialogTitle>{tTitle ? <T id={tTitle} /> : title}</AlertDialogTitle>
@@ -105,7 +114,7 @@ const DeleteConfirmModal = EasyModal.create(
 						{/* Not AlertDialogAction: that closes the dialog before onConfirm has finished */}
 						<Button
 							type="button"
-							color="danger"
+							color={destructive ? "danger" : "primary"}
 							isLoading={isSubmitting}
 							disabled={isSubmitting}
 							onClick={onSubmit}

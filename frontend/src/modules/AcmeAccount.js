@@ -85,7 +85,7 @@ export const canRegisterNow = (account) => account?.state !== "registered";
 export function profileChoices({ result, stored }) {
 	if (!(result?.reachable && result.directory)) return { mode: "text" };
 	const options = [
-		{ value: "", labelId: "settings.certificates.profile.server-default" },
+		{ value: "", labelId: "settings.certificates.profile.placeholder" },
 		...result.profiles.map((profile) => ({
 			value: profile.name,
 			label: profile.name,
@@ -123,7 +123,7 @@ export const acmeFormValidate = (rules, data) => (values) => {
 	}
 	const email = values.email.trim();
 	if (email !== (data.email ?? "") && email !== "" && !EMAIL.test(email)) {
-		errors.email = rules.message("error.acme-email");
+		errors.email = rules.message("error.invalid-email");
 	}
 	return errors;
 };

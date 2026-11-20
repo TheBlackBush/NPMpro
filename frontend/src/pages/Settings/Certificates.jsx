@@ -4,6 +4,7 @@ import { intl, T } from "src/locale";
 import { defaultKeySize, isServableCertificate, keySizeOptions } from "src/modules/RuntimeSettings";
 import { certificatesValidate, ECH, RENEWAL } from "src/modules/SettingsForms";
 import { validations } from "src/modules/Validations";
+import AcmeAccountCard from "./AcmeAccountCard";
 import { RuntimeNumber, RuntimeSelect, RuntimeSwitch, RuntimeText } from "./Runtime/fields";
 import { Part, RuntimeSection, useRuntimeSection } from "./Runtime/RuntimeSection";
 
@@ -192,6 +193,7 @@ export default function Certificates() {
 			group="certificates"
 			titleId="settings.certificates"
 			leadId="settings.certificates.intro"
+			top={<AcmeAccountCard />}
 			toForm={toForm}
 			toApi={toApi}
 			validate={validate}
