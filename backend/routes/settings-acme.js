@@ -3,7 +3,7 @@ import internalAcmeAccount from "../internal/acme-account.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
 import apiValidator from "../lib/validator/api.js";
 import validator from "../lib/validator/index.js";
-import { getQuerySchema, getValidationSchema } from "../schema/index.js";
+import { getCompiledSchema, getQuerySchema, getValidationSchema } from "../schema/index.js";
 
 const router = express.Router({
 	caseSensitive: true,
@@ -45,6 +45,8 @@ router
 	.all(jwtdecode())
 	.get(async (req, res) => {
 		// the documented query parameters (schema/paths/settings/acme/profiles/get.json); other names are ignored
+		// the compiled schema is ready once the start finished; awaiting it covers a request that comes earlier
+		await getCompiledSchema();
 		const schema = getQuerySchema("/settings/acme/profiles", "get");
 		const query = validator(
 			schema,
