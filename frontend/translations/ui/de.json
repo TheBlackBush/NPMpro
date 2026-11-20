@@ -42,7 +42,7 @@
 	"acme-replace.deactivate.hint": "Nur bei einem kompromittierten Schlüssel. Das alte Konto kann die von ihm ausgestellten Zertifikate dann nicht mehr widerrufen; NPMpro widerruft danach mit dem eigenen Schlüssel jedes Zertifikats.",
 	"acme-replace.done": "{count, plural, one {# Zertifikat wurde} other {# Zertifikate wurden}} auf das neue Konto übertragen. {old, select, deactivated {Das alte Konto wurde deaktiviert.} failed {Das alte Konto konnte nicht deaktiviert werden und ist weiterhin aktiv.} other {Das alte Konto bleibt erhalten.}}",
 	"acme-replace.intro": "NPMpro registriert ein neues Konto bei dieser CA und überträgt ihre Zertifikate darauf. Nutzen Sie dies, wenn der Kontoschlüssel kompromittiert sein könnte oder die CA einen neuen EAB-Schlüssel verlangt.",
-	"acme-replace.keep": "Behalten Sie das alte Konto, außer sein Schlüssel ist abgeflossen: Es kann die von ihm ausgestellten Zertifikate weiterhin widerrufen.",
+	"acme-replace.keep": "Behalten Sie das alte Konto, außer sein Schlüssel ist kompromittiert: Es kann die von ihm ausgestellten Zertifikate weiterhin widerrufen.",
 	"acme-replace.submit": "Ersetzen",
 	"acme-replace.title": "Das Konto bei {ca} ersetzen",
 	"acme.preset.google": "Google Trust Services",

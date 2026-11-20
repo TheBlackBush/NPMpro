@@ -6,7 +6,7 @@ Eine am Container gesetzte Variable hat Vorrang vor der Oberfläche und sperrt d
 
 ### ACME-Konto
 
-**ACME-Konto.** Wählen Sie die Zertifizierungsstelle (CA) für neue Zertifikate: Let's Encrypt, ZeroSSL, Google Trust Services oder die Verzeichnis-URL einer anderen CA (https, nicht dieser Host). Jede CA führt ein eigenes Konto; Zertifikate bleiben bei der CA, die sie ausgestellt hat, bis sie neu ausgestellt werden. ZeroSSL benötigt eine E-Mail-Adresse, Google eine E-Mail-Adresse und EAB-Schlüssel. Das Konto wird beim Speichern registriert, oder bei der ersten Zertifikatsanforderung, wenn die CA nicht erreichbar ist. **Konto ersetzen** registriert ein neues Konto und überträgt die Zertifikate der CA darauf; deaktivieren Sie das alte nur, wenn sein Schlüssel abgeflossen ist.
+**ACME-Konto.** Wählen Sie die Zertifizierungsstelle (CA) für neue Zertifikate: Let's Encrypt, ZeroSSL, Google Trust Services oder die Verzeichnis-URL einer anderen CA (https, nicht dieser Host). Jede CA führt ein eigenes Konto; Zertifikate bleiben bei der CA, die sie ausgestellt hat, bis sie neu ausgestellt werden. ZeroSSL benötigt eine E-Mail-Adresse, Google eine E-Mail-Adresse und EAB-Schlüssel. Das Konto wird beim Speichern registriert, oder bei der ersten Zertifikatsanforderung, wenn die CA nicht erreichbar ist. **Konto ersetzen** registriert ein neues Konto und überträgt die Zertifikate der CA darauf; deaktivieren Sie das alte nur, wenn sein Schlüssel kompromittiert ist.
 
 ### Zertifikatsanforderungen
 

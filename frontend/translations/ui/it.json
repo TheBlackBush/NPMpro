@@ -40,7 +40,7 @@
 	"acme-account": "Account ACME",
 	"acme-replace.deactivate": "Disattiva il vecchio account presso la CA",
 	"acme-replace.deactivate.hint": "Solo per una chiave compromessa. Il vecchio account non potrà più revocare i certificati che ha emesso; NPMpro revoca quindi con la chiave propria di ciascun certificato.",
-	"acme-replace.done": "{count, plural, one {# certificato è stato spostato} other {# certificati sono stati spostati}} sul nuovo account. {old, select, deactivated {Il vecchio account è stato disattivato.} failed {Il vecchio account non è stato disattivato ed è ancora attivo.} other {Il vecchio account viene mantenuto.}}",
+	"acme-replace.done": "{count, plural, one {# certificato è stato spostato} other {# certificati sono stati spostati}} sul nuovo account. {old, select, deactivated {Il vecchio account è stato disattivato.} failed {Non è stato possibile disattivare il vecchio account, che è ancora attivo.} other {Il vecchio account viene mantenuto.}}",
 	"acme-replace.intro": "NPMpro registra un nuovo account presso questa CA e vi sposta i certificati. Usalo quando la chiave dell'account potrebbe essere compromessa o la CA richiede una nuova chiave EAB.",
 	"acme-replace.keep": "Mantieni il vecchio account, a meno che la sua chiave sia trapelata: può ancora revocare i certificati che ha emesso.",
 	"acme-replace.submit": "Sostituisci",
