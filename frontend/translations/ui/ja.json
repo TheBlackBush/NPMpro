@@ -1330,7 +1330,6 @@
 	"settings.certificates.acme.email.zerossl": "ZeroSSL にはメールが必要です。NPMpro がそのために EAB キーを取得するので、下の 2 つの欄は空のままで構いません。",
 	"settings.certificates.acme.env-hint": "{env} で設定されています。コンテナの環境で変更してください。",
 	"settings.certificates.acme.info": "NPMpro が証明書を要求する認証局と、そこで使うアカウントです。",
-	"settings.certificates.acme.more": "ACME アカウントのその他の操作",
 	"settings.certificates.acme.none": "アカウントはまだありません。",
 	"settings.certificates.acme.replace": "アカウントを置き換え",
 	"settings.certificates.acme.retry": "再試行",

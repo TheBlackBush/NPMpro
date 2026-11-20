@@ -1330,7 +1330,6 @@
 	"settings.certificates.acme.email.zerossl": "ZeroSSL heeft een e-mailadres nodig: NPMpro haalt er de EAB-sleutels voor op, dus de twee velden hieronder mogen leeg blijven.",
 	"settings.certificates.acme.env-hint": "Ingesteld door {env}. Wijzig het in de omgeving van de container.",
 	"settings.certificates.acme.info": "De certificeringsinstantie waarbij NPMpro certificaten aanvraagt en het account dat het daar gebruikt.",
-	"settings.certificates.acme.more": "Meer acties voor het ACME-account",
 	"settings.certificates.acme.none": "Nog geen account.",
 	"settings.certificates.acme.replace": "Account vervangen",
 	"settings.certificates.acme.retry": "Opnieuw proberen",

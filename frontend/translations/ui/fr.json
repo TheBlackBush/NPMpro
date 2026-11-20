@@ -1330,7 +1330,6 @@
 	"settings.certificates.acme.email.zerossl": "ZeroSSL exige un e-mail : NPMpro récupère pour lui les clés EAB, les deux champs ci-dessous peuvent donc rester vides.",
 	"settings.certificates.acme.env-hint": "Défini par {env}. Modifiez-le dans l'environnement du conteneur.",
 	"settings.certificates.acme.info": "L'autorité de certification auprès de laquelle NPMpro demande des certificats et le compte utilisé chez elle.",
-	"settings.certificates.acme.more": "Autres actions pour le compte ACME",
 	"settings.certificates.acme.none": "Aucun compte pour l'instant.",
 	"settings.certificates.acme.replace": "Remplacer le compte",
 	"settings.certificates.acme.retry": "Réessayer",

@@ -1330,7 +1330,6 @@
 	"settings.certificates.acme.email.zerossl": "ZeroSSL needs an email: NPMpro fetches the EAB keys for it, so the two fields below can stay empty.",
 	"settings.certificates.acme.env-hint": "Set by {env}. Change it in the container's environment.",
 	"settings.certificates.acme.info": "The certificate authority NPMpro requests certificates from and the account it uses there.",
-	"settings.certificates.acme.more": "More actions for the ACME account",
 	"settings.certificates.acme.none": "No account yet.",
 	"settings.certificates.acme.replace": "Replace account",
 	"settings.certificates.acme.retry": "Try again",

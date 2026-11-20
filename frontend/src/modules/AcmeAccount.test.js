@@ -259,7 +259,10 @@ it("names the env var of a half-locked EAB pair on both fields", () => {
 });
 
 it("gives each card state its buttons, Change first on a failed account", () => {
-	assert.deepEqual(cardButtons("registered"), [{ key: "change", primary: false }]);
+	assert.deepEqual(cardButtons("registered"), [
+		{ key: "change", primary: false },
+		{ key: "replace", primary: false },
+	]);
 	assert.deepEqual(
 		cardButtons("pending").map((b) => b.key),
 		["retry", "change"],
@@ -359,6 +362,7 @@ it("names no server for the instance CA in a register or profiles call", () => {
 it("keeps one button key for Connect and Change, so the button keeps the focus when the state changes", () => {
 	assert.equal(cardButtonKey("connect"), cardButtonKey("change"));
 	assert.notEqual(cardButtonKey("retry"), cardButtonKey("change"));
+	assert.notEqual(cardButtonKey("replace"), cardButtonKey("change"));
 	const window = (kind) => cardButtons(kind).filter(({ key }) => cardButtonKey(key) === "window").length;
 	for (const kind of ["registered", "pending", "failed", "none"]) assert.equal(window(kind), 1, kind);
 });

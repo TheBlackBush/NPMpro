@@ -1330,7 +1330,6 @@
 	"settings.certificates.acme.email.zerossl": "ZeroSSL нужен email: NPMpro получает для него ключи EAB, поэтому два поля ниже можно оставить пустыми.",
 	"settings.certificates.acme.env-hint": "Задано переменной {env}. Измените её в окружении контейнера.",
 	"settings.certificates.acme.info": "Удостоверяющий центр, у которого NPMpro запрашивает сертификаты, и учётная запись в нём.",
-	"settings.certificates.acme.more": "Другие действия для учётной записи ACME",
 	"settings.certificates.acme.none": "Учётной записи пока нет.",
 	"settings.certificates.acme.replace": "Заменить учётную запись",
 	"settings.certificates.acme.retry": "Повторить",

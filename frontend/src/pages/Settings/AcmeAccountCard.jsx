@@ -1,13 +1,7 @@
-import { ChevronDown, CircleCheck, CircleDashed, CircleX, Clock, Ellipsis, RefreshCw } from "lucide-react";
+import { ChevronDown, CircleCheck, CircleDashed, CircleX, Clock, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Button, ErrorAlert, Loading, StatusBadge } from "src/components";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "src/components/ui/collapsible";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "src/components/ui/dropdown-menu";
 import { useAcmeSettings, useRegisterAcmeAccount } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
@@ -139,6 +133,10 @@ function AcmeStatus({ data }) {
 		change: { id: "settings.certificates.acme.change", onClick: onChange },
 		connect: { id: "settings.certificates.acme.connect", onClick: onChange },
 		retry: { id: "settings.certificates.acme.retry", onClick: onRetry, loading: isPending },
+		replace: {
+			id: "settings.certificates.acme.replace",
+			onClick: () => showReplaceAcmeAccountModal({ server: data.server, account, data }),
+		},
 	};
 
 	return (
@@ -156,7 +154,7 @@ function AcmeStatus({ data }) {
 				</div>
 				<Details state={state} />
 			</div>
-			<div className="flex shrink-0 items-center gap-2 max-md:w-full max-md:[&>button:not([data-acme-action=more])]:flex-1">
+			<div className="flex shrink-0 items-center gap-2 max-md:w-full max-md:[&>button]:flex-1">
 				{cardButtons(state.kind).map(({ key, primary }) => (
 					<Button
 						key={cardButtonKey(key)}
@@ -171,30 +169,6 @@ function AcmeStatus({ data }) {
 						<T id={actions[key].id} />
 					</Button>
 				))}
-				{state.kind === "registered" ? (
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								className="max-md:flex-none"
-								data-acme-action="more"
-								aria-label={t("settings.certificates.acme.more")}
-							>
-								<Ellipsis aria-hidden="true" />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-auto min-w-max">
-							<DropdownMenuItem
-								data-acme-action="replace"
-								onSelect={() => showReplaceAcmeAccountModal({ server: data.server, account, data })}
-							>
-								<RefreshCw aria-hidden="true" />
-								<T id="settings.certificates.acme.replace" />
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-				) : null}
 			</div>
 		</div>
 	);
@@ -202,7 +176,7 @@ function AcmeStatus({ data }) {
 
 /**
  * The ACME account card of Settings, Certificates: the instance CA's account as a connection (status, CA, details)
- * with Change, Try again or Connect and a menu holding Replace account. The values change in the Connect window.
+ * with Change, Try again or Connect, and Replace account for a registered account. The values change in the Connect window.
  */
 export default function AcmeAccountCard() {
 	const { data, isPending, error } = useAcmeSettings();

@@ -1271,7 +1271,7 @@ const UNSAVED_QUESTION = { name: "Unsaved changes" };
 /**
  * The ACME account card of Settings, Certificates: its state, the Connect window (a locked email, the refused custom
  * URL with nothing saved, the unsaved-changes question on Escape), the profile field and (on an instance with a
- * registered account) the Replace window from the more menu.
+ * registered account) the Replace window from its button.
  */
 async function acmeAccount({ admin }) {
 	const { page, api } = admin;
@@ -1342,12 +1342,11 @@ async function acmeAccount({ admin }) {
 		console.log("  acme account: profile is a select");
 	}
 
-	// 6. the Replace window of a registered account (more menu): opens filled, Cancel sends nothing
+	// 6. the Replace window of a registered account: opens filled, Cancel sends nothing
 	const account = (before.accounts ?? []).find((entry) => entry.server === before.server);
 	if (account?.state === "registered") {
 		await page.goto("/settings/certificates");
-		await card.locator("[data-acme-action=more]").click();
-		await page.getByRole("menuitem", { name: "Replace account", exact: true }).click();
+		await card.locator("[data-acme-action=replace]").click();
 		const replace = page.locator("[data-acme-replace]");
 		await replace.waitFor();
 		const expected = emailLocked ? before.email : (account.email ?? "");

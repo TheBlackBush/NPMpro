@@ -1330,7 +1330,6 @@
 	"settings.certificates.acme.email.zerossl": "ZeroSSL에는 이메일이 필요합니다. NPMpro가 이를 위해 EAB 키를 가져오므로 아래 두 필드는 비워 둘 수 있습니다.",
 	"settings.certificates.acme.env-hint": "{env}에서 설정되었습니다. 컨테이너 환경에서 변경하세요.",
 	"settings.certificates.acme.info": "NPMpro가 인증서를 요청하는 인증 기관과 그곳에서 사용하는 계정입니다.",
-	"settings.certificates.acme.more": "ACME 계정의 추가 작업",
 	"settings.certificates.acme.none": "아직 계정이 없습니다.",
 	"settings.certificates.acme.replace": "계정 교체",
 	"settings.certificates.acme.retry": "다시 시도",

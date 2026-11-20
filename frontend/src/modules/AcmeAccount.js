@@ -126,7 +126,10 @@ export function acmeState(account) {
 
 // the buttons of the status card per state, in order; a registered account's Replace account lives in the more menu
 const CARD_BUTTONS = {
-	registered: [{ key: "change", primary: false }],
+	registered: [
+		{ key: "change", primary: false },
+		{ key: "replace", primary: false },
+	],
 	pending: [
 		{ key: "retry", primary: false },
 		{ key: "change", primary: false },
@@ -144,7 +147,7 @@ export const cardButtons = (kind) => CARD_BUTTONS[kind];
  * The React key of a card button: Connect and Change open the same window and share one, so the button stays the same
  * element when the state changes and the window gives the focus back to it
  */
-export const cardButtonKey = (key) => (key === "retry" ? "retry" : "window");
+export const cardButtonKey = (key) => (key === "change" || key === "connect" ? "window" : key);
 
 /**
  * What Connect does with the window's values: nothing (a registered account without a change), a register (a stored

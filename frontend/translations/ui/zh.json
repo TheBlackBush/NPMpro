@@ -1330,7 +1330,6 @@
 	"settings.certificates.acme.email.zerossl": "ZeroSSL 需要邮箱：NPMpro 会为它获取 EAB 密钥，因此下面两个字段可以留空。",
 	"settings.certificates.acme.env-hint": "由 {env} 设置。请在容器的环境中更改。",
 	"settings.certificates.acme.info": "NPMpro 申请证书所用的证书颁发机构，以及在其中使用的账户。",
-	"settings.certificates.acme.more": "ACME 账户的更多操作",
 	"settings.certificates.acme.none": "还没有账户。",
 	"settings.certificates.acme.replace": "替换账户",
 	"settings.certificates.acme.retry": "重试",

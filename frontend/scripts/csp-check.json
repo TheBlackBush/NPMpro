@@ -414,15 +414,15 @@
 			]
 		},
 		{
-			"name": "acme account more menu",
+			"name": "acme account replace window",
 			"route": "/settings/certificates",
 			"steps": [
 				{ "waitFor": "[data-acme-card]" },
-				{ "skipIfMissing": "[data-acme-action=more]" },
-				{ "click": "[data-acme-action=more]" },
-				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "skipIfMissing": "[data-acme-action=replace]" },
+				{ "click": "[data-acme-action=replace]" },
+				{ "waitFor": "[data-acme-replace]" },
 				{ "press": "Escape" },
-				{ "gone": "[data-slot=dropdown-menu-content]" }
+				{ "gone": "[data-acme-replace]" }
 			]
 		},
 		{

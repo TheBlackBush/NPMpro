@@ -1330,7 +1330,6 @@
 	"settings.certificates.acme.email.zerossl": "ZeroSSL benötigt eine E-Mail-Adresse: NPMpro holt dafür die EAB-Schlüssel, daher können die beiden Felder darunter leer bleiben.",
 	"settings.certificates.acme.env-hint": "Gesetzt durch {env}. Ändern Sie es in der Umgebung des Containers.",
 	"settings.certificates.acme.info": "Die Zertifizierungsstelle, bei der NPMpro Zertifikate anfordert, und das dort genutzte Konto.",
-	"settings.certificates.acme.more": "Weitere Aktionen für das ACME-Konto",
 	"settings.certificates.acme.none": "Noch kein Konto.",
 	"settings.certificates.acme.replace": "Konto ersetzen",
 	"settings.certificates.acme.retry": "Erneut versuchen",
