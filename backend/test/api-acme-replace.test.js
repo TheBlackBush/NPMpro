@@ -174,6 +174,30 @@ it("keeps the switch when the deactivation fails", async () => {
 	assert.match(audit.meta.error, SERVER_ERROR);
 });
 
+it("shows the CA's sentence only when certbot's output has a log line and warnings", async () => {
+	const raw = [
+		"Saving debug log to /tmp/acme-register-Zz9/logs/letsencrypt.log",
+		"/x/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request",
+		"  warnings.warn(",
+		"An unexpected error occurred:",
+		"acme.messages.Error: urn:ietf:params:acme:error:badNonce :: bad nonce",
+		"Ask for help or search for solutions at https://community.letsencrypt.org. See the logfile /tmp/acme-register-Zz9/logs/letsencrypt.log or re-run Certbot with -v for more details.",
+	].join("\n");
+	const clean = "acme.messages.Error: urn:ietf:params:acme:error:badNonce :: bad nonce";
+	await writeFile(path.join(api.root, "fake/unregister.fail"), raw);
+	const res = await admin.post(REPLACE, { ...BODY, deactivate_old: true });
+	assert.equal(res.status, 200, res.text);
+	assert.equal(res.body.replaced.deactivation_error, clean);
+	assert.equal((await auditOf("replaced")).meta.error, clean);
+	await rm(path.join(api.root, "fake/unregister.fail"), { force: true });
+	await writeFile(path.join(api.root, "fake/register.fail"), raw);
+	const refusedRes = await admin.post(REPLACE, BODY);
+	assert.equal(refusedRes.status, 400, refusedRes.text);
+	assert.equal(refusedRes.body.error.message_values.message, clean);
+	assert.equal(refusedRes.body.error.message, clean);
+	assert.equal((await auditOf("replace-failed")).meta.error, clean);
+});
+
 it("changes nothing when the CA refuses the new account", async () => {
 	await writeFile(path.join(api.root, "fake/register.fail"), "invalidContact: new@example.com k2 h2");
 	const res = await admin.post(REPLACE, BODY);

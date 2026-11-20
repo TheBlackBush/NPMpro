@@ -32,6 +32,7 @@ import {
 	writeFileAtomic,
 } from "../lib/certbot-account.js";
 import { CERTBOT_INI, CERTBOT_INI_BASE, renewalOptionEdits } from "../lib/certbot-ini.js";
+import { cleanCertbotMessage } from "../lib/certbot-message.js";
 import errs from "../lib/error.js";
 import { rooted } from "../lib/paths.js";
 import { withFiles, writeStartupSettings } from "../lib/runtime-apply.js";
@@ -222,7 +223,7 @@ const writeRunConfig = async (run, values) => {
 };
 
 const refused = (err, secrets) => {
-	const message = scrub(err.message, secrets);
+	const message = scrub(cleanCertbotMessage(err.message), secrets);
 	return new errs.ValidationError(message, "error.acme-refused", { values: { message } });
 };
 
@@ -1031,7 +1032,7 @@ const replaceAccount = async (access, body) => {
 				oldState = "deactivated";
 			} catch (err) {
 				oldState = "deactivation-failed";
-				deactivationError = scrub(err.message, secrets);
+				deactivationError = scrub(cleanCertbotMessage(err.message), secrets);
 			}
 		}
 		const saved = await accountRow(server);
