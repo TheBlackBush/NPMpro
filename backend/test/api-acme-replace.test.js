@@ -503,7 +503,7 @@ it("a renew holds the locks of two CAs, and a Replace on either waits", async ()
 		const run = internalCertificate.processExpiringHosts();
 		await waitFor(async () => (await calls()).some((line) => line.endsWith(" renew --quiet")));
 		const onCa = admin.post(REPLACE, BODY);
-		const onOther = admin.post(REPLACE, { server: OTHER, email: "other@example.com" });
+		const replaceOther = admin.post(REPLACE, { server: OTHER, email: "other@example.com" });
 		await wait(300);
 		assert.deepEqual(
 			(await calls()).filter((line) => line.includes(" register ")),
@@ -513,7 +513,7 @@ it("a renew holds the locks of two CAs, and a Replace on either waits", async ()
 		await rm(path.join(api.root, "fake/hold-renew"));
 		await run;
 		assert.equal((await onCa).status, 200);
-		assert.equal((await onOther).status, 200);
+		assert.equal((await replaceOther).status, 200);
 		assert.equal((await calls()).filter((line) => line.includes(" register ")).length, 2);
 		assert.notEqual((await model.query().where("server", OTHER).first()).account_id, OTHER_ACCOUNT);
 		assert.doesNotMatch(await readConf(3), new RegExp(`account = ${OTHER_ACCOUNT}`, "u"));
