@@ -9,7 +9,7 @@ For installs that update to this version:
 - **ACME accounts:**
   - The container no longer registers an ACME account when it starts, so it starts without a reachable CA. The first certificate request registers the account.
   - Existing accounts are adopted: each account folder under `/data/tls/certbot/accounts` becomes a registered account of its CA (the one most certificates use when a CA has several). The email is `ACME_EMAIL` for the instance CA and 'not recorded' for the others.
-  - Renewals keep the CA that issued each certificate. Before, a changed `ACME_SERVER` made the renewal of older certificates fail (certbot looked for their account on the new CA).
+  - Renewals keep the CA that issued each certificate. Before, a changed `ACME_SERVER` moved older certificates to the new CA at their next renewal, or made the renewal fail when that CA had no matching account; now each certificate keeps the CA that issued it.
   - The ACME profile and OCSP Must-Staple now apply per CA: certificates of the instance CA renew with the profile and Must-Staple of Settings, Certificates; certificates of another CA keep what they were issued with. `certbot.ini` no longer holds these two lines.
   - The start log shows the ACME CA (and whether it comes from the environment, Settings or the default), whether an account for it exists, and whether an email is set; the email address itself is never printed.
 - **Host descriptions and tags:** proxy, redirection and 404 hosts get a one-line **Description** on the Details tab, like streams, and every host type gets up to 10 **Tags** next to Group, with a Tags filter in the lists. Existing hosts start with an empty description and no tags. No host is regenerated.
