@@ -147,7 +147,7 @@ if ($geoip2_country_rule = no) {
 
 ## ACME servers
 
-An ACME directory URL entered in Settings must be `https://` and may not point at this host, link-local addresses (cloud metadata), multicast or reserved ranges; private LAN addresses are allowed, so a CA such as step-ca on your network works. The backend checks it on every read it makes of that directory (a save, the profile list, a registration), and the start does not read it: the start's profile check reads only an `ACME_SERVER` variable or the default CA. An `ACME_SERVER` variable is trusted as it is. Certbot's own connections to the CA are not checked; only administrators can choose a CA.
+An ACME directory URL entered in Settings must be `https://` and may not point at this host, link-local addresses (cloud metadata), multicast or reserved ranges; private LAN addresses are allowed, so a CA such as step-ca on your network works. The backend checks it on every read it makes of that directory (a save, the profile list, a registration), and the start does not read it: the start's profile check reads only an `ACME_SERVER` variable or the default CA. An `ACME_SERVER` variable is trusted as it is. Certbot's own connections to the CA are not checked; only administrators can choose a CA. Replace account can deactivate the old account at the CA; after that it can no longer revoke, and NPMpro revokes with each certificate's own key. Replace account needs a signed-in administrator (API tokens are refused).
 
 ## Notes on Cloudflare
 - Using cloudflare proxy/tunnel before NPMpro (so between the users and NPMpro `users <=> cloudflare <=> NPMpro`) is strongly discouraged
