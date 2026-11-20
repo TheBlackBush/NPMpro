@@ -12,6 +12,7 @@ import { makeCertificate } from "./support/certbot.js";
 delete process.env.NPMPRO_TEST_OUTBOUND;
 const { dispatcherFor, zeroSslEab } = await import("../lib/acme-directory.js");
 
+const FORM = /^application\/x-www-form-urlencoded/u;
 let dir;
 let server;
 let port;
@@ -49,7 +50,7 @@ it("fetches an EAB pair with a real POST through the trusted agent", async () =>
 	assert.equal(received.length, 1);
 	assert.equal(received[0].method, "POST");
 	assert.equal(received[0].url, "/acme/eab-credentials-email");
-	assert.match(received[0].type, /^application\/x-www-form-urlencoded/u);
+	assert.match(received[0].type, FORM);
 	assert.equal(new URLSearchParams(received[0].body).get("email"), "ops@example.com");
 });
 
