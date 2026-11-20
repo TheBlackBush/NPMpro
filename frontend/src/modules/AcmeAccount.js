@@ -127,3 +127,26 @@ export const acmeFormValidate = (rules, data) => (values) => {
 	}
 	return errors;
 };
+
+const FIELD_OF_PREFIX = { server: "customUrl", email: "email", eab: "eabKid" };
+const PREFIXED = /^(?<prefix>server|email|eab): (?<text>.*)$/su;
+
+/**
+ * A failed save: the backend names a field by a prefix of its English message ("server: ..."); the translated text
+ * may carry it too. Returns the message without the prefix and the form field it belongs to (null: a general error)
+ */
+export function saveFailureOf(raw, message) {
+	const fromRaw = PREFIXED.exec(raw ?? "");
+	const fromMessage = PREFIXED.exec(message ?? "");
+	const prefix = (fromRaw ?? fromMessage)?.groups.prefix;
+	return {
+		message: fromMessage ? fromMessage.groups.text : message,
+		field: prefix ? FIELD_OF_PREFIX[prefix] : null,
+	};
+}
+
+/** The env var that locks one key of the EAB pair: the pair is locked together, so either name serves both fields */
+export const eabLockEnv = (lockedBy, key) => {
+	const other = key === "eabKid" ? "eabHmacKey" : "eabKid";
+	return lockedBy?.[key] ?? lockedBy?.[other];
+};

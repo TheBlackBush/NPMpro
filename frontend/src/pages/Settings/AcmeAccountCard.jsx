@@ -25,14 +25,16 @@ import {
 	acmeState,
 	CUSTOM,
 	canRegisterNow,
+	eabLockEnv,
 	eabShown,
 	lockedSet,
+	saveFailureOf,
 	serverOfForm,
 	toAcmeForm,
 } from "src/modules/AcmeAccount";
 import { formatApiError } from "src/modules/ApiError";
 import { validations } from "src/modules/Validations";
-import { showApiError, showObjectSuccess, showSuccess, showWarning } from "src/notifications";
+import { showApiError, showError, showObjectSuccess, showSuccess, showWarning } from "src/notifications";
 import { LockedBadge } from "./Authentication/LockedBadge";
 import { SettingsCard } from "./SettingsCard";
 
@@ -40,24 +42,14 @@ const hasMessage = (id) => Boolean(intl.messages[id]);
 const formatMessage = (id, values) => intl.formatMessage({ id }, values);
 const t = (id, values) => intl.formatMessage({ id }, values);
 
-// a refusal of the backend names its field by a prefix of the English message ("server: ...")
-const FIELD_OF_PREFIX = { server: "customUrl", email: "email", eab: "eabKid" };
-const PREFIXED = /^(?<prefix>server|email|eab): (?<text>.*)$/su;
-
 const caName = (server) => {
 	const { labelId, text } = acmeServerLabel(server);
 	return labelId ? t(labelId) : text;
 };
 
 /** The message of a failed save and the field it belongs to (null for a general one) */
-function saveFailure(err) {
-	const { message } = formatApiError(err, hasMessage, formatMessage);
-	const raw = err?.payload?.error?.message ?? "";
-	const match = PREFIXED.exec(raw);
-	if (!match) return { message, field: null };
-	const stripped = PREFIXED.exec(message);
-	return { message: stripped ? stripped.groups.text : message, field: FIELD_OF_PREFIX[match.groups.prefix] };
-}
+const saveFailure = (err) =>
+	saveFailureOf(err?.payload?.error?.message, formatApiError(err, hasMessage, formatMessage).message);
 
 const formatDate = (value) => (value ? intl.formatDate(value, { dateStyle: "medium" }) : "");
 
@@ -238,7 +230,7 @@ function AcmeFields({ data, methods, values, locked, onReplace }) {
 						name="eabKid"
 						label={<T id="settings.certificates.acme.eab-kid" />}
 						hint={<T id="settings.certificates.acme.eab-kid.hint" />}
-						badges={eabLocked ? <LockedBadge env={lockedBy.eabKid} /> : null}
+						badges={eabLocked ? <LockedBadge env={eabLockEnv(lockedBy, "eabKid")} /> : null}
 						autoComplete="off"
 						disabled={eabLocked}
 					/>
@@ -254,7 +246,7 @@ function AcmeFields({ data, methods, values, locked, onReplace }) {
 								<T id="settings.certificates.acme.eab-hmac.hint" />
 							)
 						}
-						badges={eabLocked ? <LockedBadge env={lockedBy.eabHmacKey} /> : null}
+						badges={eabLocked ? <LockedBadge env={eabLockEnv(lockedBy, "eabHmacKey")} /> : null}
 						autoComplete="new-password"
 						disabled={eabLocked}
 					/>
@@ -287,9 +279,13 @@ function AcmeForm({ data, onReplace }) {
 			if (result?.warning === "unreachable") showWarning(t("settings.certificates.acme.unreachable"));
 		} catch (err) {
 			const { message, field } = saveFailure(err);
-			setFailure(message);
-			showApiError(err);
-			if (field) methods.setError(field, { type: "server", message });
+			if (field) {
+				methods.setError(field, { type: "server", message });
+				showError(message);
+			} else {
+				setFailure(message);
+				showApiError(err);
+			}
 		}
 	};
 

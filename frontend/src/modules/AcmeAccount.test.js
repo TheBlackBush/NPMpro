@@ -10,12 +10,14 @@ import {
 	acmeState,
 	CUSTOM,
 	canRegisterNow,
+	eabLockEnv,
 	eabShown,
 	lockedSet,
 	presetOf,
 	profileChoices,
 	replaceDefaults,
 	replacePayload,
+	saveFailureOf,
 	serverOfForm,
 	toAcmeForm,
 } from "./AcmeAccount.js";
@@ -173,4 +175,19 @@ it("checks a custom URL and an email only when they differ from the saved ones",
 	);
 	assert.deepEqual(validate({ ...same, customUrl: "https://ca.example/dir", email: "" }), {});
 	assert.deepEqual(validate({ preset: "zerossl", customUrl: "junk", email: "x@y.z" }), {});
+});
+
+it("splits a field prefix off a failed save", () => {
+	assert.deepEqual(saveFailureOf("email: bad", "email: bad"), { message: "bad", field: "email" });
+	assert.deepEqual(saveFailureOf("eab: x", "Needs a pair"), { message: "Needs a pair", field: "eabKid" });
+	assert.deepEqual(saveFailureOf("plain", "server: translated"), { message: "translated", field: "customUrl" });
+	assert.deepEqual(saveFailureOf("", "nginx failed"), { message: "nginx failed", field: null });
+	assert.deepEqual(saveFailureOf(undefined, "a\nserver: b"), { message: "a\nserver: b", field: null });
+});
+
+it("names the env var of a half-locked EAB pair on both fields", () => {
+	assert.equal(eabLockEnv({ eabKid: "ACME_EAB_KID" }, "eabHmacKey"), "ACME_EAB_KID");
+	assert.equal(eabLockEnv({ eabHmacKey: "H" }, "eabKid"), "H");
+	assert.equal(eabLockEnv({ eabKid: "K", eabHmacKey: "H" }, "eabKid"), "K");
+	assert.equal(eabLockEnv(undefined, "eabKid"), undefined);
 });
