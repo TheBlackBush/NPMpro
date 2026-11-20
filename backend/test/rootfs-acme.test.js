@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { chmod, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { it } from "node:test";
@@ -31,19 +31,23 @@ it("envs.sh reads the ACME directory with a 10 second limit", async () => {
 	for (const line of curls) assert.match(line, TIME_LIMIT, line);
 });
 
-it("envs.sh stops on an unsupported profile only for an ACME_SERVER the env set", async () => {
+it("envs.sh stops on an unsupported profile of an env or default CA, and never reads a CA saved in Settings", async () => {
 	const code = BLOCK.exec(await read("envs.sh")).groups.code;
 	const dir = await mkdtemp(path.join(os.tmpdir(), "acme-profile-"));
+	const reads = path.join(dir, "reads");
 	await writeFile(
 		path.join(dir, "curl"),
-		'#!/bin/sh\necho \'{"newNonce": "x", "meta": {"profiles": {"classic": ""}}}\'\n',
+		`#!/bin/sh\necho x >> '${reads}'\necho '{"newNonce": "x", "meta": {"profiles": {"classic": ""}}}'\n`,
 	);
 	await chmod(path.join(dir, "curl"), 0o755);
 	const script = `sleep() { echo SLEEP; exit 0; }\n${code}\necho DONE\n`;
 	const env = { PATH: `${dir}:${process.env.PATH}`, ACME_PROFILE: "missing", ACME_SERVER: "https://ca.lan/dir" };
 	const fromEnv = await run("sh", ["-c", script], { env: { ...env, acme_server_stored: "false" } });
 	assert.match(fromEnv.stdout, SLEPT);
+	await rm(reads);
 	const stored = await run("sh", ["-c", script], { env: { ...env, acme_server_stored: "true" } });
 	assert.doesNotMatch(stored.stdout, SLEPT);
 	assert.match(stored.stdout, FINISHED);
+	await assert.rejects(readFile(reads), { code: "ENOENT" });
+	await rm(dir, { recursive: true, force: true });
 });

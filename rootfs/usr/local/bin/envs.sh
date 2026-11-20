@@ -484,12 +484,12 @@ if ! echo "$CUSTOM_OCSP_STAPLING" | grep -q "^true$\|^false$"; then
 fi
 
 # acme-profile-check begin
-# a profile the CA does not list stops the start only when the env chose both; a CA saved in Settings never stops it
-if [ "$ACME_PROFILE" != "none" ] && [ "$(curl -sSL --max-time 10 "$ACME_SERVER" | jq --arg p "$ACME_PROFILE" '.meta.profiles[$p]')" = "null" ]; then
+# only a CA from the env (ACME_SERVER) or the default is read here, and a profile it does not list stops the start. A
+# CA saved in Settings is not read at the start: it was typed in the UI, so only the backend reads it, through the
+# outbound guard (the profile is checked there when it is saved).
+if [ "$acme_server_stored" != true ] && [ "$ACME_PROFILE" != "none" ] && [ "$(curl -sSL --max-time 10 "$ACME_SERVER" | jq --arg p "$ACME_PROFILE" '.meta.profiles[$p]')" = "null" ]; then
     if [ "$(curl -sSL --max-time 10 "$ACME_SERVER" | jq -r ".newNonce")" = "null" ]; then
         echo "Cannot check if the ACME_PROFILE is supported by the ACME_SERVER since the ACME_SERVER is down."
-    elif [ "$acme_server_stored" = true ]; then
-        echo "The ACME_PROFILE seems to be not supported by the ACME server saved in Settings, Certificates."
     else
         echo "The ACME_PROFILE seems to be not supported by the ACME_SERVER."
         sleep inf
