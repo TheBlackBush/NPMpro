@@ -24,8 +24,8 @@
 						"server": {
 							"type": "string",
 							"maxLength": 255,
-							"pattern": "^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~/-]*)?$",
-							"description": "The CA's ACME directory URL, default the instance CA",
+							"pattern": "^https?://\\S+$",
+							"description": "The CA's ACME directory URL, default the instance CA (whose ACME_SERVER may also be an http URL)",
 							"example": "https://acme-v02.api.letsencrypt.org/directory"
 						}
 					}

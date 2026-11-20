@@ -34,7 +34,7 @@ beforeEach(async () => {
 	internalCertificate.intervalProcessing = false;
 });
 
-it("a renewal run renews, reloads, reads each expiry again and lets the next run start", async () => {
+it("a renewal run renews each certificate on its own, reloads, reads each expiry again and lets the next run start", async () => {
 	const certificate = await requested("renew.example.com");
 	await api.db("certificate").where({ id: certificate.id }).update({ expires_on: "2000-01-01 00:00:00" });
 	await api.outside.clearCalls();
@@ -42,7 +42,7 @@ it("a renewal run renews, reloads, reads each expiry again and lets the next run
 	await internalCertificate.processExpiringHosts();
 	const renews = (await certbotCalls()).filter((line) => line.includes(" renew "));
 	assert.equal(renews.length, 1);
-	assert.ok(renews[0].endsWith(" renew --quiet"));
+	assert.ok(renews[0].endsWith(` renew --cert-name npm-${certificate.id} --quiet`));
 	assert.equal(renews[0].includes("--server"), false);
 	assert.equal(api.outside.control.reloads, reloads + 1);
 	const row = await api.db("certificate").where({ id: certificate.id }).first();
@@ -58,10 +58,13 @@ it("a conf naming a missing account on a CA with a registered account is rewritt
 	await api.outside.clearCalls();
 	await internalCertificate.processExpiringHosts();
 	assert.match(await readFile(conf, "utf8"), new RegExp(`^account = ${account}$`, "mu"));
-	assert.equal((await normalizedCalls(api)).filter((line) => line.includes(" renew ")).length, 1);
+	const renews = (await normalizedCalls(api)).filter((line) => line.includes(" renew "));
+	assert.ok(
+		renews.includes(`certbot --config /run/npmpro/certbot.ini renew --cert-name npm-${certificate.id} --quiet`),
+	);
 });
 
-it("a renewal run still renews when the renewal confs cannot be listed", async () => {
+it("a renewal run still renews everything at once when the renewal confs cannot be listed", async () => {
 	const dir = path.join(api.root, "data/tls/certbot/renewal");
 	await chmod(dir, 0o000);
 	await api.outside.clearCalls();
@@ -72,6 +75,7 @@ it("a renewal run still renews when the renewal confs cannot be listed", async (
 	}
 	const renews = (await certbotCalls()).filter((line) => line.includes(" renew "));
 	assert.equal(renews.length, 1);
+	assert.ok(renews[0].endsWith(" renew --quiet"));
 	assert.equal(internalCertificate.intervalProcessing, false);
 });
 
@@ -86,8 +90,9 @@ it("a failed renewal run still reloads and frees the flag", async () => {
 it("a certificate without files does not stop the renewal of the others", async () => {
 	const missing = await requested("files-gone.example.com");
 	await api.db("certificate").where({ id: missing.id }).update({ expires_on: "2000-01-01 00:00:00" });
-	// the fake certbot "renew" without --cert-name exits at once and does not recreate the live folder
+	// without its renewal conf the run does not renew it, so the live folder stays gone
 	await rm(path.join(api.root, `data/tls/certbot/live/npm-${missing.id}`), { recursive: true, force: true });
+	await rm(path.join(api.root, `data/tls/certbot/renewal/npm-${missing.id}.conf`), { force: true });
 	await internalCertificate.processExpiringHosts();
 	const row = await api.db("certificate").where({ id: missing.id }).first();
 	assert.equal(String(row.expires_on).slice(0, 4), "2000");

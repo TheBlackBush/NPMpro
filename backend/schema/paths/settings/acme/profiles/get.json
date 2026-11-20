@@ -21,6 +21,15 @@
 				"type": "string",
 				"maxLength": 255
 			}
+		},
+		{
+			"in": "query",
+			"name": "fresh",
+			"description": "Read the CA's directory now instead of the five minute cache",
+			"schema": {
+				"type": "boolean",
+				"default": false
+			}
 		}
 	],
 	"responses": {
@@ -74,7 +83,7 @@
 							},
 							"profiles": {
 								"type": "array",
-								"description": "The profiles the CA lists (cached for five minutes)",
+								"description": "The profiles the CA lists (cached for five minutes unless fresh is set)",
 								"items": {
 									"type": "object",
 									"additionalProperties": false,

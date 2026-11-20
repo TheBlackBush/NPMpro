@@ -9,13 +9,18 @@ const LINE_BREAK = /\r?\n/u;
 const INDENTED = /^\s/u;
 const SPACES = /\s+/gu;
 const LEAD_IN = /^Unable to register an account with ACME server\.\s+(?=\S)/u;
+// a Python warning: "<file>.py:<line>: <Category>Warning: <text>" (InsecureRequestWarning, a DeprecationWarning after a
+// dependency update, ...), followed by indented lines
+const PYTHON_WARNING = /^\S+\.py:\d+: \w*Warning:/u;
 const WARNING_MARKS = ["InsecureRequestWarning", "warnings.warn"];
+
+const isWarning = (line) => PYTHON_WARNING.test(line) || WARNING_MARKS.some((mark) => line.includes(mark));
 
 const isNoise = (line) =>
 	NOISE_LINES.some((start) => line.startsWith(start)) ||
 	line.includes("See the logfile") ||
 	line.includes("See the logfiles") ||
-	WARNING_MARKS.some((mark) => line.includes(mark));
+	isWarning(line);
 
 const dropMarkers = (line) => {
 	let text = line;
@@ -44,7 +49,7 @@ const cleanCertbotMessage = (output, { keepLines = false, max = MAX_CLEAN } = {}
 	let inWarning = false;
 	for (const raw of String(output ?? "").split(LINE_BREAK)) {
 		if (isNoise(raw)) {
-			inWarning = WARNING_MARKS.some((mark) => raw.includes(mark));
+			inWarning = isWarning(raw);
 			continue;
 		}
 		if (inWarning && INDENTED.test(raw)) continue;

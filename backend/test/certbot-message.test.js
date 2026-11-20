@@ -125,3 +125,23 @@ it("keeps the lines of a two-domain failed authentication and its hint for a cer
 	assert.ok(!noise(out));
 	assert.equal(cleanCertbotMessage("x".repeat(5000), { keepLines: true, max: REQUEST_MAX }).length, REQUEST_MAX);
 });
+
+it("drops any Python warning block, not only InsecureRequestWarning", () => {
+	const output = [
+		"/opt/certbot/lib/python3.12/site-packages/josepy/util.py:12: CryptographyDeprecationWarning: TripleDES has been moved",
+		"  from cryptography.hazmat.primitives.ciphers.algorithms import TripleDES",
+		"/opt/certbot/lib/python3.12/site-packages/acme/client.py:40: DeprecationWarning: a deprecated call",
+		"  return thing()",
+		"/x/y.py:3: UserWarning: something else",
+		"Error returned by the ACME server: The CA said no",
+	].join("\n");
+	assert.equal(cleanCertbotMessage(output), "The CA said no");
+	assert.equal(cleanCertbotMessage(output, { keepLines: true }), "The CA said no");
+});
+
+it("keeps a line that only mentions a warning in the CA's sentence", () => {
+	assert.equal(
+		cleanCertbotMessage("Error returned by the ACME server: Warning: the rate limit is near"),
+		"Warning: the rate limit is near",
+	);
+});

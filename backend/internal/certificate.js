@@ -4,6 +4,7 @@ import { pipeline } from "node:stream/promises";
 import { ZipArchive } from "archiver";
 import dayjs from "dayjs";
 import { assertProviderForNew, runCertbot } from "../lib/certbot.js";
+import { listRenewalConfs } from "../lib/certbot-account.js";
 import { CERTBOT_INI } from "../lib/certbot-ini.js";
 import { assertCertificateUse, customCertPath, liveCertPath, mtlsCertFile } from "../lib/certificate-files.js";
 import { maintenance } from "../lib/database/maintenance.js";
@@ -22,7 +23,7 @@ import proxyHostModel from "../models/proxy_host.js";
 import redirectionHostModel from "../models/redirection_host.js";
 import streamModel from "../models/stream.js";
 import { getValidationSchema } from "../schema/index.js";
-import { prepareRenewals } from "./acme-account.js";
+import { withRenewalLock } from "./acme-account.js";
 import internalAuditLog from "./audit-log.js";
 import certificateAcme from "./certificate-acme.js";
 import certificateCustom, { ALLOWED_SSL_FILES } from "./certificate-custom.js";
@@ -41,6 +42,46 @@ const getNiceName = (domainNames) => {
 		shown.push(domain);
 	}
 	return [...shown, "..."].join(", ");
+};
+
+/** certbot renews what is due: one certificate (its lineage name), or all when name is null; a failure is logged */
+const renewIfDue = async (name) => {
+	try {
+		const result = await runCertbot([
+			"--config",
+			CERTBOT_INI,
+			"renew",
+			...(name ? ["--cert-name", name] : []),
+			"--quiet",
+		]);
+		if (result) logger.info(`Renew Result: ${result}`);
+	} catch (err) {
+		logger.warn(`Certbot completed with errors${name ? ` for ${name}` : ""}: ${err}`);
+	}
+};
+
+/**
+ * The timer's renewal: each certificate on its own, under its CA's lock (withRenewalLock), so a Replace account of
+ * that CA never runs while certbot may write the certificate's renewal conf back. When the confs cannot be listed,
+ * certbot renews everything at once as before.
+ */
+const renewDue = async () => {
+	let confs;
+	try {
+		confs = await listRenewalConfs();
+	} catch (err) {
+		logger.warn(`The renewal confs could not be listed, renewing without the account checks: ${err}`);
+		await renewIfDue(null);
+		return;
+	}
+	for (const conf of confs) {
+		const name = `npm-${conf.certificateId}`;
+		try {
+			await withRenewalLock(conf.certificateId, () => renewIfDue(name));
+		} catch (err) {
+			logger.warn(`Could not renew ${name}: ${err}`);
+		}
+	}
 };
 
 // the startup apply sets the runtime setting (restartTimer) before initTimer runs; env (envs.sh default 3) until then
@@ -96,18 +137,7 @@ const internalCertificate = {
 		logger.info("Renewing Certbot TLS certs close to expiry...");
 
 		try {
-			try {
-				await prepareRenewals(null);
-			} catch (err) {
-				logger.warn(`The renewal confs could not be prepared: ${err}`);
-			}
-			try {
-				const result = await runCertbot(["--config", CERTBOT_INI, "renew", "--quiet"]);
-
-				if (result) logger.info(`Renew Result: ${result}`);
-			} catch (err) {
-				logger.warn(`Certbot completed with errors: ${err}`);
-			}
+			await renewDue();
 
 			try {
 				await internalNginx.reload();

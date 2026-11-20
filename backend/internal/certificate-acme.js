@@ -15,7 +15,7 @@ import { rooted } from "../lib/paths.js";
 import { getRuntimeConfig } from "../lib/runtime-config.js";
 import { ssl as logger } from "../logger.js";
 import pjson from "../package.json" with { type: "json" };
-import { ensureAccountLocked, instanceServer, prepareRenewals, withAccountLock } from "./acme-account.js";
+import { ensureAccountLocked, instanceServer, withAccountLock, withRenewalLock } from "./acme-account.js";
 import internalDnsCredential from "./dns-credential.js";
 
 const renewalConfOf = (id) => rooted(`/data/tls/certbot/renewal/npm-${id}.conf`);
@@ -47,7 +47,8 @@ const runCertbotCleaned = async (args) => {
 
 /**
  * The CA of a request (the certificate's, else the instance CA), its account (registered lazily) and the options the
- * request passes for that CA (rule 6)
+ * request passes for that CA (rule 6). certbot gets the spelling of the account's folder (ensureAccountLocked), so it
+ * finds the account and the renewal conf it writes names that spelling too.
  *
  * @param   {string}  server  the request's CA
  * @returns {Promise<{server: string, args: string[]}>}
@@ -55,15 +56,15 @@ const runCertbotCleaned = async (args) => {
 const acmeTarget = async (server, access) => {
 	const instance = instanceServer();
 	// the caller holds the CA's lock (withAcmeTarget)
-	const accountId = await ensureAccountLocked(server, { access });
+	const account = await ensureAccountLocked(server, { access });
 	const { values } = await getRuntimeConfig("certificates");
 	return {
-		server,
+		server: account.server,
 		args: [
 			"--server",
-			server,
+			account.server,
 			"--account",
-			accountId,
+			account.accountId,
 			...requestOptionArgs(requestOptionsFor(server, instance, values)),
 		],
 	};
@@ -209,33 +210,39 @@ const certificateAcme = {
 			`Renewing Certbot certificates ${dnsPlugin ? `via ${dnsPlugin.name} ` : ""}for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`,
 		);
 
-		await prepareRenewals([certificate.id], { access, strict: true });
-		const oldCertPath = await realpath(`${liveCertPath(certificate.id)}/cert.pem`);
-		const params = await renewalParamsOf(certificate.id);
+		// under the CA's lock: a Replace account of the CA waits, so the renewal never writes back the old account
+		return await withRenewalLock(
+			certificate.id,
+			async () => {
+				const oldCertPath = await realpath(`${liveCertPath(certificate.id)}/cert.pem`);
+				const params = await renewalParamsOf(certificate.id);
 
-		const renewResult = await runCertbotCleaned([
-			"--config",
-			CERTBOT_INI,
-			"renew",
-			"--cert-name",
-			`npm-${certificate.id}`,
-			"--new-key",
-			"--force-renewal",
-		]);
-		logger.info(renewResult);
+				const renewResult = await runCertbotCleaned([
+					"--config",
+					CERTBOT_INI,
+					"renew",
+					"--cert-name",
+					`npm-${certificate.id}`,
+					"--new-key",
+					"--force-renewal",
+				]);
+				logger.info(renewResult);
 
-		await revokeBestEffort({
-			server: params.get("server"),
-			account: params.get("account"),
-			certPath: oldCertPath,
-			keyPath: path.join(
-				path.dirname(oldCertPath),
-				path.basename(oldCertPath).replace(CERT_FILE, "privkey$<n>.pem"),
-			),
-			reason: "superseded",
-		});
+				await revokeBestEffort({
+					server: params.get("server"),
+					account: params.get("account"),
+					certPath: oldCertPath,
+					keyPath: path.join(
+						path.dirname(oldCertPath),
+						path.basename(oldCertPath).replace(CERT_FILE, "privkey$<n>.pem"),
+					),
+					reason: "superseded",
+				});
 
-		return renewResult;
+				return renewResult;
+			},
+			{ access, strict: true },
+		);
 	},
 
 	revokeCertbot: async (certificate) => {

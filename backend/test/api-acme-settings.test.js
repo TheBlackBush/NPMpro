@@ -440,3 +440,90 @@ it("validates the profiles query with the documented parameters", async () => {
 	const other = await admin.get(`${SETTINGS}/profiles?server=${GOOD}&cache=1`);
 	assert.equal(other.status, 200, other.text);
 });
+
+const UPPER = "https://CA.LAN/dir";
+
+it("loads an old stored CA with an upper-case host in lower case, and stores it so", async () => {
+	const { loadAcmeServer, readAcmeSetting, saveAcmeSetting } = await import("../internal/acme-account.js");
+	await saveAcmeSetting(UPPER);
+	await loadAcmeServer();
+	assert.equal(acmeServer.storedAcmeServer(), CA);
+	assert.equal(await readAcmeSetting(), CA);
+	assert.equal((await admin.get(SETTINGS)).body.server, CA);
+});
+
+it("an old stored CA with an upper-case host gets a request, and certbot gets the row's spelling", async () => {
+	const { saveAcmeSetting } = await import("../internal/acme-account.js");
+	await seedAccount(api, CA, ID);
+	await model.query().insert({ server: CA, state: "registered", account_id: ID });
+	// stored before the host was lower-cased, and not loaded again since
+	await saveAcmeSetting(UPPER);
+	acmeServer.setStoredAcmeServer(UPPER);
+	await api.outside.clearCalls();
+	const made = await admin.post("/nginx/certificates", {
+		provider: "letsencrypt",
+		domain_names: ["old.example.com"],
+	});
+	assert.equal(made.status, 201, made.text);
+	const calls = await normalizedCalls(api);
+	assert.deepEqual(
+		calls.filter((line) => line.includes(" register ")),
+		[],
+	);
+	const certonly = calls.find((line) => line.includes(" certonly "));
+	assert.ok(certonly.includes(`--server ${CA} --account ${ID}`), certonly);
+	await api.db("certificate").where({ id: made.body.id }).delete();
+});
+
+it("a save of the same CA in another letter case registers with the row's spelling", async () => {
+	// a pending row and the stored CA, both from before the host was lower-cased
+	await model.query().insert({ server: UPPER, state: "pending", email: "old@example.com" });
+	acmeServer.setStoredAcmeServer(UPPER);
+	acmeDirectory(api, CA, { persist: false });
+	const res = await admin.put(SETTINGS, { server: CA, email: "ops@example.com" });
+	assert.equal(res.status, 200, res.text);
+	assert.equal(res.body.warning, undefined);
+	assert.deepEqual(
+		(await registeredCalls()).map((line) => line.split(" register ")[1]),
+		[`--server ${UPPER}`],
+	);
+	assert.equal(res.body.account.state, "registered");
+	// the folder has the row's spelling, so the account counts as registered and nothing registers again
+	await api.outside.clearCalls();
+	const { ensureAccount } = await import("../internal/acme-account.js");
+	assert.equal(await ensureAccount(CA), (await account(UPPER)).account_id);
+	assert.deepEqual(await registeredCalls(), []);
+});
+
+it("reads the directory again with fresh, not from the cache (the Connect window's check)", async () => {
+	acmeDirectory(api, GOOD, { persist: false });
+	assert.equal((await admin.get(`${SETTINGS}/profiles?server=${GOOD}`)).body.reachable, true);
+	acmeDirectory(api, GOOD, { status: 503, body: "down", persist: false });
+	assert.equal((await admin.get(`${SETTINGS}/profiles?server=${GOOD}`)).body.reachable, true, "cached");
+	const fresh = await admin.get(`${SETTINGS}/profiles?server=${GOOD}&fresh=true`);
+	assert.equal(fresh.status, 200, fresh.text);
+	assert.equal(fresh.body.reachable, false);
+});
+
+it("names the Change button for a missing EAB pair on Try again, and the Settings card for a request", async () => {
+	const EAB_CA = "https://eab.lan/dir";
+	const eabDirectory = () =>
+		acmeDirectory(api, EAB_CA, {
+			body: { newNonce: "https://eab.lan/n", meta: { externalAccountRequired: true } },
+			persist: false,
+		});
+	api.outside.dns.set("eab.lan", "192.168.1.12");
+	await model.query().insert({ server: EAB_CA, state: "pending" });
+	acmeServer.setStoredAcmeServer(EAB_CA);
+	eabDirectory();
+	const retry = await admin.post(`${SETTINGS}/register`, {});
+	assert.equal(retry.status, 400, retry.text);
+	assert.equal(retry.body.error.message_i18n, "error.acme-set-up");
+	eabDirectory();
+	const made = await admin.post("/nginx/certificates", {
+		provider: "letsencrypt",
+		domain_names: ["eab.example.com"],
+	});
+	assert.equal(made.status, 400, made.text);
+	assert.equal(made.body.error.message_i18n, "error.acme-set-up-request");
+});

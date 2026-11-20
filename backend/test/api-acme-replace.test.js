@@ -312,6 +312,9 @@ it("restores everything when the new account's folder cannot be moved", async ()
 	await writeFile(path.join(accountFolder(NEW), "mine"), "x");
 	const res = await admin.post(REPLACE, BODY);
 	assert.equal(res.status, 400, res.text);
+	// NPMpro's own step failed, not the CA: no "The CA refused", and no local path in the answer
+	assert.equal(res.body.error.message_i18n, "error.acme-replace-local");
+	assert.ok(!res.text.includes(".replace-"), res.text);
 	for (const id of [1, 2]) assert.equal(await readConf(id), confText(OLD, CA));
 	assert.equal((await row()).account_id, OLD);
 	assert.ok(await exists(path.join(accountFolder(NEW), "mine")));
@@ -329,6 +332,7 @@ it("puts the confs back, removes the moved folder and keeps the row when the row
 	try {
 		const res = await admin.post(REPLACE, BODY);
 		assert.equal(res.status, 400, res.text);
+		assert.equal(res.body.error.message_i18n, "error.acme-replace-local");
 	} finally {
 		await api.db.raw("DROP TRIGGER fail_replace");
 	}
@@ -427,5 +431,64 @@ it("a replace waits for a running certonly of the CA", async () => {
 		await rm(path.join(api.root, "fake/hold-certonly"), { force: true });
 		await rm(certbotDir("live/npm-50"), { recursive: true, force: true });
 		await rm(confPath(50), { force: true });
+	}
+});
+
+it("a replace waits for a running renew of the CA, and the renewed conf then names the new account", async () => {
+	const { default: certificateAcme } = await import("../internal/certificate-acme.js");
+	const pair = await makeCertificate(api.root, "renew.example.com");
+	await mkdir(certbotDir("live/npm-1"), { recursive: true });
+	await writeFile(certbotDir("live/npm-1/cert.pem"), await readFile(pair.certificate));
+	await writeFile(path.join(api.root, "fake/hold-renew"), "");
+	try {
+		const renewed = certificateAcme.renewCertbot(
+			{ id: 1, domain_names: ["renew.example.com"], npmpro_dns_challenge: false },
+			null,
+		);
+		const renewedState = settle(renewed);
+		await waitFor(async () => (await calls()).some((line) => line.includes(" renew ")));
+		const replaced = admin.post(REPLACE, BODY);
+		await wait(300);
+		assert.equal(renewedState.done, false);
+		assert.deepEqual(
+			(await calls()).filter((line) => line.includes(" register ")),
+			[],
+			"nothing registers while the renew runs",
+		);
+		await rm(path.join(api.root, "fake/hold-renew"));
+		await renewed;
+		const res = await replaced;
+		assert.equal(res.status, 200, res.text);
+		assert.equal(res.body.replaced.moved, 2);
+		assert.match(await readConf(1), new RegExp(`account = ${NEW}`, "u"));
+	} finally {
+		await rm(path.join(api.root, "fake/hold-renew"), { force: true });
+		await rm(certbotDir("live/npm-1"), { recursive: true, force: true });
+	}
+});
+
+it("a replace waits for the timer's renewal of a certificate of the CA", async () => {
+	const { default: internalCertificate } = await import("../internal/certificate.js");
+	await writeFile(path.join(api.root, "fake/hold-renew"), "");
+	internalCertificate.intervalProcessing = false;
+	try {
+		const run = internalCertificate.processExpiringHosts();
+		await waitFor(async () => (await calls()).some((line) => line.includes(" renew --cert-name npm-1 ")));
+		const replaced = admin.post(REPLACE, BODY);
+		await wait(300);
+		assert.deepEqual(
+			(await calls()).filter((line) => line.includes(" register ")),
+			[],
+			"nothing registers while the renewal runs",
+		);
+		await rm(path.join(api.root, "fake/hold-renew"));
+		await run;
+		const res = await replaced;
+		assert.equal(res.status, 200, res.text);
+		for (const id of [1, 2]) assert.match(await readConf(id), new RegExp(`account = ${NEW}`, "u"));
+	} finally {
+		await rm(path.join(api.root, "fake/hold-renew"), { force: true });
+		for (const id of [1, 2, 3]) await rm(certbotDir(`live/npm-${id}`), { recursive: true, force: true });
+		internalCertificate.intervalProcessing = false;
 	}
 });

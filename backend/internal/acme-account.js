@@ -24,7 +24,9 @@ import {
 	CERTBOT_DIR,
 	listAccountIds,
 	listRenewalConfs,
+	readRenewalConf,
 	registerArgs,
+	renewalConfPath,
 	serverFolders,
 	serverOfFolder,
 	setRenewalParams,
@@ -95,7 +97,16 @@ const saveAcmeSetting = async (server) => {
 			.insert({ id: "acme", name: "ACME", description: "The instance CA", value: "acme", meta });
 };
 
-const loadAcmeServer = async () => setStoredAcmeServer(await readAcmeSetting());
+/**
+ * Loads the stored instance CA (the start, a restore). A value stored before the scheme and host were lower-cased
+ * (normalizeServer) is stored again in that spelling, so the setting, the rows and certbot's folders converge.
+ */
+const loadAcmeServer = async () => {
+	const value = await readAcmeSetting();
+	const normal = normalizeServer(value);
+	if (normal !== value) await saveAcmeSetting(normal);
+	setStoredAcmeServer(normal);
+};
 
 /** @returns {string}  the instance CA (a user-set ACME_SERVER, the stored one, Let's Encrypt) */
 const instanceServer = () => resolveAcmeServer(process.env);
@@ -228,6 +239,39 @@ const refused = (err, secrets) => {
 	return new errs.ValidationError(message, "error.acme-refused", { values: { message } });
 };
 
+/** A CA needs an EAB pair and none is known: the Settings window names its Change button, a request the Settings card */
+const eabMissing = (server, inSettings) =>
+	inSettings
+		? new errs.ValidationError(
+				`${server} needs an EAB key ID and HMAC key: open Change and enter them`,
+				"error.acme-set-up",
+				{ values: { server } },
+			)
+		: new errs.ValidationError(
+				`${server} needs an EAB key ID and HMAC key: an administrator enters them in Settings, Certificates & TLS, ACME account`,
+				"error.acme-set-up-request",
+				{ values: { server } },
+			);
+
+/** certbot ended well but left no new account folder: shown as a refusal, like any other certbot failure */
+const noAccountRegistered = () =>
+	new errs.ValidationError("certbot registered no account", "error.acme-refused", {
+		values: { message: "certbot registered no account" },
+	});
+
+/**
+ * A failure of NPMpro's own steps of a Replace account (a folder move, a conf write, the row update), after which
+ * everything was put back: not the CA's refusal. The cause is logged, it may name local paths.
+ */
+const notPutInPlace = (err) => {
+	logger.error(`Replace account: the new account could not be put in place: ${err.message}`);
+	return new errs.ValidationError(
+		"The new account could not be put in place: nothing was changed",
+		"error.acme-replace-local",
+		{ cause: err },
+	);
+};
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const busyError = () =>
@@ -285,9 +329,15 @@ const runAccountCertbot = (args, secrets, retry = busyRetry) =>
  * @param   {{email: string|null, eab: {kid: string, hmac: string}|null}}  values
  * @param   {Object}  [options]
  * @param   {boolean} [options.blockedIsUnreachable]  a stored CA the guard now blocks counts as not reachable (rule 2)
+ * @param   {boolean} [options.inSettings]  an administrator's action in Settings (else a certificate request or renewal):
+ *          a missing EAB pair names the place to enter it accordingly
  * @returns {Promise<{outcome: "registered", accountId: string}|{outcome: "unreachable", message: string}>}
  */
-const attemptRegistration = async (server, { email, eab }, { blockedIsUnreachable = false } = {}) => {
+const attemptRegistration = async (
+	server,
+	{ email, eab },
+	{ blockedIsUnreachable = false, inSettings = false } = {},
+) => {
 	let directory;
 	try {
 		directory = await readDirectory(server, { fresh: true });
@@ -312,13 +362,7 @@ const attemptRegistration = async (server, { email, eab }, { blockedIsUnreachabl
 	let pair = eab;
 	if (directory.external_account_required && !pair) {
 		if (isZeroSsl(server) && email) pair = await zeroSslEab(email);
-		else {
-			throw new errs.ValidationError(
-				`${server} needs an EAB key ID and HMAC key: open Change and enter them`,
-				"error.acme-set-up",
-				{ values: { server } },
-			);
-		}
+		else throw eabMissing(server, inSettings);
 	}
 	return inRunFolder(async (run) => {
 		const config = await writeRunConfig(run, { email: email || undefined, eab: pair || undefined });
@@ -330,9 +374,7 @@ const attemptRegistration = async (server, { email, eab }, { blockedIsUnreachabl
 		]);
 		const created = (await listAccountIds(server)).find((entry) => !before.has(entry.id));
 		if (!created) {
-			throw new errs.ValidationError("certbot registered no account", "error.acme-refused", {
-				values: { message: "certbot registered no account" },
-			});
+			throw noAccountRegistered();
 		}
 		return { outcome: "registered", accountId: created.id };
 	});
@@ -401,22 +443,30 @@ const adoptUsableAccount = async (server, row) => {
 };
 
 /**
- * The account id of server, registering it first when it has none (or its folder is gone). A lazy registration's
+ * The account of server, registering it first when it has none (or its folder is gone). A lazy registration's
  * outcome is stored: pending (not reachable) or failed (refused), both refuse the caller's request. While certbot is
  * busy with another run nothing is stored.
+ *
+ * certbot finds an account by the spelling of the URL its folder was made with (accounts/<host><path>, case kept),
+ * while NPMpro matches the CA in any spelling (serverKey). So the answer carries the row's spelling, the one of the
+ * folder, and every certbot run of the account names that one; a row without a folder registers with it too.
  *
  * @param   {string}  server
  * @param   {Object}  [options]
  * @param   {Access}  [options.access]  whose request caused it; none: the system (the renewal timer)
- * @returns {Promise<string>}
+ * @param   {boolean} [options.inSettings]  Register now or Try again in Settings (else a certificate request or renewal)
+ * @returns {Promise<{accountId: string, server: string}>}  the account id and the spelling certbot is given
  */
-const ensureAccountLocked = async (server, { access = null } = {}) => {
+const ensureAccountLocked = async (server, { access = null, inSettings = false } = {}) => {
 	const row = await adoptUsableAccount(server, await accountRow(server));
-	if (row?.state === "registered" && (await accountExists(row.server, row.account_id))) return row.account_id;
+	const spelling = row?.server ?? server;
+	if (row?.state === "registered" && (await accountExists(row.server, row.account_id))) {
+		return { accountId: row.account_id, server: spelling };
+	}
 	const values = registrationValues(server, row);
 	let result;
 	try {
-		result = await attemptRegistration(server, values);
+		result = await attemptRegistration(spelling, values, { inSettings });
 	} catch (err) {
 		if (isBusy(err)) throw err;
 		const saved = await upsertRow(server, row, { state: "failed", error: err.message });
@@ -427,41 +477,65 @@ const ensureAccountLocked = async (server, { access = null } = {}) => {
 		await upsertRow(server, row, { state: "pending", error: result.message });
 		throw new errs.ValidationError(result.message, "error.acme-unreachable", { values: { server } });
 	}
-	return (await storeRegistered(server, row, { email: values.email, accountId: result.accountId, access }))
-		.account_id;
+	const saved = await storeRegistered(spelling, row, { email: values.email, accountId: result.accountId, access });
+	return { accountId: saved.account_id, server: saved.server };
 };
 
-/** ensureAccount for a caller that already holds the CA's lock (the lock is not re-entrant) */
-const ensureAccount = (server, options) => withAccountLock(server, () => ensureAccountLocked(server, options));
+/**
+ * ensureAccountLocked under the CA's lock (a caller that already holds it calls ensureAccountLocked: the lock is not
+ * re-entrant)
+ *
+ * @returns {Promise<string>}  the account id
+ */
+const ensureAccount = async (server, options) =>
+	(await withAccountLock(server, () => ensureAccountLocked(server, options))).accountId;
 
 /**
- * Before certbot renews: each renewal conf (all, or those of ids) names an account that exists, its CA's registered
- * one (registered lazily, D4). A conf whose CA has no usable account is reported and left as it is: certbot then fails
- * that certificate only.
+ * Before certbot renews a certificate: its renewal conf names an account that exists, its CA's registered one
+ * (registered lazily, D4), in the spelling of the account's folder. The caller holds the CA's lock.
  *
- * @param   {number[]|null}  ids
- * @param   {Object}         [options]
- * @param   {Access}         [options.access]
- * @param   {boolean}        [options.strict]  throw the first problem (a manual renew)
- * @returns {Promise<{certificateId: number, server: string, message: string}[]>}
+ * @param {{path: string, text: string, server: ?string, account: ?string}}  conf
+ * @param {Object}  [options]
+ * @param {Access}  [options.access]
  */
-const prepareRenewals = async (ids, { access = null, strict = false } = {}) => {
-	const problems = [];
-	for (const conf of await listRenewalConfs()) {
-		if (ids && !ids.includes(conf.certificateId)) continue;
-		if (!conf.server || (await accountExists(conf.server, conf.account))) continue;
-		try {
-			const accountId = await ensureAccount(conf.server, { access });
-			await writeFileAtomic(conf.path, setRenewalParams(conf.text, { account: accountId }));
-		} catch (err) {
-			if (strict) throw err;
-			problems.push({ certificateId: conf.certificateId, server: conf.server, message: err.message });
-			logger.warn(
-				`Certificate #${conf.certificateId} has no usable ACME account on ${conf.server}: ${err.message}`,
-			);
+const prepareRenewalLocked = async (conf, { access = null } = {}) => {
+	if (!conf.server || (await accountExists(conf.server, conf.account))) return;
+	const { accountId, server } = await ensureAccountLocked(conf.server, { access });
+	await writeFileAtomic(conf.path, setRenewalParams(conf.text, { account: accountId, server }));
+};
+
+/**
+ * Runs fn, a certbot renewal of one certificate, under the lock of the certificate's CA, so a Replace account of that
+ * CA waits for it (and it for a Replace account): the renewal then never writes back a conf naming the old account.
+ * The conf is made to name a usable account first (prepareRenewalLocked); when its CA has none that is logged and fn
+ * still runs, so certbot fails that certificate only, unless strict (a manual renew) throws it.
+ *
+ * @param   {number}    certificateId
+ * @param   {Function}  fn  () => result
+ * @param   {Object}    [options]
+ * @param   {Access}    [options.access]
+ * @param   {boolean}   [options.strict]
+ * @returns {Promise<*>}  fn's result
+ */
+const withRenewalLock = async (certificateId, fn, { access = null, strict = false } = {}) => {
+	const file = renewalConfPath(certificateId);
+	// a conf without a server renews at certbot's default CA, Let's Encrypt
+	const lockServer = (await readRenewalConf(file))?.server ?? LETSENCRYPT_SERVER;
+	return await withAccountLock(lockServer, async () => {
+		// read again under the lock: a Replace account may have rewritten it meanwhile
+		const conf = await readRenewalConf(file);
+		if (conf) {
+			try {
+				await prepareRenewalLocked(conf, { access });
+			} catch (err) {
+				if (strict) throw err;
+				logger.warn(
+					`Certificate #${certificateId} has no usable ACME account on ${conf.server}: ${err.message}`,
+				);
+			}
 		}
-	}
-	return problems;
+		return await fn();
+	});
 };
 
 /**
@@ -497,7 +571,8 @@ const updateEmailLocked = async (server, email, { access = null, retry = busyRet
 	await inRunFolder(async (run) => {
 		const config = await writeRunConfig(run, { email: email || undefined });
 		await runAccountCertbot(
-			updateEmailArgs(config, server, row.account_id, { withEmail: Boolean(email) }),
+			// the spelling of the account's folder (ensureAccountLocked)
+			updateEmailArgs(config, row.server, row.account_id, { withEmail: Boolean(email) }),
 			[email],
 			retry,
 		);
@@ -807,7 +882,11 @@ const saveSettings = async (access, body) => {
 			const values = registrationValues(target, row, { asInstance: true });
 			if (mail.given) values.email = mail.email;
 			if (eab.entered) values.eab = { kid: eab.kid, hmac: eab.hmac };
-			const result = await attemptRegistration(target, values, { blockedIsUnreachable: !serverChanged });
+			// a stored row keeps its spelling: certbot's folder gets that one (ensureAccountLocked)
+			const result = await attemptRegistration(row?.server ?? target, values, {
+				blockedIsUnreachable: !serverChanged,
+				inSettings: true,
+			});
 			if (result.outcome === "unreachable") {
 				warning = "unreachable";
 				await upsertRow(target, row, {
@@ -848,7 +927,7 @@ const registerNow = async (access, { server } = {}) => {
 	}
 	let warning;
 	try {
-		await ensureAccount(target, { access });
+		await ensureAccount(target, { access, inSettings: true });
 	} catch (err) {
 		if (err.message_i18n !== "error.acme-unreachable") throw err;
 		warning = "unreachable";
@@ -859,18 +938,19 @@ const registerNow = async (access, { server } = {}) => {
 /**
  * GET /settings/acme/profiles: the CA's profiles (5 minute cache), for the Settings profile list (D9)
  *
- * @param   {Access}  access
- * @param   {Object}  [options]
- * @param   {string}  [options.server]  default the instance CA
+ * @param   {Access}   access
+ * @param   {Object}   [options]
+ * @param   {string}   [options.server]  default the instance CA
+ * @param   {boolean}  [options.fresh]   read the directory now, not from the cache (the Connect window's check)
  * @returns {Promise<Object>}
  */
-const listProfiles = async (access, { server } = {}) => {
+const listProfiles = async (access, { server, fresh = false } = {}) => {
 	access.canAdmin();
 	const target = server === undefined || server === null ? instanceServer() : normalizeServer(server);
 	if (!(isDirectoryUrl(target) || isTrustedServer(target, process.env))) {
 		refuseValue("server", "must be an https ACME directory URL", "error.acme-url");
 	}
-	const result = await readDirectory(target);
+	const result = await readDirectory(target, { fresh: fresh === true });
 	return {
 		reachable: result.reachable,
 		directory: result.directory,
@@ -976,7 +1056,9 @@ const replaceAccount = async (access, body) => {
 		if (email && !(email.length <= MAX_EMAIL && EMAIL.test(email))) {
 			refuseValue("email", "must be an email address", "error.invalid-email");
 		}
-		const eab = await replaceEab(server, body, email);
+		// certbot is given the spelling of the account's folder, whatever spelling the body has (ensureAccountLocked)
+		const spelling = row.server;
+		const eab = await replaceEab(spelling, body, email);
 		const secrets = [email, eab?.kid, eab?.hmac];
 		const oldId = row.account_id;
 		await mkdir(CERTBOT_DIR, { recursive: true });
@@ -990,11 +1072,11 @@ const replaceAccount = async (access, body) => {
 				email: email || undefined,
 				eab: eab || undefined,
 			});
-			await runAccountCertbot(registerArgs(config, server, { withEmail: Boolean(email) }), secrets);
-			const [created] = await listAccountIds(server, { accountsDir: path.join(temp, "config/accounts") });
-			if (!created) throw new Error("certbot registered no account");
+			await runAccountCertbot(registerArgs(config, spelling, { withEmail: Boolean(email) }), secrets);
+			const [created] = await listAccountIds(spelling, { accountsDir: path.join(temp, "config/accounts") });
+			if (!created) throw noAccountRegistered();
 			// 2. its folder moves next to the old one (the real folder may be the one a symlink points to)
-			const target = path.join(await accountsHome(server), created.id);
+			const target = path.join(await accountsHome(spelling), created.id);
 			await rename(created.dir, target);
 			moved = target;
 			// 3. the CA's confs name it, then the row follows
@@ -1018,7 +1100,7 @@ const replaceAccount = async (access, body) => {
 			moved = null;
 		} catch (err) {
 			if (moved) await rm(moved, { recursive: true, force: true });
-			const failure = err instanceof errs.ValidationError ? err : refused(err, secrets);
+			const failure = err instanceof errs.ValidationError ? err : notPutInPlace(err);
 			if (!isBusy(failure)) {
 				await audit(access, "replace-failed", row, { error: failure.message }).catch((auditErr) => {
 					logger.warn(`Could not record the failed Replace account: ${auditErr.message}`);
@@ -1033,7 +1115,7 @@ const replaceAccount = async (access, body) => {
 		let deactivationError;
 		if (body.deactivate_old === true) {
 			try {
-				await runAccountCertbot(unregisterArgs(CERTBOT_INI, server, oldId), []);
+				await runAccountCertbot(unregisterArgs(CERTBOT_INI, spelling, oldId), []);
 				oldState = "deactivated";
 			} catch (err) {
 				oldState = "deactivation-failed";
@@ -1076,7 +1158,7 @@ export {
 	loadAcmeServer,
 	lockedKeys,
 	open,
-	prepareRenewals,
+	prepareRenewalLocked,
 	readAcmeSetting,
 	readDirectory,
 	refused,
@@ -1101,6 +1183,7 @@ export {
 	updateEmailLocked,
 	upsertRow,
 	withAccountLock,
+	withRenewalLock,
 	writeRunConfig,
 };
 
