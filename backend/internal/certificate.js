@@ -3,6 +3,7 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { ZipArchive } from "archiver";
 import dayjs from "dayjs";
+import { sameServer } from "../lib/acme-server.js";
 import { assertProviderForNew, runCertbot } from "../lib/certbot.js";
 import { CERTBOT_INI } from "../lib/certbot-ini.js";
 import { assertCertificateUse, customCertPath, liveCertPath, mtlsCertFile } from "../lib/certificate-files.js";
@@ -22,7 +23,7 @@ import proxyHostModel from "../models/proxy_host.js";
 import redirectionHostModel from "../models/redirection_host.js";
 import streamModel from "../models/stream.js";
 import { getValidationSchema } from "../schema/index.js";
-import { withRenewalLocks } from "./acme-account.js";
+import { allowedAcmeServers, instanceServer, withRenewalLocks } from "./acme-account.js";
 import internalAuditLog from "./audit-log.js";
 import certificateAcme from "./certificate-acme.js";
 import certificateCustom, { ALLOWED_SSL_FILES } from "./certificate-custom.js";
@@ -172,6 +173,18 @@ const internalCertificate = {
 
 		if (data.provider === "letsencrypt") {
 			data.nice_name = getNiceName(data.domain_names);
+			// the row always names the CA that issues it, in the spelling of the allowed CA
+			const wanted = data.npmpro_acme_server ?? instanceServer();
+			const allowed = (await allowedAcmeServers()).find((server) => sameServer(server, wanted));
+			if (!allowed) {
+				throw new errs.ValidationError(
+					"npmpro_acme_server: an administrator sets this CA up in Settings first",
+					"error.acme-ca-not-allowed",
+				);
+			}
+			data.npmpro_acme_server = allowed;
+		} else {
+			delete data.npmpro_acme_server;
 		}
 
 		const certificate = await certificateModel.query().insertAndFetch(data);

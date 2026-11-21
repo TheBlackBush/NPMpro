@@ -122,83 +122,101 @@ const revokeBestEffort = async ({ server, account, certName, certPath, keyPath, 
 	}
 };
 
+/** the certonly of a request through the HTTP challenge, run under the CA's lock by runCertonly */
+const certonlyWebroot = (certificate, target, extra) => {
+	logger.info(`Requesting Certbot certificates for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`);
+
+	certificate.domain_names = certificate.domain_names.map((v) => v.replace(/^\[|\]$/gu, ""));
+	const { ips = [], domains = [] } = Object.groupBy(certificate.domain_names, (entry) =>
+		net.isIP(entry) === 0 ? "domains" : "ips",
+	);
+
+	return runCertbotCleaned([
+		"--config",
+		CERTBOT_INI,
+		"certonly",
+		...target.args,
+		"--cert-name",
+		`npm-${certificate.id}`,
+		...(domains.length > 0 ? ["--domains", domains.map(domainToASCII).join(",")] : []),
+		...ips.flatMap((ip) => ["--ip-address", ip]),
+		...(certificate.npmpro_reuse_key ? ["--reuse-key"] : ["--no-reuse-key"]),
+		"--authenticator",
+		"webroot",
+		...extra,
+	]);
+};
+
+/** the certonly of a request through the DNS challenge, run under the CA's lock by runCertonly */
+const certonlyDns = async (certificate, dnsPlugin, target, extra) => {
+	await installPlugin(certificate.npmpro_dns_provider);
+
+	logger.info(
+		`Requesting Certbot certificates via ${dnsPlugin.name} for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`,
+	);
+
+	const credentialsLocation = rooted(`/tmp/certbot-credentials/credentials-${certificate.id}`);
+	await internalDnsCredential.writeCertificateFile(certificate);
+
+	try {
+		const result = await runCertbotCleaned([
+			"--config",
+			CERTBOT_INI,
+			"certonly",
+			...target.args,
+			"--cert-name",
+			`npm-${certificate.id}`,
+			"--domains",
+			certificate.domain_names.map(domainToASCII).join(","),
+			...(certificate.npmpro_reuse_key ? ["--reuse-key"] : ["--no-reuse-key"]),
+			"--authenticator",
+			dnsPlugin.full_plugin_name,
+			`--${dnsPlugin.full_plugin_name}-credentials`,
+			credentialsLocation,
+			...(certificate.npmpro_propagation_seconds > 0
+				? [`--${dnsPlugin.full_plugin_name}-propagation-seconds`, certificate.npmpro_propagation_seconds]
+				: []),
+			...extra,
+		]);
+		logger.info(result);
+		return result;
+	} catch (err) {
+		await rm(credentialsLocation, { force: true });
+		throw err;
+	}
+};
+
+/**
+ * The certonly of a certificate at its CA (the row's, else the instance CA), under that CA's lock with its account
+ * ensured: the HTTP or the DNS challenge by the row, extra appended (--force-renewal for a re-issue)
+ *
+ * @param   {Object}    certificate
+ * @param   {Access}    access
+ * @param   {Object}    [options]
+ * @param   {string[]}  [options.extra]  more certbot arguments
+ * @returns {Promise<string>}  certbot's output
+ */
+const runCertonly = async (certificate, access, { extra = [] } = {}) => {
+	if (!certificate.npmpro_dns_challenge) {
+		return await withAcmeTarget(certificate, access, (target) => certonlyWebroot(certificate, target, extra));
+	}
+	const dnsPlugin = dnsPlugins[certificate.npmpro_dns_provider];
+	if (!dnsPlugin) {
+		throw new errs.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
+	}
+	// the account first (a failed check installs nothing), under the CA's lock for the whole run
+	return await withAcmeTarget(certificate, access, (target) => certonlyDns(certificate, dnsPlugin, target, extra));
+};
+
 const certificateAcme = {
 	/** Requests a certificate through the HTTP challenge */
 	requestCertbot: async (certificate, access) => {
-		logger.info(
-			`Requesting Certbot certificates for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`,
-		);
-
-		certificate.domain_names = certificate.domain_names.map((v) => v.replace(/^\[|\]$/gu, ""));
-		const { ips = [], domains = [] } = Object.groupBy(certificate.domain_names, (entry) =>
-			net.isIP(entry) === 0 ? "domains" : "ips",
-		);
-
-		const result = await withAcmeTarget(certificate, access, (target) =>
-			runCertbotCleaned([
-				"--config",
-				CERTBOT_INI,
-				"certonly",
-				...target.args,
-				"--cert-name",
-				`npm-${certificate.id}`,
-				...(domains.length > 0 ? ["--domains", domains.map(domainToASCII).join(",")] : []),
-				...ips.flatMap((ip) => ["--ip-address", ip]),
-				...(certificate.npmpro_reuse_key ? ["--reuse-key"] : ["--no-reuse-key"]),
-				"--authenticator",
-				"webroot",
-			]),
-		);
+		const result = await runCertonly(certificate, access);
 		logger.success(result);
 		return result;
 	},
 
-	requestCertbotWithDnsChallenge: async (certificate, access) => {
-		const dnsPlugin = dnsPlugins[certificate.npmpro_dns_provider];
-		if (!dnsPlugin) {
-			throw new errs.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
-		}
-		// the account first (a failed check installs nothing), under the CA's lock for the whole run
-		return await withAcmeTarget(certificate, access, async (target) => {
-			await installPlugin(certificate.npmpro_dns_provider);
-
-			logger.info(
-				`Requesting Certbot certificates via ${dnsPlugin.name} for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`,
-			);
-
-			const credentialsLocation = rooted(`/tmp/certbot-credentials/credentials-${certificate.id}`);
-			await internalDnsCredential.writeCertificateFile(certificate);
-
-			try {
-				const result = await runCertbotCleaned([
-					"--config",
-					CERTBOT_INI,
-					"certonly",
-					...target.args,
-					"--cert-name",
-					`npm-${certificate.id}`,
-					"--domains",
-					certificate.domain_names.map(domainToASCII).join(","),
-					...(certificate.npmpro_reuse_key ? ["--reuse-key"] : ["--no-reuse-key"]),
-					"--authenticator",
-					dnsPlugin.full_plugin_name,
-					`--${dnsPlugin.full_plugin_name}-credentials`,
-					credentialsLocation,
-					...(certificate.npmpro_propagation_seconds > 0
-						? [
-								`--${dnsPlugin.full_plugin_name}-propagation-seconds`,
-								certificate.npmpro_propagation_seconds,
-							]
-						: []),
-				]);
-				logger.info(result);
-				return result;
-			} catch (err) {
-				await rm(credentialsLocation, { force: true });
-				throw err;
-			}
-		});
-	},
+	requestCertbotWithDnsChallenge: (certificate, access) => runCertonly(certificate, access),
 
 	renewCertbot: async (certificate, access) => {
 		const dnsPlugin = certificate.npmpro_dns_challenge ? dnsPlugins[certificate.npmpro_dns_provider] : null;
@@ -369,5 +387,5 @@ const certificateAcme = {
 	},
 };
 
-export { revokeBestEffort, withAcmeTarget };
+export { revokeBestEffort, runCertonly, withAcmeTarget };
 export default certificateAcme;

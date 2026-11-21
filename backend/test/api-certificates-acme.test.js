@@ -670,3 +670,101 @@ it("the HTTP challenge test needs certificates:manage (it writes into the public
 	const answer = await viewer.post("/nginx/certificates/test-http", { domains: ["view.example.com"] });
 	assert.equal(answer.status, 403, answer.text);
 });
+
+const SECOND = "https://second.lan/dir";
+const SECOND_ACCOUNT = "c".repeat(32);
+const setUpSecond = async () => {
+	const model = (await import("../models/acme_account.js")).default;
+	await model.query().delete();
+	await seedAccount(api, SECOND, SECOND_ACCOUNT);
+	return await model.query().insertAndFetch({ server: SECOND, account_id: SECOND_ACCOUNT, state: "registered" });
+};
+
+it("requests a certificate from a set-up second CA: its server and account, none of the instance options, the row keeps it", async () => {
+	await setUpSecond();
+	const created = await requested(["a.example.com"], { npmpro_acme_server: "https://Second.LAN/dir" });
+	assert.deepEqual(await certbotCalls(), [
+		`certbot --config ${INI} certonly --server ${SECOND} --account ID --cert-name npm-${created.id} --domains a.example.com --no-reuse-key --authenticator webroot`,
+	]);
+	assert.equal(created.npmpro_acme_server, SECOND);
+	assert.equal((await row(created.id)).npmpro_acme_server, SECOND);
+});
+
+it("a request without a CA stores the instance CA", async () => {
+	const created = await requested(["a.example.com"]);
+	assert.equal((await row(created.id)).npmpro_acme_server, ACME);
+	const again = await requested(["a.example.com"], { npmpro_acme_server: "https://ACME.test/directory" });
+	assert.equal((await row(again.id)).npmpro_acme_server, ACME);
+});
+
+it("a CA outside the list is refused before any certbot call, for an administrator and a manager", async () => {
+	await setUpSecond();
+	const manager = await api.limited({
+		visibility: "all",
+		certificates: "manage",
+		proxy_hosts: "hidden",
+		redirection_hosts: "hidden",
+		dead_hosts: "hidden",
+		streams: "hidden",
+		access_lists: "hidden",
+	});
+	const rows = await countRows(api, "certificate");
+	for (const session of [admin, manager]) {
+		const refused = await session.post(CERTS, {
+			provider: "letsencrypt",
+			domain_names: ["a.example.com"],
+			npmpro_acme_server: "https://typo.lan/dir",
+		});
+		assert.equal(refused.status, 400, refused.text);
+		assert.equal(refused.body.error.message_i18n, "error.acme-ca-not-allowed");
+	}
+	assert.equal(await countRows(api, "certificate"), rows);
+	assert.deepEqual(await certbotCalls(), []);
+});
+
+it("a custom certificate drops the CA field", async () => {
+	const { default: certificateModel } = await import("../models/certificate.js");
+	const made = await admin.post(CERTS, { provider: "other", nice_name: "custom", npmpro_acme_server: SECOND });
+	assert.equal(made.status, 201, made.text);
+	assert.equal((await certificateModel.query().findById(made.body.id)).npmpro_acme_server, null);
+});
+
+it("a delete of a CA's account waits for a running request at that CA and then refuses (the row is stored first)", async () => {
+	const account = await setUpSecond();
+	const { withAccountLock } = await import("../internal/acme-account.js");
+	let release;
+	const held = withAccountLock(
+		SECOND,
+		() =>
+			new Promise((resolve) => {
+				release = resolve;
+			}),
+	);
+	await new Promise((resolve) => setImmediate(resolve));
+	const create = admin.post(CERTS, {
+		provider: "letsencrypt",
+		domain_names: ["a.example.com"],
+		npmpro_acme_server: SECOND,
+	});
+	for (
+		let tries = 0;
+		tries < 100 && !(await api.db("certificate").where({ npmpro_acme_server: SECOND }).first());
+		tries++
+	) {
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	}
+	assert.ok(
+		await api.db("certificate").where({ npmpro_acme_server: SECOND }).first(),
+		"the row is stored before certonly",
+	);
+	const removal = admin.delete(`/settings/acme/accounts/${account.id}`);
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	assert.deepEqual(await certbotCalls(), [], "nothing ran while the CA's lock is held");
+	release();
+	await held;
+	const [created, removed] = await Promise.all([create, removal]);
+	assert.equal(created.status, 201, created.text);
+	assert.equal(removed.status, 400, removed.text);
+	assert.equal(removed.body.error.message_i18n, "error.acme-in-use");
+	assert.ok(await (await import("../models/acme_account.js")).default.query().findById(account.id));
+});

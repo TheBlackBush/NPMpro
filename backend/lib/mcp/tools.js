@@ -359,12 +359,12 @@ const certificateTools = [
 	}),
 	tool({
 		name: "request_certificate",
-		title: "Request a Let's Encrypt certificate",
+		title: "Request an ACME certificate",
 		area: "certificates",
 		needs: "manage",
 		section: "certificates",
 		description:
-			"Requests a Let's Encrypt certificate; the input is the body of POST /nginx/certificates with provider letsencrypt.",
+			"Requests an ACME certificate; the input is the body of POST /nginx/certificates with provider letsencrypt. npmpro_acme_server picks the CA (default the instance CA; an administrator sets other CAs up in Settings).",
 		annotations: WRITE,
 		schema: () => {
 			const schema = bodySchema("/nginx/certificates", "post");

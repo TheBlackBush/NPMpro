@@ -489,6 +489,7 @@
 	"error.access.duplicate-usernames": "Authorization Usernames must be unique",
 	"error.acme-blocked": "This address is not allowed: this host, link-local and multicast addresses are blocked.",
 	"error.acme-busy": "Certbot is busy with another task. Nothing was changed: try again in a minute.",
+	"error.acme-ca-not-allowed": "This certificate authority is not set up. An administrator sets it up in Settings first.",
 	"error.acme-eab-pair": "Enter both the EAB key ID and the HMAC key, without spaces.",
 	"error.acme-email-offline": "The CA {server} cannot be reached. The email can only change while it answers.",
 	"error.acme-exists": "This CA already has an account in Settings.",
