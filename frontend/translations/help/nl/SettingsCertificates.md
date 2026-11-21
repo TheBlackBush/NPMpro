@@ -8,6 +8,8 @@ Een variabele die op de container is gezet, gaat voor op de interface en vergren
 
 **ACME-account.** De kaart toont de verbinding met uw certificeringsinstantie (CA): Verbonden, Wachten (de CA was nog niet bereikbaar), Mislukt (met het bericht van de CA) of Niet verbonden. **Wijzigen** of **Verbinden** opent een venster waarin u de CA kiest (Let's Encrypt, ZeroSSL, Google Trust Services of de directory-URL van een andere CA, https, niet deze host), het e-mailadres en de EAB-sleutels. ZeroSSL heeft een e-mailadres nodig, Google een e-mailadres en EAB-sleutels. **Verbinden** registreert het account; een onbereikbare CA kan toch worden opgeslagen en verbindt bij de volgende certificaataanvraag. **Opnieuw proberen** probeert de verbinding opnieuw. Elke CA heeft een eigen account; certificaten blijven bij de CA die ze heeft uitgegeven tot ze opnieuw worden uitgegeven. **Account vervangen** is een knop naast **Wijzigen**: het registreert een nieuw account en verplaatst de certificaten van de CA ernaartoe; deactiveer het oude alleen als de sleutel is uitgelekt.
 
+**Andere CA's.** Onder de hoofdverbinding bevat deze lijst de accounts bij meer CA's, een rij per CA met de status en de knoppen (**Wijzigen**, **Opnieuw proberen** of **Account vervangen**, **Verwijderen**); **CA toevoegen** opent hetzelfde venster. Elk certificaat wordt aangevraagd bij de CA die in het venster is gekozen en blijft daarbij. Alleen beheerders voegen CA's toe; wie certificaten mag beheren, kiest ertussen. **Verwijderen** wordt geweigerd zolang de instantie of een certificaat de CA gebruikt; het account zelf blijft bij de CA en de bestanden blijven op schijf.
+
 ### Certificaataanvragen
 
 Deze gelden vanaf de volgende certificaataanvraag.

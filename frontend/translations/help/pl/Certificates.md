@@ -34,3 +34,7 @@ pliku z danymi uwierzytelniającymi tego dostawcy.
 ### Własny certyfikat
 
 Użyj tej opcji, aby przesłać własny certyfikat TLS, dostarczony przez twój własny urząd certyfikacji.
+
+### Urząd certyfikacji
+
+Certyfikat zamówiony na serwerze ACME wystawia urząd wybrany w jego oknie: urząd instancji (oznaczony jako „domyślny”) albo inny urząd dodany przez administratora w Ustawieniach, Certyfikaty i TLS, w sekcji **Inne urzędy CA**. Lista pokazuje urząd każdego certyfikatu w kolumnie **CA**. **Wystaw ponownie** w menu certyfikatu zamawia go ponownie w innym urzędzie pod tą samą nazwą; jeśli się nie uda, obecny certyfikat zostaje.

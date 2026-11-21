@@ -8,6 +8,8 @@ A variable set on the container wins over the UI and locks the field (the field 
 
 **ACME account.** The card shows the connection to your certificate authority (CA): Connected, Waiting (the CA could not be reached yet), Failed (with the CA's message) or Not connected. **Change** or **Connect** opens a window where you choose the CA (Let's Encrypt, ZeroSSL, Google Trust Services or the directory URL of another CA, https, not this host), the email and the EAB keys. ZeroSSL needs an email, Google an email and EAB keys. **Connect** registers the account; a CA that cannot be reached can be saved anyway and connects at the next certificate request. **Try again** retries the connection. Each CA keeps its own account; certificates stay with the CA that issued them until they are re-issued. **Replace account** is a button next to **Change**: it registers a new account and moves the CA's certificates to it; deactivate the old one only when its key leaked.
 
+**Other CAs.** Under the main connection, this list holds the accounts at more CAs, one row each with its status and its buttons (**Change**, **Try again** or **Replace account**, **Remove**); **Add a CA** opens the same window. Each certificate is requested from the CA chosen in its window and stays with it. Only administrators add CAs; anyone who may manage certificates chooses among them. **Remove** is refused while the instance or a certificate uses the CA; the account itself stays at the CA and its files stay on disk.
+
 ### Certificate requests
 
 These apply from the next certificate request.

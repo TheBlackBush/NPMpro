@@ -8,6 +8,8 @@ Uma variável definida no contentor tem prioridade sobre a interface e bloqueia 
 
 **Conta ACME.** O cartão mostra a ligação à sua autoridade de certificação (CA): Ligado, À espera (a CA ainda não foi contactada), Falhou (com a mensagem da CA) ou Não ligado. **Alterar** ou **Ligar** abre uma janela onde escolhe a CA (Let's Encrypt, ZeroSSL, Google Trust Services ou o URL do diretório de outra CA, https, não este host), o e-mail e as chaves EAB. O ZeroSSL precisa de um e-mail, a Google de um e-mail e de chaves EAB. **Ligar** regista a conta; uma CA inacessível pode ser guardada na mesma e liga-se no próximo pedido de certificado. **Tentar novamente** repete a ligação. Cada CA tem a sua própria conta; os certificados ficam na CA que os emitiu até serem emitidos novamente. **Substituir conta** é um botão junto a **Alterar**: regista uma conta nova e move para ela os certificados da CA; desative a antiga apenas se a sua chave tiver vazado.
 
+**Outras CA.** Sob a ligação principal, esta lista contém as contas noutras CA, uma linha por cada uma com o seu estado e os seus botões (**Alterar**, **Tentar novamente** ou **Substituir conta**, **Remover**); **Adicionar uma CA** abre a mesma janela. Cada certificado é pedido à CA escolhida na sua janela e fica com ela. Só os administradores adicionam CA; quem pode gerir certificados escolhe entre elas. **Remover** é recusado enquanto a instância ou um certificado usar a CA; a conta em si fica na CA e os seus ficheiros ficam no disco.
+
 ### Pedidos de certificado
 
 Aplicam-se a partir do próximo pedido de certificado.

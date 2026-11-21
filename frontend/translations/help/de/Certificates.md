@@ -44,3 +44,7 @@ Zugangsdaten-Datei für diesen Provider einfügen.
 
 Verwenden Sie diese Option, um Ihr eigenes TLS-Zertifikat hochzuladen, das Ihnen von Ihrer eigenen
 Zertifizierungsstelle bereitgestellt wurde.
+
+### Zertifizierungsstelle
+
+Ein bei einem ACME-Server angefordertes Zertifikat wird von der CA ausgestellt, die in seinem Fenster gewählt ist: der CA der Instanz (mit „Standard“ markiert) oder einer weiteren CA, die ein Administrator in den Einstellungen unter Zertifikate & TLS bei **Weitere CAs** hinzugefügt hat. Die Liste zeigt die CA jedes Zertifikats in der Spalte **CA**. **Neu ausstellen** im Menü des Zertifikats fordert es unter demselben Namen bei einer anderen CA erneut an; schlägt das fehl, bleibt das aktuelle Zertifikat erhalten.

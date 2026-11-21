@@ -8,6 +8,8 @@ Une variable définie sur le conteneur l'emporte sur l'interface et verrouille l
 
 **Compte ACME.** La carte montre la connexion à votre autorité de certification (AC) : Connecté, En attente (l'AC n'était pas encore joignable), Échec (avec le message de l'AC) ou Non connecté. **Modifier** ou **Connecter** ouvre une fenêtre où vous choisissez l'AC (Let's Encrypt, ZeroSSL, Google Trust Services ou l'URL d'annuaire d'une autre AC, https, pas cet hôte), l'e-mail et les clés EAB. ZeroSSL exige un e-mail, Google un e-mail et des clés EAB. **Connecter** enregistre le compte ; une AC injoignable peut être enregistrée quand même et se connecte à la prochaine demande de certificat. **Réessayer** relance la connexion. Chaque AC a son propre compte ; les certificats restent chez l'AC qui les a émis jusqu'à leur réémission. **Remplacer le compte** est un bouton à côté de **Modifier** : il enregistre un nouveau compte et y déplace les certificats de l'AC ; ne désactivez l'ancien que si sa clé a fuité.
 
+**Autres AC.** Sous la connexion principale, cette liste contient les comptes auprès d'autres AC, une ligne chacune avec son état et ses boutons (**Modifier**, **Réessayer** ou **Remplacer le compte**, **Supprimer**) ; **Ajouter une AC** ouvre la même fenêtre. Chaque certificat est demandé à l'AC choisie dans sa fenêtre et reste chez elle. Seuls les administrateurs ajoutent des AC ; qui peut gérer les certificats choisit parmi elles. **Supprimer** est refusé tant que l'instance ou un certificat utilise l'AC ; le compte lui-même reste chez l'AC et ses fichiers restent sur le disque.
+
 ### Demandes de certificat
 
 Elles s'appliquent à partir de la prochaine demande de certificat.

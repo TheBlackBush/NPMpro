@@ -8,6 +8,8 @@ Una variabile impostata sul container ha la precedenza sull'interfaccia e blocca
 
 **Account ACME.** La scheda mostra la connessione alla tua autorità di certificazione (CA): Connesso, In attesa (la CA non era ancora raggiungibile), Non riuscito (con il messaggio della CA) o Non connesso. **Cambia** o **Connetti** apre una finestra in cui scegli la CA (Let's Encrypt, ZeroSSL, Google Trust Services o l'URL di directory di un'altra CA, https, non questo host), l'email e le chiavi EAB. ZeroSSL richiede un'email, Google un'email e chiavi EAB. **Connetti** registra l'account; una CA non raggiungibile può essere salvata comunque e si connette alla prossima richiesta di certificato. **Riprova** ritenta la connessione. Ogni CA ha il proprio account; i certificati restano presso la CA che li ha emessi finché non vengono riemessi. **Sostituisci account** è un pulsante accanto a **Cambia**: registra un nuovo account e vi sposta i certificati della CA; disattiva quello vecchio solo se la sua chiave è trapelata.
 
+**Altre CA.** Sotto la connessione principale, questo elenco contiene gli account presso altre CA, una riga ciascuno con il suo stato e i suoi pulsanti (**Cambia**, **Riprova** o **Sostituisci account**, **Rimuovi**); **Aggiungi una CA** apre la stessa finestra. Ogni certificato viene richiesto alla CA scelta nella sua finestra e resta con essa. Solo gli amministratori aggiungono CA; chi può gestire i certificati sceglie tra queste. **Rimuovi** viene rifiutato finché l'istanza o un certificato usa la CA; l'account stesso resta presso la CA e i suoi file restano su disco.
+
 ### Richieste di certificato
 
 Si applicano dalla prossima richiesta di certificato.
