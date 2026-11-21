@@ -11,6 +11,7 @@ const SECOND = "https://second.lan/dir";
 const ACCOUNTS = "/settings/acme/accounts";
 const FAKE_FILES = [".ini", ".fail", ".mode"];
 const SECOND_ACCOUNT = "c".repeat(32);
+const SECRET_WORDS = /secret|eab/u;
 
 let api;
 let admin;
@@ -187,7 +188,7 @@ it("lists the CAs for a user who manages certificates, without account details",
 		{ server: LE, preset: "letsencrypt", state: "none", instance: true },
 		{ server: SECOND, preset: null, state: "failed", instance: false },
 	]);
-	assert.doesNotMatch(JSON.stringify(res.body), /secret|eab/u);
+	assert.doesNotMatch(JSON.stringify(res.body), SECRET_WORDS);
 	const viewer = await api.limited({ visibility: "all", certificates: "view" });
 	assert.equal((await viewer.get("/nginx/certificates/acme-servers")).status, 403);
 });
