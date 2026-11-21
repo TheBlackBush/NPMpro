@@ -92,6 +92,7 @@ it("trusts only the user-set env URL and names ZeroSSL and the presets", () => {
 	assert.equal(isZeroSsl(LETSENCRYPT_SERVER), false);
 	assert.equal(presetOf(GOOGLE_SERVER), "google");
 	assert.equal(presetOf(PEBBLE), null);
+	assert.equal(presetOf("https://DV.ACME-V02.API.PKI.GOOG/directory/"), "google");
 });
 
 it("gives a request the instance options on the instance CA, else that CA's defaults", () => {
