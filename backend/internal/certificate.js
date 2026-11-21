@@ -603,7 +603,15 @@ const internalCertificate = {
 
 		// what certbot knows of the old certificate, before the new one replaces it
 		const params = await renewalParamsOf(certificate.id);
-		const oldCertPath = await realpath(`${internalCertificate.getLiveCertPath(certificate.id)}/cert.pem`);
+		const oldServer = params.get("server");
+		let oldCertPath;
+		try {
+			oldCertPath = await realpath(`${internalCertificate.getLiveCertPath(certificate.id)}/cert.pem`);
+		} catch (err) {
+			throw new errs.ValidationError("The certificate has no files to replace", "error.acme-reissue-no-files", {
+				cause: err,
+			});
+		}
 
 		await runCertonly({ ...certificate, npmpro_acme_server: target }, access, { extra: ["--force-renewal"] });
 
@@ -616,27 +624,41 @@ const internalCertificate = {
 			expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
 		});
 
+		let reloaded = false;
 		try {
-			await internalNginx.reload();
+			try {
+				await internalNginx.reload();
+				reloaded = true;
+			} catch (err) {
+				// the change happened and the host configs are valid: the old certificate stays unrevoked while nginx may serve it
+				logger.warn(`Certificate #${certificate.id} was issued again but nginx did not reload: ${err.message}`);
+			}
 		} finally {
 			await internalAuditLog.add(access, {
 				action: "ca-changed",
 				object_type: "certificate",
 				object_id: certificate.id,
-				meta: { old: params.get("server") ?? certificate.npmpro_acme_server, new: target },
+				meta: { old: oldServer ?? certificate.npmpro_acme_server ?? instanceServer(), new: target },
 			});
-			const oldServer = params.get("server");
-			const revoke = () =>
-				revokeBestEffort({
-					server: oldServer,
-					account: params.get("account"),
-					certPath: oldCertPath,
-					keyPath: keyFileOf(oldCertPath),
-					reason: "superseded",
-				});
-			// the old CA's lock is free again here (runCertonly released the new CA's)
-			await (oldServer ? withAccountLock(oldServer, revoke) : revoke());
 		}
+
+		if (!reloaded) return updatedCertificate;
+		if (!oldServer) {
+			logger.warn(
+				`Certificate #${certificate.id}: its renewal conf names no CA, the old certificate was not revoked`,
+			);
+			return updatedCertificate;
+		}
+		// the old CA's lock is free again here (runCertonly released the new CA's)
+		await withAccountLock(oldServer, () =>
+			revokeBestEffort({
+				server: oldServer,
+				account: params.get("account"),
+				certPath: oldCertPath,
+				keyPath: keyFileOf(oldCertPath),
+				reason: "superseded",
+			}),
+		);
 
 		return updatedCertificate;
 	},
