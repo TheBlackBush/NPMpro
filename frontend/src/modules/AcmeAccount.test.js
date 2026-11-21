@@ -40,6 +40,7 @@ import {
 	toAcmeForm,
 	visibleEabValues,
 } from "./AcmeAccount.js";
+import { caOptions, defaultCa, showCaSelect } from "./AcmeServers.js";
 import { createValidations } from "./ValidationRules.js";
 
 const rules = createValidations(createIntl({ locale: "en", messages: en }));
@@ -472,4 +473,55 @@ it("checks the Add window: the card's rules and a required custom URL", () => {
 	assert.deepEqual(validate({ ...form, preset: "zerossl" }), {});
 	assert.ok(validate({ ...form, preset: "zerossl", email: "nope" }).email);
 	assert.ok(acmeFormValidate(rules, data())({ ...form, customUrl: PEBBLE }));
+});
+
+// the CA choices of the certificate windows (AcmeServers.js)
+
+const CA_LE = "https://acme-v02.api.letsencrypt.org/directory";
+const CA_ZERO = "https://acme.zerossl.com/v2/DV90";
+const caServers = [
+	{ server: CA_LE, preset: "letsencrypt", state: "registered", instance: true },
+	{ server: CA_ZERO, preset: "zerossl", state: "failed", instance: false },
+	{ server: "https://ca.example.com/dir", preset: null, state: "none", instance: false },
+];
+
+it("shows the select only with more than one CA", () => {
+	assert.equal(showCaSelect(undefined), false);
+	assert.equal(showCaSelect([]), false);
+	assert.equal(showCaSelect(caServers.slice(0, 1)), false);
+	assert.equal(showCaSelect(caServers.slice(0, 2)), true);
+});
+
+it("defaults to the instance CA, nothing while the list is missing", () => {
+	assert.equal(defaultCa(caServers), CA_LE);
+	assert.equal(defaultCa(undefined), "");
+});
+
+it("labels the options and marks the default and the CAs not connected yet", () => {
+	assert.deepEqual(caOptions(caServers), [
+		{ value: CA_LE, labelId: "acme.preset.letsencrypt", isDefault: true, notConnected: false },
+		{ value: CA_ZERO, labelId: "acme.preset.zerossl", isDefault: false, notConnected: true },
+		{ value: "https://ca.example.com/dir", text: "ca.example.com", isDefault: false, notConnected: true },
+	]);
+});
+
+it("leaves the excluded CA out and keeps a pending one connectable", () => {
+	const list = [...caServers.slice(0, 1), { ...caServers[1], state: "pending" }];
+	assert.deepEqual(
+		caOptions(list, CA_LE).map((option) => [option.value, option.notConnected]),
+		[[CA_ZERO, false]],
+	);
+	assert.deepEqual(caOptions(undefined), []);
+});
+
+it("leaves out the excluded CA in another spelling", () => {
+	for (const spelling of [
+		"HTTPS://ACME-V02.api.letsencrypt.org/directory/",
+		"https://acme-v01.api.letsencrypt.org/directory",
+	]) {
+		assert.deepEqual(
+			caOptions(caServers, spelling).map((option) => option.value),
+			[CA_ZERO, "https://ca.example.com/dir"],
+		);
+	}
 });

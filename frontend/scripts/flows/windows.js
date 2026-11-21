@@ -7,7 +7,9 @@ import {
 	cleanUp,
 	openFromMenu,
 	openTab,
+	revealRow,
 	rowAction,
+	rowOf,
 	rowShows,
 	saveWindow,
 	uploadCertificate,
@@ -301,6 +303,7 @@ async function accessListDeniedPage({ admin }) {
 
 const FLOW_CA = "https://acme-v02.api.letsencrypt.org/directory";
 const CA_FIELD = /^Certificate authority/u;
+const ACME_SERVERS_URL = /\/api\/nginx\/certificates\/acme-servers/u;
 const CERTIFICATE_LIST_URL = /\/api\/nginx\/certificates(?:\?|$)/u;
 
 // The CA of a certificate with the one CA of a fresh instance: the create windows show no CA select, the list has
@@ -324,12 +327,21 @@ async function certificateAuthority({ admin }) {
 		});
 		await page.goto("/certificates");
 		await page.getByRole("columnheader", { name: "CA", exact: true }).waitFor();
-		await rowShows(page, "flow-ca", "Let's Encrypt");
+		// the cell under the CA header, not the Provider column that also says Let's Encrypt
+		const headers = await page.locator("thead th").allInnerTexts();
+		const column = headers.findIndex((text) => text.trim() === "CA");
+		await revealRow(page, "flow-ca");
+		const cell = await rowOf(page, "flow-ca").locator("td").nth(column).textContent();
+		if (cell.trim() !== "Let's Encrypt") throw new Error(`the CA cell shows "${cell}"`);
+		const serversLoaded = page.waitForResponse(ACME_SERVERS_URL);
 		for (const menuItem of ["Certbot via HTTP", "Certbot via DNS"]) {
 			// biome-ignore lint/performance/noAwaitInLoops: one window after the other
 			await page.getByRole("button", { name: "Add Certificate", exact: true }).first().click();
 			await page.getByRole("menuitem", { name: menuItem, exact: true }).click();
 			await page.getByRole("dialog").waitFor();
+			// the list of CAs has answered (cached for the second window) before the select is looked for
+			await serversLoaded;
+			await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
 			if ((await page.getByRole("dialog").getByText(CA_FIELD).count()) > 0)
 				throw new Error(`${menuItem}: the CA select shows with one CA`);
 			await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
@@ -337,6 +349,10 @@ async function certificateAuthority({ admin }) {
 		}
 		await rowAction(page, "flow-ca", "Re-issue");
 		await windowTitled(page, "Re-issue Certificate");
+		const reissue = page.getByRole("dialog");
+		await reissue.getByText("There is no other certificate authority").waitFor();
+		if (!(await reissue.getByRole("button", { name: "Re-issue", exact: true }).isDisabled()))
+			throw new Error("Re-issue is enabled with no other CA");
 		await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
 		await windowClosed(page);
 	} finally {

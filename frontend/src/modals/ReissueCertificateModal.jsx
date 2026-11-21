@@ -31,7 +31,7 @@ const Icon = sectionIcon("certificates");
 
 const ReissueCertificateModal = EasyModal.create(({ certificate, visible, remove }) => {
 	const queryClient = useQueryClient();
-	const { data: servers, isPending } = useAcmeServers();
+	const { data: servers, isPending, error } = useAcmeServers();
 	const [errorMsg, setErrorMsg] = useState(null);
 	const methods = useAppForm({ defaultValues: { npmproAcmeServer: "" } });
 	const { isSubmitting } = methods.formState;
@@ -64,7 +64,9 @@ const ReissueCertificateModal = EasyModal.create(({ certificate, visible, remove
 				</AppModal.Header>
 				<AppModal.Body>
 					<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-					{isPending || hasOther ? (
+					{error ? (
+						<ErrorAlert error={error} />
+					) : isPending || hasOther ? (
 						<>
 							<p className="text-muted-foreground">
 								<T id="certificate.reissue.note" />

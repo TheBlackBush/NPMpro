@@ -1,5 +1,5 @@
 // The CA choices of the certificate windows (create and re-issue). Pure, so node --test checks it without a DOM.
-import { acmeServerLabel } from "./AcmeAccount.js";
+import { acmeServerLabel, serverKey } from "./AcmeAccount.js";
 
 // a CA without a registered account registers at its first request, or the request is refused with a clear message
 const notConnected = (server) => server.state === "failed" || server.state === "none";
@@ -19,7 +19,8 @@ export const defaultCa = (servers) => servers?.find((server) => server.instance)
  */
 export const caOptions = (servers, exclude) =>
 	(servers ?? [])
-		.filter((server) => server.server !== exclude)
+		// the same CA in another spelling is the same CA (serverKey, as the backend compares)
+		.filter((server) => !(exclude && serverKey(server.server) === serverKey(exclude)))
 		.map((server) => ({
 			value: server.server,
 			...acmeServerLabel(server.server),
