@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useWatch } from "react-hook-form";
 import { createCertificate, testHttpCertificate } from "src/api/backend";
 import {
+	AcmeServerField,
 	ApiErrorContent,
 	AppModal,
 	Button,
@@ -106,6 +107,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 						<T id="certificates.http.warning" />
 					</NoticeAlert>
 					<DomainNamesField forCertificate onChange={() => setTestResults(null)} />
+					<AcmeServerField />
 
 					<SwitchList>
 						<SwitchField

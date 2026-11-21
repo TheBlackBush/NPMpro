@@ -1,0 +1,94 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { reissueCertificate } from "src/api/backend";
+import {
+	AcmeServerField,
+	ApiErrorContent,
+	AppModal,
+	Button,
+	ErrorAlert,
+	FormSubmit,
+	HookForm,
+	NoticeAlert,
+	RequestProgress,
+	useAppForm,
+} from "src/components";
+import { useAcmeServers } from "src/hooks";
+import { cn } from "src/lib/utils";
+import { T } from "src/locale";
+import { caOptions } from "src/modules/AcmeServers";
+import EasyModal from "src/modules/easyModal";
+import { sectionAccent } from "src/modules/SectionAccents";
+import { showObjectSuccess } from "src/notifications";
+import { sectionIcon } from "src/shell/useNavItems";
+
+const showReissueCertificateModal = (certificate) => {
+	EasyModal.show(ReissueCertificateModal, { certificate });
+};
+
+const accent = sectionAccent("certificates");
+const Icon = sectionIcon("certificates");
+
+const ReissueCertificateModal = EasyModal.create(({ certificate, visible, remove }) => {
+	const queryClient = useQueryClient();
+	const { data: servers, isPending } = useAcmeServers();
+	const [errorMsg, setErrorMsg] = useState(null);
+	const methods = useAppForm({ defaultValues: { npmproAcmeServer: "" } });
+	const { isSubmitting } = methods.formState;
+	const hasOther = caOptions(servers, certificate.npmproAcmeServer).length > 0;
+
+	const onSubmit = async (values) => {
+		setErrorMsg(null);
+		try {
+			await reissueCertificate(certificate.id, values.npmproAcmeServer);
+			showObjectSuccess("certificate", "updated");
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: ["certificates"] }),
+				queryClient.invalidateQueries({ queryKey: ["certificate", certificate.id] }),
+			]);
+			remove();
+		} catch (err) {
+			// the window stays open: a failed request leaves the certificate as it was
+			setErrorMsg(<ApiErrorContent error={err} />);
+		}
+	};
+
+	return (
+		<AppModal size="sm" show={visible} onHide={isSubmitting ? undefined : remove} backdrop="static">
+			<HookForm methods={methods} onSubmit={onSubmit}>
+				<AppModal.Header closeButton={!isSubmitting}>
+					<AppModal.Title className="flex items-center gap-2">
+						{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
+						<T id="certificate.reissue" />
+					</AppModal.Title>
+				</AppModal.Header>
+				<AppModal.Body>
+					<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
+					{isPending || hasOther ? (
+						<>
+							<p className="text-muted-foreground">
+								<T id="certificate.reissue.note" />
+							</p>
+							<AcmeServerField exclude={certificate.npmproAcmeServer ?? undefined} />
+						</>
+					) : (
+						<NoticeAlert variant="info">
+							<T id="certificate.reissue.no-other-ca" />
+						</NoticeAlert>
+					)}
+					<RequestProgress running={isSubmitting} propagationSeconds={certificate.npmproPropagationSeconds} />
+				</AppModal.Body>
+				<AppModal.Footer>
+					<Button variant="ghost" onClick={remove} disabled={isSubmitting}>
+						<T id="cancel" />
+					</Button>
+					<FormSubmit isLoading={isSubmitting} disabled={isSubmitting || !hasOther}>
+						<T id="action.reissue" />
+					</FormSubmit>
+				</AppModal.Footer>
+			</HookForm>
+		</AppModal>
+	);
+});
+
+export { showReissueCertificateModal };

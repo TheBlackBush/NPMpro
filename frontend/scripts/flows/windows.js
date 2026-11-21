@@ -299,6 +299,52 @@ async function accessListDeniedPage({ admin }) {
 	}
 }
 
+const FLOW_CA = "https://acme-v02.api.letsencrypt.org/directory";
+const CA_FIELD = /^Certificate authority/u;
+const CERTIFICATE_LIST_URL = /\/api\/nginx\/certificates(?:\?|$)/u;
+
+// The CA of a certificate with the one CA of a fresh instance: the create windows show no CA select, the list has
+// the CA column with the certificate's CA, and Re-issue opens its window (nothing to re-issue at) and Cancel closes
+// it. The list answer is rewritten so the uploaded certificate looks like a Let's Encrypt one.
+async function certificateAuthority({ admin }) {
+	const { page, api } = admin;
+	try {
+		await uploadCertificate(api, "flow-ca");
+		await page.route(CERTIFICATE_LIST_URL, async (route) => {
+			const answer = await route.fetch();
+			const rows = await answer.json();
+			await route.fulfill({
+				response: answer,
+				json: rows.map((row) =>
+					row.nice_name === "flow-ca"
+						? { ...row, provider: "letsencrypt", npmpro_acme_server: FLOW_CA, npmpro_dns_challenge: false }
+						: row,
+				),
+			});
+		});
+		await page.goto("/certificates");
+		await page.getByRole("columnheader", { name: "CA", exact: true }).waitFor();
+		await rowShows(page, "flow-ca", "Let's Encrypt");
+		for (const menuItem of ["Certbot via HTTP", "Certbot via DNS"]) {
+			// biome-ignore lint/performance/noAwaitInLoops: one window after the other
+			await page.getByRole("button", { name: "Add Certificate", exact: true }).first().click();
+			await page.getByRole("menuitem", { name: menuItem, exact: true }).click();
+			await page.getByRole("dialog").waitFor();
+			if ((await page.getByRole("dialog").getByText(CA_FIELD).count()) > 0)
+				throw new Error(`${menuItem}: the CA select shows with one CA`);
+			await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
+			await windowClosed(page);
+		}
+		await rowAction(page, "flow-ca", "Re-issue");
+		await windowTitled(page, "Re-issue Certificate");
+		await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
+		await windowClosed(page);
+	} finally {
+		await page.unroute(CERTIFICATE_LIST_URL);
+		await cleanUp(api);
+	}
+}
+
 export const windowFlows = [
 	{ name: "proxy location and access list", run: proxyLocationAccess },
 	{ name: "proxy host pages", run: proxyHostPages },
@@ -306,4 +352,5 @@ export const windowFlows = [
 	{ name: "nginx error and re-save", run: nginxErrorResave },
 	{ name: "unsaved changes", run: unsavedChangesOfAllWindows },
 	{ name: "close without errors", run: closeWithoutErrors },
+	{ name: "certificate authority", run: certificateAuthority },
 ];

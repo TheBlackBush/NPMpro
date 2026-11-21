@@ -17,6 +17,7 @@ export * from "./PermissionsModal";
 export * from "./ProxyHostModal";
 export * from "./ReachabilityModal";
 export * from "./RedirectionHostModal";
+export * from "./ReissueCertificateModal";
 export * from "./RenewCertificateModal";
 export * from "./ReplaceAcmeAccountModal";
 export * from "./RestoreBackupModal";

@@ -15,6 +15,7 @@ import {
 	showCustomCertificateModal,
 	showDeleteConfirmModal,
 	showReachabilityModal,
+	showReissueCertificateModal,
 	showRenewCertificateModal,
 } from "src/modals";
 import { CERTIFICATE_LIST_EXPAND } from "src/modules/CertificateTabs";
@@ -22,7 +23,7 @@ import { activeFilterCount, filterCertificates } from "src/modules/ListFilters";
 import { CERTIFICATES } from "src/modules/Permissions";
 import { showApiError, showObjectSuccess } from "src/notifications";
 import { AddCertificateMenu } from "./AddCertificateMenu";
-import Table, { useColumns } from "./Table";
+import Table, { caName, useColumns } from "./Table";
 import { CertificateTabs } from "./Tabs";
 
 export default function TableWrapper() {
@@ -100,6 +101,7 @@ export default function TableWrapper() {
 					onSortingChange={setSorting}
 					isFetching={isFetching}
 					onRenew={showRenewCertificateModal}
+					onReissue={showReissueCertificateModal}
 					onChangeDnsCredential={showChangeDnsCredentialModal}
 					onDownload={handleDownload}
 					onEdit={(cert) => showCustomCertificateModal(cert)}
@@ -125,6 +127,11 @@ export default function TableWrapper() {
 										<T id={certificateProviderTranslation(certificate.provider)} />
 										{certificate.npmproDnsProvider ? ` – ${certificate.npmproDnsProvider}` : null}
 									</div>
+									{caName(certificate) ? (
+										<div>
+											<T id="settings.certificates.acme.ca" />: {caName(certificate)}
+										</div>
+									) : null}
 									<div>
 										<T
 											id="expires.on"

@@ -30,9 +30,13 @@ const useInvalidateAcme = () => {
 	const queryClient = useQueryClient();
 	return () =>
 		Promise.all(
-			[["acme-settings"], ["acme-profiles"], ["runtime-settings", "certificates"], ["audit-logs"]].map(
-				(queryKey) => queryClient.invalidateQueries({ queryKey }),
-			),
+			[
+				["acme-settings"],
+				["acme-servers"],
+				["acme-profiles"],
+				["runtime-settings", "certificates"],
+				["audit-logs"],
+			].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
 		);
 };
 
