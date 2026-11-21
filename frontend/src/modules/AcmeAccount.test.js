@@ -446,6 +446,10 @@ it("sends what an add or an update of another CA's account changes", () => {
 	assert.deepEqual(acmeAccountPayload({ ...form, eabKid: "", eabHmacKey: "" }, account), {});
 	assert.deepEqual(acmeAccountPayload({ ...form, email: "", eabKid: "", eabHmacKey: "" }, account), { email: "" });
 	assert.deepEqual(acmeAccountPayload(form, account), { eabKid: "k", eabHmacKey: "h" });
+	// an add sends the pair whole, an update each typed key
+	assert.deepEqual(acmeAccountPayload({ ...form, eabHmacKey: "" }, null), { server: ZEROSSL, email: "a@b.c" });
+	assert.deepEqual(acmeAccountPayload({ ...form, eabKid: "" }, null), { server: ZEROSSL, email: "a@b.c" });
+	assert.deepEqual(acmeAccountPayload({ ...form, eabHmacKey: "" }, account), { eabKid: "k" });
 });
 
 it("plans Connect for another CA: add, save, register or nothing", () => {
@@ -458,11 +462,13 @@ it("plans Connect for another CA: add, save, register or nothing", () => {
 });
 
 it("checks the Add window: the card's rules and a required custom URL", () => {
-	const validate = acmeAddValidate(rules);
+	const validate = acmeAddValidate(rules, data({ accounts: [row(PEBBLE)] }));
 	const form = { preset: CUSTOM, customUrl: "", email: "", eabKid: "", eabHmacKey: "" };
 	assert.ok(validate(form).customUrl);
 	assert.ok(validate({ ...form, customUrl: "http://x.y/dir" }).customUrl);
-	assert.deepEqual(validate({ ...form, customUrl: PEBBLE }), {});
+	assert.ok(validate({ ...form, customUrl: PEBBLE }).customUrl);
+	assert.ok(validate({ ...form, customUrl: LE }).customUrl);
+	assert.deepEqual(validate({ ...form, customUrl: "https://new.example/dir" }), {});
 	assert.deepEqual(validate({ ...form, preset: "zerossl" }), {});
 	assert.ok(validate({ ...form, preset: "zerossl", email: "nope" }).email);
 	assert.ok(acmeFormValidate(rules, data())({ ...form, customUrl: PEBBLE }));

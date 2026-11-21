@@ -139,6 +139,7 @@ function AccountRow({ state, ca, actions, trailing, ...rest }) {
 						color={primary ? "primary" : "secondary"}
 						outline={!primary}
 						data-acme-action={key}
+						aria-label={actions[key].label}
 						isLoading={actions[key].loading}
 						disabled={actions[key].loading}
 						onClick={actions[key].onClick}
@@ -201,6 +202,7 @@ function OtherAccountRow({ data, account }) {
 			onError: showApiError,
 		});
 	const onChange = () => showAcmeConnectModal({ data, account });
+	const label = (id) => t(id, { ca });
 	const onRemove = () =>
 		showDeleteConfirmModal({
 			title: t("settings.certificates.acme.other.remove.title", { ca }),
@@ -209,15 +211,27 @@ function OtherAccountRow({ data, account }) {
 			onConfirm: async () => {
 				await remove(account.id);
 				showSuccess(t("settings.certificates.acme.other.remove.done", { ca }));
+				// the row and its button are gone: the focus goes to Add a CA once the window has closed
+				setTimeout(() => document.querySelector("[data-acme-action=add]")?.focus(), 150);
 			},
 			invalidations: [],
 		});
 
 	const actions = {
-		change: { id: "settings.certificates.acme.change", onClick: onChange },
-		retry: { id: "settings.certificates.acme.retry", onClick: onRetry, loading: isPending },
+		change: {
+			id: "settings.certificates.acme.change",
+			label: label("settings.certificates.acme.other.change.label"),
+			onClick: onChange,
+		},
+		retry: {
+			id: "settings.certificates.acme.retry",
+			label: label("settings.certificates.acme.other.retry.label"),
+			onClick: onRetry,
+			loading: isPending,
+		},
 		replace: {
 			id: "settings.certificates.acme.replace",
+			label: label("settings.certificates.acme.other.replace.label"),
 			// the instance rules (ACME_EMAIL) do not apply to another CA: no settings go in
 			onClick: () => showReplaceAcmeAccountModal({ server: account.server, account }),
 		},
@@ -235,7 +249,6 @@ function OtherAccountRow({ data, account }) {
 					size="icon"
 					data-acme-action="remove"
 					aria-label={t("settings.certificates.acme.other.remove.label", { ca })}
-					title={t("settings.certificates.acme.other.remove.label", { ca })}
 					onClick={onRemove}
 				>
 					<Trash2 aria-hidden="true" className="size-4" />

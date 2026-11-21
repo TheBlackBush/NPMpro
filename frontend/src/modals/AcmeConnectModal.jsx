@@ -115,7 +115,7 @@ const AcmeConnectModal = EasyModal.create(({ data: settings, account, mode, visi
 	const choices = kind === "add" ? addChoices(settings) : [];
 	const methods = useAppForm({
 		defaultValues: saved,
-		validate: kind === "add" ? acmeAddValidate(validations) : acmeFormValidate(validations, data),
+		validate: kind === "add" ? acmeAddValidate(validations, settings) : acmeFormValidate(validations, data),
 	});
 	const { isSubmitting } = methods.formState;
 	const values = { ...saved, ...useWatch({ control: methods.control }) };

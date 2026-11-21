@@ -160,8 +160,11 @@ export function acmeAccountPayload(values, account) {
 	} else if (email !== (account.email ?? "")) {
 		out.email = email;
 	}
-	if (values.eabKid.trim() !== "") out.eabKid = values.eabKid.trim();
-	if (values.eabHmacKey.trim() !== "") out.eabHmacKey = values.eabHmacKey.trim();
+	const kid = values.eabKid.trim();
+	const hmac = values.eabHmacKey.trim();
+	// an add sends the pair whole; an update sends each typed key (D6)
+	if (account === null ? kid !== "" && hmac !== "" : kid !== "") out.eabKid = kid;
+	if (account === null ? kid !== "" && hmac !== "" : hmac !== "") out.eabHmacKey = hmac;
 	return out;
 }
 
@@ -315,10 +318,18 @@ export const acmeFormValidate = (rules, data) => (values) => {
 	return errors;
 };
 
-/** The Add window's checks: the card's, and a custom CA needs its URL */
-export const acmeAddValidate = (rules) => (values) => {
+/** The Add window's checks: the card's, a custom CA needs its URL, and not one that already has an account */
+export const acmeAddValidate = (rules, data) => (values) => {
 	const errors = acmeFormValidate(rules, { server: "", email: "" })(values);
-	if (values.preset === CUSTOM && values.customUrl.trim() === "") errors.customUrl = rules.message("error.acme-url");
+	const url = values.customUrl.trim();
+	if (values.preset === CUSTOM && url === "") errors.customUrl = rules.message("error.acme-url");
+	else if (
+		values.preset === CUSTOM &&
+		!errors.customUrl &&
+		[data.server, ...(data.accounts ?? []).map((account) => account.server)].some((server) => sameCa(server, url))
+	) {
+		errors.customUrl = rules.message("error.acme-exists");
+	}
 	return errors;
 };
 
