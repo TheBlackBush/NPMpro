@@ -3,11 +3,16 @@ import { it } from "node:test";
 import { createIntl } from "react-intl";
 import en from "../../translations/ui/en.json" with { type: "json" };
 import {
+	accountContext,
 	accountOf,
+	acmeAccountPayload,
+	acmeAddValidate,
 	acmeFormValidate,
 	acmePayload,
 	acmeServerLabel,
 	acmeState,
+	addChoices,
+	addDefaults,
 	CUSTOM,
 	cardButtonKey,
 	cardButtons,
@@ -21,6 +26,8 @@ import {
 	emailForCa,
 	lockedSet,
 	messageIsCut,
+	otherAccounts,
+	otherPlan,
 	presetOf,
 	profileChoices,
 	refusalText,
@@ -365,4 +372,98 @@ it("keeps one button key for Connect and Change, so the button keeps the focus w
 	assert.notEqual(cardButtonKey("replace"), cardButtonKey("change"));
 	const window = (kind) => cardButtons(kind).filter(({ key }) => cardButtonKey(key) === "window").length;
 	for (const kind of ["registered", "pending", "failed", "none"]) assert.equal(window(kind), 1, kind);
+});
+
+const row = (server, extra = {}) => ({ id: 1, server, email: "", state: "registered", ...extra });
+
+it("lists the other CAs' accounts sorted by label, without the instance CA's", () => {
+	const settings = data({
+		accounts: [
+			row(PEBBLE, { id: 3 }),
+			row(LE),
+			row(ZEROSSL, { id: 2 }),
+			row("https://alpha.example/dir", { id: 4 }),
+		],
+	});
+	assert.deepEqual(
+		otherAccounts(settings).map((account) => account.id),
+		[2, 4, 3],
+	);
+	assert.deepEqual(
+		otherAccounts(settings, (server) => (server === ZEROSSL ? "zzz" : server)).map((account) => account.id),
+		[4, 3, 2],
+	);
+	assert.deepEqual(otherAccounts({ server: LE }), []);
+	// the v01 spelling of the instance CA is the same CA
+	assert.deepEqual(otherAccounts(data({ accounts: [row("https://acme-v01.api.letsencrypt.org/directory")] })), []);
+});
+
+it("offers the presets without a row and not the instance CA, then Custom", () => {
+	assert.deepEqual(addChoices(data()), ["letsencrypt-staging", "zerossl", "google", CUSTOM]);
+	assert.deepEqual(addChoices(data({ accounts: [row(ZEROSSL)] })), ["letsencrypt-staging", "google", CUSTOM]);
+	assert.deepEqual(addChoices({ server: PEBBLE }), [
+		"letsencrypt",
+		"letsencrypt-staging",
+		"zerossl",
+		"google",
+		CUSTOM,
+	]);
+	assert.deepEqual(addDefaults(data({ accounts: [row(ZEROSSL)] })), {
+		preset: "letsencrypt-staging",
+		customUrl: "",
+		email: "",
+		eabKid: "",
+		eabHmacKey: "",
+	});
+});
+
+it("builds the window's data for an account and for the Add window, with no env lock", () => {
+	const settings = data({ locked: ["server", "email"], lockedBy: { email: "ACME_EMAIL" }, accounts: [] });
+	const account = row(ZEROSSL, { email: "z@b.c", eabHmacKeySet: true });
+	const edit = accountContext(settings, account);
+	assert.equal(edit.server, ZEROSSL);
+	assert.equal(edit.email, "z@b.c");
+	assert.equal(edit.account, account);
+	assert.deepEqual(edit.locked, []);
+	assert.equal(edit.eabHmacKeySet, true);
+	assert.equal(accountContext(settings, row(PEBBLE)).eabHmacKeySet, false);
+	const add = accountContext(settings, null);
+	assert.equal(add.server, LE);
+	assert.deepEqual(add.locked, []);
+	assert.deepEqual(add.lockedBy, {});
+});
+
+it("sends what an add or an update of another CA's account changes", () => {
+	const form = { preset: "zerossl", customUrl: "", email: " a@b.c ", eabKid: " k ", eabHmacKey: " h " };
+	assert.deepEqual(acmeAccountPayload(form, null), {
+		server: ZEROSSL,
+		email: "a@b.c",
+		eabKid: "k",
+		eabHmacKey: "h",
+	});
+	assert.deepEqual(acmeAccountPayload({ ...form, email: "", eabKid: "", eabHmacKey: "" }, null), { server: ZEROSSL });
+	const account = row(ZEROSSL, { email: "a@b.c" });
+	assert.deepEqual(acmeAccountPayload({ ...form, eabKid: "", eabHmacKey: "" }, account), {});
+	assert.deepEqual(acmeAccountPayload({ ...form, email: "", eabKid: "", eabHmacKey: "" }, account), { email: "" });
+	assert.deepEqual(acmeAccountPayload(form, account), { eabKid: "k", eabHmacKey: "h" });
+});
+
+it("plans Connect for another CA: add, save, register or nothing", () => {
+	const form = { preset: "zerossl", customUrl: "", email: "", eabKid: "", eabHmacKey: "" };
+	assert.equal(otherPlan(form, null), "add");
+	assert.equal(otherPlan({ ...form, email: "x@y.z" }, row(ZEROSSL)), "save");
+	assert.equal(otherPlan(form, row(ZEROSSL)), "nothing");
+	assert.equal(otherPlan(form, row(ZEROSSL, { state: "pending" })), "register");
+	assert.equal(otherPlan(form, row(ZEROSSL, { state: "failed" })), "register");
+});
+
+it("checks the Add window: the card's rules and a required custom URL", () => {
+	const validate = acmeAddValidate(rules);
+	const form = { preset: CUSTOM, customUrl: "", email: "", eabKid: "", eabHmacKey: "" };
+	assert.ok(validate(form).customUrl);
+	assert.ok(validate({ ...form, customUrl: "http://x.y/dir" }).customUrl);
+	assert.deepEqual(validate({ ...form, customUrl: PEBBLE }), {});
+	assert.deepEqual(validate({ ...form, preset: "zerossl" }), {});
+	assert.ok(validate({ ...form, preset: "zerossl", email: "nope" }).email);
+	assert.ok(acmeFormValidate(rules, data())({ ...form, customUrl: PEBBLE }));
 });

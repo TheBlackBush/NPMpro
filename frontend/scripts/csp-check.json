@@ -414,6 +414,17 @@
 			]
 		},
 		{
+			"name": "acme account add a CA window",
+			"route": "/settings/certificates",
+			"steps": [
+				{ "waitFor": "[data-acme-card]" },
+				{ "click": "[data-acme-action=add]" },
+				{ "waitFor": "[data-acme-connect]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-acme-connect]" }
+			]
+		},
+		{
 			"name": "acme account replace window",
 			"route": "/settings/certificates",
 			"steps": [

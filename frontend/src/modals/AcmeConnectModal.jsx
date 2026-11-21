@@ -16,18 +16,25 @@ import {
 import {
 	DirtyTracker,
 	useAcmeProfiles,
+	useAddAcmeAccount,
 	useRegisterAcmeAccount,
 	useSaveAcmeSettings,
 	useUnsavedChangesGuard,
+	useUpdateAcmeAccount,
 } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import {
 	ACME_PRESETS,
+	accountContext,
 	accountOf,
+	acmeAccountPayload,
+	acmeAddValidate,
 	acmeFormValidate,
 	acmePayload,
 	acmeServerLabel,
+	addChoices,
+	addDefaults,
 	CUSTOM,
 	connectNeedsCheck,
 	connectOutcome,
@@ -38,6 +45,8 @@ import {
 	eabShown,
 	emailForCa,
 	lockedSet,
+	otherPlan,
+	presetOf,
 	refusalText,
 	saveFailureOf,
 	serverOfForm,
@@ -56,8 +65,12 @@ import { sectionIcon } from "src/shell/useNavItems";
 const accent = sectionAccent("certificates");
 const Icon = sectionIcon("certificates");
 
-const showAcmeConnectModal = ({ data }) => {
-	EasyModal.show(AcmeConnectModal, { data });
+/**
+ * The Connect window. Without options it connects the instance CA; mode "add" adds another CA; account (a stored
+ * account of another CA) edits that account, and its CA cannot change.
+ */
+const showAcmeConnectModal = ({ data, account, mode }) => {
+	EasyModal.show(AcmeConnectModal, { data, account, mode });
 };
 
 const hasMessage = (id) => Boolean(intl.messages[id]);
@@ -85,15 +98,25 @@ function EnvHint({ env }) {
 	return <T id="settings.certificates.acme.env-hint" data={{ env }} />;
 }
 
-const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
+const AcmeConnectModal = EasyModal.create(({ data: settings, account, mode, visible, remove }) => {
 	const { mutateAsync: save } = useSaveAcmeSettings();
 	const { mutateAsync: register } = useRegisterAcmeAccount();
+	const { mutateAsync: addAccount } = useAddAcmeAccount();
+	const { mutateAsync: updateAccount } = useUpdateAcmeAccount();
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
+	// main: the instance CA; add: another CA without an account; edit: the account of another CA
+	const kind = mode === "add" ? "add" : account ? "edit" : "main";
+	const main = kind === "main";
+	const data = main ? settings : accountContext(settings, kind === "edit" ? account : null);
 	// null, { kind: "refused", message } or { kind: "unreachable" }
 	const [outcome, setOutcome] = useState(null);
 	const [eabSwitch, setEabSwitch] = useState(false);
-	const saved = toAcmeForm(data);
-	const methods = useAppForm({ defaultValues: saved, validate: acmeFormValidate(validations, data) });
+	const saved = kind === "add" ? addDefaults(settings) : toAcmeForm(data);
+	const choices = kind === "add" ? addChoices(settings) : [];
+	const methods = useAppForm({
+		defaultValues: saved,
+		validate: kind === "add" ? acmeAddValidate(validations) : acmeFormValidate(validations, data),
+	});
 	const { isSubmitting } = methods.formState;
 	const values = { ...saved, ...useWatch({ control: methods.control }) };
 	const server = serverOfForm(values);
@@ -140,8 +163,8 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 
 	// EAB values typed and then hidden are not sent
 	const sent = visibleEabValues(values, showEab);
-	const plan = connectPlan(sent, data);
-	const changedCa = server !== "" && server !== data.server;
+	const plan = main ? connectPlan(sent, data) : otherPlan(sent, kind === "edit" ? account : null);
+	const changedCa = main && server !== "" && server !== data.server;
 
 	const refuse = (err, eabSent) => {
 		const { message, field } = failureOf(err, eabSent);
@@ -154,12 +177,16 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 		if (plan === "nothing") return;
 		const anyway = outcome?.kind === "unreachable";
 		setOutcome(null);
-		const target = serverOfForm(formValues);
+		const target = kind === "edit" ? account.server : serverOfForm(formValues);
 		const eabSent = formValues.eabKid.trim() !== "" && formValues.eabHmacKey.trim() !== "";
-		if (!anyway && connectNeedsCheck(formValues, data)) {
+		const needsCheck = main
+			? connectNeedsCheck(formValues, data)
+			: kind === "add" || account.state !== "registered";
+		if (!anyway && needsCheck) {
 			try {
 				// read now: a cached answer from the URL field's check may be minutes old
-				if (!directoryReachable(await getAcmeProfiles(serverParam(data, target), { fresh: true }))) {
+				const checked = main ? serverParam(data, target) : target;
+				if (!directoryReachable(await getAcmeProfiles(checked, { fresh: true }))) {
 					setOutcome({ kind: "unreachable" });
 					return;
 				}
@@ -169,10 +196,19 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 			}
 		}
 		try {
-			const result =
-				plan === "register"
-					? await register(serverParam(data, target))
-					: await save(acmePayload(formValues, data));
+			let result;
+			if (main) {
+				result =
+					plan === "register"
+						? await register(serverParam(data, target))
+						: await save(acmePayload(formValues, data));
+			} else if (kind === "add") {
+				result = await addAccount(acmeAccountPayload(formValues, null));
+			} else if (plan === "register") {
+				result = await register(target);
+			} else {
+				result = await updateAccount({ id: account.id, values: acmeAccountPayload(formValues, account) });
+			}
 			if (connectOutcome(result) === "waiting") showSuccess(t("settings.certificates.acme.toast.waiting"));
 			else showSuccess(t("settings.certificates.acme.toast.connected", { ca: caName(target) }));
 			remove();
@@ -202,34 +238,57 @@ const AcmeConnectModal = EasyModal.create(({ data, visible, remove }) => {
 				<AppModal.Header closeButton={!isSubmitting}>
 					<AppModal.Title className="flex items-center gap-2">
 						{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
-						<T id="settings.certificates.acme.window.title" />
+						<T
+							id={
+								kind === "add"
+									? "settings.certificates.acme.window.title-add"
+									: "settings.certificates.acme.window.title"
+							}
+						/>
 					</AppModal.Title>
 				</AppModal.Header>
 				<AppModal.Body>
 					<div className="flex flex-col gap-3">
-						<SelectField
-							id="acme-ca"
-							name="preset"
-							label={<T id="settings.certificates.acme.ca" />}
-							hint={
-								locked.has("server") ? (
-									<EnvHint env={lockedBy.server} />
-								) : (
-									<T id="settings.certificates.acme.ca.hint" />
-								)
-							}
-							badges={locked.has("server") ? <LockedBadge env={lockedBy.server} windowSkip /> : null}
-							disabled={locked.has("server") || isSubmitting}
-							registerOptions={{ onChange: onPresetChange }}
-						>
-							{ACME_PRESETS.map((preset) => (
-								<option key={preset.id} value={preset.id}>
-									{t(`acme.preset.${preset.id}`)}
-								</option>
-							))}
-							<option value={CUSTOM}>{t("settings.certificates.acme.ca.custom")}</option>
-						</SelectField>
-						{custom ? (
+						{kind === "edit" ? (
+							<div className="flex flex-col gap-1" data-acme-ca-fixed>
+								<span className="font-medium text-sm">
+									<T id="settings.certificates.acme.ca" />
+								</span>
+								<span className="wrap-anywhere text-sm">{caName(account.server)}</span>
+								{presetOf(account.server) === CUSTOM ? (
+									<span className="wrap-anywhere text-muted-foreground text-xs">
+										{account.server}
+									</span>
+								) : null}
+							</div>
+						) : (
+							<SelectField
+								id="acme-ca"
+								name="preset"
+								label={<T id="settings.certificates.acme.ca" />}
+								hint={
+									locked.has("server") ? (
+										<EnvHint env={lockedBy.server} />
+									) : (
+										<T id="settings.certificates.acme.ca.hint" />
+									)
+								}
+								badges={locked.has("server") ? <LockedBadge env={lockedBy.server} windowSkip /> : null}
+								disabled={locked.has("server") || isSubmitting}
+								registerOptions={main ? { onChange: onPresetChange } : undefined}
+							>
+								{(kind === "add" ? choices : [...ACME_PRESETS.map((preset) => preset.id), CUSTOM]).map(
+									(id) => (
+										<option key={id} value={id}>
+											{id === CUSTOM
+												? t("settings.certificates.acme.ca.custom")
+												: t(`acme.preset.${id}`)}
+										</option>
+									),
+								)}
+							</SelectField>
+						)}
+						{custom && kind !== "edit" ? (
 							<TextField
 								id="acme-url"
 								name="customUrl"
