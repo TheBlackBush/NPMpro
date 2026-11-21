@@ -1,0 +1,83 @@
+{
+	"operationId": "listAcmeServers",
+	"summary": "List the CAs a certificate can be requested at",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The instance CA first, then the CAs an administrator added, by address",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"server": "https://acme-v02.api.letsencrypt.org/directory",
+									"preset": "letsencrypt",
+									"state": "registered",
+									"instance": true
+								},
+								{
+									"server": "https://acme.zerossl.com/v2/DV90",
+									"preset": "zerossl",
+									"state": "registered",
+									"instance": false
+								}
+							]
+						}
+					},
+					"schema": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"server": {
+									"type": "string",
+									"description": "The CA's ACME directory URL",
+									"example": "https://acme-v02.api.letsencrypt.org/directory"
+								},
+								"preset": {
+									"type": [
+										"string",
+										"null"
+									],
+									"description": "The preset name of the CA (letsencrypt, letsencrypt-staging, zerossl, google), null for another CA",
+									"example": "letsencrypt"
+								},
+								"state": {
+									"type": "string",
+									"enum": [
+										"registered",
+										"pending",
+										"failed",
+										"none"
+									],
+									"description": "The state of the CA's account: none for the instance CA before its first registration",
+									"example": "registered"
+								},
+								"instance": {
+									"type": "boolean",
+									"description": "True for the instance CA",
+									"example": true
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"403": {
+			"description": "Not allowed: the user cannot manage certificates"
+		}
+	},
+	"description": "The CAs the certificate create window offers: the instance CA and every CA an administrator set up. Only the address, its preset name and the state of the account are returned.\n\nNeeds: certificates Manage"
+}

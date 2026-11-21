@@ -5,6 +5,7 @@ import express from "express";
 import { rateLimit } from "express-rate-limit";
 import multer from "multer";
 import dnsPlugins from "../../certbot/dns-plugins.json" with { type: "json" };
+import internalAcmeAccount from "../../internal/acme-account.js";
 import internalCertificate from "../../internal/certificate.js";
 import { getFieldDefinition } from "../../lib/dns-credential-values.js";
 import errs from "../../lib/error.js";
@@ -120,6 +121,18 @@ router
 				}))
 				.sort((a, b) => a.name.localeCompare(b.name)),
 		);
+	});
+
+/**
+ * /api/nginx/certificates/acme-servers
+ */
+router
+	.route("/acme-servers")
+	.all(jwtdecode())
+
+	/** GET /api/nginx/certificates/acme-servers */
+	.get(async (_, res) => {
+		res.status(200).send(await internalAcmeAccount.acmeServersList(res.locals.access));
 	});
 
 /**

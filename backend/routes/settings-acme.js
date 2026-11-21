@@ -1,6 +1,7 @@
 import express from "express";
 import internalAcmeAccount from "../internal/acme-account.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
+import pathId from "../lib/express/path-id.js";
 import sessionOnly from "../lib/express/session-only.js";
 import apiValidator from "../lib/validator/api.js";
 import validator from "../lib/validator/index.js";
@@ -51,6 +52,34 @@ router
 	.post(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/settings/acme/replace", "post"), req.body);
 		res.status(200).send(await internalAcmeAccount.replaceAccount(res.locals.access, payload));
+	});
+
+router.param("account_id", pathId);
+
+/** POST /api/settings/acme/accounts: adds a CA that has no account yet */
+router
+	.route("/accounts")
+	.all(jwtdecode())
+	.post(async (req, res) => {
+		const payload = apiValidator(getValidationSchema("/settings/acme/accounts", "post"), req.body);
+		res.status(200).send(await internalAcmeAccount.addAccount(res.locals.access, payload));
+	});
+
+/**
+ * /api/settings/acme/accounts/5: the account values of a stored CA; removing needs a session (the record of a CA is
+ * not rebuilt by a script)
+ */
+router
+	.route("/accounts/:account_id")
+	.all(jwtdecode())
+	.put(async (req, res) => {
+		const payload = apiValidator(getValidationSchema("/settings/acme/accounts/{accountID}", "put"), req.body);
+		res.status(200).send(
+			await internalAcmeAccount.updateAccount(res.locals.access, Number(req.params.account_id), payload),
+		);
+	})
+	.delete(sessionOnly(), async (req, res) => {
+		res.status(200).send(await internalAcmeAccount.removeAccount(res.locals.access, Number(req.params.account_id)));
 	});
 
 /** GET /api/settings/acme/profiles?server=: the profiles a CA offers */

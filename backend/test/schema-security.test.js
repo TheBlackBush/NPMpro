@@ -4,6 +4,7 @@ import { getCompiledSchema } from "../schema/index.js";
 
 const SESSION_ONLY = new Set([
 	"post /settings/acme/replace",
+	"delete /settings/acme/accounts/{accountID}",
 	"get /tokens",
 	"put /users/{userID}/auth",
 	"get /users/{userID}/mfa",

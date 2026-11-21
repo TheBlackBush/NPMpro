@@ -491,6 +491,8 @@
 	"error.acme-busy": "Certbot is busy with another task. Nothing was changed: try again in a minute.",
 	"error.acme-eab-pair": "Enter both the EAB key ID and the HMAC key, without spaces.",
 	"error.acme-email-offline": "The CA {server} cannot be reached. The email can only change while it answers.",
+	"error.acme-exists": "This CA already has an account in Settings.",
+	"error.acme-in-use": "This CA is the instance CA or a certificate uses it. It cannot be removed.",
 	"error.acme-not-directory": "{server} is not an ACME directory.",
 	"error.acme-not-registered": "The account is not registered.",
 	"error.acme-refused": "The CA refused: {message}",
