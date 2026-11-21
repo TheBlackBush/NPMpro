@@ -251,6 +251,24 @@ router
 	});
 
 /**
+ * /api/nginx/certificates/123/reissue
+ */
+router
+	.route("/:certificate_id/reissue")
+	.all(jwtdecode())
+
+	/** POST /api/nginx/certificates/123/reissue */
+	.post(async (req, res) => {
+		const payload = apiValidator(getValidationSchema("/nginx/certificates/{certID}/reissue", "post"), req.body);
+		req.setTimeout(900000); // 15 minutes timeout
+		const result = await internalCertificate.reissue(res.locals.access, {
+			id: Number.parseInt(req.params.certificate_id, 10),
+			npmpro_acme_server: payload.npmpro_acme_server,
+		});
+		res.status(200).send(result);
+	});
+
+/**
  * /api/nginx/certificates/123/download
  */
 router

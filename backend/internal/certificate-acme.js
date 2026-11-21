@@ -27,6 +27,10 @@ import internalDnsCredential from "./dns-credential.js";
 const renewalConfOf = (id) => rooted(`/data/tls/certbot/renewal/npm-${id}.conf`);
 const CERT_FILE = /^cert(?<n>\d*)\.pem$/u;
 
+/** the private key next to a certificate file of a lineage (cert3.pem to privkey3.pem) */
+const keyFileOf = (certPath) =>
+	path.join(path.dirname(certPath), path.basename(certPath).replace(CERT_FILE, "privkey$<n>.pem"));
+
 /** server and account of a certificate's renewal conf, empty when it has none */
 const renewalParamsOf = async (id) => {
 	try {
@@ -265,10 +269,7 @@ const certificateAcme = {
 					server: params.get("server"),
 					account: params.get("account"),
 					certPath: oldCertPath,
-					keyPath: path.join(
-						path.dirname(oldCertPath),
-						path.basename(oldCertPath).replace(CERT_FILE, "privkey$<n>.pem"),
-					),
+					keyPath: keyFileOf(oldCertPath),
 					reason: "superseded",
 				});
 
@@ -402,5 +403,5 @@ const certificateAcme = {
 	},
 };
 
-export { revokeBestEffort, runCertonly, withAcmeTarget };
+export { keyFileOf, renewalParamsOf, revokeBestEffort, runCertonly, withAcmeTarget };
 export default certificateAcme;

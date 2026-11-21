@@ -17,6 +17,7 @@
 	"get /nginx/certificates/{certID}/download": "5f22edc3a4ca9634e7d89cc0fc5782182730e2a08334e0e77c1dfe901d5bf453",
 	"put /nginx/certificates/{certID}/dns-credential": "f24d8f32f127fe07287d62205a92d0b641f37fb8b268d92b074e8c64f004ba71",
 	"post /nginx/certificates/{certID}/renew": "5f22edc3a4ca9634e7d89cc0fc5782182730e2a08334e0e77c1dfe901d5bf453",
+	"post /nginx/certificates/{certID}/reissue": "4d82e31695ba6aa0fb4931f6efb0c8ad5337bf81061e6989d330c4dee689549f",
 	"post /nginx/certificates/{certID}/upload": "423509d553af13a3d30e56c85b4b4f66c6a354b48a4718d1fe629d7c522ad083",
 	"get /nginx/dns-credentials": "794d3618c1f75f3f818a1102f89a188a9167e5e44b9c9bc1bef225adff5f1eae",
 	"post /nginx/dns-credentials": "76646a6fbe9124ab779dc9fb046d722830d5e0aeb7a8034c2c7ad7f156f087ad",

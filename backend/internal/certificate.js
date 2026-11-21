@@ -23,9 +23,9 @@ import proxyHostModel from "../models/proxy_host.js";
 import redirectionHostModel from "../models/redirection_host.js";
 import streamModel from "../models/stream.js";
 import { getValidationSchema } from "../schema/index.js";
-import { allowedAcmeServers, instanceServer, withRenewalLocks } from "./acme-account.js";
+import { allowedAcmeServers, instanceServer, withAccountLock, withRenewalLocks } from "./acme-account.js";
 import internalAuditLog from "./audit-log.js";
-import certificateAcme from "./certificate-acme.js";
+import certificateAcme, { keyFileOf, renewalParamsOf, revokeBestEffort, runCertonly } from "./certificate-acme.js";
 import certificateCustom, { ALLOWED_SSL_FILES } from "./certificate-custom.js";
 import certificateInfo from "./certificate-info.js";
 import internalDnsCredential from "./dns-credential.js";
@@ -568,6 +568,77 @@ const internalCertificate = {
 		}
 
 		throw new errs.ValidationError("Only Certbot certificates can be renewed");
+	},
+
+	/**
+	 * Issues a Let's Encrypt certificate again at another allowed CA. The row, the renewal conf and the files change
+	 * only after certbot succeeded (certbot keeps the old lineage until then); then the old certificate is revoked at
+	 * its old CA, best effort.
+	 *
+	 * @param   {Access}  access
+	 * @param   {Object}  data
+	 * @param   {Number}  data.id
+	 * @param   {String}  data.npmpro_acme_server  the CA to issue at
+	 * @returns {Promise<Object>}  the updated certificate
+	 */
+	reissue: async (access, data) => {
+		access.can("certificates:manage");
+		const certificate = await internalCertificate.get(access, { id: data.id });
+		if (certificate.provider !== "letsencrypt") {
+			throw new errs.ValidationError(
+				"Only Certbot certificates can be issued again at another CA",
+				"error.acme-reissue-acme-only",
+			);
+		}
+		const target = (await allowedAcmeServers()).find((server) => sameServer(server, data.npmpro_acme_server));
+		if (!target) {
+			throw new errs.ValidationError(
+				"npmpro_acme_server: an administrator sets this CA up in Settings first",
+				"error.acme-ca-not-allowed",
+			);
+		}
+		if (sameServer(target, certificate.npmpro_acme_server ?? instanceServer())) {
+			throw new errs.ValidationError("The certificate is already issued by this CA", "error.acme-same-ca");
+		}
+
+		// what certbot knows of the old certificate, before the new one replaces it
+		const params = await renewalParamsOf(certificate.id);
+		const oldCertPath = await realpath(`${internalCertificate.getLiveCertPath(certificate.id)}/cert.pem`);
+
+		await runCertonly({ ...certificate, npmpro_acme_server: target }, access, { extra: ["--force-renewal"] });
+
+		const certInfo = await internalCertificate.getCertificateInfoFromFile(
+			`${internalCertificate.getLiveCertPath(certificate.id)}/fullchain.pem`,
+		);
+		const updatedCertificate = await certificateModel.query().patchAndFetchById(certificate.id, {
+			npmpro_acme_server: target,
+			nice_name: getNiceName(certificate.domain_names),
+			expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
+		});
+
+		try {
+			await internalNginx.reload();
+		} finally {
+			await internalAuditLog.add(access, {
+				action: "ca-changed",
+				object_type: "certificate",
+				object_id: certificate.id,
+				meta: { old: params.get("server") ?? certificate.npmpro_acme_server, new: target },
+			});
+			const oldServer = params.get("server");
+			const revoke = () =>
+				revokeBestEffort({
+					server: oldServer,
+					account: params.get("account"),
+					certPath: oldCertPath,
+					keyPath: keyFileOf(oldCertPath),
+					reason: "superseded",
+				});
+			// the old CA's lock is free again here (runCertonly released the new CA's)
+			await (oldServer ? withAccountLock(oldServer, revoke) : revoke());
+		}
+
+		return updatedCertificate;
 	},
 };
 
