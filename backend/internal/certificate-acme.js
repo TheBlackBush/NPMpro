@@ -3,7 +3,7 @@ import net from "node:net";
 import path from "node:path";
 import { domainToASCII } from "node:url";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
-import { requestOptionsFor } from "../lib/acme-server.js";
+import { requestOptionsFor, sameServer } from "../lib/acme-server.js";
 import { parseRenewalConf } from "../lib/backup/renewal-conf.js";
 import { installPlugin, runCertbot } from "../lib/certbot.js";
 import { requestOptionArgs } from "../lib/certbot-account.js";
@@ -15,7 +15,13 @@ import { rooted } from "../lib/paths.js";
 import { getRuntimeConfig } from "../lib/runtime-config.js";
 import { ssl as logger } from "../logger.js";
 import pjson from "../package.json" with { type: "json" };
-import { ensureAccountLocked, instanceServer, withAccountLock, withRenewalLock } from "./acme-account.js";
+import {
+	allowedAcmeServers,
+	ensureAccountLocked,
+	instanceServer,
+	withAccountLock,
+	withRenewalLock,
+} from "./acme-account.js";
 import internalDnsCredential from "./dns-credential.js";
 
 const renewalConfOf = (id) => rooted(`/data/tls/certbot/renewal/npm-${id}.conf`);
@@ -77,7 +83,16 @@ const acmeTarget = async (server, access) => {
 const withAcmeTarget = (certificate, access, fn) => {
 	// the CA is resolved once: the lock and the account are always the same CA's
 	const server = certificate.npmpro_acme_server ?? instanceServer();
-	return withAccountLock(server, async () => fn(await acmeTarget(server, access)));
+	return withAccountLock(server, async () => {
+		// a Remove of the CA's account between the create's check and this lock must not register it again lazily
+		if (!(await allowedAcmeServers()).some((allowed) => sameServer(allowed, server))) {
+			throw new errs.ValidationError(
+				"npmpro_acme_server: an administrator sets this CA up in Settings first",
+				"error.acme-ca-not-allowed",
+			);
+		}
+		return await fn(await acmeTarget(server, access));
+	});
 };
 
 /** Revokes by the account first, then with the certificate's own key (fact 12); both best effort */

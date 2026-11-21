@@ -84,6 +84,8 @@ const run = async (token, name, args = {}) => {
 	return JSON.parse(body.result.content[0].text);
 };
 
+const ACME_REFUSAL = /acme-ca-not-allowed|npmpro_acme_server/u;
+
 it("tools/list follows the token's permissions", async () => {
 	const viewProxy = await makeToken({ ...levels("hidden"), proxy_hosts: "view" });
 	assert.deepEqual(await names(viewProxy), ["get_host", "list_hosts"]);
@@ -227,6 +229,7 @@ it("a call for each tool, and no secret in any result", async () => {
 		npmpro_acme_server: "https://typo.lan/dir",
 	});
 	assert.equal(refusedCa.result.isError, true);
+	assert.match(JSON.stringify(refusedCa.result), ACME_REFUSAL);
 	assert.equal((await run(token, "renew_certificate", { id: requested.id })).id, requested.id);
 	assert.deepEqual(await run(token, "delete_certificate", { id: requested.id }), { deleted: true, id: requested.id });
 
