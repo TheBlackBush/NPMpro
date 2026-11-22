@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
-import { normalizeDnsDomain, takenNames, toAscii } from "./DnsDomainForms.js";
+import { dnsDomainNamesRule, normalizeDnsDomain, takenNames, toAscii } from "./DnsDomainForms.js";
 
 const CASES = JSON.parse(
 	readFileSync(new URL("../../../backend/test/fixtures/dns-domain-cases.json", import.meta.url), "utf8"),
@@ -35,4 +35,18 @@ it("finds the names the owner keeps on another credential", () => {
 	assert.equal(takenNames(["other.org"], { credentialId: null, ownerUserId: 1, domains }).size, 0);
 	assert.equal(takenNames([], { credentialId: null, ownerUserId: 1, domains: undefined }).size, 0);
 	assert.equal(takenNames(undefined, { credentialId: null, ownerUserId: 1, domains }).size, 0);
+});
+
+it("gives the rule of the domain names field its message", () => {
+	const rules = { message: (id, values) => ({ id, values }) };
+	assert.deepEqual(dnsDomainNamesRule(rules, new Map())(["example.com", "*.example.com"]), {
+		id: "error.dns-domain-wildcard",
+		values: { domain: "*.example.com" },
+	});
+	assert.deepEqual(dnsDomainNamesRule(rules, new Map([["example.com", "Cloudflare main"]]))(["example.com"]), {
+		id: "dns-domains.taken",
+		values: { domain: "example.com", credential: "Cloudflare main" },
+	});
+	assert.equal(dnsDomainNamesRule(rules, new Map())(["example.com"]), undefined);
+	assert.equal(dnsDomainNamesRule(rules, new Map())(undefined), undefined);
 });

@@ -62,3 +62,19 @@ export function takenNames(names, { credentialId, ownerUserId, domains }) {
 	}
 	return taken;
 }
+
+/**
+ * The rule of a DnsDomainNamesField: every entry a DNS domain, none on another credential of the owner
+ *
+ * @param   {Object}  rules    createValidations(intl)
+ * @param   {Map}     taken    takenNames(...)
+ * @returns {Function}         (values) => message | undefined
+ */
+export const dnsDomainNamesRule = (rules, taken) => (values) => {
+	for (const entry of values ?? []) {
+		const { error } = normalizeDnsDomain(entry);
+		if (error) return rules.message(error, { domain: entry });
+	}
+	const [first] = [...taken];
+	return first ? rules.message("dns-domains.taken", { domain: first[0], credential: first[1] }) : undefined;
+};

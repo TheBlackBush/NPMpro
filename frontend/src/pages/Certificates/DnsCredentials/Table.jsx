@@ -34,6 +34,41 @@ function UsedBy({ certificates }) {
 	);
 }
 
+const SHOWN_DOMAINS = 2;
+
+// the first names and "+N"; the full list opens in a popover
+function Domains({ domains }) {
+	if (domains.length === 0) {
+		return <span className="text-muted-foreground">0</span>;
+	}
+	const more = domains.length - SHOWN_DOMAINS;
+	return (
+		<div className="flex min-w-0 flex-wrap items-center gap-x-2">
+			<span className="wrap-anywhere">{domains.slice(0, SHOWN_DOMAINS).join(", ")}</span>
+			{more > 0 ? (
+				<Popover>
+					<PopoverTrigger asChild>
+						<button
+							type="button"
+							className="rounded-sm text-muted-foreground underline-offset-4 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+							aria-label={`${intl.formatMessage({ id: "dns-domains" })}: ${domains.length}`}
+						>
+							{intl.formatMessage({ id: "dns-domains.more" }, { count: more })}
+						</button>
+					</PopoverTrigger>
+					<PopoverContent align="start" className="w-auto max-w-80">
+						{domains.map((name) => (
+							<div key={name} className="wrap-anywhere">
+								{name}
+							</div>
+						))}
+					</PopoverContent>
+				</Popover>
+			) : null}
+		</div>
+	);
+}
+
 function DnsCredentialActions({ credential, onDelete, onEdit }) {
 	const canManage = useCanManage(CERTIFICATES);
 	const inUse = (credential.certificates?.length ?? 0) > 0;
@@ -122,6 +157,16 @@ export function useColumns() {
 				},
 				header: intl.formatMessage({ id: "certificates.dns.provider" }),
 				cell: (info) => providers?.find((p) => p.id === info.getValue())?.name ?? info.getValue(),
+			}),
+			columnHelper.accessor((row) => row.domains?.length ?? 0, {
+				id: "domains",
+				meta: {
+					mobile: "summary",
+					summaryText: (row) =>
+						intl.formatMessage({ id: "dns-domains.count" }, { count: row.domains?.length ?? 0 }),
+				},
+				header: intl.formatMessage({ id: "dns-domains" }),
+				cell: (info) => <Domains domains={info.row.original.domains ?? []} />,
 			}),
 			columnHelper.accessor((row) => row.certificates?.length ?? 0, {
 				id: "usedBy",

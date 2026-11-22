@@ -2,7 +2,7 @@ import { PlusIcon } from "lucide-react";
 import { useController } from "react-hook-form";
 import { Button } from "src/components/Button";
 import { Combobox } from "src/components/Combobox";
-import { useDnsCredentials } from "src/hooks";
+import { useDnsCredentials, useDnsProviders } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDnsCredentialModal } from "src/modals";
 import { FormField } from "./FormField";
@@ -13,17 +13,26 @@ import { FormField } from "./FormField";
  *
  * @param {Object} props
  * @param {string} props.name
- * @param {string} props.provider
+ * @param {string} [props.provider]     only this provider's credentials; without it every credential is listed as
+ *                                      "name (provider)" and "+" opens the window without a preset provider
+ * @param {number} [props.ownerUserId]  only this owner's credentials
  * @param {*}      [props.hint]
  */
-export function DnsCredentialSelect({ name, provider, hint }) {
+export function DnsCredentialSelect({ name, provider, ownerUserId, hint }) {
 	const { field, fieldState } = useController({ name });
 	const error = fieldState.error?.message ?? null;
 	const { data, isPending } = useDnsCredentials();
+	const { data: providers } = useDnsProviders();
 
+	const providerName = (id) => providers?.find((p) => p.id === id)?.name ?? id;
 	const options = (data ?? [])
-		.filter((c) => c.provider === provider)
-		.map((c) => ({ value: c.id, label: c.name, disabled: Boolean(c.decryptError) }));
+		.filter((c) => (provider ? c.provider === provider : true))
+		.filter((c) => ownerUserId === undefined || c.ownerUserId === ownerUserId)
+		.map((c) => ({
+			value: c.id,
+			label: provider ? c.name : `${c.name} (${providerName(c.provider)})`,
+			disabled: Boolean(c.decryptError),
+		}));
 
 	const addLabel = intl.formatMessage({ id: "dns-credentials.add" });
 
