@@ -24,6 +24,8 @@ import { ROW_EDIT_ATTR, restoreRowFocus } from "src/modules/FocusReturn";
  * button before the menu button, labelled by the ariaLabel and carrying data-row-edit={focusKey}. Focus returns to
  * it the same way (the window records it as the opener, restoreRowFocus finds it by key). With no other item left
  * there is no menu button.
+ * The buttons sit at the end of the cell, so a row without the primary button keeps its menu button under the menu
+ * buttons of the other rows.
  * The menu holds no fixed ids: a row action cell may mount twice (phone layout).
  *
  * @param {Object} props
@@ -46,7 +48,7 @@ function RowActions({ label, focusKey, title, items }) {
 	}
 	const PrimaryIcon = primary?.icon;
 	return (
-		<div className="flex items-center gap-1">
+		<div className="flex items-center justify-end gap-1">
 			{primary ? (
 				<TapTooltip content={primary.ariaLabel} tap={false}>
 					<Button
