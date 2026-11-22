@@ -419,6 +419,17 @@
 			]
 		},
 		{
+			"name": "dns resolver card",
+			"route": "/settings/nginx",
+			"steps": [
+				{ "waitFor": "#runtime-resolverAddresses" },
+				{ "hover": "[role=group]:has(#runtime-resolverAddresses) button[aria-labelledby$=-title]" },
+				{ "waitFor": "[data-slot=tooltip-content]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-slot=tooltip-content]" }
+			]
+		},
+		{
 			"name": "acme account card",
 			"route": "/settings/certificates",
 			"steps": [

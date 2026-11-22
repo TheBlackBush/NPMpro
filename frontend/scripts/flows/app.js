@@ -1273,6 +1273,49 @@ const UNSAVED_QUESTION = { name: "Unsaved changes" };
  * URL with nothing saved, the unsaved-changes question on Escape), the profile field and (on an instance with a
  * registered account) the Replace window from its button.
  */
+const RESOLVER_ADDRESSES = "#runtime-resolverAddresses";
+const RESOLVER_SWITCH = "#runtime-resolverHosts";
+const UNKNOWN_RESOLVER = "dns.example";
+const DOCUMENTATION_ADDRESS = "192.0.2.1";
+
+// The DNS resolver card of Settings, nginx: it shows, the hosts switch is read-only when its env var is set, and a
+// save with a name typed as an address is refused with its message and sends no request. A valid address is added
+// first, since typed text alone does not enable Save. No resolver address is saved: a save reloads nginx with it.
+async function dnsResolver({ admin }) {
+	const { page, api, errors } = admin;
+	const before = JSON.stringify(await api("GET", "/settings/runtime/nginx"));
+	const changes = [];
+	page.on("request", (sent) => {
+		if (sent.method() !== "GET") changes.push(`${sent.method()} ${sent.url()}`);
+	});
+	await page.goto("/settings/nginx");
+	await page.getByText("DNS resolver", { exact: true }).first().waitFor();
+	const addresses = page.locator(RESOLVER_ADDRESSES);
+	await addresses.waitFor();
+	const hosts = page.locator(RESOLVER_SWITCH);
+	await hosts.waitFor();
+	if (await hosts.isDisabled()) {
+		await page
+			.locator("[data-setting-line]")
+			.filter({ has: hosts })
+			.getByText("Set by environment")
+			.first()
+			.waitFor();
+	} else {
+		console.log("  (the hosts switch is not locked here)");
+	}
+	await addresses.fill(DOCUMENTATION_ADDRESS);
+	await addresses.press("Enter");
+	await addresses.fill(UNKNOWN_RESOLVER);
+	await addresses.press("Enter");
+	await page.locator("form").getByRole("button", { name: "Save", exact: true }).click();
+	await page.getByText(`${UNKNOWN_RESOLVER} is not an IP address`, { exact: false }).first().waitFor();
+	if (changes.length > 0) throw new Error(`a save request was sent: ${changes}`);
+	if (JSON.stringify(await api("GET", "/settings/runtime/nginx")) !== before)
+		throw new Error("the nginx settings changed");
+	if (errors.length > 0) throw new Error(`page error: ${errors[0]}`);
+}
+
 async function acmeAccount({ admin }) {
 	const { page, api } = admin;
 	const before = await api("GET", "/settings/acme");
@@ -1407,6 +1450,7 @@ async function acmeAccount({ admin }) {
 export const appFlows = [
 	{ name: "api reference", run: apiReference },
 	{ name: "settings save", run: settingsSave },
+	{ name: "dns resolver", run: dnsResolver },
 	{ name: "acme account", run: acmeAccount },
 	{ name: "log format", run: logFormat },
 	{ name: "tls handshake log", run: tlsHandshakeLog },
