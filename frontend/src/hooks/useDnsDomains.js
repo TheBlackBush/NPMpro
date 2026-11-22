@@ -10,8 +10,13 @@ const DOMAIN_KEYS = [
 	["audit-logs"],
 ];
 
-const useDnsDomains = (expand) =>
-	useQuery({ queryKey: ["dns-domains", expand], queryFn: () => getDnsDomains(expand), staleTime: 60 * 1000 });
+const useDnsDomains = (expand, options = {}) =>
+	useQuery({
+		queryKey: ["dns-domains", expand],
+		queryFn: () => getDnsDomains(expand),
+		staleTime: 60 * 1000,
+		...options,
+	});
 
 const useDomainMutation = (mutationFn) => {
 	const queryClient = useQueryClient();

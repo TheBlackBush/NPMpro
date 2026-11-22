@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
-import { dnsDomainNamesRule, normalizeDnsDomain, takenNames, toAscii } from "./DnsDomainForms.js";
+import { dnsDomainNamesRule, normalizeDnsDomain, storedForm, takenNames, toAscii } from "./DnsDomainForms.js";
 
 const CASES = JSON.parse(
 	readFileSync(new URL("../../../backend/test/fixtures/dns-domain-cases.json", import.meta.url), "utf8"),
@@ -49,4 +49,25 @@ it("gives the rule of the domain names field its message", () => {
 	});
 	assert.equal(dnsDomainNamesRule(rules, new Map())(["example.com"]), undefined);
 	assert.equal(dnsDomainNamesRule(rules, new Map())(undefined), undefined);
+});
+
+it("never refuses a stored name, names every taken name and keeps each name once", () => {
+	const rules = { message: (id, values) => ({ id, values }) };
+	const rule = dnsDomainNamesRule(rules, new Map(), ["Legacy_Name.example.com"]);
+	assert.equal(rule(["Legacy_Name.example.com", "example.com"]), undefined);
+	assert.equal(rule(["Other_Name.example.com"]).id, "error.dns-domain-invalid");
+	const taken = new Map([
+		["a.com", "One"],
+		["b.com", "Two"],
+		["c.com", "Two"],
+	]);
+	assert.deepEqual(dnsDomainNamesRule(rules, taken)(["a.com"]), {
+		id: "dns-domains.taken-more",
+		values: { domain: "a.com", credential: "One", count: 2 },
+	});
+	assert.deepEqual(storedForm(["Example.com", "example.com", "bücher.de", "bad name"]), [
+		"example.com",
+		"xn--bcher-kva.de",
+		"bad name",
+	]);
 });

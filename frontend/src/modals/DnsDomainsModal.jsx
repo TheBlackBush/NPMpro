@@ -12,9 +12,16 @@ import {
 	HookForm,
 	useAppForm,
 } from "src/components";
-import { DirtyTracker, useCreateDnsDomains, useDnsCredentials, useDnsDomains, useUnsavedChangesGuard } from "src/hooks";
+import {
+	DirtyTracker,
+	useCanManage,
+	useCreateDnsDomains,
+	useDnsCredentials,
+	useDnsDomains,
+	useUnsavedChangesGuard,
+} from "src/hooks";
 import { cn } from "src/lib/utils";
-import { intl, T } from "src/locale";
+import { T } from "src/locale";
 import { dnsDomainNamesRule, takenNames } from "src/modules/DnsDomainForms";
 import EasyModal from "src/modules/easyModal";
 import { fieldsValidate } from "src/modules/HookForm";
@@ -47,7 +54,8 @@ const DnsDomainsModal = EasyModal.create(({ credentialId, visible, remove }) => 
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const { mutateAsync: createDnsDomains } = useCreateDnsDomains();
 	const { data: credentials } = useDnsCredentials();
-	const { data: domains } = useDnsDomains(EXPAND);
+	const { data: domains } = useDnsDomains(EXPAND, { refetchOnMount: "always" });
+	const readOnly = !useCanManage(CERTIFICATES);
 	const [errorMsg, setErrorMsg] = useState(null);
 
 	const methods = useAppForm({
@@ -81,7 +89,7 @@ const DnsDomainsModal = EasyModal.create(({ credentialId, visible, remove }) => 
 
 	return (
 		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static" data-dns-domains-window>
-			<HookForm methods={methods} onSubmit={onSubmit}>
+			<HookForm readOnly={readOnly} methods={methods} onSubmit={onSubmit}>
 				<DirtyTracker dirtyRef={dirtyRef} />
 				<AppModal.Header closeButton={!isSubmitting}>
 					<AppModal.Title className="flex items-center gap-2">
@@ -91,8 +99,10 @@ const DnsDomainsModal = EasyModal.create(({ credentialId, visible, remove }) => 
 				</AppModal.Header>
 				<AppModal.Body>
 					<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-					<DnsCredentialSelect name="dnsCredentialId" />
-					<DomainNames credentials={credentials} />
+					<fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
+						<DnsCredentialSelect name="dnsCredentialId" />
+						<DomainNames credentials={credentials} />
+					</fieldset>
 				</AppModal.Body>
 				<AppModal.Footer>
 					<Button variant="ghost" onClick={close} disabled={isSubmitting}>

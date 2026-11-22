@@ -9,6 +9,7 @@ import {
 	HasPermission,
 	HookForm,
 	Loading,
+	NoticeAlert,
 	useAppForm,
 } from "src/components";
 import { DirtyTracker, useCanManage, useDnsDomains, useMoveDnsDomain, useUnsavedChangesGuard } from "src/hooks";
@@ -35,7 +36,7 @@ const showDnsDomainModal = (id) => {
 const DnsDomainModal = EasyModal.create(({ id, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const readOnly = !useCanManage(CERTIFICATES);
-	const { data: domains, isPending } = useDnsDomains(EXPAND);
+	const { data: domains, isPending, error } = useDnsDomains(EXPAND, { refetchOnMount: "always" });
 	const { mutateAsync: moveDnsDomain } = useMoveDnsDomain();
 	const [errorMsg, setErrorMsg] = useState(null);
 
@@ -60,7 +61,29 @@ const DnsDomainModal = EasyModal.create(({ id, visible, remove }) => {
 
 	return (
 		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static" data-dns-domain-window>
+			{error && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
+			{!(isPending || error || domain) && (
+				<>
+					<AppModal.Body>
+						<NoticeAlert>
+							<T id="dns-domains.gone" />
+						</NoticeAlert>
+					</AppModal.Body>
+					<AppModal.Footer>
+						<Button variant="ghost" onClick={close}>
+							<T id="action.close" />
+						</Button>
+					</AppModal.Footer>
+				</>
+			)}
+			{error && (
+				<AppModal.Footer>
+					<Button variant="ghost" onClick={close}>
+						<T id="action.close" />
+					</Button>
+				</AppModal.Footer>
+			)}
 			{domain && (
 				<HookForm readOnly={readOnly} methods={methods} onSubmit={onSubmit}>
 					<DirtyTracker dirtyRef={dirtyRef} />

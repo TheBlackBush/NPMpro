@@ -178,7 +178,7 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 				ownerUserId: isNew ? me?.id : data?.ownerUserId,
 				domains: allDomains,
 			});
-			const domains = dnsDomainNamesRule(validations, taken)(values.domains);
+			const domains = dnsDomainNamesRule(validations, taken, data?.domains)(values.domains);
 			return domains ? { ...errors, domains } : errors;
 		},
 	});

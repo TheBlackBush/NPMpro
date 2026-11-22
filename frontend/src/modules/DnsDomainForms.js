@@ -39,6 +39,14 @@ export function normalizeDnsDomain(input) {
 }
 
 /**
+ * The entries of the names field in their stored form, each name once (Example.com next to example.com is one)
+ *
+ * @param   {string[]} entries
+ * @returns {string[]}
+ */
+export const storedForm = (entries) => [...new Set(entries.map((entry) => normalizeDnsDomain(entry).name ?? entry))];
+
+/**
  * The entered names the owner already keeps on another credential (the backend refuses the save for them)
  *
  * @param   {string[]}    names
@@ -64,17 +72,27 @@ export function takenNames(names, { credentialId, ownerUserId, domains }) {
 }
 
 /**
- * The rule of a DnsDomainNamesField: every entry a DNS domain, none on another credential of the owner
+ * The rule of a DnsDomainNamesField: every entry a DNS domain, none on another credential of the owner. A stored
+ * entry (the names the credential already holds) is never refused, as the backend keeps it on a save.
  *
- * @param   {Object}  rules    createValidations(intl)
- * @param   {Map}     taken    takenNames(...)
- * @returns {Function}         (values) => message | undefined
+ * @param   {Object}   rules     createValidations(intl)
+ * @param   {Map}      taken     takenNames(...)
+ * @param   {string[]} [stored]  the names saved on the credential
+ * @returns {Function}           (values) => message | undefined
  */
-export const dnsDomainNamesRule = (rules, taken) => (values) => {
-	for (const entry of values ?? []) {
-		const { error } = normalizeDnsDomain(entry);
-		if (error) return rules.message(error, { domain: entry });
-	}
-	const [first] = [...taken];
-	return first ? rules.message("dns-domains.taken", { domain: first[0], credential: first[1] }) : undefined;
-};
+export const dnsDomainNamesRule =
+	(rules, taken, stored = []) =>
+	(values) => {
+		const kept = new Set(stored);
+		for (const entry of values ?? []) {
+			const { error } = kept.has(entry) ? {} : normalizeDnsDomain(entry);
+			if (error) return rules.message(error, { domain: entry });
+		}
+		const [first] = [...taken];
+		if (!first) return;
+		const more = taken.size - 1;
+		const named = { domain: first[0], credential: first[1] };
+		return more > 0
+			? rules.message("dns-domains.taken-more", { ...named, count: more })
+			: rules.message("dns-domains.taken", named);
+	};
