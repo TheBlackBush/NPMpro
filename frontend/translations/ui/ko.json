@@ -306,6 +306,7 @@
 	"certificate.reissue": "인증서 재발급",
 	"certificate.reissue.no-other-ca": "이 인증서를 재발급할 다른 인증 기관이 없습니다. 관리자가 설정의 인증서에서 추가할 수 있습니다.",
 	"certificate.reissue.note": "선택한 CA에 같은 이름으로 인증서를 다시 요청합니다. 실패하면 현재 인증서가 유지됩니다.",
+	"certificate.reissue.test-ca": "테스트용 CA입니다. 브라우저가 이 CA의 인증서를 신뢰하지 않으므로 이 인증서를 사용하는 호스트의 방문자에게 경고가 표시됩니다. 현재 인증서는 폐기되지 않습니다.",
 	"certificate.renew": "인증서 갱신",
 	"certificates": "인증서",
 	"certificates-dns": "인증서 및 DNS",

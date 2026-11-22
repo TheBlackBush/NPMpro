@@ -306,6 +306,7 @@
 	"certificate.reissue": "Reemitir Certificado",
 	"certificate.reissue.no-other-ca": "No hay otra autoridad de certificación en la que reemitir este certificado. Un administrador puede añadir una en Ajustes, Certificados.",
 	"certificate.reissue.note": "El certificado se solicita de nuevo a la CA elegida con el mismo nombre. Si falla, se conserva el certificado actual.",
+	"certificate.reissue.test-ca": "Es una CA de pruebas: los navegadores no confían en sus certificados, así que los visitantes de los hosts que usan este certificado verán una advertencia. El certificado actual no se revoca.",
 	"certificate.renew": "Renovar Certificado",
 	"certificates": "Certificados",
 	"certificates-dns": "Certificados y DNS",

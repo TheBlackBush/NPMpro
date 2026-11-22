@@ -306,6 +306,7 @@
 	"certificate.reissue": "Re-issue Certificate",
 	"certificate.reissue.no-other-ca": "There is no other certificate authority to re-issue this certificate at. An administrator can add one in Settings, Certificates.",
 	"certificate.reissue.note": "The certificate is requested again from the chosen CA under the same name. If it fails, the current certificate stays.",
+	"certificate.reissue.test-ca": "This is a test CA: browsers do not trust its certificates, so visitors of the hosts that use this certificate see a warning. The current certificate is not revoked.",
 	"certificate.renew": "Renew Certificate",
 	"certificates": "Certificates",
 	"certificates-dns": "Certificates & DNS",

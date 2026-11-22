@@ -306,6 +306,7 @@
 	"certificate.reissue": "Riemetti Certificato",
 	"certificate.reissue.no-other-ca": "Non esiste un'altra autorità di certificazione presso cui riemettere questo certificato. Un amministratore può aggiungerne una in Impostazioni, Certificati.",
 	"certificate.reissue.note": "Il certificato viene richiesto di nuovo alla CA scelta con lo stesso nome. Se fallisce, il certificato attuale resta.",
+	"certificate.reissue.test-ca": "Questa è una CA di test: i browser non si fidano dei suoi certificati, quindi i visitatori degli host che usano questo certificato vedranno un avviso. Il certificato attuale non viene revocato.",
 	"certificate.renew": "Rinnova Certificato",
 	"certificates": "Certificati",
 	"certificates-dns": "Certificati e DNS",

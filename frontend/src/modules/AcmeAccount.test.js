@@ -40,7 +40,7 @@ import {
 	toAcmeForm,
 	visibleEabValues,
 } from "./AcmeAccount.js";
-import { caOptions, defaultCa, showCaSelect } from "./AcmeServers.js";
+import { caOptions, caOptionTexts, defaultCa, isTestCa, showCaSelect } from "./AcmeServers.js";
 import { createValidations } from "./ValidationRules.js";
 
 const rules = createValidations(createIntl({ locale: "en", messages: en }));
@@ -65,6 +65,9 @@ it("maps presets and custom URLs both ways", () => {
 	assert.deepEqual(acmeServerLabel(ZEROSSL), { labelId: "acme.preset.zerossl" });
 	assert.deepEqual(acmeServerLabel(PEBBLE), { text: "pebble:14000" });
 	assert.deepEqual(acmeServerLabel("not a url"), { text: "not a url" });
+	// another spelling of a preset is that preset
+	assert.deepEqual(acmeServerLabel(`${LE}/`), { labelId: "acme.preset.letsencrypt" });
+	assert.deepEqual(acmeServerLabel("HTTPS://ACME.ZeroSSL.com/v2/DV90"), { labelId: "acme.preset.zerossl" });
 });
 
 it("sends only changed, unlocked keys; a CA changed back is no change; empty EAB keeps", () => {
@@ -530,4 +533,33 @@ it("leaves out the excluded CA in another spelling", () => {
 			[CA_ZERO, "https://ca.example.com/dir"],
 		);
 	}
+});
+
+it("turns an option into the select's texts: the default suffix and the second line", () => {
+	const format = (id, values) => (values ? `${id}(${values.name})` : id);
+	const [instance, zero, custom] = caOptions(caServers);
+	assert.deepEqual(caOptionTexts(instance, format), {
+		value: CA_LE,
+		label: "certificates.ca.default(acme.preset.letsencrypt)",
+		description: undefined,
+	});
+	assert.deepEqual(caOptionTexts(zero, format), {
+		value: CA_ZERO,
+		label: "acme.preset.zerossl",
+		description: "certificates.ca.not-connected",
+	});
+	assert.equal(caOptionTexts(custom, format).label, "ca.example.com");
+	const [waiting] = caOptions([{ ...caServers[1], state: "pending" }]);
+	assert.equal(caOptionTexts(waiting, format).description, "certificates.ca.waiting");
+	const real = createIntl({ locale: "en", messages: en });
+	const english = caOptionTexts(instance, (id, values) => real.formatMessage({ id }, values));
+	assert.ok(english.label.includes("Let's Encrypt"), english.label);
+});
+
+it("knows the test CA in any spelling", () => {
+	assert.equal(isTestCa("https://acme-staging-v02.api.letsencrypt.org/directory"), true);
+	assert.equal(isTestCa("https://acme-staging.api.letsencrypt.org/directory/"), true);
+	assert.equal(isTestCa(CA_LE), false);
+	assert.equal(isTestCa(""), false);
+	assert.equal(isTestCa(undefined), false);
 });

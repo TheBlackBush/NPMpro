@@ -306,6 +306,7 @@
 	"certificate.reissue": "Zertifikat neu ausstellen",
 	"certificate.reissue.no-other-ca": "Es gibt keine andere Zertifizierungsstelle, bei der dieses Zertifikat neu ausgestellt werden kann. Ein Administrator kann in den Einstellungen unter Zertifikate eine hinzufügen.",
 	"certificate.reissue.note": "Das Zertifikat wird unter demselben Namen erneut bei der gewählten CA angefordert. Schlägt das fehl, bleibt das aktuelle Zertifikat erhalten.",
+	"certificate.reissue.test-ca": "Dies ist eine Test-CA: Browser vertrauen ihren Zertifikaten nicht, daher sehen Besucher der Hosts, die dieses Zertifikat verwenden, eine Warnung. Das aktuelle Zertifikat wird nicht widerrufen.",
 	"certificate.renew": "Zertifikat erneuern",
 	"certificates": "Zertifikate",
 	"certificates-dns": "Zertifikate & DNS",

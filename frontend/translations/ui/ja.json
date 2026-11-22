@@ -306,6 +306,7 @@
 	"certificate.reissue": "証明書を再発行",
 	"certificate.reissue.no-other-ca": "この証明書を再発行できる別の認証局がありません。管理者が設定の証明書で追加できます。",
 	"certificate.reissue.note": "選択したCAに同じ名前で証明書を再度要求します。失敗した場合は現在の証明書が残ります。",
+	"certificate.reissue.test-ca": "これはテスト用のCAです。ブラウザーはその証明書を信頼しないため、この証明書を使うホストの訪問者には警告が表示されます。現在の証明書は失効されません。",
 	"certificate.renew": "証明書を更新",
 	"certificates": "証明書",
 	"certificates-dns": "証明書とDNS",

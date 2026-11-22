@@ -306,6 +306,7 @@
 	"certificate.reissue": "重新签发证书",
 	"certificate.reissue.no-other-ca": "没有其他证书颁发机构可用于重新签发此证书。管理员可以在“设置”的证书部分添加。",
 	"certificate.reissue.note": "将以相同的名称向所选 CA 重新申请证书。如果失败，当前证书将保留。",
+	"certificate.reissue.test-ca": "这是一个测试 CA：浏览器不信任它签发的证书，因此使用此证书的主机的访问者会看到警告。当前证书不会被吊销。",
 	"certificate.renew": "续期证书",
 	"certificates": "证书列表",
 	"certificates-dns": "证书和 DNS",

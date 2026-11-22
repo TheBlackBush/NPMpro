@@ -17,7 +17,8 @@ const QUERY_OR_FRAGMENT = /[?#]/u;
 export const presetOf = (server) => ACME_PRESETS.find((preset) => preset.server === server)?.id ?? CUSTOM;
 
 export function acmeServerLabel(server) {
-	const id = ACME_PRESETS.find((preset) => preset.server === server)?.id;
+	// any spelling of a preset is that preset (serverKey, as the backend's presetOf)
+	const id = ACME_PRESETS.find((preset) => serverKey(preset.server) === serverKey(server))?.id;
 	if (id) return { labelId: `acme.preset.${id}` };
 	try {
 		return { text: new URL(server).host };

@@ -17,7 +17,7 @@ import {
 import { useAcmeServers } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
-import { caOptions } from "src/modules/AcmeServers";
+import { caOptions, isTestCa } from "src/modules/AcmeServers";
 import EasyModal from "src/modules/easyModal";
 import { sectionAccent } from "src/modules/SectionAccents";
 import { showObjectSuccess } from "src/notifications";
@@ -76,6 +76,11 @@ const ReissueCertificateModal = EasyModal.create(({ certificate, visible, remove
 								<T id="certificate.reissue.note" />
 							</p>
 							<AcmeServerField exclude={certificate.npmproAcmeServer ?? undefined} />
+							{isTestCa(chosen) ? (
+								<NoticeAlert className="mt-3">
+									<T id="certificate.reissue.test-ca" />
+								</NoticeAlert>
+							) : null}
 						</>
 					) : (
 						<NoticeAlert variant="info">

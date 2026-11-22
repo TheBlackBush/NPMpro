@@ -306,6 +306,7 @@
 	"certificate.reissue": "Wystaw certyfikat ponownie",
 	"certificate.reissue.no-other-ca": "Nie ma innego urzędu certyfikacji, w którym można ponownie wystawić ten certyfikat. Administrator może go dodać w Ustawieniach, w sekcji Certyfikaty.",
 	"certificate.reissue.note": "Certyfikat jest ponownie zamawiany w wybranym urzędzie pod tą samą nazwą. Jeśli się nie uda, obecny certyfikat zostaje.",
+	"certificate.reissue.test-ca": "To testowy urząd: przeglądarki nie ufają jego certyfikatom, więc odwiedzający hosty, które używają tego certyfikatu, zobaczą ostrzeżenie. Obecny certyfikat nie zostanie unieważniony.",
 	"certificate.renew": "Odnów certyfikat",
 	"certificates": "Certyfikaty",
 	"certificates-dns": "Certyfikaty i DNS",

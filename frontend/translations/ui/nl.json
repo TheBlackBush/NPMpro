@@ -306,6 +306,7 @@
 	"certificate.reissue": "Certificaat opnieuw uitgeven",
 	"certificate.reissue.no-other-ca": "Er is geen andere certificeringsinstantie waar dit certificaat opnieuw kan worden uitgegeven. Een beheerder kan er een toevoegen bij Instellingen, Certificaten.",
 	"certificate.reissue.note": "Het certificaat wordt onder dezelfde naam opnieuw aangevraagd bij de gekozen CA. Mislukt dat, dan blijft het huidige certificaat behouden.",
+	"certificate.reissue.test-ca": "Dit is een test-CA: browsers vertrouwen haar certificaten niet, dus bezoekers van de hosts die dit certificaat gebruiken zien een waarschuwing. Het huidige certificaat wordt niet ingetrokken.",
 	"certificate.renew": "Certificaat vernieuwen",
 	"certificates": "Certificaten",
 	"certificates-dns": "Certificaten & DNS",

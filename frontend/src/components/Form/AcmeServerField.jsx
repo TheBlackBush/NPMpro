@@ -4,26 +4,11 @@ import { FormSelect } from "src/components/AppSelect";
 import { useFieldError } from "src/components/Form/HookForm";
 import { useAcmeServers } from "src/hooks/useAcmeServers";
 import { intl, T } from "src/locale";
-import { caOptions, defaultCa, showCaSelect } from "src/modules/AcmeServers";
+import { caOptions, caOptionTexts, defaultCa, showCaSelect } from "src/modules/AcmeServers";
 import { FormField } from "./FormField";
 
-const secondLine = (option) => {
-	if (option.waiting) return intl.formatMessage({ id: "certificates.ca.waiting" });
-	return option.notConnected ? intl.formatMessage({ id: "certificates.ca.not-connected" }) : undefined;
-};
-
-/**
- * The option of one CA for the select: its label, "(default)" on the instance CA and, in the second line, that a CA
- * without a connected account is not connected yet and one that waits is not reachable yet
- */
-export const caSelectOption = (option) => {
-	const name = option.labelId ? intl.formatMessage({ id: option.labelId }) : option.text;
-	return {
-		value: option.value,
-		label: option.isDefault ? intl.formatMessage({ id: "certificates.ca.default" }, { name }) : name,
-		description: secondLine(option),
-	};
-};
+/** The option of one CA for the select (caOptionTexts with the UI language) */
+export const caSelectOption = (option) => caOptionTexts(option, (id, values) => intl.formatMessage({ id }, values));
 
 /**
  * The CA of a certificate request: a select of the instance CA and the CAs an administrator set up, the instance CA
