@@ -504,7 +504,6 @@
 	"error.access.duplicate-usernames": "Los nombres de usuario de autorización deben ser únicos",
 	"error.acme-blocked": "Esta dirección no está permitida: este host y las direcciones link-local y multicast están bloqueados.",
 	"error.acme-busy": "Certbot está ocupado con otra tarea. No se cambió nada: inténtelo de nuevo en un minuto.",
-	"error.acme-ca-changed-meanwhile": "La CA del certificado cambió mientras tanto. Recargue la lista e inténtelo de nuevo.",
 	"error.acme-ca-not-allowed": "Esta autoridad de certificación no está configurada. Un administrador debe configurarla antes en Ajustes.",
 	"error.acme-domains-acme-only": "Solo los certificados de una autoridad de certificación tienen nombres de dominio que se puedan cambiar.",
 	"error.acme-domains-failed": "La CA no emitió el certificado: {message}",

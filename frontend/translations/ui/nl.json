@@ -504,7 +504,6 @@
 	"error.access.duplicate-usernames": "Gebruikersnamen moeten uniek zijn",
 	"error.acme-blocked": "Dit adres is niet toegestaan: deze host en link-local- en multicastadressen zijn geblokkeerd.",
 	"error.acme-busy": "Certbot is bezig met een andere taak. Er is niets gewijzigd: probeer het over een minuut opnieuw.",
-	"error.acme-ca-changed-meanwhile": "De CA van het certificaat is intussen gewijzigd. Laad de lijst opnieuw en probeer het nog eens.",
 	"error.acme-ca-not-allowed": "Deze certificeringsinstantie is niet ingesteld. Een beheerder stelt haar eerst in bij Instellingen.",
 	"error.acme-domains-acme-only": "Alleen certificaten van een certificeringsinstantie hebben domeinnamen die te wijzigen zijn.",
 	"error.acme-domains-failed": "De CA heeft het certificaat niet uitgegeven: {message}",

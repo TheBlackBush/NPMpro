@@ -504,7 +504,6 @@
 	"error.access.duplicate-usernames": "Benutzernamen der Autorisierungen müssen eindeutig sein",
 	"error.acme-blocked": "Diese Adresse ist nicht erlaubt: Dieser Host sowie Link-Local- und Multicast-Adressen sind gesperrt.",
 	"error.acme-busy": "Certbot ist mit einer anderen Aufgabe beschäftigt. Es wurde nichts geändert: Versuchen Sie es in einer Minute erneut.",
-	"error.acme-ca-changed-meanwhile": "Die CA des Zertifikats hat sich zwischenzeitlich geändert. Laden Sie die Liste neu und versuchen Sie es erneut.",
 	"error.acme-ca-not-allowed": "Diese Zertifizierungsstelle ist nicht eingerichtet. Ein Administrator richtet sie zuerst in den Einstellungen ein.",
 	"error.acme-domains-acme-only": "Nur Zertifikate einer Zertifizierungsstelle haben Domainnamen, die sich ändern lassen.",
 	"error.acme-domains-failed": "Die CA hat das Zertifikat nicht ausgestellt: {message}",

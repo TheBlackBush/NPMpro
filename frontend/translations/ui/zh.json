@@ -504,7 +504,6 @@
 	"error.access.duplicate-usernames": "授权用户名必须唯一",
 	"error.acme-blocked": "不允许此地址：本主机以及链路本地和组播地址均被阻止。",
 	"error.acme-busy": "Certbot 正忙于另一项任务。未做任何更改：请一分钟后重试。",
-	"error.acme-ca-changed-meanwhile": "该证书的 CA 在此期间已更改。请重新加载列表后再试。",
 	"error.acme-ca-not-allowed": "此证书颁发机构尚未设置。请先由管理员在“设置”中设置。",
 	"error.acme-domains-acme-only": "只有来自证书颁发机构的证书才有可更改的域名。",
 	"error.acme-domains-failed": "CA 未签发该证书：{message}",

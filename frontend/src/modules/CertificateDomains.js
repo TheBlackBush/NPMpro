@@ -17,7 +17,7 @@ export function asciiName(name) {
 }
 
 /**
- * Whether the two lists hold the same names: as sets, in the ASCII form, like the backend's check (it lowercases and sorts)
+ * Whether the two lists hold the same names: as sets, in the ASCII form, like the backend's check
  *
  * @param {string[]} a
  * @param {string[]} b

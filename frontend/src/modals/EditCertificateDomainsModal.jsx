@@ -46,19 +46,23 @@ const EditCertificateDomainsModal = EasyModal.create(({ certificate, visible, re
 	const uncovered = uncoveredHosts(names ?? [], certificate);
 	const unchanged = sameNames(names ?? [], certificate.domainNames);
 
+	const refresh = () =>
+		Promise.all([
+			queryClient.invalidateQueries({ queryKey: ["certificates"] }),
+			queryClient.invalidateQueries({ queryKey: ["certificate", certificate.id] }),
+		]);
+
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
 		try {
 			await setCertificateDomains(certificate.id, values.domainNames);
 			showObjectSuccess("certificate", "updated");
-			await Promise.all([
-				queryClient.invalidateQueries({ queryKey: ["certificates"] }),
-				queryClient.invalidateQueries({ queryKey: ["certificate", certificate.id] }),
-			]);
+			await refresh();
 			remove();
 		} catch (err) {
-			// the window stays open: a failed request leaves the certificate and its hosts as they were
+			// the window stays open; the list is read again, since a failure after the CA issued keeps the new names
 			setErrorMsg(<ApiErrorContent error={err} />);
+			await refresh();
 		}
 	};
 
@@ -79,7 +83,7 @@ const EditCertificateDomainsModal = EasyModal.create(({ certificate, visible, re
 					<DomainNamesField isWildcardPermitted={dnsChallenge} dnsProviderWildcardSupported forCertificate />
 					{uncovered.length > 0 ? (
 						<div data-uncovered-hosts="">
-							<NoticeAlert className="mt-3">
+							<NoticeAlert className="mt-3" role="status">
 								<T
 									id="certificate.edit-domains.uncovered"
 									data={{ names: uncoveredNames(uncovered).join(", ") }}

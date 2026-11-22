@@ -504,7 +504,6 @@
 	"error.access.duplicate-usernames": "Nazwy użytkowników autoryzacji muszą być unikalne",
 	"error.acme-blocked": "Ten adres jest niedozwolony: ten host oraz adresy link-local i multicast są zablokowane.",
 	"error.acme-busy": "Certbot jest zajęty innym zadaniem. Nic nie zmieniono: spróbuj ponownie za minutę.",
-	"error.acme-ca-changed-meanwhile": "Urząd certyfikacji tego certyfikatu zmienił się w międzyczasie. Odśwież listę i spróbuj ponownie.",
 	"error.acme-ca-not-allowed": "Ten urząd certyfikacji nie jest skonfigurowany. Najpierw konfiguruje go administrator w Ustawieniach.",
 	"error.acme-domains-acme-only": "Tylko certyfikaty z urzędu certyfikacji mają nazwy domen, które można zmienić.",
 	"error.acme-domains-failed": "Urząd certyfikacji nie wystawił certyfikatu: {message}",
