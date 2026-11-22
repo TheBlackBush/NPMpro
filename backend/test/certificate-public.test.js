@@ -40,6 +40,7 @@ const CERTIFICATE_KEYS = [
 	"resumeRenewals",
 	"revokeCertbot",
 	"setDnsCredential",
+	"setDomains",
 	"testHttpsChallenge",
 	"update",
 	"upload",

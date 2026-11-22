@@ -238,6 +238,11 @@
 				"$ref": "./paths/nginx/certificates/certID/reissue/post.json"
 			}
 		},
+		"/nginx/certificates/{certID}/domains": {
+			"put": {
+				"$ref": "./paths/nginx/certificates/certID/domains/put.json"
+			}
+		},
 		"/nginx/certificates/{certID}/upload": {
 			"post": {
 				"$ref": "./paths/nginx/certificates/certID/upload/post.json"

@@ -45,6 +45,7 @@ export const AUDIT_ACTIONS = Object.freeze([
 	"replaced",
 	"replace-failed",
 	"ca-changed",
+	"domains-changed",
 ]);
 
 /**

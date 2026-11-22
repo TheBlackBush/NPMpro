@@ -586,6 +586,96 @@ const internalCertificate = {
 	},
 
 	/**
+	 * Changes the domain names of an ACME certificate: certbot issues the new list under the same lineage (same CA,
+	 * account, challenge and key reuse), and the row, the files and nginx follow only after it succeeded.
+	 *
+	 * @param   {Access}  access
+	 * @param   {Object}  data
+	 * @param   {Number}  data.id
+	 * @param   {Array}   data.domain_names  the new list
+	 * @returns {Promise<Object>}  the updated certificate
+	 */
+	setDomains: async (access, data) => {
+		access.can("certificates:manage");
+		const certificate = await internalCertificate.get(access, { id: data.id });
+		if (certificate.provider !== "letsencrypt") {
+			throw new errs.ValidationError(
+				"Only Certbot certificates have domain names to change",
+				"error.acme-domains-acme-only",
+			);
+		}
+
+		// the create rules: IPs for the HTTP challenge, wildcards for the DNS challenge only
+		const rule = getValidationSchema("/nginx/certificates/{certID}/domains", "put").properties.domain_names.anyOf[
+			certificate.npmpro_dns_challenge ? 1 : 0
+		];
+		const { domain_names: next } = apiValidator(
+			{ type: "object", required: ["domain_names"], properties: { domain_names: rule } },
+			{ domain_names: data.domain_names },
+		);
+
+		const key = (names) =>
+			names
+				.map((name) => name.toLowerCase())
+				.sort()
+				.join("\n");
+		if (key(next) === key(certificate.domain_names)) return certificate;
+
+		try {
+			await runCertonly({ ...certificate, domain_names: next }, access);
+		} catch (err) {
+			// a failed certbot run answers a public message the window shows, the certificate stays as it was
+			if (!(err instanceof errs.CommandError && err.certbotRun)) throw err;
+			throw new errs.ValidationError(
+				`The CA did not issue the certificate: ${err.message}`,
+				"error.acme-domains-failed",
+				{ values: { message: err.message }, cause: err },
+			);
+		}
+
+		let updatedCertificate;
+		try {
+			const certInfo = await internalCertificate.getCertificateInfoFromFile(
+				`${internalCertificate.getLiveCertPath(certificate.id)}/fullchain.pem`,
+			);
+			updatedCertificate = await certificateModel.query().patchAndFetchById(certificate.id, {
+				domain_names: next,
+				nice_name: getNiceName(next),
+				expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
+			});
+		} catch (err) {
+			// the files carry the new names: the row follows them, best effort
+			try {
+				await certificateModel
+					.query()
+					.where("id", certificate.id)
+					.patch({ domain_names: next, nice_name: getNiceName(next) });
+			} catch (patchErr) {
+				logger.warn(
+					`Certificate #${certificate.id}: its new domain names could not be stored: ${patchErr.message}`,
+				);
+			}
+			throw err;
+		}
+
+		try {
+			await internalNginx.reload();
+		} catch (err) {
+			// the change happened and the host configs are valid
+			logger.warn(`Certificate #${certificate.id} has new domain names but nginx did not reload: ${err.message}`);
+		} finally {
+			await internalAuditLog.add(access, {
+				action: "domains-changed",
+				object_type: "certificate",
+				object_id: certificate.id,
+				meta: { old: certificate.domain_names, new: next },
+			});
+		}
+
+		return updatedCertificate;
+	},
+
+	/**
 	 * Issues a Let's Encrypt certificate again at another allowed CA. The row, the renewal conf and the files change
 	 * only after certbot succeeded (certbot keeps the old lineage until then); then the old certificate is revoked at
 	 * its old CA, best effort.

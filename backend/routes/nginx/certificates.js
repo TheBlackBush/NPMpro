@@ -269,6 +269,24 @@ router
 	});
 
 /**
+ * /api/nginx/certificates/123/domains
+ */
+router
+	.route("/:certificate_id/domains")
+	.all(jwtdecode())
+
+	/** PUT /api/nginx/certificates/123/domains */
+	.put(async (req, res) => {
+		const payload = apiValidator(getValidationSchema("/nginx/certificates/{certID}/domains", "put"), req.body);
+		req.setTimeout(900000); // 15 minutes timeout
+		const result = await internalCertificate.setDomains(res.locals.access, {
+			id: Number.parseInt(req.params.certificate_id, 10),
+			domain_names: payload.domain_names,
+		});
+		res.status(200).send(result);
+	});
+
+/**
  * /api/nginx/certificates/123/download
  */
 router
