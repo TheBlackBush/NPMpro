@@ -4,7 +4,14 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { it } from "node:test";
-import { affinityOf, cpuAffinityMask, parseCpuList, readCpusAllowed, renderNginxCore } from "../lib/nginx-core.js";
+import {
+	affinityOf,
+	cpuAffinityMask,
+	parseCpuList,
+	readCpusAllowed,
+	renderNginxCore,
+	resolverLine,
+} from "../lib/nginx-core.js";
 
 const DEFAULTS = {
 	worker_processes: "4",
@@ -20,6 +27,10 @@ const DEFAULTS = {
 	module_ldap: false,
 	module_ntlm: false,
 	module_vts: false,
+	resolver_addresses: [],
+	resolver_hosts: true,
+	resolver_ipv6: true,
+	resolver_valid: "",
 };
 const SIGALGS =
 	"mldsa87:mldsa65:mldsa44:ed25519:ecdsa_secp521r1_sha512:ecdsa_secp384r1_sha384:ecdsa_secp256r1_sha256:rsa_pss_rsae_sha512:rsa_pss_rsae_sha384:rsa_pss_rsae_sha256";
@@ -41,6 +52,24 @@ it("renders today's nginx.conf values for the defaults", () => {
 		`ssl_sigalgs ${SIGALGS};`,
 	]);
 	assert.deepEqual(lines(out.stream), lines(out.http).slice(1));
+});
+
+it("renders today's resolver line for the defaults", () => {
+	assert.deepEqual(lines(renderNginxCore(DEFAULTS).resolver), ["resolver local=on hosts=on ipv6=on;"]);
+	assert.ok(renderNginxCore(DEFAULTS).resolver.startsWith("# written by NPMpro"));
+	assert.equal(resolverLine(DEFAULTS), "resolver local=on hosts=on ipv6=on;");
+});
+
+it("renders addresses, hosts off, ipv6 off and valid", () => {
+	const render = (extra) => lines(renderNginxCore({ ...DEFAULTS, ...extra }).resolver);
+	assert.deepEqual(render({ resolver_addresses: ["1.1.1.1", "[2606:4700::1111]:53"] }), [
+		"resolver 1.1.1.1 [2606:4700::1111]:53 hosts=on ipv6=on;",
+	]);
+	assert.deepEqual(
+		render({ resolver_addresses: ["1.1.1.1"], resolver_hosts: false, resolver_ipv6: false, resolver_valid: "30s" }),
+		["resolver 1.1.1.1 hosts=off ipv6=off valid=30s;"],
+	);
+	assert.deepEqual(render({ resolver_valid: "5m" }), ["resolver local=on hosts=on ipv6=on valid=5m;"]);
 });
 
 it("renders each setting", () => {
@@ -133,8 +162,9 @@ const shellRun = (env, statusText = null) => {
 };
 const shellFiles = (env, statusText) => shellRun(env, statusText).files;
 // the renderer's files without the note
+// (resolver.conf is written by the shell twin from the next task on)
 const renderedFiles = (values, options) => {
-	const { affinityNote, ...files } = renderNginxCore(values, options);
+	const { affinityNote, resolver, ...files } = renderNginxCore(values, options);
 	return files;
 };
 // envs.sh exports (defaults filled in, the force rule applied)

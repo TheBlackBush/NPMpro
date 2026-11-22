@@ -5,6 +5,7 @@ import { LETSENCRYPT_SERVER, resolveAcmeServer, STAPLING_SERVERS } from "./acme-
 import { LOG_FORMATS } from "./log-format.js";
 import { parseCpuList, readCpusAllowed } from "./nginx-core.js";
 import { rooted } from "./paths.js";
+import { resolverAddressList } from "./resolver-address.js";
 import { isTimeZone } from "./time-zones.js";
 
 const KEY_SIZES = { ecdsa: ["secp256r1", "secp384r1", "secp521r1"], rsa: ["2048", "3072", "4096"] };
@@ -50,6 +51,11 @@ const isNginxTime = (value) => {
 	}
 	return true;
 };
+
+const isResolverValid = (value) => isNginxTime(value) && value !== "0";
+
+const validateResolverValid = (value) =>
+	value === "" || isResolverValid(value) ? null : "must be empty or an nginx time such as 30s or 5m, not 0";
 
 const isSet = (raw) => typeof raw === "string" && raw !== "";
 
@@ -430,6 +436,35 @@ const RUNTIME_RULES = [
 		parseEnv: (raw) => (isNginxTime(raw) ? raw : undefined),
 		toEnv: String,
 		default: "1h",
+		applies: "reload",
+	},
+	{
+		group: "nginx",
+		key: "resolver_addresses",
+		env: "NGINX_RESOLVER",
+		type: "list",
+		validate: resolverAddressList,
+		// one bad word drops the whole env value, as envs.sh refuses it at the start
+		parseEnv: (raw) => {
+			const list = raw.trim().split(WHITESPACE).filter(Boolean);
+			return resolverAddressList(list) === null ? list : undefined;
+		},
+		toEnv: (value) => (value.length > 0 ? value.join(" ") : undefined),
+		default: () => [],
+		applies: "reload",
+	},
+	nginxSwitch("resolver_hosts", "NGINX_RESOLVER_HOSTS", true),
+	nginxSwitch("resolver_ipv6", "NGINX_RESOLVER_IPV6", true),
+	{
+		group: "nginx",
+		key: "resolver_valid",
+		env: "NGINX_RESOLVER_VALID",
+		type: "string",
+		// "" keeps the TTL of each answer; "0" is no valid time
+		validate: validateResolverValid,
+		parseEnv: (raw) => (isResolverValid(raw) ? raw : undefined),
+		toEnv: (value) => value || undefined,
+		default: "",
 		applies: "reload",
 	},
 	{

@@ -7,6 +7,10 @@
 		"worker_connections",
 		"worker_shutdown_timeout",
 		"cpu_affinity",
+		"resolver_addresses",
+		"resolver_hosts",
+		"resolver_ipv6",
+		"resolver_valid",
 		"log_not_found",
 		"tls12",
 		"force_mlkem",
@@ -46,6 +50,30 @@
 			"pattern": "^(off|auto|[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)$",
 			"maxLength": 256,
 			"description": "Pin the workers to CPUs: off, auto (the CPUs the container may use) or a CPU list such as 16-19 or 16,18,20, cut to the CPUs the container may use when nginx starts or reloads (env NGINX_CPU_AFFINITY)"
+		},
+		"resolver_addresses": {
+			"type": "array",
+			"maxItems": 8,
+			"items": {
+				"type": "string",
+				"minLength": 1,
+				"maxLength": 64
+			},
+			"description": "Addresses of the DNS servers nginx asks for upstream names: IPv4 addresses or IPv6 addresses in brackets, each with an optional :port, at most 8; empty: the container's own resolvers from /etc/resolv.conf (env NGINX_RESOLVER, space separated)"
+		},
+		"resolver_hosts": {
+			"type": "boolean",
+			"description": "Let nginx resolve names from /etc/hosts before asking the DNS servers (env NGINX_RESOLVER_HOSTS)"
+		},
+		"resolver_ipv6": {
+			"type": "boolean",
+			"description": "Let nginx resolve names to IPv6 addresses (AAAA records) (env NGINX_RESOLVER_IPV6)"
+		},
+		"resolver_valid": {
+			"type": "string",
+			"pattern": "^([0-9]+(ms|s|m|h|d|w|M|y)?([0-9]+(ms|s|m|h|d|w|M|y))*)?$",
+			"maxLength": 32,
+			"description": "How long nginx keeps an answer, overriding the TTL of the record: an nginx time such as 30s or 5m, not 0; empty: the TTL of each answer (env NGINX_RESOLVER_VALID)"
 		},
 		"log_not_found": {
 			"type": "boolean",
@@ -92,6 +120,10 @@
 					"worker_connections",
 					"worker_shutdown_timeout",
 					"cpu_affinity",
+					"resolver_addresses",
+					"resolver_hosts",
+					"resolver_ipv6",
+					"resolver_valid",
 					"log_not_found",
 					"tls12",
 					"force_mlkem",
@@ -129,6 +161,26 @@
 					"type": "string",
 					"pattern": "^[A-Z][A-Z0-9_]*$",
 					"description": "Name of the variable that locks the cpu affinity: NGINX_CPU_AFFINITY"
+				},
+				"resolver_addresses": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the resolver addresses: NGINX_RESOLVER"
+				},
+				"resolver_hosts": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the resolver hosts: NGINX_RESOLVER_HOSTS"
+				},
+				"resolver_ipv6": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the resolver ipv6: NGINX_RESOLVER_IPV6"
+				},
+				"resolver_valid": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the resolver valid: NGINX_RESOLVER_VALID"
 				},
 				"log_not_found": {
 					"type": "string",
@@ -209,6 +261,10 @@
 				"worker_connections",
 				"worker_shutdown_timeout",
 				"cpu_affinity",
+				"resolver_addresses",
+				"resolver_hosts",
+				"resolver_ipv6",
+				"resolver_valid",
 				"log_not_found",
 				"tls12",
 				"force_mlkem",
@@ -255,6 +311,42 @@
 						"immediately"
 					],
 					"description": "When a change of the cpu affinity takes effect: on save, with an nginx reload"
+				},
+				"resolver_addresses": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					],
+					"description": "When a change of the resolver addresses takes effect: on save, with an nginx reload"
+				},
+				"resolver_hosts": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					],
+					"description": "When a change of the resolver hosts takes effect: on save, with an nginx reload"
+				},
+				"resolver_ipv6": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					],
+					"description": "When a change of the resolver ipv6 takes effect: on save, with an nginx reload"
+				},
+				"resolver_valid": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					],
+					"description": "When a change of the resolver valid takes effect: on save, with an nginx reload"
 				},
 				"log_not_found": {
 					"type": "string",

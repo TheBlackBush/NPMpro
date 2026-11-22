@@ -25,6 +25,9 @@ const BEAUTIFIER_STUB = `module.exports = {
 };
 `;
 const AFFINITY_OUTSIDE = /^cpu_affinity: CPUs 0-3 are not allowed in this container \(allowed: 16-23\)$/u;
+const RESOLVER_BAD_ADDRESS = /resolver_addresses: "dns\.example" is not a DNS server address/u;
+const LISTED_TWICE = /listed twice/u;
+const RESOLVER_VALID_KEY = /resolver_valid/u;
 const AFFINITY_KEY = /cpu_affinity/u;
 const MARK = "# beautified by the stub";
 
@@ -306,6 +309,29 @@ it("refuses invalid nginx values with 400", async () => {
 	await refused("nginx", { module_unknown: true });
 	await refused("nginx", {});
 	assert.deepEqual(await Promise.all(NGINX_FILES.map((file) => api.read(file))), files);
+});
+
+it("saves the resolver into resolver.conf and refuses a bad address or valid time with 400", async () => {
+	const file = "data/npmpro/nginx/resolver.conf";
+	assert.ok((await api.read(file)).endsWith("\nresolver local=on hosts=on ipv6=on;\n"));
+	const view = await saved("nginx", {
+		resolver_addresses: ["1.1.1.1", "[2606:4700::1111]:53"],
+		resolver_valid: "30s",
+	});
+	assert.deepEqual(view.resolver_addresses, ["1.1.1.1", "[2606:4700::1111]:53"]);
+	assert.equal(view.applies.resolver_addresses, "reload");
+	assert.ok((await api.read(file)).endsWith("\nresolver 1.1.1.1 [2606:4700::1111]:53 hosts=on ipv6=on valid=30s;\n"));
+	await saved("nginx", { resolver_hosts: false, resolver_ipv6: false });
+	assert.ok(
+		(await api.read(file)).endsWith("\nresolver 1.1.1.1 [2606:4700::1111]:53 hosts=off ipv6=off valid=30s;\n"),
+	);
+	const before_ = await api.read(file);
+	await refused("nginx", { resolver_addresses: ["dns.example"] }, RESOLVER_BAD_ADDRESS);
+	await refused("nginx", { resolver_addresses: ["1.1.1.1", "1.1.1.1"] }, LISTED_TWICE);
+	await refused("nginx", { resolver_valid: "0" }, RESOLVER_VALID_KEY);
+	assert.equal(await api.read(file), before_);
+	await saved("nginx", { resolver_addresses: [], resolver_hosts: true, resolver_ipv6: true, resolver_valid: "" });
+	assert.ok((await api.read(file)).endsWith("\nresolver local=on hosts=on ipv6=on;\n"));
 });
 
 it("ignores a value the environment sets, and says so in locked and locked_by", async () => {

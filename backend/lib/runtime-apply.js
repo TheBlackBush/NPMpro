@@ -420,7 +420,7 @@ const createRuntimeApplier = ({
 			}
 			return plan;
 		},
-		// the four include files together: nginx -t and the reload see all of them (at startup one transaction; a
+		// the include files together: nginx -t and the reload see all of them (at startup one transaction; a
 		// failing test keeps the files from the last start)
 		nginx: ({ next }) => {
 			const content = renderNginxCore(next);
