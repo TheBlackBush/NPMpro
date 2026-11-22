@@ -11,6 +11,7 @@ import {
 	settingLocksOf,
 } from "../lib/environment-info.js";
 import { mergeMonitoringConfig } from "../lib/monitoring-rules.js";
+import { isResolverAddress } from "../lib/resolver-address.js";
 import { RUNTIME_ENV_NAMES, userSetEnvNames } from "../lib/runtime-rules.js";
 
 const RUNTIME_LINE = /^NPMPRO_RUNTIME_ENVS="(?<names>[^"]*)"$/mu;
@@ -165,6 +166,69 @@ it("envs.sh accepts an unset, classic or json NGINX_LOG_FORMAT and refuses anyth
 		assert.equal(out.status, 3, JSON.stringify(value));
 		assert.equal(out.stdout, "NGINX_LOG_FORMAT needs to be classic or json.\n");
 	}
+});
+
+it("envs.sh checks NGINX_RESOLVER exactly like the setting's rule", () => {
+	const text = readFileSync(ENVS_SH, "utf8");
+	const start = text.indexOf('if [ -n "$NGINX_RESOLVER" ]; then');
+	const block = text
+		.slice(start, text.indexOf('if ! echo "$NGINX_RESOLVER_HOSTS"', start))
+		.replaceAll("sleep inf", "exit 3");
+	const run = (value) =>
+		spawnSync("sh", ["-c", block], { env: { PATH: process.env.PATH, NGINX_RESOLVER: value }, encoding: "utf8" });
+	const words = [
+		"1.1.1.1",
+		"1.1.1.1:53",
+		"[2606:4700::1111]",
+		"[2606:4700::1111]:5353",
+		"[::1]:53",
+		"[::]",
+		"[1::]",
+		"[::ffff:1.1.1.1]",
+		"[1:2:3:4:5:6:1.1.1.1]",
+		"[1:2:3:4:5:6:7:8]",
+		"[1:2:3:4:5:6:7::]",
+		"[::2:3:4:5:6:7:8]",
+		"1.1.1.1:65535",
+		"0.0.0.0",
+		"255.255.255.255",
+		"dns.example",
+		"2606:4700::1111",
+		"1.1.1.1:0",
+		"1.1.1.1:65536",
+		"1.1.1.1:99999",
+		"1.1.1.1:",
+		"1.1.1.1:000053",
+		"1.1.1",
+		"1.1.1.1.1",
+		"[1.1.1.1]",
+		"999.1.1.1",
+		"1.1.1.256",
+		"01.1.1.1",
+		"[:::]",
+		"[1::2::3]",
+		"[1:2:3:4:5:6:7:8:9]",
+		"[1:2:3:4:5:6:7:8::]",
+		"[1.1.1.1::]",
+		"[::1.1.1.1:1]",
+		"[1:2:3:4:5:6:7]",
+		"[12345::1]",
+		"[zz::1]",
+		"[::1",
+		"[::1]x",
+		"[::1]:53:1",
+	];
+	for (const word of words) {
+		const out = run(word);
+		assert.equal(out.status, isResolverAddress(word) ? 0 : 3, word);
+		assert.equal(out.stdout === "", isResolverAddress(word), word);
+	}
+	assert.equal(run("").status, 0);
+	assert.equal(run("1.1.1.1  [::1]:53").status, 0);
+	assert.equal(run("1.1.1.1 1.1.1.1").status, 3);
+	assert.equal(run("1.1.1.1 1.1.1.2 1.1.1.3 1.1.1.4 1.1.1.5 1.1.1.6 1.1.1.7 1.1.1.8").status, 0);
+	assert.equal(run("1.1.1.1 1.1.1.2 1.1.1.3 1.1.1.4 1.1.1.5 1.1.1.6 1.1.1.7 1.1.1.8 1.1.1.9").status, 3);
+	assert.equal(run("1.1.1.1 dns.example").status, 3);
 });
 
 it("lists NGINX_TLS_HANDSHAKE_LOG as a runtime name and as the variable that locks tls_handshake_log", () => {

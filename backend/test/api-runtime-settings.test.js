@@ -334,6 +334,20 @@ it("saves the resolver into resolver.conf and refuses a bad address or valid tim
 	assert.ok((await api.read(file)).endsWith("\nresolver local=on hosts=on ipv6=on;\n"));
 });
 
+it("a stored invalid resolver list falls back to the default and does not refuse a save of another key", async () => {
+	await saved("nginx", { resolver_hosts: true });
+	const meta = (await storedMeta("nginx")) ?? {};
+	await api
+		.db("setting")
+		.where({ id: "nginx" })
+		.update({ meta: JSON.stringify({ ...meta, resolver_addresses: ["dns.example"] }) });
+	assert.deepEqual((await get("nginx")).resolver_addresses, []);
+	const view = await saved("nginx", { resolver_hosts: false });
+	assert.equal(view.resolver_hosts, false);
+	assert.deepEqual(view.resolver_addresses, []);
+	await saved("nginx", { resolver_hosts: true });
+});
+
 it("ignores a value the environment sets, and says so in locked and locked_by", async () => {
 	const view = await get("nginx");
 	assert.ok(view.locked.includes("worker_connections"));

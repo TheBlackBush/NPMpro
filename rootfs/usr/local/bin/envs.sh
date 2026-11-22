@@ -655,13 +655,67 @@ if [ -n "$NGINX_RESOLVER" ]; then
         echo "NGINX_RESOLVER needs to have at most 8 addresses."
         sleep inf
     fi
-    for resolver_address in $NGINX_RESOLVER; do
-        if ! echo "$resolver_address" | grep -Eq "^([0-9]{1,3}(\.[0-9]{1,3}){3}|\[[0-9A-Fa-f:.]+\])(:[0-9]{1,5})?$"; then
-            echo "NGINX_RESOLVER needs to be empty or space separated IPv4 addresses or IPv6 addresses in brackets with an optional port, like 1.1.1.1 [2606:4700:4700::1111]:53."
-            sleep inf
-        fi
-    done
-    unset resolver_address
+    # the same rule as backend/lib/resolver-address.js: IPv4 octets 0 to 255 without leading zeros, an IPv6 address
+    # in brackets, a port from 1 to 65535, no duplicates
+    if ! echo "$NGINX_RESOLVER" | awk '
+        function hex(g) { return g ~ /^[0-9A-Fa-f]+$/ && length(g) <= 4 }
+        function v4(a,   p, n, i) {
+            n = split(a, p, ".")
+            if (n != 4) return 0
+            for (i = 1; i <= 4; i++) if (p[i] !~ /^(0|[1-9][0-9]*)$/ || length(p[i]) > 3 || p[i] + 0 > 255) return 0
+            return 1
+        }
+        # the number of 16 bit groups of a colon separated list, -1 when it is not valid
+        function groups(list, tail,   p, n, i, c) {
+            if (list == "") return 0
+            n = split(list, p, ":")
+            c = 0
+            for (i = 1; i <= n; i++) {
+                if (hex(p[i])) c++
+                else if (tail && i == n && v4(p[i])) c += 2
+                else return -1
+            }
+            return c
+        }
+        function v6(a,   at, l, r, gl, gr) {
+            if (a !~ /^[0-9A-Fa-f:.]+$/ || a !~ /:/ || a ~ /:::/) return 0
+            at = index(a, "::")
+            if (at == 0) return groups(a, 1) == 8
+            l = substr(a, 1, at - 1)
+            r = substr(a, at + 2)
+            if (index(r, "::") > 0) return 0
+            gl = groups(l, 0)
+            gr = groups(r, 1)
+            return gl >= 0 && gr >= 0 && gl + gr <= 7
+        }
+        {
+            for (w = 1; w <= NF; w++) {
+                word = $w
+                if (seen[word]++) exit 1
+                port = ""
+                if (substr(word, 1, 1) == "[") {
+                    end = index(word, "]")
+                    if (end == 0) exit 1
+                    host = substr(word, 2, end - 2)
+                    rest = substr(word, end + 1)
+                    if (!v6(host)) exit 1
+                } else {
+                    colon = index(word, ":")
+                    host = colon ? substr(word, 1, colon - 1) : word
+                    rest = colon ? substr(word, colon) : ""
+                    if (!v4(host)) exit 1
+                }
+                if (rest != "") {
+                    if (rest !~ /^:[0-9]+$/ || length(rest) > 6) exit 1
+                    port = substr(rest, 2) + 0
+                    if (port < 1 || port > 65535) exit 1
+                }
+            }
+        }
+    '; then
+        echo "NGINX_RESOLVER needs to be empty or space separated, unique IPv4 addresses or IPv6 addresses in brackets with an optional port, like 1.1.1.1 [2606:4700:4700::1111]:53."
+        sleep inf
+    fi
 fi
 
 if ! echo "$NGINX_RESOLVER_HOSTS" | grep -q "^true$\|^false$"; then

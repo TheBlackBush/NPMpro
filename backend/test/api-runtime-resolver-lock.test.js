@@ -29,10 +29,8 @@ it("locks resolver_addresses when NGINX_RESOLVER is set and leaves it as the env
 	assert.equal(done.status, 200, done.text);
 	assert.deepEqual(done.body.resolver_addresses, ["9.9.9.9"]);
 	assert.equal(done.body.resolver_valid, "1m");
-	assert.match(
-		await api.read("data/npmpro/nginx/resolver.conf"),
-		/\nresolver 9\.9\.9\.9 hosts=on ipv6=on valid=1m;\n$/u,
-	);
+	const conf = await api.read("data/npmpro/nginx/resolver.conf");
+	assert.ok(conf.endsWith("\nresolver 9.9.9.9 hosts=on ipv6=on valid=1m;\n"));
 	const row = await api.db("setting").where({ id: "nginx" }).first();
 	const meta = typeof row.meta === "string" ? JSON.parse(row.meta) : row.meta;
 	assert.equal("resolver_addresses" in meta, false);
