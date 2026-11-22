@@ -8,6 +8,7 @@ import { defaultSecretBox, SecretBoxError } from "../lib/secret-box.js";
 import certificateModel from "../models/certificate.js";
 import dnsCredentialModel from "../models/dns_credential.js";
 import internalAuditLog from "./audit-log.js";
+import internalDnsDomain from "./dns-domain.js";
 
 const credentialsDir = rooted("/tmp/certbot-credentials");
 
@@ -20,10 +21,25 @@ const decryptOrNull = (row) => {
 	}
 };
 
+const GRAPH = "[owner,certificates,domains]";
+const NO_CHANGES = Object.freeze({ added: [], removed: [] });
+const byName = (a, b) => a.localeCompare(b);
+
 const toPublic = (row) => {
 	const values = decryptOrNull(row);
-	return { ...row.toJSON(), ...publicView(row.provider, values), decrypt_error: values === null };
+	const json = { ...row.toJSON(), ...publicView(row.provider, values), decrypt_error: values === null };
+	// expanded domains are names only
+	if (Array.isArray(row.domains)) json.domains = row.domains.map((domain) => domain.name).sort(byName);
+	return json;
 };
+
+// the domain changes of a save, for the audit meta; nothing when none changed
+const domainMeta = ({ added, removed }) => ({
+	...(added.length > 0 ? { domains_added: added } : {}),
+	...(removed.length > 0 ? { domains_removed: removed } : {}),
+});
+
+const withDomains = async (row) => ({ ...toPublic(row), domains: await internalDnsDomain.namesOf(row.id) });
 
 // audit log meta without values
 const auditMeta = (row) => ({ id: row.id, name: row.name, provider: row.provider, owner_user_id: row.owner_user_id });
@@ -31,7 +47,7 @@ const auditMeta = (row) => ({ id: row.id, name: row.name, provider: row.provider
 const internalDnsCredential = {
 	getAll: async (access, expand, searchQuery) => {
 		access.can("certificates:view");
-		const query = dnsCredentialModel.query().allowGraph("[owner,certificates]").orderBy("name", "ASC");
+		const query = dnsCredentialModel.query().allowGraph(GRAPH).orderBy("name", "ASC");
 		if (access.visibility !== "all") query.andWhere("owner_user_id", access.token.getUserId(1));
 		if (typeof searchQuery === "string") query.andWhere("name", "like", `%${searchQuery}%`);
 		if (expand) query.withGraphFetched(`[${expand.join(", ")}]`);
@@ -42,7 +58,7 @@ const internalDnsCredential = {
 		access.can("certificates:view");
 		const query = dnsCredentialModel.query().where("id", data.id).first();
 		if (access.visibility !== "all") query.andWhere("owner_user_id", access.token.getUserId(1));
-		if (data.expand) query.allowGraph("[owner,certificates]").withGraphFetched(`[${data.expand.join(", ")}]`);
+		if (data.expand) query.allowGraph(GRAPH).withGraphFetched(`[${data.expand.join(", ")}]`);
 		const row = await query;
 		if (!row?.id) throw new errs.ItemNotFoundError(data.id);
 		return row;
@@ -57,19 +73,28 @@ const internalDnsCredential = {
 		const ownerUserId = access.token.getUserId(1);
 		await internalDnsCredential.assertNameFree(ownerUserId, data.name);
 
-		const row = await dnsCredentialModel.query().insertAndFetch({
-			owner_user_id: ownerUserId,
-			name: data.name,
-			provider: data.provider,
-			values: defaultSecretBox.encrypt(buildValues(data.provider, data, null)),
-		});
+		const { row, changes } = await internalDnsDomain.withOwnerLock(ownerUserId, () =>
+			dnsCredentialModel.transaction(async (trx) => {
+				const inserted = await dnsCredentialModel.query(trx).insertAndFetch({
+					owner_user_id: ownerUserId,
+					name: data.name,
+					provider: data.provider,
+					values: defaultSecretBox.encrypt(buildValues(data.provider, data, null)),
+				});
+				const domainChanges =
+					data.domains === undefined
+						? NO_CHANGES
+						: await internalDnsDomain.replaceLocked(inserted, data.domains, trx);
+				return { row: inserted, changes: domainChanges };
+			}),
+		);
 		await internalAuditLog.add(access, {
 			action: "created",
 			object_type: "dns-credential",
 			object_id: row.id,
-			meta: auditMeta(row),
+			meta: { ...auditMeta(row), ...domainMeta(changes) },
 		});
-		return toPublic(row);
+		return await withDomains(row);
 	},
 
 	update: async (access, data) => {
@@ -95,15 +120,24 @@ const internalDnsCredential = {
 			patch.values = defaultSecretBox.encrypt(buildValues(provider, data, previous));
 		}
 
-		const saved = await dnsCredentialModel.query().patchAndFetchById(row.id, patch);
+		const { saved, changes } = await internalDnsDomain.withOwnerLock(row.owner_user_id, () =>
+			dnsCredentialModel.transaction(async (trx) => {
+				const patched = await dnsCredentialModel.query(trx).patchAndFetchById(row.id, patch);
+				const domainChanges =
+					data.domains === undefined
+						? NO_CHANGES
+						: await internalDnsDomain.replaceLocked(patched, data.domains, trx);
+				return { saved: patched, changes: domainChanges };
+			}),
+		);
 		await internalAuditLog.add(access, {
 			action: "updated",
 			object_type: "dns-credential",
 			object_id: row.id,
-			meta: auditMeta(saved),
+			meta: { ...auditMeta(saved), ...domainMeta(changes) },
 		});
 		if (patch.values) await internalDnsCredential.writeFilesFor(row.id);
-		return toPublic(saved);
+		return await withDomains(saved);
 	},
 
 	delete: async (access, data) => {
@@ -111,14 +145,22 @@ const internalDnsCredential = {
 		const row = await internalDnsCredential.get(access, { id: data.id });
 		const inUse = await internalDnsCredential.countCertificates(row.id);
 		if (inUse > 0) throw new errs.ValidationError(`DNS credential is still used by ${inUse} certificate(s)`);
-		await dnsCredentialModel.query().deleteById(row.id);
+		// SQLite does not run the foreign key's cascade: the domains go in code, in the same transaction
+		const domains = await internalDnsDomain.withOwnerLock(row.owner_user_id, () =>
+			dnsCredentialModel.transaction(async (trx) => {
+				const names = await internalDnsDomain.namesOf(row.id, trx);
+				await internalDnsDomain.removeAllLocked(row.id, trx);
+				await dnsCredentialModel.query(trx).deleteById(row.id);
+				return names;
+			}),
+		);
 		await internalAuditLog.add(access, {
 			action: "deleted",
 			object_type: "dns-credential",
 			object_id: row.id,
-			meta: auditMeta(row),
+			meta: { ...auditMeta(row), ...(domains.length > 0 ? { domains } : {}) },
 		});
-		return toPublic(row);
+		return { ...toPublic(row), domains };
 	},
 
 	countCertificates: (id) => certificateModel.query().where("npmpro_dns_credential_id", id).resultSize(),

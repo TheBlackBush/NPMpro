@@ -422,3 +422,112 @@ it("documents the status the create answers with", async () => {
 	assert.ok(created.id);
 	assert.ok(responses["201"], `the schema lists ${Object.keys(responses).join(", ")} but the route answers 201`);
 });
+
+const domainRows = (credentialId) =>
+	api.db("npmpro_dns_domain").where({ dns_credential_id: credentialId }).orderBy("name");
+const credentialAudit = (id, action) =>
+	api
+		.db("audit_log")
+		.where({ object_type: "dns-credential", object_id: id, action })
+		.first()
+		.then((row) => JSON.parse(row.meta));
+
+it("creates a credential with its domains in one save", async () => {
+	const created = await create({ ...cloudflare(), domains: ["Ex1.Example", "lab.ex1.example"] });
+	assert.deepEqual(created.domains, ["ex1.example", "lab.ex1.example"]);
+	const rows = await domainRows(created.id);
+	assert.deepEqual(
+		rows.map((row) => [row.name, row.source]),
+		[
+			["ex1.example", "typed"],
+			["lab.ex1.example", "typed"],
+		],
+	);
+	assert.deepEqual((await credentialAudit(created.id, "created")).domains_added, ["ex1.example", "lab.ex1.example"]);
+});
+
+it("replaces the domains on a save and keeps them when the field is left out", async () => {
+	const created = await create({ ...cloudflare(), domains: ["ex2.example", "lab.ex2.example"] });
+	const url = `${BASE}/${created.id}`;
+	const replaced = await admin.put(url, { domains: ["lab.ex2.example", "new.ex2.example"] });
+	assert.equal(replaced.status, 200, replaced.text);
+	assert.deepEqual(replaced.body.domains, ["lab.ex2.example", "new.ex2.example"]);
+	const meta = await api
+		.db("audit_log")
+		.where({ object_type: "dns-credential", object_id: created.id, action: "updated" });
+	assert.deepEqual(JSON.parse(meta[0].meta).domains_added, ["new.ex2.example"]);
+	assert.deepEqual(JSON.parse(meta[0].meta).domains_removed, ["ex2.example"]);
+	const renamed = await admin.put(url, { name: `${created.name} renamed` });
+	assert.equal(renamed.status, 200, renamed.text);
+	assert.deepEqual(renamed.body.domains, ["lab.ex2.example", "new.ex2.example"]);
+	const cleared = await admin.put(url, { domains: [] });
+	assert.equal(cleared.status, 200, cleared.text);
+	assert.deepEqual(cleared.body.domains, []);
+	assert.equal((await domainRows(created.id)).length, 0);
+});
+
+it("a stored name is never refused on a save that keeps it", async () => {
+	const created = await create();
+	const [legacyId] = await api.db("npmpro_dns_domain").insert({
+		dns_credential_id: created.id,
+		name: "Legacy_Name.ex3.example",
+		source: "typed",
+		created_on: "2026-01-01 00:00:00",
+		modified_on: "2026-01-01 00:00:00",
+	});
+	const url = `${BASE}/${created.id}`;
+	const kept = await admin.put(url, { domains: ["Legacy_Name.ex3.example", "fine.ex3.example"] });
+	assert.equal(kept.status, 200, kept.text);
+	const rows = await domainRows(created.id);
+	assert.deepEqual(
+		rows.map((row) => row.name),
+		["Legacy_Name.ex3.example", "fine.ex3.example"],
+	);
+	assert.equal(rows.find((row) => row.name === "Legacy_Name.ex3.example").id, legacyId);
+	const refused = await admin.put(url, { domains: ["Other_Bad.ex3.example"] });
+	assert.equal(refused.status, 400, refused.text);
+	assert.equal(refused.body.error.message_i18n, "error.dns-domain-invalid");
+	assert.equal((await domainRows(created.id)).length, 2);
+});
+
+it("refuses a domain the owner keeps on another credential and saves nothing", async () => {
+	const first = await create({ ...cloudflare(), domains: ["taken.example"] });
+	const credentials = await countRows(api, "npmpro_dns_credential");
+	const refused = await admin.post(BASE, { ...cloudflare(), domains: ["fresh.example", "taken.example"] });
+	assert.equal(refused.status, 400, refused.text);
+	assert.equal(refused.body.error.message_i18n, "error.dns-domain-taken");
+	assert.equal(await countRows(api, "npmpro_dns_credential"), credentials);
+	assert.equal((await api.db("npmpro_dns_domain").where({ name: "fresh.example" })).length, 0);
+	const second = await create();
+	const renamed = await admin.put(`${BASE}/${second.id}`, {
+		name: "Renamed by a refused save",
+		domains: ["taken.example"],
+	});
+	assert.equal(renamed.status, 400, renamed.text);
+	assert.equal((await api.db("npmpro_dns_credential").where({ id: second.id }).first()).name, second.name);
+	assert.deepEqual((await domainRows(first.id)).length, 1);
+});
+
+it("expands the domains on the list and one credential as names only", async () => {
+	const created = await create({ ...cloudflare(), domains: ["b.example", "a.example"] });
+	const one = await admin.get(`${BASE}/${created.id}?expand=domains`);
+	assert.equal(one.status, 200, one.text);
+	assert.deepEqual(one.body.domains, ["a.example", "b.example"]);
+	const list = await admin.get(`${BASE}?expand=domains`);
+	assert.equal(list.status, 200, list.text);
+	assert.deepEqual(list.body.find((row) => row.id === created.id).domains, ["a.example", "b.example"]);
+});
+
+it("deletes its domains with the credential; a credential in use keeps both", async () => {
+	const free = await create({ ...cloudflare(), domains: ["gone.example", "gone2.example"] });
+	const done = await admin.delete(`${BASE}/${free.id}`);
+	assert.equal(done.status, 200, done.text);
+	assert.equal((await domainRows(free.id)).length, 0);
+	assert.deepEqual((await credentialAudit(free.id, "deleted")).domains, ["gone.example", "gone2.example"]);
+	const used = await create({ ...cloudflare(), domains: ["kept.example"] });
+	await addCertificate(used.id);
+	const refused = await admin.delete(`${BASE}/${used.id}`);
+	assert.equal(refused.status, 400, refused.text);
+	assert.equal((await domainRows(used.id)).length, 1);
+	assert.equal((await api.db("npmpro_dns_credential").where({ id: used.id }).first()).id, used.id);
+});
