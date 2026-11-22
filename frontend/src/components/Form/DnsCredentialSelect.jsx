@@ -17,9 +17,11 @@ import { FormField } from "./FormField";
  *                                      "name (provider)" and "+" opens the window without a preset provider
  * @param {number} [props.ownerUserId]  only this owner's credentials
  * @param {*}      [props.hint]
+ * @param {string} [props.describedBy]  ids of text outside the field that describes the select (a hint placed
+ *                                      elsewhere)
  * @param {Function} [props.onUserChange]  called when the user picks a credential (or saves a new one here)
  */
-export function DnsCredentialSelect({ name, provider, ownerUserId, hint, onUserChange }) {
+export function DnsCredentialSelect({ name, provider, ownerUserId, hint, describedBy, onUserChange }) {
 	const { field, fieldState } = useController({ name });
 	const error = fieldState.error?.message ?? null;
 	const { data, isPending } = useDnsCredentials();
@@ -38,7 +40,14 @@ export function DnsCredentialSelect({ name, provider, ownerUserId, hint, onUserC
 	const addLabel = intl.formatMessage({ id: "dns-credentials.add" });
 
 	return (
-		<FormField id="dnsCredential" label={<T id="dns-credentials.select" />} required hint={hint} error={error}>
+		<FormField
+			id="dnsCredential"
+			label={<T id="dns-credentials.select" />}
+			required
+			hint={hint}
+			describedBy={describedBy}
+			error={error}
+		>
 			{(control) => (
 				<div className="flex gap-2">
 					<div className="min-w-0 flex-1">

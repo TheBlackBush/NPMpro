@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 import { Combobox } from "src/components/Combobox";
+import { FieldDescription } from "src/components/ui/field";
 import { Input } from "src/components/ui/input";
 import { useDnsCredentials, useDnsProviders, useDomainSuggestions, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -11,6 +12,9 @@ import { DnsCredentialSelect } from "./DnsCredentialSelect";
 import { FormField } from "./FormField";
 import { FormSection } from "./FormSection";
 import { useRecheckDependent } from "./HookForm";
+
+// the id of the credential hint, which sits below the challenge note (outside the credential field)
+const SAVED_NOTE_ID = "dnsCredential-saved-note";
 
 // the provider; another provider's credential does not fit, so a change empties it (its message shows again once
 // it may). className: of the field, "mb-0" while it is the last one in the box
@@ -152,13 +156,14 @@ export function DNSProviderFields({ className }) {
 					<DnsCredentialSelect
 						name="npmproDnsCredentialId"
 						provider={providerId}
-						hint={<T id="certificates.dns.credentials-saved-note" />}
+						describedBy={SAVED_NOTE_ID}
 						onUserChange={picked}
 					/>
 				</div>
 			) : null}
 			{/* one live region, always mounted in this place (under the credential, or the provider without one), so
-			    a note that arrives or changes is announced; the note inside is not a region of its own */}
+			    a note that arrives or changes is announced; the note inside is not a region of its own. It comes
+			    before the credential's hint, so "Use another" stays in view on a phone */}
 			<div role="status" aria-live="polite">
 				{note ? (
 					<DnsChallengeNote
@@ -168,6 +173,11 @@ export function DNSProviderFields({ className }) {
 					/>
 				) : null}
 			</div>
+			{providerId ? (
+				<FieldDescription id={SAVED_NOTE_ID} className="-mt-1 mb-3">
+					<T id="certificates.dns.credentials-saved-note" />
+				</FieldDescription>
+			) : null}
 			{providerId ? <PropagationInput /> : null}
 		</FormSection>
 	);
