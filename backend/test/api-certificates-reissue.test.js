@@ -170,7 +170,7 @@ it("a Let's Encrypt row without live files answers a clear error and runs nothin
 	assert.deepEqual(await calls(), []);
 });
 
-it("a re-issue at Let's Encrypt staging adds --break-my-certs, any other CA does not", async () => {
+it("a re-issue at Let's Encrypt staging adds --break-my-certs and revokes nothing, any other CA does not", async () => {
 	const model = (await import("../models/acme_account.js")).default;
 	const staging = "https://acme-staging-v02.api.letsencrypt.org/directory";
 	const stagingAccount = "d".repeat(32);
@@ -181,9 +181,72 @@ it("a re-issue at Let's Encrypt staging adds --break-my-certs, any other CA does
 		await api.outside.clearCalls();
 		const done = await admin.post(`${CERTS}/${created.id}/reissue`, { npmpro_acme_server: staging });
 		assert.equal(done.status, 200, done.text);
-		const [certonly] = await normalizedCalls(api);
+		const [certonly, ...rest] = await normalizedCalls(api);
 		assert.ok(certonly.endsWith("--force-renewal --break-my-certs"), certonly);
+		// the trusted certificate stays valid: a test CA's one is no replacement
+		assert.equal(rest.filter((line) => line.includes(" revoke ")).length, 0);
 	} finally {
 		await model.query().delete().where({ server: staging });
+	}
+});
+
+it("a failed plugin install in a DNS re-issue keeps its own error, not the CA's", async () => {
+	const credential = await admin.post("/nginx/dns-credentials", {
+		name: "Cloudflare reissue",
+		provider: "cloudflare",
+		fields: [{ key: "dns_cloudflare_api_token", value: "cf-token" }],
+	});
+	assert.equal(credential.status, 201, credential.text);
+	const made = await admin.post(CERTS, {
+		provider: "letsencrypt",
+		domain_names: ["dns.example.com"],
+		npmpro_dns_challenge: true,
+		npmpro_dns_provider: "cloudflare",
+		npmpro_dns_credential_id: credential.body.id,
+	});
+	assert.equal(made.status, 201, made.text);
+	await api.outside.failCommand("pip", "ERROR: no matching distribution");
+	await api.outside.clearCalls();
+	const failed = await admin.post(`${CERTS}/${made.body.id}/reissue`, { npmpro_acme_server: SECOND });
+	assert.equal(failed.status, 500, failed.text);
+	assert.notEqual(failed.body.error.message_i18n, "error.acme-reissue-failed");
+	assert.equal((await row(made.body.id)).npmpro_acme_server, ACME);
+	assert.deepEqual(await calls(), []);
+});
+
+it("an error after a successful certbot run still stores the CA the renewal conf names", async () => {
+	const created = await issued();
+	const good = await readFile(pair.certificate);
+	await writeFile(pair.certificate, "not a certificate");
+	try {
+		const failed = await admin.post(`${CERTS}/${created.id}/reissue`, { npmpro_acme_server: SECOND });
+		assert.ok(failed.status >= 400, failed.text);
+	} finally {
+		await writeFile(pair.certificate, good);
+	}
+	assert.match(await readFile(confOf(created.id), "utf8"), new RegExp(`^server = ${SECOND}$`, "mu"));
+	assert.equal((await row(created.id)).npmpro_acme_server, SECOND);
+});
+
+it("a create stores the instance CA in one spelling, whatever the spelling of ACME_SERVER", async () => {
+	const { allowedAcmeServers } = await import("../internal/acme-account.js");
+	const model = (await import("../models/acme_account.js")).default;
+	const original = process.env.ACME_SERVER;
+	process.env.ACME_SERVER = "https://ACME.test/directory/";
+	try {
+		// the row's spelling
+		assert.equal((await allowedAcmeServers())[0], ACME);
+		const created = await issued();
+		assert.equal(created.npmpro_acme_server, ACME);
+		// no row: the CA's key
+		const rows = await model.query().where("server", ACME);
+		await model.query().delete().where("server", ACME);
+		try {
+			assert.equal((await allowedAcmeServers())[0], ACME);
+		} finally {
+			for (const saved of rows) await model.query().insert(saved);
+		}
+	} finally {
+		process.env.ACME_SERVER = original;
 	}
 });

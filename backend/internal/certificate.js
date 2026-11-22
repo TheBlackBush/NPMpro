@@ -45,6 +45,21 @@ const getNiceName = (domainNames) => {
 };
 
 /**
+ * After a re-issue whose certbot run succeeded but whose row update failed: the row's CA follows the renewal conf when
+ * the conf now names the target, so the list and a Remove of the CA see the CA that issued it. Best effort.
+ */
+const followRenewalConf = async (id, target) => {
+	try {
+		const server = (await renewalParamsOf(id)).get("server");
+		if (server && sameServer(server, target)) {
+			await certificateModel.query().where("id", id).patch({ npmpro_acme_server: target });
+		}
+	} catch (err) {
+		logger.warn(`Certificate #${id}: its CA could not be stored after the re-issue: ${err.message}`);
+	}
+};
+
+/**
  * The timer's renewal: one `certbot renew` for every due certificate, run while the lock of every CA is held
  * (withRenewalLocks), so a Replace account never runs while certbot may write a renewal conf back. The confs are made
  * to name usable accounts first (prepareRenewals); a failure is logged.
@@ -613,15 +628,15 @@ const internalCertificate = {
 			});
 		}
 
-		// certbot refuses to replace a valid certificate with a test one unless it may break it
-		const extra = sameServer(target, LETSENCRYPT_STAGING_SERVER)
-			? ["--force-renewal", "--break-my-certs"]
-			: ["--force-renewal"];
+		// a test CA (Let's Encrypt staging only; another CA with "staging" in its URL is refused by certbot): certbot
+		// replaces a valid certificate with a test one only when it may break it, and the old one is not revoked
+		const toTestCa = sameServer(target, LETSENCRYPT_STAGING_SERVER);
+		const extra = toTestCa ? ["--force-renewal", "--break-my-certs"] : ["--force-renewal"];
 		try {
 			await runCertonly({ ...certificate, npmpro_acme_server: target }, access, { extra });
 		} catch (err) {
-			// a failed run answers a public message the window shows, the certificate stays as it was
-			if (!(err instanceof errs.CommandError)) throw err;
+			// a failed certbot run answers a public message the window shows, the certificate stays as it was
+			if (!(err instanceof errs.CommandError && err.certbotRun)) throw err;
 			throw new errs.ValidationError(
 				`The CA did not issue the certificate: ${err.message}`,
 				"error.acme-reissue-failed",
@@ -629,14 +644,20 @@ const internalCertificate = {
 			);
 		}
 
-		const certInfo = await internalCertificate.getCertificateInfoFromFile(
-			`${internalCertificate.getLiveCertPath(certificate.id)}/fullchain.pem`,
-		);
-		const updatedCertificate = await certificateModel.query().patchAndFetchById(certificate.id, {
-			npmpro_acme_server: target,
-			nice_name: getNiceName(certificate.domain_names),
-			expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
-		});
+		let updatedCertificate;
+		try {
+			const certInfo = await internalCertificate.getCertificateInfoFromFile(
+				`${internalCertificate.getLiveCertPath(certificate.id)}/fullchain.pem`,
+			);
+			updatedCertificate = await certificateModel.query().patchAndFetchById(certificate.id, {
+				npmpro_acme_server: target,
+				nice_name: getNiceName(certificate.domain_names),
+				expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
+			});
+		} catch (err) {
+			await followRenewalConf(certificate.id, target);
+			throw err;
+		}
 
 		let reloaded = false;
 		try {
@@ -656,7 +677,7 @@ const internalCertificate = {
 			});
 		}
 
-		if (!reloaded) return updatedCertificate;
+		if (!reloaded || toTestCa) return updatedCertificate;
 		if (!oldServer) {
 			logger.warn(
 				`Certificate #${certificate.id}: its renewal conf names no CA, the old certificate was not revoked`,

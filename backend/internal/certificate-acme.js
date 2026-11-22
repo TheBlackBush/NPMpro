@@ -42,16 +42,19 @@ const renewalParamsOf = async (id) => {
 
 /**
  * Runs certbot for a request or a renewal; a failure carries the readable message (the CA's sentence and certbot's
- * reason, without its log path and warning blocks) as the error output
+ * reason, without its log path and warning blocks) as the error output, marked certbotRun (a failed plugin install is
+ * another CommandError)
  */
 const runCertbotCleaned = async (args) => {
 	try {
 		return await runCertbot(args);
 	} catch (err) {
 		if (!(err instanceof errs.CommandError)) throw err;
-		throw new errs.CommandError(cleanCertbotMessage(err.message, { keepLines: true, max: REQUEST_MAX }), {
+		const cleaned = new errs.CommandError(cleanCertbotMessage(err.message, { keepLines: true, max: REQUEST_MAX }), {
 			cause: err,
 		});
+		cleaned.certbotRun = true;
+		throw cleaned;
 	}
 };
 

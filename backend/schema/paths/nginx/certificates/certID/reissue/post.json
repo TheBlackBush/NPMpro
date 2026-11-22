@@ -59,10 +59,10 @@
 			}
 		},
 		"400": {
-			"description": "Not a Certbot certificate, the CA is not set up (error.acme-ca-not-allowed) or is the certificate's own (error.acme-same-ca)"
+			"description": "Not a Certbot certificate (error.acme-reissue-acme-only), the CA is not set up (error.acme-ca-not-allowed) or is the certificate's own (error.acme-same-ca), the certificate has no files to replace (error.acme-reissue-no-files), the CA's account needs a value in Settings (error.acme-set-up-request) or cannot be reached (error.acme-unreachable) or was refused (error.acme-refused), or the CA did not issue the certificate (error.acme-reissue-failed, with the CA's message)"
 		}
 	},
-	"description": "Issues a Let's Encrypt certificate again at another CA an administrator set up, with the same names and challenge, and reloads nginx. The old certificate is revoked at its old CA afterwards. If the new CA fails, nothing changes. It waits for the ACME server, which can take minutes.\n\nNeeds: Certificates manage",
+	"description": "Issues an ACME (Certbot) certificate again at another CA an administrator set up, with the same names and challenge, and reloads nginx. The old certificate is revoked at its old CA afterwards, except when the new CA is Let's Encrypt (staging), a test CA. If the new CA fails, nothing changes. It waits for the ACME server, which can take minutes.\n\nNeeds: Certificates manage",
 	"requestBody": {
 		"description": "The CA to issue the certificate at",
 		"required": true,
@@ -78,7 +78,7 @@
 						"npmpro_acme_server": {
 							"type": "string",
 							"maxLength": 255,
-							"pattern": "^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~/-]*)?$",
+							"pattern": "^https?://\\S+$",
 							"description": "The CA to issue at, one of the CAs the acme-servers list offers; it must differ from the certificate's CA",
 							"example": "https://acme-v02.api.letsencrypt.org/directory"
 						}
