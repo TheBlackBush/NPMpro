@@ -87,7 +87,7 @@ const acmeTarget = async (server, access) => {
  * Runs fn(target) with the CA's account lock held, so a Replace account cannot move or deactivate the account while
  * the certbot run of fn uses it
  */
-const withAcmeTarget = (certificate, access, fn, guard) => {
+const withAcmeTarget = (certificate, access, fn) => {
 	// the CA is resolved once: the lock and the account are always the same CA's
 	const server = certificate.npmpro_acme_server ?? instanceServer();
 	return withAccountLock(server, async () => {
@@ -98,8 +98,6 @@ const withAcmeTarget = (certificate, access, fn, guard) => {
 				"error.acme-ca-not-allowed",
 			);
 		}
-		// the caller's last check, under the lock: it throws to refuse, and answers true to skip the run
-		if (guard && (await guard())) return;
 		return await fn(await acmeTarget(server, access));
 	});
 };
@@ -220,26 +218,16 @@ const certonlyDns = async (certificate, dnsPlugin, target, extra) => {
  * @param   {string[]}  [options.extra]  more certbot arguments
  * @returns {Promise<string>}  certbot's output
  */
-const runCertonly = async (certificate, access, { extra = [], guard } = {}) => {
+const runCertonly = async (certificate, access, { extra = [] } = {}) => {
 	if (!certificate.npmpro_dns_challenge) {
-		return await withAcmeTarget(
-			certificate,
-			access,
-			(target) => certonlyWebroot(certificate, target, extra),
-			guard,
-		);
+		return await withAcmeTarget(certificate, access, (target) => certonlyWebroot(certificate, target, extra));
 	}
 	const dnsPlugin = dnsPlugins[certificate.npmpro_dns_provider];
 	if (!dnsPlugin) {
 		throw new errs.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
 	}
 	// the account first (a failed check installs nothing), under the CA's lock for the whole run
-	return await withAcmeTarget(
-		certificate,
-		access,
-		(target) => certonlyDns(certificate, dnsPlugin, target, extra),
-		guard,
-	);
+	return await withAcmeTarget(certificate, access, (target) => certonlyDns(certificate, dnsPlugin, target, extra));
 };
 
 const certificateAcme = {

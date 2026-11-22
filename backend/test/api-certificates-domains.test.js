@@ -3,11 +3,13 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { startApi } from "./support/api.js";
-import { acmeDirectory, certbotSucceeds, makeCertificate, normalizedCalls } from "./support/certbot.js";
+import { acmeDirectory, certbotSucceeds, makeCertificate, normalizedCalls, seedAccount } from "./support/certbot.js";
 import { reloads } from "./support/hosts.js";
 
 const CERTS = "/nginx/certificates";
 const ACME = "https://acme.test/directory";
+const SECOND = "https://second.lan/dir";
+const SECOND_ACCOUNT = "c".repeat(32);
 const INI = "/run/npmpro/certbot.ini";
 const ACCOUNT = /--account [0-9a-f]{32}/gu;
 const WILDCARD_DOMAINS = /--domains \*\.dns\.example\.com,dns\.example\.com /u;
@@ -31,6 +33,13 @@ const issued = async (domains = ["a.example.com"]) => {
 	return made.body;
 };
 const put = (id, domainNames) => admin.put(`${CERTS}/${id}/domains`, { domain_names: domainNames });
+const reissue = (id, server) => admin.post(`${CERTS}/${id}/reissue`, { npmpro_acme_server: server });
+const certonlyCalls = async () => (await calls()).filter((line) => line.includes(" certonly "));
+const hold = (action) => path.join(api.root, `fake/hold-${action}`);
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const waitFor = async (check) => {
+	for (let attempt = 0; attempt < 100 && !(await check()); attempt += 1) await wait(50);
+};
 
 before(async () => {
 	api = await startApi({ env: { ACME_SERVER: ACME, NPMPRO_TEST_OUTBOUND: "mock" } });
@@ -38,6 +47,9 @@ before(async () => {
 	acmeDirectory(api, ACME);
 	admin = await api.admin();
 	pair = await makeCertificate(path.join(api.root, "fake"), "a.example.com");
+	const model = (await import("../models/acme_account.js")).default;
+	await seedAccount(api, SECOND, SECOND_ACCOUNT);
+	await model.query().insert({ server: SECOND, account_id: SECOND_ACCOUNT, state: "registered" });
 });
 beforeEach(async () => {
 	await api.outside.clearCalls();
@@ -85,6 +97,92 @@ it("an unchanged list (another order, another case) runs nothing and answers the
 	assert.deepEqual(await calls(), []);
 	const audits = await api.db("audit_log").where({ object_id: created.id, action: "domains-changed" });
 	assert.equal(audits.length, 0);
+});
+
+it("a punycode spelling of a stored Unicode name is unchanged too: nothing runs", async () => {
+	const created = await issued(["bücher.example.com"]);
+	await api.outside.clearCalls();
+	const same = await put(created.id, ["XN--BCHER-KVA.example.com"]);
+	assert.equal(same.status, 200, same.text);
+	assert.deepEqual(same.body.domain_names, ["bücher.example.com"]);
+	assert.deepEqual(await calls(), []);
+	const audits = await api.db("audit_log").where({ object_id: created.id, action: "domains-changed" });
+	assert.equal(audits.length, 0);
+});
+
+it("a re-issue waits for a running domains edit of the certificate and issues the new names at the new CA", async () => {
+	const created = await issued();
+	await api.outside.clearCalls();
+	await writeFile(hold("certonly"), "");
+	try {
+		const edit = put(created.id, ["b.example.com"]);
+		await waitFor(async () => (await certonlyCalls()).length > 0);
+		const moved = reissue(created.id, SECOND);
+		await wait(300);
+		assert.equal((await certonlyCalls()).length, 1, "the re-issue waits for the edit");
+		await rm(hold("certonly"));
+		assert.equal((await edit).status, 200);
+		const done = await moved;
+		assert.equal(done.status, 200, done.text);
+		assert.deepEqual(done.body.domain_names, ["b.example.com"]);
+		assert.equal(done.body.nice_name, "b.example.com");
+		assert.equal(done.body.npmpro_acme_server, SECOND);
+		const [first, second] = await certonlyCalls();
+		assert.match(first, new RegExp(`--server ${ACME} .*--domains b\\.example\\.com `, "u"));
+		assert.match(second, new RegExp(`--server ${SECOND} .*--domains b\\.example\\.com .*--force-renewal`, "u"));
+	} finally {
+		await rm(hold("certonly"), { force: true });
+	}
+});
+
+it("a domains edit waits for a running re-issue of the certificate and runs at the CA the re-issue left", async () => {
+	const created = await issued();
+	await api.outside.clearCalls();
+	await writeFile(hold("certonly"), "");
+	try {
+		const moved = reissue(created.id, SECOND);
+		await waitFor(async () => (await certonlyCalls()).length > 0);
+		const edit = put(created.id, ["b.example.com"]);
+		await wait(300);
+		assert.equal((await certonlyCalls()).length, 1, "the edit waits for the re-issue");
+		await rm(hold("certonly"));
+		assert.equal((await moved).status, 200);
+		const done = await edit;
+		assert.equal(done.status, 200, done.text);
+		assert.deepEqual(done.body.domain_names, ["b.example.com"]);
+		assert.equal(done.body.npmpro_acme_server, SECOND);
+		const [first, second] = await certonlyCalls();
+		assert.match(first, new RegExp(`--server ${SECOND} .*--domains a\\.example\\.com .*--force-renewal`, "u"));
+		assert.match(second, new RegExp(`--server ${SECOND} .*--domains b\\.example\\.com `, "u"));
+		const conf = await readFile(confOf(created.id), "utf8");
+		assert.match(conf, new RegExp(`^server = ${SECOND}$`, "mu"));
+	} finally {
+		await rm(hold("certonly"), { force: true });
+	}
+});
+
+it("a domains edit started while the renewal timer holds the CA locks waits, then succeeds", async () => {
+	const { default: internalCertificate } = await import("../internal/certificate.js");
+	const created = await issued();
+	await api.outside.clearCalls();
+	await writeFile(hold("renew"), "");
+	internalCertificate.intervalProcessing = false;
+	try {
+		const run = internalCertificate.processExpiringHosts();
+		await waitFor(async () => (await calls()).some((line) => line.endsWith(" renew --quiet")));
+		const edit = put(created.id, ["b.example.com"]);
+		await wait(300);
+		assert.deepEqual(await certonlyCalls(), [], "the edit waits for the renewal");
+		await rm(hold("renew"));
+		await run;
+		const done = await edit;
+		assert.equal(done.status, 200, done.text);
+		assert.deepEqual(done.body.domain_names, ["b.example.com"]);
+		assert.equal((await certonlyCalls()).length, 1);
+	} finally {
+		await rm(hold("renew"), { force: true });
+		internalCertificate.intervalProcessing = false;
+	}
 });
 
 it("a failed run changes nothing: the row, the conf, the files, no reload", async () => {

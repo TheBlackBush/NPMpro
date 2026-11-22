@@ -60,10 +60,10 @@
 			}
 		},
 		"400": {
-			"description": "Not a Certbot certificate (error.acme-domains-acme-only), a name the challenge does not allow (wildcards need the DNS challenge, IPs need the HTTP challenge), the CA's account needs a value in Settings (error.acme-set-up-request) or cannot be reached (error.acme-unreachable) or was refused (error.acme-refused), or the CA did not issue the certificate (error.acme-domains-failed, with the CA's message)"
+			"description": "Not a Certbot certificate (error.acme-domains-acme-only), a name the challenge does not allow (wildcards need the DNS challenge, IPs need the HTTP challenge), the certificate's CA is no longer set up (error.acme-ca-not-allowed), the CA's account needs a value in Settings (error.acme-set-up-request) or cannot be reached (error.acme-unreachable) or was refused (error.acme-refused), or the CA did not issue the certificate (error.acme-domains-failed, with the CA's message)"
 		}
 	},
-	"description": "Issues an ACME (Certbot) certificate again with a new list of domain names, at the certificate's own CA, with its account, challenge and key setting, and reloads nginx. The same list in another order or case changes nothing and runs nothing. If the CA fails, nothing changes. It waits for the ACME server, which can take minutes.\n\nNeeds: Certificates manage",
+	"description": "Issues an ACME (Certbot) certificate again with a new list of domain names, at the certificate's own CA, with its account, challenge and key setting, and reloads nginx. The same list in another order, case or spelling (Unicode or punycode) changes nothing and runs nothing. A re-issue or another edit of the same certificate that is running finishes first, and this edit starts from its result. If the CA fails, nothing changes. It waits for the ACME server, which can take minutes.\n\nNeeds: Certificates manage",
 	"requestBody": {
 		"description": "The new list of domain names",
 		"required": true,
