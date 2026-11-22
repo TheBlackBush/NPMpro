@@ -478,7 +478,6 @@
 	"domain-names.source.dead_host": "404 호스트",
 	"domain-names.source.proxy_host": "프록시 호스트",
 	"domain-names.source.redirection_host": "리디렉션 호스트",
-	"domain-names.source.stream": "스트림",
 	"domain-names.wildcard": "와일드카드",
 	"domain-names.wildcards-not-permitted": "HTTP 방식으로는 와일드카드 인증서를 발급할 수 없습니다.",
 	"domain-names.wildcards-not-supported": "이 인증 기관(CA)은 와일드카드를 지원하지 않습니다.",

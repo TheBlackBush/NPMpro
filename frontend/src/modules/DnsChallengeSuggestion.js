@@ -43,9 +43,7 @@ export function challengeSuggestion({ names, zones, credentials, userId, credent
 	switch (match.kind) {
 		case "one":
 			return {
-				preselect: handPicked
-					? null
-					: { provider: zoneOf(match.credentialId).provider, credentialId: match.credentialId },
+				preselect: { provider: zoneOf(match.credentialId).provider, credentialId: match.credentialId },
 				note: {
 					kind: "suggested",
 					credentialName: nameOf(match.credentialId),

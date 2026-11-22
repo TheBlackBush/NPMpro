@@ -478,7 +478,6 @@
 	"domain-names.source.dead_host": "404 主机",
 	"domain-names.source.proxy_host": "代理主机",
 	"domain-names.source.redirection_host": "重定向主机",
-	"domain-names.source.stream": "数据流",
 	"domain-names.wildcard": "通配符",
 	"domain-names.wildcards-not-permitted": "此类型不允许使用通配符",
 	"domain-names.wildcards-not-supported": "此 CA 不支持通配符",

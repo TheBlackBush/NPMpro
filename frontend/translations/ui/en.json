@@ -478,7 +478,6 @@
 	"domain-names.source.dead_host": "404 host",
 	"domain-names.source.proxy_host": "proxy host",
 	"domain-names.source.redirection_host": "redirection host",
-	"domain-names.source.stream": "stream",
 	"domain-names.wildcard": "wildcard",
 	"domain-names.wildcards-not-permitted": "Wildcards not permitted for this type",
 	"domain-names.wildcards-not-supported": "Wildcards not supported for this CA",

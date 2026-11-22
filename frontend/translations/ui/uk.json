@@ -478,7 +478,6 @@
 	"domain-names.source.dead_host": "хост 404",
 	"domain-names.source.proxy_host": "проксі-хост",
 	"domain-names.source.redirection_host": "хост перенаправлення",
-	"domain-names.source.stream": "потік",
 	"domain-names.wildcard": "підстановний",
 	"domain-names.wildcards-not-permitted": "Підстановчі домени не дозволені для цього типу",
 	"domain-names.wildcards-not-supported": "Підстановчі домени не підтримуються цим центром сертифікації",

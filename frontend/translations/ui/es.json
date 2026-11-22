@@ -478,7 +478,6 @@
 	"domain-names.source.dead_host": "host 404",
 	"domain-names.source.proxy_host": "host proxy",
 	"domain-names.source.redirection_host": "host de redirección",
-	"domain-names.source.stream": "stream",
 	"domain-names.wildcard": "comodín",
 	"domain-names.wildcards-not-permitted": "No se permiten comodines para este tipo",
 	"domain-names.wildcards-not-supported": "No se admiten comodines para esta CA",

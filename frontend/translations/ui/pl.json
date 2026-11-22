@@ -478,7 +478,6 @@
 	"domain-names.source.dead_host": "host 404",
 	"domain-names.source.proxy_host": "host proxy",
 	"domain-names.source.redirection_host": "host przekierowania",
-	"domain-names.source.stream": "strumień",
 	"domain-names.wildcard": "wildcard",
 	"domain-names.wildcards-not-permitted": "Symbole wieloznaczne nie są dozwolone dla tego typu",
 	"domain-names.wildcards-not-supported": "Symbole wieloznaczne nie są obsługiwane dla tego CA",

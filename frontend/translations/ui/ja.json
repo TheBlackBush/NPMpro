@@ -478,7 +478,6 @@
 	"domain-names.source.dead_host": "404 ホスト",
 	"domain-names.source.proxy_host": "プロキシホスト",
 	"domain-names.source.redirection_host": "リダイレクトホスト",
-	"domain-names.source.stream": "ストリーム",
 	"domain-names.wildcard": "ワイルドカード",
 	"domain-names.wildcards-not-permitted": "ワイルドカードはこのタイプでは許可されていません",
 	"domain-names.wildcards-not-supported": "ワイルドカードはこのCAではサポートされていません",

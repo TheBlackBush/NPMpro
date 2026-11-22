@@ -478,7 +478,6 @@
 	"domain-names.source.dead_host": "404-Host",
 	"domain-names.source.proxy_host": "Proxy-Host",
 	"domain-names.source.redirection_host": "Weiterleitungs-Host",
-	"domain-names.source.stream": "Stream",
 	"domain-names.wildcard": "Wildcard",
 	"domain-names.wildcards-not-permitted": "Wildcards sind für diesen Typ nicht zulässig.",
 	"domain-names.wildcards-not-supported": "Wildcards werden für diese Zertifizierungsstelle nicht unterstützt.",
