@@ -1,6 +1,6 @@
 import { Command as CommandRoot, useCommandState } from "cmdk";
 import { XIcon } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { TapTooltip } from "src/components/TapTooltip";
 import { TruncatedText } from "src/components/TruncatedText";
 import { Badge } from "src/components/ui/badge";
@@ -101,6 +101,12 @@ export function MultipleCombobox({
 	// nothing to list: an empty creatable field (domain names) stays closed until something is typed
 	const hasContent = loading || list.keys.length > 0 || query.trim() !== "";
 	const shown = open && hasContent && !locked;
+	const listKeys = list.keys.join();
+	// createFirst: the options arrive from the caller one render after the typed text, so the highlight follows the
+	// list that is shown (the first entry: "Add ..." or the option that is exactly the typed text)
+	useEffect(() => {
+		if (createFirst) setActive(listKeys === "" ? "" : listKeys.split(",")[0]);
+	}, [createFirst, listKeys]);
 
 	const changeQuery = (text) => {
 		setQuery(text);

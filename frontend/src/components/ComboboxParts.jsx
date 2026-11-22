@@ -55,6 +55,8 @@ export function listFor({
 	const offer =
 		creatable &&
 		canCreate(trimmed, options, multiple ? labels : [], getOptionLabel) &&
+		// the value too: the ASCII form of a Unicode label is the same name
+		canCreate(trimmed, options, [], getOptionValue) &&
 		(isValidNew ? isValidNew(trimmed, values) : true);
 	const createLabel = offer
 		? (textFor(createText, trimmed) ?? intl.formatMessage({ id: "combobox.create" }, { value: trimmed }))
@@ -120,9 +122,9 @@ export function ComboboxItems({
 			{list.items.length > 0 || list.createLabel ? (
 				<div className="p-1">
 					{createFirst ? createItem : null}
-					{groupsOf(list.items).map((group) =>
+					{groupsOf(list.items).map((group, index) =>
 						group.label ? (
-							<CommandGroup key={`g:${group.label}`} heading={group.label} className="p-0">
+							<CommandGroup key={`g:${index}:${group.label}`} heading={group.label} className="p-0">
 								{group.items.map(renderItem)}
 							</CommandGroup>
 						) : (

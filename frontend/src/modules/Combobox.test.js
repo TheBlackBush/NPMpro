@@ -125,3 +125,11 @@ it("a fully typed name leads the list, never a suggestion that contains it", () 
 	assert.deepEqual(exactFirst(options, "exam", label, label), options);
 	assert.deepEqual(exactFirst(options, "", label, label), options);
 });
+
+it("canCreate on the values refuses the ASCII form of a Unicode label", () => {
+	const options = [{ label: "bücher.de", value: "xn--bcher-kva.de" }];
+	assert.equal(
+		canCreate("xn--bcher-kva.de", options, [], (o) => o.value),
+		false,
+	);
+});

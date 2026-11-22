@@ -3,6 +3,7 @@ import { useController, useFormContext } from "react-hook-form";
 import { Combobox } from "src/components/Combobox";
 import { useDomainSuggestions } from "src/hooks";
 import { intl, T } from "src/locale";
+import { displayDomain } from "src/modules/DnsDomainForms";
 import { domainSuggestions } from "src/modules/DomainSuggestions";
 import { validateDomain } from "src/modules/Validations";
 import { FormField } from "./FormField";
@@ -87,6 +88,9 @@ export function DomainNamesField({
 					options={options}
 					filter={false}
 					createFirst
+					chipLabel={displayDomain}
+					// the stored (ASCII) form of a name shown in Unicode
+					chipProps={(entry) => ({ title: displayDomain(entry) === entry ? undefined : entry })}
 					renderOption={(option) => <SuggestionRow option={option} />}
 					value={field.value ?? []}
 					onBlur={field.onBlur}
