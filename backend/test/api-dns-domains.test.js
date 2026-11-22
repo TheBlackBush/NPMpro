@@ -18,7 +18,8 @@ const credential = async (session = admin, provider = "cloudflare") => {
 		provider,
 		fields: [{ key: "dns_cloudflare_api_token", value: TOKEN }],
 	});
-	assert.equal(done.status, 201, done.text);
+	// a setup step, not a test: a failed create stops the calling test with the answer
+	if (done.status !== 201) throw new Error(`credential create answered ${done.status}: ${done.text}`);
 	return done.body;
 };
 const add = (credentialId, names, session = admin, extra = {}) =>
