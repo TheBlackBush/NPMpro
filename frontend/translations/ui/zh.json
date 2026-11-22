@@ -441,7 +441,7 @@
 	"dns-credentials.none-for-provider": "此提供商尚无已保存的凭据",
 	"dns-credentials.provider-locked": "证书使用此凭据期间无法更改提供商",
 	"dns-credentials.saved-keep": "已保存，留空则保持不变",
-	"dns-credentials.select": "选择凭据",
+	"dns-credentials.select": "选择 DNS 凭据",
 	"dns-credentials.used-by": "使用者",
 	"dns-credentials.used-by-count": "使用者: {count}",
 	"dns-credentials.value.control-chars": "不能包含换行符或控制字符",

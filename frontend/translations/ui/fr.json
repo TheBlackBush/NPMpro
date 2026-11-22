@@ -441,7 +441,7 @@
 	"dns-credentials.none-for-provider": "Aucun identifiant enregistré pour ce fournisseur pour le moment",
 	"dns-credentials.provider-locked": "Le fournisseur ne peut pas être modifié tant que des certificats utilisent cet identifiant",
 	"dns-credentials.saved-keep": "Enregistré, laisser vide pour conserver",
-	"dns-credentials.select": "Sélectionner un identifiant",
+	"dns-credentials.select": "Sélectionner un identifiant DNS",
 	"dns-credentials.used-by": "Utilisé par",
 	"dns-credentials.used-by-count": "Utilisé par : {count}",
 	"dns-credentials.value.control-chars": "Ne doit contenir ni saut de ligne ni caractère de contrôle",

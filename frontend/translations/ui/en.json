@@ -441,7 +441,7 @@
 	"dns-credentials.none-for-provider": "No saved credential for this provider yet",
 	"dns-credentials.provider-locked": "The provider cannot change while certificates use this credential",
 	"dns-credentials.saved-keep": "Saved, leave empty to keep",
-	"dns-credentials.select": "Select a credential",
+	"dns-credentials.select": "Select DNS credential",
 	"dns-credentials.used-by": "Used by",
 	"dns-credentials.used-by-count": "Used by: {count}",
 	"dns-credentials.value.control-chars": "Must not contain a line break or control character",

@@ -441,7 +441,7 @@
 	"dns-credentials.none-for-provider": "Для цього провайдера ще немає збережених облікових даних",
 	"dns-credentials.provider-locked": "Провайдера не можна змінити, поки сертифікати використовують ці облікові дані",
 	"dns-credentials.saved-keep": "Збережено, залиште порожнім, щоб не змінювати",
-	"dns-credentials.select": "Виберіть облікові дані",
+	"dns-credentials.select": "Виберіть облікові дані DNS",
 	"dns-credentials.used-by": "Використовується",
 	"dns-credentials.used-by-count": "Використовується: {count}",
 	"dns-credentials.value.control-chars": "Не повинно містити розривів рядка та керівних символів",

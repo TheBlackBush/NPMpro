@@ -441,7 +441,7 @@
 	"dns-credentials.none-for-provider": "Noch keine gespeicherten Zugangsdaten für diesen Anbieter",
 	"dns-credentials.provider-locked": "Der Anbieter kann nicht geändert werden, solange Zertifikate diese Zugangsdaten verwenden",
 	"dns-credentials.saved-keep": "Gespeichert, leer lassen zum Beibehalten",
-	"dns-credentials.select": "Zugangsdaten auswählen",
+	"dns-credentials.select": "DNS-Zugangsdaten auswählen",
 	"dns-credentials.used-by": "Verwendet von",
 	"dns-credentials.used-by-count": "Verwendet von: {count}",
 	"dns-credentials.value.control-chars": "Darf keinen Zeilenumbruch und kein Steuerzeichen enthalten",

@@ -441,7 +441,7 @@
 	"dns-credentials.none-for-provider": "이 공급자에 저장된 자격 증명이 아직 없습니다",
 	"dns-credentials.provider-locked": "인증서가 이 자격 증명을 사용하는 동안에는 공급자를 변경할 수 없습니다",
 	"dns-credentials.saved-keep": "저장됨, 유지하려면 비워 두세요",
-	"dns-credentials.select": "자격 증명 선택",
+	"dns-credentials.select": "DNS 자격 증명 선택",
 	"dns-credentials.used-by": "사용처",
 	"dns-credentials.used-by-count": "사용처: {count}",
 	"dns-credentials.value.control-chars": "줄 바꿈이나 제어 문자를 포함할 수 없습니다",

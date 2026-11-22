@@ -441,7 +441,7 @@
 	"dns-credentials.none-for-provider": "Brak zapisanych danych uwierzytelniających dla tego dostawcy",
 	"dns-credentials.provider-locked": "Nie można zmienić dostawcy, dopóki certyfikaty używają tych danych uwierzytelniających",
 	"dns-credentials.saved-keep": "Zapisane, pozostaw puste, aby zachować",
-	"dns-credentials.select": "Wybierz dane uwierzytelniające",
+	"dns-credentials.select": "Wybierz dane uwierzytelniające DNS",
 	"dns-credentials.used-by": "Używane przez",
 	"dns-credentials.used-by-count": "Używane przez: {count}",
 	"dns-credentials.value.control-chars": "Nie może zawierać podziału wiersza ani znaku sterującego",

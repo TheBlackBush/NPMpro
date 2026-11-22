@@ -441,7 +441,7 @@
 	"dns-credentials.none-for-provider": "Aún no hay credenciales guardadas para este proveedor",
 	"dns-credentials.provider-locked": "El proveedor no se puede cambiar mientras haya certificados que usen esta credencial",
 	"dns-credentials.saved-keep": "Guardado, déjalo vacío para conservarlo",
-	"dns-credentials.select": "Selecciona una credencial",
+	"dns-credentials.select": "Selecciona una credencial DNS",
 	"dns-credentials.used-by": "Usado por",
 	"dns-credentials.used-by-count": "Usado por: {count}",
 	"dns-credentials.value.control-chars": "No debe contener saltos de línea ni caracteres de control",

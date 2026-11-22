@@ -441,7 +441,7 @@
 	"dns-credentials.none-for-provider": "Для этого провайдера пока нет сохранённых учётных данных",
 	"dns-credentials.provider-locked": "Провайдер нельзя изменить, пока сертификаты используют эти учётные данные",
 	"dns-credentials.saved-keep": "Сохранено, оставьте пустым, чтобы не менять",
-	"dns-credentials.select": "Выберите учётные данные",
+	"dns-credentials.select": "Выберите учётные данные DNS",
 	"dns-credentials.used-by": "Используется",
 	"dns-credentials.used-by-count": "Используется: {count}",
 	"dns-credentials.value.control-chars": "Не должно содержать переносов строк и управляющих символов",

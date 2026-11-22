@@ -441,7 +441,7 @@
 	"dns-credentials.none-for-provider": "Nog geen opgeslagen inloggegevens voor deze provider",
 	"dns-credentials.provider-locked": "De provider kan niet worden gewijzigd zolang certificaten deze inloggegevens gebruiken",
 	"dns-credentials.saved-keep": "Opgeslagen, laat leeg om te behouden",
-	"dns-credentials.select": "Kies inloggegevens",
+	"dns-credentials.select": "Kies DNS-inloggegevens",
 	"dns-credentials.used-by": "Gebruikt door",
 	"dns-credentials.used-by-count": "Gebruikt door: {count}",
 	"dns-credentials.value.control-chars": "Mag geen regeleinde of besturingsteken bevatten",
