@@ -439,6 +439,29 @@
 				"type": "string"
 			}
 		},
+		"warnings": {
+			"type": "array",
+			"description": "Only in the answer of a save: notes that did not stop it. A resolver address added by the save that did not answer a DNS query within 3 seconds (the value is saved and applied anyway)",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["key", "address", "message_i18n"],
+				"properties": {
+					"key": {
+						"type": "string",
+						"description": "The setting the note is about: resolver_addresses"
+					},
+					"address": {
+						"type": "string",
+						"description": "The resolver address that did not answer, as saved"
+					},
+					"message_i18n": {
+						"type": "string",
+						"description": "The translation key of the note: warning.resolver-no-answer"
+					}
+				}
+			}
+		},
 		"cpu_count": {
 			"type": "integer",
 			"minimum": 1,

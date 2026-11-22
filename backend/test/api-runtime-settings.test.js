@@ -37,6 +37,7 @@ writeFileSync(PROC_STATUS, "Name:\tnode\nCpus_allowed_list:\t16-23\n");
 
 let api;
 let admin;
+let setResolverProbe;
 let hosts = 0;
 
 const get = async (group) => {
@@ -112,6 +113,9 @@ before(async () => {
 		},
 	});
 	admin = await api.admin();
+	// no test asks a real DNS server
+	({ setResolverProbe } = await import("../internal/runtime-setting.js"));
+	setResolverProbe(() => Promise.resolve([]));
 });
 after(() => api?.stop());
 
@@ -796,4 +800,55 @@ it("turning Gravatar off sends no request at the next profile save", async () =>
 	assert.equal(requests.length, 1);
 	assert.equal(resaved.body.avatar, "/images/default-avatar.jpg");
 	await saved("advanced", { gravatar: true });
+});
+
+it("a resolver that does not answer is saved with a warning", async () => {
+	const asked = [];
+	setResolverProbe((list) => {
+		asked.push(list);
+		return Promise.resolve(list.filter((address) => address.startsWith("192.0.2.")));
+	});
+	try {
+		const view = await saved("nginx", { resolver_addresses: ["1.1.1.1", "192.0.2.53"] });
+		assert.deepEqual(asked, [["1.1.1.1", "192.0.2.53"]]);
+		assert.deepEqual(view.warnings, [
+			{ key: "resolver_addresses", address: "192.0.2.53", message_i18n: "warning.resolver-no-answer" },
+		]);
+		assert.deepEqual((await get("nginx")).resolver_addresses, ["1.1.1.1", "192.0.2.53"]);
+		assert.equal((await get("nginx")).warnings, undefined);
+		// only the added address is asked
+		const more = await saved("nginx", { resolver_addresses: ["1.1.1.1", "192.0.2.53", "192.0.2.54"] });
+		assert.deepEqual(asked[1], ["192.0.2.54"]);
+		assert.deepEqual(
+			more.warnings.map((warning) => warning.address),
+			["192.0.2.54"],
+		);
+		// every address answers: no warnings
+		assert.equal((await saved("nginx", { resolver_addresses: ["1.1.1.1", "8.8.8.8"] })).warnings, undefined);
+	} finally {
+		setResolverProbe(() => Promise.resolve([]));
+		await saved("nginx", { resolver_addresses: [] });
+	}
+});
+
+it("an unchanged list is not probed and a failing probe does not fail the save", async () => {
+	await saved("nginx", { resolver_addresses: ["1.1.1.1"] });
+	let calls = 0;
+	setResolverProbe(() => {
+		calls += 1;
+		return Promise.reject(new Error("probe broke"));
+	});
+	try {
+		assert.equal((await saved("nginx", { resolver_valid: "45s" })).warnings, undefined);
+		assert.equal((await saved("nginx", { resolver_addresses: ["1.1.1.1"] })).warnings, undefined);
+		assert.equal((await saved("nginx", { resolver_addresses: [] })).warnings, undefined);
+		assert.equal(calls, 0);
+		const view = await saved("nginx", { resolver_addresses: ["8.8.8.8"] });
+		assert.equal(calls, 1);
+		assert.equal(view.warnings, undefined);
+		assert.deepEqual(view.resolver_addresses, ["8.8.8.8"]);
+	} finally {
+		setResolverProbe(() => Promise.resolve([]));
+		await saved("nginx", { resolver_addresses: [], resolver_valid: "" });
+	}
 });

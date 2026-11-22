@@ -1,4 +1,5 @@
 import errs from "../lib/error.js";
+import { probeResolvers } from "../lib/resolver-probe.js";
 import { getRuntimeConfig, invalidate, prime } from "../lib/runtime-config.js";
 import { isRuntimeGroup } from "../lib/runtime-rules.js";
 import { listTimeZones } from "../lib/time-zones.js";
@@ -63,6 +64,34 @@ const saveStored = async (group, meta) => {
 	}
 };
 
+let resolverProbe = probeResolvers;
+
+/**
+ * Sets the function that asks resolver addresses whether they answer (for the API tests)
+ *
+ * @param {Function} [probe]  (addresses) => Promise<Array<string>> the addresses that did not answer; default: DNS
+ */
+const setResolverProbe = (probe) => {
+	resolverProbe = typeof probe === "function" ? probe : probeResolvers;
+};
+
+// the addresses a save added to the resolver list; a probe failure never refuses or fails the save
+const resolverWarnings = async (prevValues, values) => {
+	const before = prevValues?.resolver_addresses ?? [];
+	const added = (values.resolver_addresses ?? []).filter((address) => !before.includes(address));
+	if (added.length === 0) return [];
+	try {
+		const silent = await resolverProbe(added);
+		return silent.map((address) => ({
+			key: "resolver_addresses",
+			address,
+			message_i18n: "warning.resolver-no-answer",
+		}));
+	} catch {
+		return [];
+	}
+};
+
 const findCertificate = (id) => certificateModel.query().findById(id).select("id", "provider");
 
 const updateRuntimeStored = createRuntimeUpdater({
@@ -106,13 +135,16 @@ const internalRuntimeSetting = {
 	updateRuntime: async (access, group, body) => {
 		access.canAdmin();
 		assertGroup(group);
-		const { meta } = await updateRuntimeStored(group, body);
+		const { meta, values, prevValues } = await updateRuntimeStored(group, body);
 		await internalAuditLog.add(access, {
 			action: "updated",
 			object_type: "setting",
 			meta: { id: group, ...meta },
 		});
-		return viewOf(group, await getRuntimeConfig(group));
+		const view = await viewOf(group, await getRuntimeConfig(group));
+		if (group !== "nginx" || !prevValues) return view;
+		const warnings = await resolverWarnings(prevValues, values);
+		return warnings.length > 0 ? { ...view, warnings } : view;
 	},
 };
 
@@ -132,5 +164,5 @@ const reapplyRuntimeGroup = (group, prevValues) =>
 		await applyHook(group, values, prevValues, { skipCheck: true });
 	});
 
-export { applyAllRuntime, reapplyRuntimeGroup, setRuntimeApply, setRuntimeApplyAll };
+export { applyAllRuntime, reapplyRuntimeGroup, setResolverProbe, setRuntimeApply, setRuntimeApplyAll };
 export default internalRuntimeSetting;

@@ -150,7 +150,7 @@ const createRuntimeUpdater = ({
 			locked_reason: next.locked_reason,
 		};
 		onSaved(group, cfg);
-		return { meta, ...cfg };
+		return { meta, ...cfg, prevValues: prev.values };
 	};
 
 	const run = (group, body) => serialize(() => update(group, body));
