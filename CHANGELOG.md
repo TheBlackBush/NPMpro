@@ -8,6 +8,7 @@ below as its release notes.
 
 ### Added
 
+- **DNS:** DNS credentials know the domains (zones) they manage: a Domains tab under Certificates & DNS, a Domains line in the credential window, and domains in backups.
 - **Certificates:** the ACME account in Settings, Certificates as a connection: a status card (Connected, Waiting, Failed or Not
   connected) with Change, Try again and Connect, and a Connect window for the CA (Let's Encrypt, ZeroSSL, Google Trust
   Services or a directory URL), email and EAB keys; Replace account is a button next to Change. The ACME profile is a

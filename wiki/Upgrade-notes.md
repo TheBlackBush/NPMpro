@@ -6,6 +6,7 @@ Notes for installs that update to a newer NPMpro, and the variables that are not
 
 For installs that update to this version:
 
+- **DNS domains:** DNS credentials can list the domains they manage (Certificates & DNS, Domains tab). Existing credentials start with no domains, and no host is regenerated. See [DNS](DNS).
 - **ACME accounts:**
   - The container no longer registers an ACME account when it starts, so it starts without a reachable CA. The first certificate request registers the account.
   - Existing accounts are adopted: each account folder under `/data/tls/certbot/accounts` becomes a registered account of its CA (the one most certificates use when a CA has several). The email is `ACME_EMAIL` for the instance CA and 'not recorded' for the others.

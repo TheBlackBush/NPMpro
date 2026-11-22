@@ -11,7 +11,7 @@ NPMpro saves your hosts, certificates, users and settings to a single `.npmpro` 
 
 - Hosts: proxy hosts (with their custom locations and access list links), redirection hosts, 404 hosts and streams
 - Certificates: Let's Encrypt, custom and mTLS CA certificates with their files. ACME accounts are part of the certificates: the account files (their keys only in a backup with secrets) and NPMpro's record of each CA (server, email, state). EAB keys are never in a backup. An account restored from a backup without secrets registers again at the next certificate request; a CA that needs EAB then asks for its keys in the Connect window of Settings, Certificates, ACME account. A certificate keeps its CA in a backup; restored onto an instance without that CA's account, it registers one (or reports the missing EAB keys) at its next renewal.
-- Access lists, DNS credentials and users
+- Access lists, DNS credentials (with their domains) and users
 - Settings: runtime settings, Landing pages (the default site, the page choices and custom pages), OIDC sign-in, monitoring and GeoIP, backup schedules and the CrowdSec settings
 - Custom files: everything in `custom_nginx/`, and the CrowdSec pages `ban.html` and `captcha.html` of older versions
 
@@ -147,6 +147,7 @@ Added items always belong to you, and a replaced host keeps its owner. If you ar
 - In **Replace**, a reference to something that does not exist after the restore (a certificate, an access list, an mTLS CA or a DNS credential that was neither restored nor on the instance) is cleared, never matched by name or domain. The owner of a removed user's items becomes the restoring administrator. The window lists every reference it will clear before you confirm.
 - A merge that finds the instance changed since the dry run stops with "Something changed on this instance since the preview", applies nothing and shows the new dry run.
 - In **Merge** every part has **Choose items** to pick single hosts, certificates, lists, credentials or users. **Replace** and **Create backup** always work on whole parts.
+- DNS credentials include their domains. A restore drops a domain whose credential is not in the backup; when a credential is handed to the administrator and the administrator already keeps one of its domains, that domain is dropped with a note. A merge skips a domain the target owner already keeps and reports the domains it skipped. A backup made before domains existed holds none: restoring it in **Replace** mode removes the domains of this instance.
 - One backup or restore runs at a time, and certificate renewal pauses during a restore.
 - A restore or merge also rolls back completely when `nginx -t` fails, for example because of a broken file in `custom_nginx`.
 - Before database migrations NPMpro copies a SQLite database to `/data/backups/database` (see [Upgrade notes](Upgrade-notes#database-copy-before-upgrades)).
