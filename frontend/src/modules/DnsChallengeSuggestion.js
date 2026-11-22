@@ -82,3 +82,34 @@ export function challengeSuggestion({ names, zones, credentials, userId, credent
 			return none;
 	}
 }
+
+/**
+ * What the DNS challenge box does to its fields after a suggestion (the component only applies it). It sets a
+ * preselection only into empty fields or fields that still hold what it applied before, never over a hand pick or a
+ * saved credential, and clears only values it applied itself.
+ *
+ * @param   {Object}      input
+ * @param   {Object|null} input.preselect      { provider, credentialId } of challengeSuggestion
+ * @param   {string|null} [input.providerId]   the provider field's value
+ * @param   {number|null} [input.credentialId] the credential field's value
+ * @param   {Object|null} [input.applied]      { provider, credentialId } this box applied before
+ * @param   {boolean}     [input.handPicked]   the user chose the provider or the credential
+ * @returns {{ set: Object|null, clear: boolean, applied: Object|null }}
+ */
+export function suggestionStep({
+	preselect,
+	providerId = null,
+	credentialId = null,
+	applied = null,
+	handPicked = false,
+}) {
+	if (handPicked) return { set: null, clear: false, applied };
+	const holdsApplied = applied !== null && providerId === applied.provider && credentialId === applied.credentialId;
+	const empty = !providerId && !credentialId;
+	if (preselect) {
+		if (!(holdsApplied || empty)) return { set: null, clear: false, applied };
+		const same = providerId === preselect.provider && credentialId === preselect.credentialId;
+		return { set: same ? null : preselect, clear: false, applied: preselect };
+	}
+	return { set: null, clear: holdsApplied, applied: null };
+}

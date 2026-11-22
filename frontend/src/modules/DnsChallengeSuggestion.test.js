@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
-import { challengeSuggestion } from "./DnsChallengeSuggestion.js";
+import { challengeSuggestion, suggestionStep } from "./DnsChallengeSuggestion.js";
 
 const CASES = JSON.parse(
 	readFileSync(new URL("../../../backend/test/fixtures/dns-domain-cases.json", import.meta.url), "utf8"),
@@ -93,4 +93,45 @@ it("matches a Unicode-typed name through its stored form", () => {
 	];
 	const out = challengeSuggestion({ names: ["www.bücher.de"], zones, userId: 1 });
 	assert.deepEqual(out.preselect, { provider: "ovh", credentialId: 7 });
+});
+
+const A = { provider: "ovh", credentialId: 7 };
+const B = { provider: "cloudflare", credentialId: 8 };
+
+it("suggestionStep applies a preselection into empty fields", () => {
+	assert.deepEqual(suggestionStep({ preselect: A }), { set: A, clear: false, applied: A });
+});
+
+it("suggestionStep does not rewrite values that are already equal", () => {
+	const out = suggestionStep({ preselect: A, providerId: "ovh", credentialId: 7, applied: A });
+	assert.deepEqual(out, { set: null, clear: false, applied: A });
+});
+
+it("suggestionStep leaves a hand pick untouched", () => {
+	const out = suggestionStep({ preselect: A, providerId: "x", credentialId: 3, applied: A, handPicked: true });
+	assert.deepEqual(out, { set: null, clear: false, applied: A });
+	assert.equal(
+		suggestionStep({ preselect: null, providerId: "ovh", credentialId: 7, applied: A, handPicked: true }).clear,
+		false,
+	);
+});
+
+it("suggestionStep clears only values that still hold what it applied", () => {
+	assert.deepEqual(suggestionStep({ preselect: null, providerId: "ovh", credentialId: 7, applied: A }), {
+		set: null,
+		clear: true,
+		applied: null,
+	});
+	assert.equal(suggestionStep({ preselect: null, providerId: "ovh", credentialId: 9, applied: A }).clear, false);
+	assert.equal(suggestionStep({ preselect: null, providerId: "ovh", credentialId: 7, applied: null }).clear, false);
+});
+
+it("suggestionStep keeps a saved credential", () => {
+	const out = suggestionStep({ preselect: A, providerId: "cloudflare", credentialId: 8, applied: null });
+	assert.deepEqual(out, { set: null, clear: false, applied: null });
+});
+
+it("suggestionStep moves from one applied credential to another when the names change", () => {
+	const out = suggestionStep({ preselect: B, providerId: "ovh", credentialId: 7, applied: A });
+	assert.deepEqual(out, { set: B, clear: false, applied: B });
 });

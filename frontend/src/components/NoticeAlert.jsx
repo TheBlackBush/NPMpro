@@ -6,7 +6,7 @@ function NoticeAlert({ variant = "warning", children, className, role }) {
 	const Icon = variant === "info" ? InfoIcon : TriangleAlertIcon;
 	return (
 		<Alert
-			role={role}
+			{...(role ? { role } : {})}
 			className={cn(
 				variant === "info" ? "border-primary/50 bg-primary/10" : "border-warning/50 bg-warning/10",
 				"text-foreground",
