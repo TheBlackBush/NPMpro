@@ -1898,7 +1898,7 @@
 	"settings.nginx.modules.description": "Módulos opcionales de nginx para directivas en configuraciones personalizadas.",
 	"settings.nginx.resolver": "Resolutor DNS",
 	"settings.nginx.resolver.addresses": "Direcciones del resolutor",
-	"settings.nginx.resolver.addresses.hint": "Vacío: los resolutores del contenedor (/etc/resolv.conf). Una dirección IPv4 o una dirección IPv6 entre corchetes, con un puerto opcional.",
+	"settings.nginx.resolver.addresses.hint": "Vacío: los resolutores del contenedor (/etc/resolv.conf). Una dirección IPv4 o una dirección IPv6 entre corchetes, con un puerto opcional. Las direcciones que indique sustituyen a los resolutores del contenedor: un host de reenvío que sea el nombre de otro contenedor (el 127.0.0.11 de Docker) solo se encuentra entonces si alguna de ellas lo resuelve.",
 	"settings.nginx.resolver.duplicate": "{address} está repetida",
 	"settings.nginx.resolver.hosts": "Usar /etc/hosts",
 	"settings.nginx.resolver.info": "Los servidores DNS a los que nginx pregunta por los nombres de host de origen, por ejemplo un host de destino indicado como nombre. Una lista modificada se aplica con una recarga de nginx.",

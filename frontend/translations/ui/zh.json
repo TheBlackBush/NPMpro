@@ -1898,7 +1898,7 @@
 	"settings.nginx.modules.description": "用于自定义配置中指令的可选 nginx 模块。",
 	"settings.nginx.resolver": "DNS 解析器",
 	"settings.nginx.resolver.addresses": "解析器地址",
-	"settings.nginx.resolver.addresses.hint": "留空：使用容器的解析器（/etc/resolv.conf）。填写 IPv4 地址，或放在方括号中的 IPv6 地址，可带端口。",
+	"settings.nginx.resolver.addresses.hint": "留空：使用容器的解析器（/etc/resolv.conf）。填写 IPv4 地址，或放在方括号中的 IPv6 地址，可带端口。填写的地址会取代容器的解析器，因此转发主机若是另一个容器的名称（Docker 的 127.0.0.11），只有在其中某个地址能解析它时才能找到。",
 	"settings.nginx.resolver.duplicate": "{address} 重复列出",
 	"settings.nginx.resolver.hosts": "使用 /etc/hosts",
 	"settings.nginx.resolver.info": "nginx 用来解析上游主机名的 DNS 服务器，例如以名称填写的转发主机。更改后的列表在 nginx 重新加载后生效。",

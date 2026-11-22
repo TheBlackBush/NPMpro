@@ -1898,7 +1898,7 @@
 	"settings.nginx.modules.description": "Moduli nginx opzionali per le direttive nelle configurazioni personalizzate.",
 	"settings.nginx.resolver": "Resolver DNS",
 	"settings.nginx.resolver.addresses": "Indirizzi del resolver",
-	"settings.nginx.resolver.addresses.hint": "Vuoto: i resolver del container (/etc/resolv.conf). Un indirizzo IPv4 o un indirizzo IPv6 tra parentesi quadre, con una porta facoltativa.",
+	"settings.nginx.resolver.addresses.hint": "Vuoto: i resolver del container (/etc/resolv.conf). Un indirizzo IPv4 o un indirizzo IPv6 tra parentesi quadre, con una porta facoltativa. Gli indirizzi impostati sostituiscono i resolver del container: un host di inoltro che è il nome di un altro container (il 127.0.0.11 di Docker) viene trovato solo se uno di essi lo risolve.",
 	"settings.nginx.resolver.duplicate": "{address} è elencato due volte",
 	"settings.nginx.resolver.hosts": "Usa /etc/hosts",
 	"settings.nginx.resolver.info": "I server DNS che nginx interroga per i nomi degli host upstream, ad esempio un host di inoltro indicato come nome. Un elenco modificato si applica con un ricaricamento di nginx.",

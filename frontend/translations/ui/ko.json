@@ -1898,7 +1898,7 @@
 	"settings.nginx.modules.description": "사용자 지정 설정의 지시어에 쓰는 선택적 nginx 모듈입니다.",
 	"settings.nginx.resolver": "DNS 리졸버",
 	"settings.nginx.resolver.addresses": "리졸버 주소",
-	"settings.nginx.resolver.addresses.hint": "비워 두면 컨테이너의 리졸버(/etc/resolv.conf)를 사용합니다. IPv4 주소 또는 대괄호로 묶은 IPv6 주소를 입력하며, 포트는 선택 사항입니다.",
+	"settings.nginx.resolver.addresses.hint": "비워 두면 컨테이너의 리졸버(/etc/resolv.conf)를 사용합니다. IPv4 주소 또는 대괄호로 묶은 IPv6 주소를 입력하며, 포트는 선택 사항입니다. 주소를 입력하면 컨테이너의 리졸버를 대신합니다. 따라서 다른 컨테이너의 이름인 전달 호스트(Docker의 127.0.0.11)는 입력한 주소 중 하나가 응답할 때만 찾을 수 있습니다.",
 	"settings.nginx.resolver.duplicate": "{address}이(가) 두 번 나열되어 있습니다",
 	"settings.nginx.resolver.hosts": "/etc/hosts 사용",
 	"settings.nginx.resolver.info": "nginx가 업스트림 호스트 이름을 조회할 때 사용하는 DNS 서버입니다. 예를 들어 이름으로 지정한 전달 호스트에 쓰입니다. 변경한 목록은 nginx를 다시 불러오면 적용됩니다.",

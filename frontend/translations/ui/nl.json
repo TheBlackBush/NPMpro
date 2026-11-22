@@ -1898,7 +1898,7 @@
 	"settings.nginx.modules.description": "Optionele nginx-modules voor directives in aangepaste configuraties.",
 	"settings.nginx.resolver": "DNS-resolver",
 	"settings.nginx.resolver.addresses": "Resolveradressen",
-	"settings.nginx.resolver.addresses.hint": "Leeg: de resolvers van de container (/etc/resolv.conf). Een IPv4-adres of een IPv6-adres tussen blokhaken, met een optionele poort.",
+	"settings.nginx.resolver.addresses.hint": "Leeg: de resolvers van de container (/etc/resolv.conf). Een IPv4-adres of een IPv6-adres tussen blokhaken, met een optionele poort. Ingevulde adressen vervangen de resolvers van de container: een doorstuurhost die de naam van een andere container is (Dockers 127.0.0.11) wordt dan alleen gevonden als een van die adressen hem oplost.",
 	"settings.nginx.resolver.duplicate": "{address} staat twee keer in de lijst",
 	"settings.nginx.resolver.hosts": "/etc/hosts gebruiken",
 	"settings.nginx.resolver.info": "De DNS-servers die nginx raadpleegt voor de namen van upstreamhosts, bijvoorbeeld een doorstuurhost die als naam is opgegeven. Een gewijzigde lijst wordt toegepast met een nginx-reload.",

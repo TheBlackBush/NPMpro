@@ -1898,7 +1898,7 @@
 	"settings.nginx.modules.description": "カスタム設定内のディレクティブ用の任意の nginx モジュール。",
 	"settings.nginx.resolver": "DNS リゾルバー",
 	"settings.nginx.resolver.addresses": "リゾルバーのアドレス",
-	"settings.nginx.resolver.addresses.hint": "空欄: コンテナーのリゾルバー（/etc/resolv.conf）を使います。IPv4 アドレス、または角括弧で囲んだ IPv6 アドレスを指定します。ポートは省略できます。",
+	"settings.nginx.resolver.addresses.hint": "空欄: コンテナーのリゾルバー（/etc/resolv.conf）を使います。IPv4 アドレス、または角括弧で囲んだ IPv6 アドレスを指定します。ポートは省略できます。アドレスを指定するとコンテナーのリゾルバーの代わりに使われます。そのため、転送先が別のコンテナーの名前（Docker の 127.0.0.11）の場合は、指定したどれかが解決できるときだけ見つかります。",
 	"settings.nginx.resolver.duplicate": "{address} が重複しています",
 	"settings.nginx.resolver.hosts": "/etc/hosts を使用",
 	"settings.nginx.resolver.info": "nginx がアップストリームのホスト名を問い合わせる DNS サーバーです。たとえば、名前で指定した転送先ホストに使われます。変更したリストは nginx のリロードで反映されます。",

@@ -1898,7 +1898,7 @@
 	"settings.nginx.modules.description": "Необов'язкові модулі nginx для директив у власних конфігураціях.",
 	"settings.nginx.resolver": "DNS-резолвер",
 	"settings.nginx.resolver.addresses": "Адреси резолвера",
-	"settings.nginx.resolver.addresses.hint": "Порожньо: використовуються резолвери контейнера (/etc/resolv.conf). Адреса IPv4 або адреса IPv6 у квадратних дужках, за потреби з портом.",
+	"settings.nginx.resolver.addresses.hint": "Порожньо: використовуються резолвери контейнера (/etc/resolv.conf). Адреса IPv4 або адреса IPv6 у квадратних дужках, за потреби з портом. Вказані адреси замінюють резолвери контейнера: хост призначення, який є іменем іншого контейнера (127.0.0.11 у Docker), тоді знаходиться, лише якщо його розпізнає одна з них.",
 	"settings.nginx.resolver.duplicate": "{address} указано двічі",
 	"settings.nginx.resolver.hosts": "Використовувати /etc/hosts",
 	"settings.nginx.resolver.info": "DNS-сервери, до яких nginx звертається за іменами вихідних хостів, наприклад для хоста призначення, заданого іменем. Змінений список застосовується після перезавантаження nginx.",

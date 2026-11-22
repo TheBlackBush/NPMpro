@@ -1898,7 +1898,7 @@
 	"settings.nginx.modules.description": "Optional nginx modules for directives in custom configs.",
 	"settings.nginx.resolver": "DNS resolver",
 	"settings.nginx.resolver.addresses": "Resolver addresses",
-	"settings.nginx.resolver.addresses.hint": "Empty: the container's resolvers (/etc/resolv.conf). An IPv4 address or an IPv6 address in brackets, with an optional port.",
+	"settings.nginx.resolver.addresses.hint": "Empty: the container's resolvers (/etc/resolv.conf). An IPv4 address or an IPv6 address in brackets, with an optional port. Addresses you set replace the container's resolvers, so a forward host that is another container's name (Docker's 127.0.0.11) is then only found if one of them answers it.",
 	"settings.nginx.resolver.duplicate": "{address} is listed twice",
 	"settings.nginx.resolver.hosts": "Use /etc/hosts",
 	"settings.nginx.resolver.info": "The DNS servers nginx asks for upstream host names, for example a forward host given as a name. A changed list applies with an nginx reload.",

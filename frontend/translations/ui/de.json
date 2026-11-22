@@ -1898,7 +1898,7 @@
 	"settings.nginx.modules.description": "Optionale nginx-Module für Direktiven in eigenen Konfigurationen.",
 	"settings.nginx.resolver": "DNS-Resolver",
 	"settings.nginx.resolver.addresses": "Resolver-Adressen",
-	"settings.nginx.resolver.addresses.hint": "Leer: die Resolver des Containers (/etc/resolv.conf). Eine IPv4-Adresse oder eine IPv6-Adresse in eckigen Klammern, optional mit Port.",
+	"settings.nginx.resolver.addresses.hint": "Leer: die Resolver des Containers (/etc/resolv.conf). Eine IPv4-Adresse oder eine IPv6-Adresse in eckigen Klammern, optional mit Port. Eingetragene Adressen ersetzen die Resolver des Containers: Ein Weiterleitungsziel, das der Name eines anderen Containers ist (Dockers 127.0.0.11), wird dann nur gefunden, wenn eine davon ihn auflöst.",
 	"settings.nginx.resolver.duplicate": "{address} ist doppelt aufgeführt",
 	"settings.nginx.resolver.hosts": "/etc/hosts verwenden",
 	"settings.nginx.resolver.info": "Die DNS-Server, die nginx nach den Namen von Upstream-Hosts fragt, zum Beispiel bei einem als Name angegebenen Weiterleitungs-Host. Eine geänderte Liste gilt nach einem nginx-Reload.",

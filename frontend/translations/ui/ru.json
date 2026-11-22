@@ -1898,7 +1898,7 @@
 	"settings.nginx.modules.description": "Необязательные модули nginx для директив в пользовательских конфигурациях.",
 	"settings.nginx.resolver": "DNS-резолвер",
 	"settings.nginx.resolver.addresses": "Адреса резолвера",
-	"settings.nginx.resolver.addresses.hint": "Пусто: используются резолверы контейнера (/etc/resolv.conf). IPv4-адрес или IPv6-адрес в квадратных скобках, при необходимости с портом.",
+	"settings.nginx.resolver.addresses.hint": "Пусто: используются резолверы контейнера (/etc/resolv.conf). IPv4-адрес или IPv6-адрес в квадратных скобках, при необходимости с портом. Указанные адреса заменяют резолверы контейнера: хост назначения, который является именем другого контейнера (127.0.0.11 в Docker), тогда находится, только если его разрешает один из них.",
 	"settings.nginx.resolver.duplicate": "{address} указан дважды",
 	"settings.nginx.resolver.hosts": "Использовать /etc/hosts",
 	"settings.nginx.resolver.info": "DNS-серверы, к которым nginx обращается за именами вышестоящих хостов, например для целевого хоста, заданного именем. Изменённый список применяется после перезагрузки nginx.",

@@ -1898,7 +1898,7 @@
 	"settings.nginx.modules.description": "Opcjonalne moduły nginx dla dyrektyw w niestandardowych konfiguracjach.",
 	"settings.nginx.resolver": "Resolver DNS",
 	"settings.nginx.resolver.addresses": "Adresy resolvera",
-	"settings.nginx.resolver.addresses.hint": "Puste: resolwery kontenera (/etc/resolv.conf). Adres IPv4 lub adres IPv6 w nawiasach kwadratowych, z opcjonalnym portem.",
+	"settings.nginx.resolver.addresses.hint": "Puste: resolwery kontenera (/etc/resolv.conf). Adres IPv4 lub adres IPv6 w nawiasach kwadratowych, z opcjonalnym portem. Podane adresy zastępują resolwery kontenera: host docelowy, który jest nazwą innego kontenera (127.0.0.11 Dockera), zostanie wtedy znaleziony tylko wtedy, gdy rozwiąże go jeden z nich.",
 	"settings.nginx.resolver.duplicate": "{address} występuje dwa razy",
 	"settings.nginx.resolver.hosts": "Używaj /etc/hosts",
 	"settings.nginx.resolver.info": "Serwery DNS, o które nginx pyta o nazwy hostów nadrzędnych, na przykład hosta docelowego podanego jako nazwa. Zmieniona lista obowiązuje po przeładowaniu nginx.",
