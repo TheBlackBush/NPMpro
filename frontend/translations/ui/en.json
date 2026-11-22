@@ -439,6 +439,8 @@
 	"dns-credentials.value.control-chars": "Must not contain a line break or control character",
 	"dns-credentials.value.number": "Enter a number",
 	"dns-credentials.value.url": "Enter an http:// or https:// URL",
+	"dns-domain": "DNS domain",
+	"dns-domains": "Domains",
 	"domain-names": "Domain Names",
 	"domain-names.placeholder": "Start typing to add domain...",
 	"domain-names.wildcards-not-permitted": "Wildcards not permitted for this type",
