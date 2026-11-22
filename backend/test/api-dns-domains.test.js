@@ -263,3 +263,54 @@ it("documents the status the create answers with", async () => {
 	assert.equal(done.status, 201);
 	assert.ok(responses["201"], `the schema lists ${Object.keys(responses).join(", ")} but the route answers 201`);
 });
+
+it("two concurrent adds of one name to two credentials of one owner: one 201, one 400 taken", async () => {
+	const a = await credential();
+	const b = await credential();
+	const [first, second] = await Promise.all([add(a.id, ["race.example"]), add(b.id, ["race.example"])]);
+	assert.deepEqual(
+		[first.status, second.status].sort((x, y) => x - y),
+		[201, 400],
+	);
+	const refused = first.status === 400 ? first : second;
+	assert.equal(refused.body.error.message_i18n, "error.dns-domain-taken");
+	assert.equal((await api.db("npmpro_dns_domain").where({ name: "race.example" })).length, 1);
+});
+
+it("names every credential of a refused batch, or the first and the count", async () => {
+	const a = await credential();
+	const b = await credential();
+	const c = await credential();
+	assert.equal((await add(a.id, ["one-t.example"])).status, 201);
+	assert.equal((await add(b.id, ["two-t.example"])).status, 201);
+	const refused = await add(c.id, ["one-t.example", "two-t.example"]);
+	assert.equal(refused.status, 400);
+	assert.equal(refused.body.error.message_values.domain, "one-t.example, two-t.example");
+	assert.equal(refused.body.error.message_values.credential, `${a.name} and 1 more`);
+});
+
+it("searches without case and treats % and _ as plain characters", async () => {
+	const c = await credential();
+	assert.equal((await add(c.id, ["under-score.example", "underXscore.example", "pct.example"])).status, 201);
+	const lower = await admin.get(`${BASE}?query=PCT`);
+	assert.deepEqual(
+		lower.body.map((entry) => entry.name),
+		["pct.example"],
+	);
+	const underscore = await admin.get(`${BASE}?query=${encodeURIComponent("r_s")}`);
+	assert.deepEqual(underscore.body, []);
+	assert.deepEqual((await admin.get(`${BASE}?query=${encodeURIComponent("%")}`)).body, []);
+});
+
+it("refuses a bearer token without Allow delete on DELETE", async () => {
+	const c = await credential();
+	const [domain] = (await add(c.id, ["nodelete.example"])).body;
+	const made = await admin.post("/users/me/api-tokens", {
+		name: "no-delete",
+		permissions: Object.fromEntries(SECTIONS.map((s) => [s, s === "certificates" ? "manage" : "hidden"])),
+	});
+	assert.equal(made.status, 201, made.text);
+	const headers = { authorization: `Bearer ${made.body.token}` };
+	assert.equal((await api.client().delete(`${BASE}/${domain.id}`, { headers })).status, 403);
+	assert.ok(await api.db("npmpro_dns_domain").where({ id: domain.id }).first());
+});

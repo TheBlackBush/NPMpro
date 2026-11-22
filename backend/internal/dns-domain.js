@@ -68,10 +68,13 @@ const planNames = async (credential, inputs, stored, trx) => {
 		.orderBy("npmpro_dns_domain.name");
 	if (taken.length > 0) {
 		const domain = taken.map((row) => row.name).join(", ");
+		const credentials = [...new Set(taken.map((row) => row.credential_name))];
+		const credentialText =
+			credentials.length === 1 ? credentials[0] : `${credentials[0]} and ${credentials.length - 1} more`;
 		throw new errs.ValidationError(
-			`${domain} is already on the DNS credential '${taken[0].credential_name}'`,
+			`${domain} is already on the DNS credential '${credentialText}'`,
 			"error.dns-domain-taken",
-			{ values: { domain, credential: taken[0].credential_name } },
+			{ values: { domain, credential: credentialText } },
 		);
 	}
 	return { fresh, kept };
@@ -80,7 +83,6 @@ const planNames = async (credential, inputs, stored, trx) => {
 const insertNames = async (credentialId, names, source, trx) => {
 	const rows = [];
 	for (const name of names) {
-		// biome-ignore lint/performance/noAwaitInLoops: one insert after another in the transaction
 		rows.push(await dnsDomainModel.query(trx).insertAndFetch({ dns_credential_id: credentialId, name, source }));
 	}
 	return rows;
@@ -106,7 +108,10 @@ const internalDnsDomain = {
 	getAll: async (access, { expand = null, query = null } = {}) => {
 		access.can("certificates:view");
 		const rows = listQuery(access);
-		if (typeof query === "string" && query !== "") rows.where("npmpro_dns_domain.name", "like", `%${query}%`);
+		if (typeof query === "string" && query !== "") {
+			const pattern = `%${query.toLowerCase().replace(/[\\%_]/gu, "\\$&")}%`;
+			rows.whereRaw("lower(npmpro_dns_domain.name) like ? escape '\\'", [pattern]);
+		}
 		if (expand?.includes("credential")) rows.withGraphFetched("credential.owner");
 		return await rows;
 	},
@@ -154,18 +159,31 @@ const internalDnsDomain = {
 				"error.dns-domain-other-owner",
 			);
 		}
-		if (to.id === from.id) return domain;
-		const saved = await ownerLock(from.owner_user_id, () =>
+		// both credentials and the domain are read again under the lock: a save or delete of a credential, or another
+		// move, may have run while this waited
+		const moved = await ownerLock(from.owner_user_id, () =>
 			dnsDomainModel.transaction(async (trx) => {
-				await internalDnsDomain.get(access, { id }, trx);
-				return await dnsDomainModel.query(trx).patchAndFetchById(id, { dns_credential_id: to.id });
+				const fresh = await internalDnsDomain.get(access, { id }, trx);
+				const newTo = await visibleCredential(access, to.id, trx);
+				const oldFrom = await visibleCredential(access, fresh.dns_credential_id, trx);
+				if (newTo.owner_user_id !== oldFrom.owner_user_id) {
+					throw new errs.ValidationError(
+						"A domain moves only to a DNS credential of the same owner",
+						"error.dns-domain-other-owner",
+					);
+				}
+				if (newTo.id === oldFrom.id) return { saved: fresh, source: oldFrom, target: newTo };
+				const patched = await dnsDomainModel.query(trx).patchAndFetchById(id, { dns_credential_id: newTo.id });
+				return { saved: patched, source: oldFrom, target: newTo };
 			}),
 		);
+		const { saved, source, target } = moved;
+		if (target.id === source.id) return saved;
 		await internalAuditLog.add(access, {
 			action: "updated",
 			object_type: "dns-domain",
 			object_id: id,
-			meta: { names: [domain.name], from: credentialMeta(from), to: credentialMeta(to) },
+			meta: { names: [domain.name], from: credentialMeta(source), to: credentialMeta(target) },
 		});
 		return saved;
 	},
