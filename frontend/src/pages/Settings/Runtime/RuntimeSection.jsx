@@ -2,6 +2,7 @@ import { Lock, RefreshCw } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { ErrorAlert, HookForm, useAppForm, useFieldOrder } from "src/components";
+import { usePendingEntries } from "src/components/Form/HookForm";
 import { useRuntimeSettings, useSaveRuntimeSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { formatApiError } from "src/modules/ApiError";
@@ -105,8 +106,8 @@ function SaveErrorContent({ message, lead }) {
 }
 
 /**
- * Save: nothing to save while the request would be empty (no changed, unlocked key), so it reads every field of the
- * section (by name, in form order)
+ * Save: nothing to save while the request would be empty (no changed, unlocked key) and no field holds typed text
+ * not yet taken as a value (a save takes it first), so it reads every field of the section (by name, in form order)
  */
 function SaveButton({ group, toApi, data }) {
 	const names = useFieldOrder();
@@ -114,9 +115,10 @@ function SaveButton({ group, toApi, data }) {
 	const values = Object.fromEntries(names.map((name, index) => [name, list[index]]));
 	const locked = new Set((data.locked ?? []).map(camel));
 	const allLocked = (GROUP_KEYS[group] ?? []).every((key) => locked.has(key));
+	const pending = usePendingEntries().size > 0;
 	return (
 		<SaveBar
-			disabled={isEmptyPayload(runtimeSettingsPayload(group, toApi(values), data.locked, data))}
+			disabled={!pending && isEmptyPayload(runtimeSettingsPayload(group, toApi(values), data.locked, data))}
 			reasonId={allLocked ? "settings.save.all-locked" : undefined}
 		/>
 	);
