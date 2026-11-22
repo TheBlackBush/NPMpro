@@ -1,0 +1,66 @@
+{
+	"operationId": "getDnsDomainSuggestions",
+	"summary": "Suggestions for domain name fields",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The zones and the used names",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"zones": [
+									{
+										"name": "example.com",
+										"dns_credential_id": 1,
+										"credential_name": "Cloudflare",
+										"provider": "cloudflare",
+										"owner_user_id": 1,
+										"owner_name": "Admin"
+									},
+									{
+										"name": "example.org",
+										"dns_credential_id": 2,
+										"credential_name": "Hetzner",
+										"provider": "hetzner",
+										"owner_user_id": 1,
+										"owner_name": "Admin"
+									}
+								],
+								"names": [
+									{
+										"name": "*.example.com",
+										"source": "certificate"
+									},
+									{
+										"name": "app.example.com",
+										"source": "proxy_host"
+									},
+									{
+										"name": "old.example.com",
+										"source": "redirection_host"
+									}
+								]
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/dns-domain-suggestions-object.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "The DNS domains of the credentials you can see, with their credential, and the domain names your hosts and certificates already use (only the host types you may view; at most 2000 names, regular expression names left out). The UI offers them while you type domain names; any other name can still be typed.\n\nNeeds: Certificates view"
+}

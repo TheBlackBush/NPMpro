@@ -102,6 +102,38 @@ const listQuery = (access, trx) => {
 	return query;
 };
 
+// the names the picker offers besides the zones, per source; the first source of a name wins (a stream keeps no
+// domain names, so it is no source)
+const NAME_SOURCES = [
+	{ table: "proxy_host", source: "proxy_host", permission: "proxy_hosts:view" },
+	{ table: "redirection_host", source: "redirection_host", permission: "redirection_hosts:view" },
+	{ table: "dead_host", source: "dead_host", permission: "dead_hosts:view" },
+	{ table: "certificate", source: "certificate", permission: "certificates:view" },
+];
+const MAX_SUGGESTED_NAMES = 2000;
+
+const mayView = (access, permission) => {
+	try {
+		access.can(permission);
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+// domain_names is a JSON text column (an array on Postgres)
+const namesOfRow = (value) => {
+	let names = value;
+	if (typeof names === "string") {
+		try {
+			names = JSON.parse(names);
+		} catch {
+			return [];
+		}
+	}
+	return Array.isArray(names) ? names.filter((name) => typeof name === "string" && name !== "") : [];
+};
+
 const internalDnsDomain = {
 	/**
 	 * @param   {Access}  access
@@ -117,6 +149,44 @@ const internalDnsDomain = {
 		}
 		if (expand?.includes("credential")) rows.withGraphFetched("credential.owner");
 		return await rows;
+	},
+
+	/**
+	 * The picker's suggestions: the zones of the credentials the user sees and the names of the hosts and certificates
+	 * the user may view (visibility applied), each once
+	 *
+	 * @param   {Access}  access
+	 * @returns {Promise<{ zones: Object[], names: Array<{ name: string, source: string }> }>}
+	 */
+	suggestions: async (access) => {
+		access.can("certificates:view");
+		const domains = await listQuery(access).withGraphFetched("credential.owner");
+		const zones = domains.map((row) => ({
+			name: row.name,
+			dns_credential_id: row.dns_credential_id,
+			credential_name: row.credential.name,
+			provider: row.credential.provider,
+			owner_user_id: row.credential.owner_user_id,
+			owner_name: row.credential.owner?.name ?? "",
+		}));
+		const knex = dnsDomainModel.knex();
+		const seen = new Set();
+		const names = [];
+		for (const { table, source, permission } of NAME_SOURCES) {
+			if (!mayView(access, permission)) continue;
+			const query = knex(table).select("domain_names");
+			if (ownOnly(access)) query.where("owner_user_id", access.token.getUserId(1));
+			for (const row of await query) {
+				for (const name of namesOfRow(row.domain_names)) {
+					const key = name.toLowerCase();
+					if (name.startsWith("~") || seen.has(key)) continue;
+					seen.add(key);
+					names.push({ name, source });
+				}
+			}
+		}
+		names.sort((a, b) => a.name.localeCompare(b.name));
+		return { zones, names: names.slice(0, MAX_SUGGESTED_NAMES) };
 	},
 
 	get: async (access, { id, expand = null }, trx) => {

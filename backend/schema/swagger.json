@@ -275,6 +275,11 @@
 				"$ref": "./paths/nginx/dns-domains/post.json"
 			}
 		},
+		"/nginx/dns-domains/suggestions": {
+			"get": {
+				"$ref": "./paths/nginx/dns-domains/suggestions/get.json"
+			}
+		},
 		"/nginx/dns-domains/{domainID}": {
 			"get": {
 				"$ref": "./paths/nginx/dns-domains/domainID/get.json"

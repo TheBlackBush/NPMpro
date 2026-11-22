@@ -43,6 +43,16 @@ router
 	});
 
 /**
+ * /api/nginx/dns-domains/suggestions
+ */
+router
+	.route("/suggestions")
+	.all(jwtdecode())
+	.get(async (_req, res) => {
+		res.status(200).send(await internalDnsDomain.suggestions(res.locals.access));
+	});
+
+/**
  * /api/nginx/dns-domains/123
  */
 router
