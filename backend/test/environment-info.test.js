@@ -12,6 +12,7 @@ import {
 } from "../lib/environment-info.js";
 import { mergeMonitoringConfig } from "../lib/monitoring-rules.js";
 import { isResolverAddress } from "../lib/resolver-address.js";
+import { RUNTIME_RULES } from "../lib/runtime-rule-table.js";
 import { RUNTIME_ENV_NAMES, userSetEnvNames } from "../lib/runtime-rules.js";
 
 const RUNTIME_LINE = /^NPMPRO_RUNTIME_ENVS="(?<names>[^"]*)"$/mu;
@@ -229,6 +230,52 @@ it("envs.sh checks NGINX_RESOLVER exactly like the setting's rule", () => {
 	assert.equal(run("1.1.1.1 1.1.1.2 1.1.1.3 1.1.1.4 1.1.1.5 1.1.1.6 1.1.1.7 1.1.1.8").status, 0);
 	assert.equal(run("1.1.1.1 1.1.1.2 1.1.1.3 1.1.1.4 1.1.1.5 1.1.1.6 1.1.1.7 1.1.1.8 1.1.1.9").status, 3);
 	assert.equal(run("1.1.1.1 dns.example").status, 3);
+});
+
+it("envs.sh checks NGINX_RESOLVER_VALID exactly like the setting's rule", () => {
+	const text = readFileSync(ENVS_SH, "utf8");
+	const start = text.indexOf('if [ -n "$NGINX_RESOLVER_VALID" ]; then');
+	const block = text.slice(start, text.indexOf("\nfi\n", start) + "\nfi\n".length).replaceAll("sleep inf", "exit 3");
+	const rule = RUNTIME_RULES.find((entry) => entry.key === "resolver_valid");
+	const run = (value) =>
+		spawnSync("sh", ["-c", block], {
+			env: { PATH: process.env.PATH, NGINX_RESOLVER_VALID: value },
+			encoding: "utf8",
+		});
+	const values = [
+		"",
+		"30s",
+		"90",
+		"1w",
+		"1M",
+		"1y",
+		"5m",
+		"1h30m",
+		"1y1M1w1d1h1m1s",
+		"100ms",
+		"1s500ms",
+		"0",
+		"0s",
+		"00",
+		"30 s",
+		"30s\n1",
+		"30s\n",
+		"30s\nx;}",
+		"-1",
+		"1x",
+		"30S",
+		"1m1h",
+		"1s1s",
+		"1h 30m",
+		"9".repeat(32),
+		"9".repeat(33),
+	];
+	for (const value of values) {
+		const expected = rule.validate(value) === null;
+		const out = run(value);
+		assert.equal(out.status, expected ? 0 : 3, JSON.stringify(value));
+		assert.equal(out.stdout === "", expected, JSON.stringify(value));
+	}
 });
 
 it("lists NGINX_TLS_HANDSHAKE_LOG as a runtime name and as the variable that locks tls_handshake_log", () => {

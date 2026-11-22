@@ -52,10 +52,13 @@ const isNginxTime = (value) => {
 	return true;
 };
 
-const isResolverValid = (value) => isNginxTime(value) && value !== "0";
+// the resolver's valid= takes seconds forms only (nginx refuses ms there) and no bare 0; envs.sh checks the same
+const isResolverValid = (value) => isNginxTime(value) && value !== "0" && !value.includes("ms");
 
 const validateResolverValid = (value) =>
-	value === "" || isResolverValid(value) ? null : "must be empty or an nginx time such as 30s or 5m, not 0";
+	value === "" || isResolverValid(value)
+		? null
+		: "must be empty or an nginx time in seconds or longer such as 30s or 5m, not 0 and not ms";
 
 const isSet = (raw) => typeof raw === "string" && raw !== "";
 

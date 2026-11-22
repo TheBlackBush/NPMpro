@@ -67,9 +67,9 @@
 						},
 						"resolver_valid": {
 							"type": "string",
-							"pattern": "^([0-9]+(ms|s|m|h|d|w|M|y)?([0-9]+(ms|s|m|h|d|w|M|y))*)?$",
+							"pattern": "^([0-9]+(s|m|h|d|w|M|y)?([0-9]+(s|m|h|d|w|M|y))*)?$",
 							"maxLength": 32,
-							"description": "How long nginx keeps an answer, overriding the TTL of the record: an nginx time such as 30s or 5m, not 0; empty: the TTL of each answer (env NGINX_RESOLVER_VALID)"
+							"description": "How long nginx keeps an answer, overriding the TTL of the record: an nginx time in seconds or longer such as 30s or 5m, not 0 and not ms; empty: the TTL of each answer (env NGINX_RESOLVER_VALID)"
 						},
 						"log_not_found": {
 							"type": "boolean",

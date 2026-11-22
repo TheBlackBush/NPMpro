@@ -728,10 +728,15 @@ if ! echo "$NGINX_RESOLVER_IPV6" | grep -q "^true$\|^false$"; then
     sleep inf
 fi
 
-# empty (the TTL of each answer) or an nginx time with a unit (a bare 0 is refused)
-if [ -n "$NGINX_RESOLVER_VALID" ] && ! echo "$NGINX_RESOLVER_VALID" | grep -q "^\([0-9]\+\(ms\|s\|m\|h\|d\)\)\+$"; then
-    echo "NGINX_RESOLVER_VALID needs to be empty or an nginx time like 30s or 5m."
-    sleep inf
+# empty (the TTL of each answer) or an nginx time in seconds or longer: a bare number (not 0) or parts with units
+# y M w d h m s in this order, at most 32 characters, on one line; ms is refused by nginx for valid= (the setting's rule
+# in backend/lib/runtime-rule-table.js isResolverValid)
+if [ -n "$NGINX_RESOLVER_VALID" ]; then
+    if [ "$(printf %s "$NGINX_RESOLVER_VALID" | wc -l)" != 0 ] || [ "${#NGINX_RESOLVER_VALID}" -gt 32 ] || [ "$NGINX_RESOLVER_VALID" = "0" ] ||
+        ! printf %s "$NGINX_RESOLVER_VALID" | grep -Eq "^([0-9]+|([0-9]+y)?([0-9]+M)?([0-9]+w)?([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s)?)$"; then
+        echo "NGINX_RESOLVER_VALID needs to be empty or an nginx time in seconds or longer like 30s or 5m (not 0, no ms)."
+        sleep inf
+    fi
 fi
 
 if ! echo "$NGINX_FORCE_X25519MLKEM768" | grep -q "^true$\|^false$"; then

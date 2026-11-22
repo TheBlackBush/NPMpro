@@ -38,6 +38,7 @@ const NONE_ALLOWED = /none of the CPUs 0-3 is allowed/u;
 const UNREADABLE = /cannot be read/u;
 const TRIM_KEPT = /could not cut the affinity line of .*core-main\.conf, it is kept as it is/u;
 const ALLOWED_LIST = /Cpus_allowed_list:\t(?<list>\S+)/u;
+const BLANKS = /\s+/u;
 const lines = (text) => text.split("\n").filter((line) => line && !line.startsWith("#"));
 
 it("renders today's nginx.conf values for the defaults", () => {
@@ -235,6 +236,17 @@ it("the shell twin matches the renderer", () => {
 			resolver_valid: "30s",
 		}),
 	);
+});
+
+it("the shell twin matches the renderer for a tab and blanks around NGINX_RESOLVER", () => {
+	for (const raw of ["\t1.1.1.1\t[::1]:53\t", "  1.1.1.1   1.1.1.2  "]) {
+		const addresses = raw.split(BLANKS).filter(Boolean);
+		assert.deepEqual(
+			shellFiles({ ...ENVS, NGINX_RESOLVER: raw }),
+			renderedFiles({ ...DEFAULTS, resolver_addresses: addresses }, { cpusAllowed: null }),
+			JSON.stringify(raw),
+		);
+	}
 });
 
 it("the shell twin matches the renderer for every affinity mode", () => {
