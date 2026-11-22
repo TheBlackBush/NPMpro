@@ -6,7 +6,7 @@ Usa **Clonar** en el menú del host para copiar un host en una nueva ventana de 
 
 ### Detalles
 
-- **Nombres de Dominio**: los nombres que se redirigen. Obligatorio. Los comodines solo se permiten para un certificado nuevo con el desafío DNS.
+- **Nombres de Dominio**: los nombres que se redirigen. Obligatorio. Los comodines solo se permiten para un certificado nuevo con el desafío DNS. El campo sugiere los dominios de tus credenciales DNS y los nombres ya en uso. Se puede escribir cualquier otro nombre.
 - **Descripción**: opcional, una línea (hasta 255 caracteres) que dice para qué sirve el host. Se muestra bajo los nombres de dominio en la lista y la búsqueda la encuentra.
 - **Esquema**: el esquema del destino. «mantener (igual que la solicitud)» es el valor por defecto y conserva `http` o `https` de la visita. O elige `http` o `https`.
 - **Dominio de Reenvío**: el dominio al que se envía a los visitantes, por ejemplo `example.com`. Obligatorio.

@@ -35,6 +35,10 @@ pliku z danymi uwierzytelniającymi tego dostawcy.
 
 Dane uwierzytelniające zawierają listę domen (stref DNS), którymi zarządzają, na przykład `example.com`. Karta **Domeny** na stronie Certyfikaty pokazuje domeny wszystkich Twoich danych uwierzytelniających.
 
+Pole **Nazwy domen** podpowiada domeny Twoich danych uwierzytelniających DNS oraz nazwy, których hosty i certyfikaty już używają (nazwy strumienia pochodzą z jego certyfikatu). Nadal można wpisać dowolną inną nazwę: `Dodaj <nazwa>` jest pierwsze, a Enter dodaje wpisany tekst.
+
+Przy weryfikacji DNS okno podpowiada dane uwierzytelniające DNS, których domeny obejmują wszystkie nazwy, i podaje powód. Można je zmienić w dowolnej chwili, a wybrane przez Ciebie dane zostają zachowane.
+
 ### Własny certyfikat
 
 Użyj tej opcji, aby przesłać własny certyfikat TLS, dostarczony przez twój własny urząd certyfikacji.

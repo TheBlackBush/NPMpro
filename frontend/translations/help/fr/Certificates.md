@@ -40,6 +40,10 @@ Un identifiant liste les domaines (zones DNS) qu'il gère, par exemple `example.
 
 Utilisez cette option pour importer votre propre certificat TLS, fourni par votre autorité de certification.
 
+Le champ **Noms de domaine** propose les domaines de vos identifiants DNS et les noms que des hôtes et des certificats utilisent déjà (les noms d'un flux viennent de son certificat). Vous pouvez toujours saisir un autre nom : `Ajouter <nom>` vient en premier, et Entrée ajoute ce que vous avez saisi.
+
+Avec le challenge DNS, la fenêtre propose l'identifiant DNS dont les domaines couvrent tous les noms et en donne la raison. Vous pouvez le changer à tout moment, et un identifiant choisi par vous est conservé.
+
 ### Autorité de certification
 
 Un certificat demandé à un serveur ACME est délivré par l'AC choisie dans sa fenêtre : l'AC de l'instance (marquée « par défaut ») ou une autre AC qu'un administrateur a ajoutée dans Paramètres, Certificats et TLS, sous **Autres AC**. La liste affiche l'AC de chaque certificat dans la colonne **AC**. **Réémettre** dans le menu du certificat le redemande à une autre AC sous le même nom ; en cas d'échec, le certificat actuel est conservé. **Modifier** sur un certificat ACME change ses noms de domaine : le certificat est redemandé sous la même entrée, la fenêtre avertit des noms que des hôtes utilisent encore, et un échec ne change rien.

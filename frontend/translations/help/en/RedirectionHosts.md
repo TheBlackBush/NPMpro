@@ -6,7 +6,7 @@ Use **Clone** in the host's menu to copy a host into a new Add window. The copy 
 
 ### Details
 
-- **Domain Names**: the names that are redirected. Required. Wildcards are allowed for a new certificate only with the DNS challenge.
+- **Domain Names**: the names that are redirected. Required. Wildcards are allowed for a new certificate only with the DNS challenge. The field suggests the domains of your DNS credentials and the names already in use. Any other name can still be typed.
 - **Description**: optional, one line (up to 255 characters) that says what the host is for. It shows under the domain names in the list and the search finds it.
 - **Scheme**: the scheme of the target. "keep (same as the request)" is the default and keeps `http` or `https` from the visit. Or choose `http` or `https`.
 - **Forward Domain**: the domain visitors are sent to, for example `example.com`. Required.

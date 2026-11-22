@@ -44,6 +44,10 @@ credentials file for that provider.
 
 A credential lists the domains (DNS zones) it manages, such as `example.com`. The **Domains** tab of the Certificates page lists the domains of all your credentials.
 
+The **Domain Names** field suggests the domains of your DNS credentials and the names hosts and certificates already use (the names of a stream come from its certificate). Typing any other name still works: `Add <name>` comes first, and Enter adds what you typed.
+
+With the DNS challenge, the window suggests the DNS credential whose domains cover all the names and says why. You can change it at any time, and a credential you picked yourself is kept.
+
 ### Custom Certificate
 
 Use this option to upload your own TLS Certificate, as provided by your own

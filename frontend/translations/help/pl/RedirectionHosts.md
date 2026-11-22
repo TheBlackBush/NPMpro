@@ -6,7 +6,7 @@ Użyj **Klonuj** w menu hosta, aby skopiować host do nowego okna dodawania. Kop
 
 ### Szczegóły
 
-- **Nazwy domen**: nazwy, które są przekierowywane. Wymagane. Symbole wieloznaczne są dozwolone dla nowego certyfikatu tylko z wyzwaniem DNS.
+- **Nazwy domen**: nazwy, które są przekierowywane. Wymagane. Symbole wieloznaczne są dozwolone dla nowego certyfikatu tylko z wyzwaniem DNS. Pole podpowiada domeny Twoich danych uwierzytelniających DNS i nazwy już używane. Nadal można wpisać dowolną inną nazwę.
 - **Opis**: opcjonalna, jedna linia (do 255 znaków), która mówi, do czego służy host. Widać ją na liście pod nazwami domen, a wyszukiwarka ją znajduje.
 - **Schemat**: schemat celu. "zachowaj (jak w żądaniu)" jest wartością domyślną i zachowuje `http` lub `https` z wizyty. Albo wybierz `http` lub `https`.
 - **Domena docelowa**: domena, do której kierowani są odwiedzający, na przykład `example.com`. Wymagana.

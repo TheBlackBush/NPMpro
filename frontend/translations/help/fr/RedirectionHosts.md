@@ -6,7 +6,7 @@ Utilisez **Dupliquer** dans le menu de l'hôte pour copier un hôte dans une nou
 
 ### Détails
 
-- **Noms de domaine** : les noms qui sont redirigés. Obligatoire. Les jokers ne sont autorisés pour un nouveau certificat qu'avec le challenge DNS.
+- **Noms de domaine** : les noms qui sont redirigés. Obligatoire. Les jokers ne sont autorisés pour un nouveau certificat qu'avec le challenge DNS. Le champ propose les domaines de vos identifiants DNS et les noms déjà utilisés. Vous pouvez toujours saisir un autre nom.
 - **Description** : facultative, une ligne (jusqu'à 255 caractères) qui indique à quoi sert l'hôte. Elle s'affiche sous les noms de domaine dans la liste et la recherche la trouve.
 - **Schéma** : le schéma de la cible. « conserver (identique à la requête) » est la valeur par défaut et garde `http` ou `https` de la visite. Ou choisissez `http` ou `https`.
 - **Domaine de redirection** : le domaine vers lequel les visiteurs sont envoyés, par exemple `example.com`. Obligatoire.

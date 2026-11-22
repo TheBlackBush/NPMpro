@@ -6,7 +6,7 @@ Use **Clone** in the host's menu to copy a host into a new Add window. The copy 
 
 ### Details
 
-- **Domain Names**: the names visitors use. Required. For a new certificate, wildcards (`*.example.com`) need the DNS challenge.
+- **Domain Names**: the names visitors use. Required. For a new certificate, wildcards (`*.example.com`) need the DNS challenge. The field suggests the domains of your DNS credentials and the names already in use. Any other name can still be typed.
 - **Description**: optional, one line (up to 255 characters) that says what the host is for. It shows under the domain names in the list and the search finds it.
 - **Scheme**: how NPMpro talks to the service: `http://`, `https://`, `grpc://`, `grpcs://`, `path` (serve files or PHP from a folder) or `empty` (no upstream). Default `http://`. A scheme change turns off options that do not fit it.
 - **Forward Hostname / IP / Path**: the address of the service. You can add a sub path, for example `127.0.0.1/path`. With `path`, enter a folder instead. Mount your files under `/var/www`; only administrators can use a folder outside it. A name starting with `cu_` points to your own nginx upstream block (see Load balancing in the wiki).

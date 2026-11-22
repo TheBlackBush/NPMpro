@@ -6,7 +6,7 @@ Use **Clonar** no menu do host para copiar um host para uma nova janela de adiç
 
 ### Detalhes
 
-- **Nomes de Domínio**: os nomes que os visitantes usam. Obrigatório. Para um novo certificado, os carateres universais (`*.example.com`) precisam do DNS challenge.
+- **Nomes de Domínio**: os nomes que os visitantes usam. Obrigatório. Para um novo certificado, os carateres universais (`*.example.com`) precisam do DNS challenge. O campo sugere os domínios das suas credenciais DNS e os nomes já em uso. Continua a ser possível escrever qualquer outro nome.
 - **Descrição**: opcional, uma linha (até 255 caracteres) que diz para que serve o host. Aparece sob os nomes de domínio na lista e a pesquisa encontra-a.
 - **Esquema**: como o NPMpro fala com o serviço: `http://`, `https://`, `grpc://`, `grpcs://`, `path` (serve ficheiros ou PHP a partir de uma pasta) ou `empty` (sem upstream). Predefinição `http://`. Uma mudança de esquema desativa as opções que não lhe servem.
 - **Hostname / IP / Caminho de Destino**: o endereço do serviço. Pode acrescentar um subcaminho, por exemplo `127.0.0.1/path`. Com `path`, indique antes uma pasta. Monte os seus ficheiros em `/var/www`; só os administradores podem usar uma pasta fora dela. Um nome que comece por `cu_` aponta para um bloco upstream do nginx seu (veja Load balancing na wiki).

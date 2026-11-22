@@ -6,7 +6,7 @@ Utilisez **Dupliquer** dans le menu de l'hôte pour copier un hôte dans une nou
 
 ### Détails
 
-- **Noms de domaine** : les noms utilisés par les visiteurs. Obligatoire. Pour un nouveau certificat, les jokers (`*.example.com`) demandent le challenge DNS.
+- **Noms de domaine** : les noms utilisés par les visiteurs. Obligatoire. Pour un nouveau certificat, les jokers (`*.example.com`) demandent le challenge DNS. Le champ propose les domaines de vos identifiants DNS et les noms déjà utilisés. Vous pouvez toujours saisir un autre nom.
 - **Description** : facultative, une ligne (jusqu'à 255 caractères) qui indique à quoi sert l'hôte. Elle s'affiche sous les noms de domaine dans la liste et la recherche la trouve.
 - **Schéma** : la façon dont NPMpro parle au service : `http://`, `https://`, `grpc://`, `grpcs://`, `path` (servir des fichiers ou du PHP depuis un dossier) ou `empty` (pas d'amont). Par défaut `http://`. Un changement de schéma désactive les options qui ne lui conviennent pas.
 - **Nom d'hôte / IP / chemin de destination** : l'adresse du service. Vous pouvez ajouter un sous-chemin, par exemple `127.0.0.1/path`. Avec `path`, saisissez plutôt un dossier. Montez vos fichiers sous `/var/www` ; seuls les administrateurs peuvent utiliser un dossier en dehors. Un nom commençant par `cu_` désigne votre propre bloc upstream nginx (voir Load balancing dans le wiki).

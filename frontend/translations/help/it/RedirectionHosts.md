@@ -6,7 +6,7 @@ Usa **Duplica** nel menu dell'host per copiare un host in una nuova finestra di 
 
 ### Dettagli
 
-- **Nomi di Dominio**: i nomi che vengono reindirizzati. Obbligatorio. I caratteri jolly sono consentiti per un nuovo certificato solo con la challenge DNS.
+- **Nomi di Dominio**: i nomi che vengono reindirizzati. Obbligatorio. I caratteri jolly sono consentiti per un nuovo certificato solo con la challenge DNS. Il campo suggerisce i domini delle tue credenziali DNS e i nomi già in uso. Si può sempre digitare un altro nome.
 - **Descrizione**: facoltativa, una riga (fino a 255 caratteri) che dice a cosa serve l'host. Appare sotto i nomi di dominio nell'elenco e la ricerca la trova.
 - **Schema**: lo schema della destinazione. "mantieni (come la richiesta)" è il valore predefinito e mantiene `http` o `https` della visita. Oppure scegli `http` o `https`.
 - **Dominio di Destinazione**: il dominio a cui vengono inviati i visitatori, ad esempio `example.com`. Obbligatorio.

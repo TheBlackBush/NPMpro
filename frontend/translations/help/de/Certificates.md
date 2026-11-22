@@ -44,6 +44,10 @@ Zugangsdaten-Datei für diesen Provider einfügen.
 
 Zugangsdaten führen die Domains (DNS-Zonen) auf, die sie verwalten, zum Beispiel `example.com`. Der Tab **Domains** der Seite Zertifikate listet die Domains aller Ihrer Zugangsdaten auf.
 
+Das Feld **Domains** schlägt die Domains deiner DNS-Zugangsdaten und die Namen vor, die Hosts und Zertifikate schon verwenden (die Namen eines Streams stammen aus seinem Zertifikat). Jeder andere Name lässt sich weiterhin eintippen: `<Name> hinzufügen` steht an erster Stelle, und Enter fügt den getippten Namen hinzu.
+
+Bei der DNS-Challenge schlägt das Fenster die DNS-Zugangsdaten vor, deren Domains alle Namen abdecken, und nennt den Grund. Du kannst sie jederzeit ändern, und von dir selbst gewählte Zugangsdaten bleiben erhalten.
+
 ### Benutzerdefiniertes Zertifikat
 
 Verwenden Sie diese Option, um Ihr eigenes TLS-Zertifikat hochzuladen, das Ihnen von Ihrer eigenen

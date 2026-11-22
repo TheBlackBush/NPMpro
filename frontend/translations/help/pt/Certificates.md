@@ -43,6 +43,10 @@ ficheiro de credenciais desse fornecedor.
 
 Uma credencial lista os domínios (zonas DNS) que gere, como `example.com`. O separador **Domínios** da página Certificados lista os domínios de todas as tuas credenciais.
 
+O campo **Nomes de Domínio** sugere os domínios das suas credenciais DNS e os nomes que hosts e certificados já usam (os nomes de um stream vêm do seu certificado). Continua a ser possível escrever qualquer outro nome: `Adicionar <nome>` aparece primeiro e Enter adiciona o que escreveu.
+
+Com o desafio DNS, a janela sugere a credencial DNS cujos domínios cobrem todos os nomes e indica o motivo. Pode alterá-la a qualquer momento, e uma credencial escolhida por si é mantida.
+
 ### Certificado Personalizado
 
 Usa esta opção para carregar o teu próprio Certificado TLS, fornecido pela

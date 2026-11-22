@@ -6,7 +6,7 @@ Usa **Clonar** en el menú del host para copiar un host en una nueva ventana de 
 
 ### Detalles
 
-- **Nombres de Dominio**: los nombres que usan los visitantes. Obligatorio. Para un certificado nuevo, los comodines (`*.example.com`) necesitan el desafío DNS.
+- **Nombres de Dominio**: los nombres que usan los visitantes. Obligatorio. Para un certificado nuevo, los comodines (`*.example.com`) necesitan el desafío DNS. El campo sugiere los dominios de tus credenciales DNS y los nombres ya en uso. Se puede escribir cualquier otro nombre.
 - **Descripción**: opcional, una línea (hasta 255 caracteres) que dice para qué sirve el host. Se muestra bajo los nombres de dominio en la lista y la búsqueda la encuentra.
 - **Esquema**: cómo habla NPMpro con el servicio: `http://`, `https://`, `grpc://`, `grpcs://`, `path` (servir archivos o PHP desde una carpeta) o `empty` (sin upstream). Por defecto `http://`. Un cambio de esquema desactiva las opciones que no le corresponden.
 - **Nombre de host / IP / ruta de reenvío**: la dirección del servicio. Puedes añadir una subruta, por ejemplo `127.0.0.1/path`. Con `path`, introduce en su lugar una carpeta. Monta tus archivos bajo `/var/www`; solo los administradores pueden usar una carpeta fuera de ella. Un nombre que empieza por `cu_` apunta a tu propio bloque upstream de nginx (consulta Load balancing en la wiki).
