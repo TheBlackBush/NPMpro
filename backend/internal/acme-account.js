@@ -91,8 +91,19 @@ const readAcmeMeta = async () => (await settingModel.query().where("id", "acme")
 /** @returns {Promise<string|null>}  the stored instance CA, null for Let's Encrypt */
 const readAcmeSetting = async () => (await readAcmeMeta()).server ?? null;
 
-/** Stores keys of the setting row "acme" (the others stay) */
-const patchAcmeMeta = async (patch) => {
+// one writer of the setting row "acme" at a time: an instance CA save and a Remove or Add of another CA hold
+// different CA locks, and each write reads the row first
+let acmeRowQueue = Promise.resolve();
+
+/** Runs fn after every earlier write of the setting row "acme" */
+const inAcmeRowQueue = (fn) => {
+	const run = acmeRowQueue.then(fn);
+	acmeRowQueue = run.catch(() => {});
+	return run;
+};
+
+/** Stores keys of the setting row "acme" (the others stay); the caller is in the queue */
+const writeAcmeMeta = async (patch) => {
 	const existing = await settingModel.query().where("id", "acme").first();
 	const meta = { ...(existing?.meta ?? {}), ...patch };
 	if (existing) await settingModel.query().where("id", "acme").patch({ meta });
@@ -103,7 +114,7 @@ const patchAcmeMeta = async (patch) => {
 };
 
 /** @param {string|null} server  null: Let's Encrypt */
-const saveAcmeSetting = (server) => patchAcmeMeta({ server });
+const saveAcmeSetting = (server) => inAcmeRowQueue(() => writeAcmeMeta({ server }));
 
 /**
  * The CAs an administrator removed (serverKey): their account folders stay on disk, and the start, a restore or a
@@ -114,22 +125,16 @@ const saveAcmeSetting = (server) => patchAcmeMeta({ server });
  */
 const removedServers = async () => new Set((await readAcmeMeta()).removed ?? []);
 
-// one change of the removed list at a time: the callers hold different CAs' locks
-let removedQueue = Promise.resolve();
-
 /** Adds (removed true) or drops one CA of the removed list */
-const markRemoved = (server, removed) => {
-	const run = removedQueue.then(async () => {
+const markRemoved = (server, removed) =>
+	inAcmeRowQueue(async () => {
 		const list = await removedServers();
 		const key = serverKey(server);
 		if (list.has(key) === removed) return;
 		if (removed) list.add(key);
 		else list.delete(key);
-		await patchAcmeMeta({ removed: [...list].sort((a, b) => a.localeCompare(b)) });
+		await writeAcmeMeta({ removed: [...list].sort((a, b) => a.localeCompare(b)) });
 	});
-	removedQueue = run.catch(() => {});
-	return run;
-};
 
 /**
  * Loads the stored instance CA (the start, a restore). A value stored before the scheme and host were lower-cased
@@ -750,12 +755,12 @@ const sweepReplaceFolders = async () => {
  */
 const syncAccountsWithFiles = async () => {
 	const confs = await listRenewalConfs();
-	const removed = await removedServers();
 	for (const server of knownServers(await acmeAccountModel.query(), confs, await serverFolders())) {
 		// under the CA's lock, so a registration running (after a restore or merge) is not overwritten
 		await withAccountLock(server, async () => {
 			const row = await accountRow(server);
-			if (removed.has(server)) {
+			// read under the lock: a Remove or Add of this CA meanwhile is seen
+			if ((await removedServers()).has(server)) {
 				// a removed CA stays removed; a row (a restore brought it) or the instance CA ends the removal
 				if (!(row || sameServer(server, instanceServer()))) return;
 				await markRemoved(server, false);
@@ -1437,6 +1442,7 @@ export {
 	listProfiles,
 	loadAcmeServer,
 	lockedKeys,
+	markRemoved,
 	open,
 	prepareRenewalLocked,
 	prepareRenewals,

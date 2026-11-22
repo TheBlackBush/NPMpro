@@ -11,13 +11,13 @@ const SECOND = "https://second.lan/dir";
 const INSTANCE_ACCOUNT = "a".repeat(32);
 const SECOND_ACCOUNT = "c".repeat(32);
 const CERTS = "/nginx/certificates";
+const SERVER_ARG = /--server (?<server>\S+)/u;
 
 let api;
 let admin;
 
 const certonlyServer = async () =>
-	(await normalizedCalls(api)).find((line) => line.includes(" certonly "))?.match(/--server (?<server>\S+)/u)?.groups
-		.server;
+	(await normalizedCalls(api)).find((line) => line.includes(" certonly "))?.match(SERVER_ARG)?.groups.server;
 
 before(async () => {
 	api = await startApi({ env: { ACME_SERVER: INSTANCE, NPMPRO_TEST_OUTBOUND: "mock" } });

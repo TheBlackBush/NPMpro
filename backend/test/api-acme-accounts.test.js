@@ -170,6 +170,15 @@ it("a removed CA stays removed at the next start, restore or merge, until it is 
 	assert.deepEqual([...(await removedServers())], []);
 });
 
+it("a save of the instance CA and a removal at the same time keep both changes of the acme setting row", async () => {
+	const { markRemoved, removedServers, saveAcmeSetting } = await import("../internal/acme-account.js");
+	const servers = Array.from({ length: 5 }, (_, n) => `https://ca${n}.lan/dir`);
+	await Promise.all(servers.flatMap((server) => [markRemoved(server, true), saveAcmeSetting(null)]));
+	assert.deepEqual([...(await removedServers())], servers);
+	const meta = JSON.parse((await api.db("setting").where("id", "acme").first()).meta);
+	assert.deepEqual(meta, { server: null, removed: servers });
+});
+
 it("a restored row of a removed CA ends the removal", async () => {
 	const { removedServers, syncAccountsWithFiles } = await import("../internal/acme-account.js");
 	await seedAccount(api, SECOND, SECOND_ACCOUNT);
