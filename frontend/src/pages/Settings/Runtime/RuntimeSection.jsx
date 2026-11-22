@@ -17,7 +17,7 @@ import {
 	runtimeSettingsPayload,
 } from "src/modules/RuntimeSettings";
 import { unlockedErrors } from "src/modules/SettingsForms";
-import { showError, showObjectSuccess } from "src/notifications";
+import { showError, showObjectSuccess, showWarning } from "src/notifications";
 import { SaveBar } from "../SaveBar";
 import { SettingsCard } from "../SettingsCard";
 import { SettingsForm } from "../SettingsForm";
@@ -30,6 +30,15 @@ const hasMessage = (id) => Boolean(intl.messages[id]);
 const formatMessage = (id, values) => intl.formatMessage({ id }, values);
 
 const RuntimeContext = createContext(null);
+
+/**
+ * The warnings of a save answer as texts (the answer's warnings carry a translation key and its values, here the
+ * address), each with the key of the setting it belongs to
+ */
+const warningsOf = (answer) =>
+	(answer?.warnings ?? [])
+		.filter((warning) => hasMessage(warning.messageI18n))
+		.map(({ key, messageI18n, ...values }) => ({ key: camel(key), text: formatMessage(messageI18n, values) }));
 // lock reasons of a setting, not of an env var (backend SETTING_LOCK_REASONS)
 const SETTING_LOCK_REASONS = new Set(["goaccess-setting", "force-mlkem-setting", "crowdsec-setting"]);
 
@@ -44,7 +53,7 @@ const useRuntimeSection = () => useContext(RuntimeContext);
 /**
  * The context value for a loaded group (exported for sections that hold more than one form, like Logs & monitoring)
  */
-const runtimeContextOf = (group, data) => {
+const runtimeContextOf = (group, data, warnings = []) => {
 	const locked = new Set((data.locked ?? []).map(camel));
 	return {
 		group,
@@ -52,6 +61,8 @@ const runtimeContextOf = (group, data) => {
 		// locked by an env var (the "set by environment variables" notice): not the locks of a setting
 		anyLocked: (data.locked ?? []).some((key) => !SETTING_LOCK_REASONS.has(data.lockedReason?.[camel(key)])),
 		isLocked: (key) => locked.has(key),
+		// the warnings of the last save for a setting (the text of each), until the next save
+		warningsOf: (key) => warnings.filter((warning) => warning.key === key).map((warning) => warning.text),
 		// locked_by: the env var that locks each key (its keys camelized by base.js, the values are env names)
 		envOf: (key) => data.lockedBy?.[key],
 		// locked_reason: only the keys locked by another setting's env var
@@ -164,7 +175,8 @@ const reportSaveError = (group, err, { setErrorMsg, setError, lead }) => {
 function RuntimeForm({ group, titleId, leadId, top, data, toForm, toApi, validate, children }) {
 	const { mutateAsync: save } = useSaveRuntimeSettings(group);
 	const { alert, setErrorMsg } = useSaveError();
-	const ctx = runtimeContextOf(group, data);
+	const [warnings, setWarnings] = useState([]);
+	const ctx = runtimeContextOf(group, data, warnings);
 	const saved = toForm(data);
 	const methods = useAppForm({
 		defaultValues: saved,
@@ -176,11 +188,15 @@ function RuntimeForm({ group, titleId, leadId, top, data, toForm, toApi, validat
 
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
+		setWarnings([]);
 		const payload = runtimeSettingsPayload(group, toApi(values), data.locked, data);
 		try {
 			if (!isEmptyPayload(payload)) {
-				await save(payload);
+				const answer = await save(payload);
 				showObjectSuccess("setting", "saved");
+				const found = warningsOf(answer);
+				setWarnings(found);
+				for (const warning of found) showWarning(warning.text);
 			}
 		} catch (err) {
 			reportSaveError(group, err, { setErrorMsg, setError: methods.setError });

@@ -1896,6 +1896,17 @@
 	"settings.nginx.module.vts.hint": "vhost_traffic_status_* directives.",
 	"settings.nginx.modules": "Modules",
 	"settings.nginx.modules.description": "Optional nginx modules for directives in custom configs.",
+	"settings.nginx.resolver": "DNS resolver",
+	"settings.nginx.resolver.addresses": "Resolver addresses",
+	"settings.nginx.resolver.addresses.hint": "Empty: the container's resolvers (/etc/resolv.conf). An IPv4 address or an IPv6 address in brackets, with an optional port.",
+	"settings.nginx.resolver.hosts": "Use /etc/hosts",
+	"settings.nginx.resolver.info": "The DNS servers nginx asks for upstream host names, for example a forward host given as a name. A changed list applies with an nginx reload.",
+	"settings.nginx.resolver.invalid": "{address} is not an IP address with an optional port; IPv6 goes in brackets, such as [2606:4700::1111]:53",
+	"settings.nginx.resolver.ipv6": "IPv6 answers",
+	"settings.nginx.resolver.too-many": "At most 8 addresses",
+	"settings.nginx.resolver.valid": "Cache answers for",
+	"settings.nginx.resolver.valid.invalid": "Leave empty, or enter a time in seconds or longer such as 30s or 5m (not 0, not ms)",
+	"settings.nginx.resolver.valid.placeholder": "the record's TTL",
 	"settings.nginx.rsa-pkcs1": "Allow RSA PKCS#1 signatures",
 	"settings.nginx.rsa-pkcs1.hint": "For old clients that cannot use RSA-PSS.",
 	"settings.nginx.secp-curves": "Allow the NIST P curves",
@@ -2040,5 +2051,6 @@
 	"users": "Users",
 	"users.lead": "Who can sign in to NPMpro and what each account may do.",
 	"users.oidc-hint": "Users can also sign in with OIDC.",
-	"users.oidc-hint.link": "Settings, Authentication"
+	"users.oidc-hint.link": "Settings, Authentication",
+	"warning.resolver-no-answer": "{address} did not answer a DNS query. The setting is saved; check the address."
 }

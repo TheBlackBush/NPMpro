@@ -18,6 +18,10 @@ const GROUP_KEYS = {
 		"workerConnections",
 		"workerShutdownTimeout",
 		"cpuAffinity",
+		"resolverAddresses",
+		"resolverHosts",
+		"resolverIpv6",
+		"resolverValid",
 		"logNotFound",
 		"tls12",
 		"forceMlkem",
@@ -82,12 +86,12 @@ const FIELD_ERROR = /^(?<key>[a-z0-9_]+): (?<message>[\s\S]+)$/u;
 
 const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
 
-const isIPv4 = (text) => {
+export const isIPv4 = (text) => {
 	const parts = text.split(".");
 	return parts.length === 4 && parts.every((part) => IPV4_PART.test(part) && Number(part) <= 255);
 };
 
-const isIPv6 = (text) => {
+export const isIPv6 = (text) => {
 	if (!text.includes(":")) return false;
 	const halves = text.split("::");
 	if (halves.length > 2) return false;

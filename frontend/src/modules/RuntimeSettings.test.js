@@ -109,6 +109,22 @@ it("runtimeSettingsPayload treats a missing or null initial value as changed", (
 	assert.deepEqual(runtimeSettingsPayload("certificates", { profile: undefined }, [], {}), {});
 });
 
+it("runtimeSettingsPayload sends a changed resolver list and skips an unchanged or locked one", () => {
+	const initial = { resolverAddresses: ["1.1.1.1"], resolverValid: "" };
+	assert.deepEqual(
+		runtimeSettingsPayload("nginx", { resolverAddresses: ["1.1.1.1", "9.9.9.9"], resolverValid: "" }, [], initial),
+		{ resolverAddresses: ["1.1.1.1", "9.9.9.9"] },
+	);
+	assert.deepEqual(
+		runtimeSettingsPayload("nginx", { resolverAddresses: ["1.1.1.1"], resolverValid: "" }, [], initial),
+		{},
+	);
+	assert.deepEqual(
+		runtimeSettingsPayload("nginx", { resolverAddresses: [], resolverHosts: false }, ["resolver_addresses"], {}),
+		{ resolverHosts: false },
+	);
+});
+
 it("GROUP_KEYS match the backend response schemas", () => {
 	const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
 	for (const group of Object.keys(GROUP_KEYS)) {
@@ -124,6 +140,7 @@ it("GROUP_KEYS match the backend response schemas", () => {
 					"time_zones",
 					"cpu_count",
 					"cpus_allowed",
+					"warnings",
 				].includes(key),
 		);
 		assert.deepEqual([...GROUP_KEYS[group]].sort(), props.map(camel).sort(), group);

@@ -142,6 +142,26 @@ it("nginx: the same errors as the Formik validate", () => {
 	});
 });
 
+it("nginx: the resolver values go to the form and back", () => {
+	const base = { workerProcesses: 4, workerConnections: 512, workerShutdownTimeout: "1h", cpuAffinity: "off" };
+	const form = nginxToForm({
+		...base,
+		resolverAddresses: ["1.1.1.1"],
+		resolverHosts: false,
+		resolverIpv6: true,
+		resolverValid: "30s",
+	});
+	assert.deepEqual(form.resolverAddresses, ["1.1.1.1"]);
+	assert.equal(form.resolverHosts, false);
+	assert.equal(form.resolverIpv6, true);
+	assert.equal(form.resolverValid, "30s");
+	const api = nginxToApi(form);
+	assert.deepEqual(api.resolverAddresses, ["1.1.1.1"]);
+	assert.equal(api.resolverValid, "30s");
+	assert.deepEqual(nginxToForm(base).resolverAddresses, []);
+	assert.equal(nginxToForm(base).resolverValid, "");
+});
+
 it("nginx: the CPU pinning is a mode and a list, and goes back to one value", () => {
 	const base = { workerProcesses: 4, workerConnections: 512, workerShutdownTimeout: "1h", tls12: true };
 	for (const [cpuAffinity, mode, list] of [
