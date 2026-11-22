@@ -33,4 +33,17 @@ const normalizeDomainName = (input) => {
 	return { name: ascii };
 };
 
-export { normalizeDomainName };
+/**
+ * The where clause of a search in the stored names: the text anywhere in the name, without case; % and _ are plain
+ * characters. "!" escapes them: a backslash is itself an escape in MySQL's string literals, so escape '\' does not
+ * parse there.
+ *
+ * @param   {string} text
+ * @returns {{ sql: string, bindings: string[] }}  for whereRaw
+ */
+const nameSearch = (text) => ({
+	sql: "lower(npmpro_dns_domain.name) like ? escape '!'",
+	bindings: [`%${text.toLowerCase().replace(/[!%_]/gu, "!$&")}%`],
+});
+
+export { nameSearch, normalizeDomainName };

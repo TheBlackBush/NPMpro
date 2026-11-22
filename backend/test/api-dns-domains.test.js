@@ -286,8 +286,15 @@ it("names every credential of a refused batch, or the first and the count", asyn
 	assert.equal((await add(b.id, ["two-t.example"])).status, 201);
 	const refused = await add(c.id, ["one-t.example", "two-t.example"]);
 	assert.equal(refused.status, 400);
-	assert.equal(refused.body.error.message_values.domain, "one-t.example, two-t.example");
-	assert.equal(refused.body.error.message_values.credential, `${a.name} and 1 more`);
+	assert.equal(refused.body.error.message_i18n, "error.dns-domain-taken-more");
+	assert.deepEqual(refused.body.error.message_values, {
+		domain: "one-t.example, two-t.example",
+		credential: a.name,
+		count: 1,
+	});
+	const single = await add(c.id, ["one-t.example"]);
+	assert.equal(single.body.error.message_i18n, "error.dns-domain-taken");
+	assert.deepEqual(single.body.error.message_values, { domain: "one-t.example", credential: a.name });
 });
 
 it("searches without case and treats % and _ as plain characters", async () => {
@@ -301,6 +308,12 @@ it("searches without case and treats % and _ as plain characters", async () => {
 	const underscore = await admin.get(`${BASE}?query=${encodeURIComponent("r_s")}`);
 	assert.deepEqual(underscore.body, []);
 	assert.deepEqual((await admin.get(`${BASE}?query=${encodeURIComponent("%")}`)).body, []);
+	// the escape character itself, and a backslash, are plain characters too
+	for (const text of ["!", "!%", "\\", "under\\"]) {
+		const answer = await admin.get(`${BASE}?query=${encodeURIComponent(text)}`);
+		assert.equal(answer.status, 200, answer.text);
+		assert.deepEqual(answer.body, []);
+	}
 });
 
 it("refuses a bearer token without Allow delete on DELETE", async () => {

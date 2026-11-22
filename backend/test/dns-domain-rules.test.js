@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
+import { domainToUnicode } from "node:url";
 import { coveringZone, matchNames, uncoveredBy } from "../lib/dns-domain-match.js";
 import { normalizeDomainName } from "../lib/dns-domain-name.js";
 import { createKeyedLock } from "../lib/keyed-lock.js";
@@ -11,6 +12,13 @@ const CASES = JSON.parse(readFileSync(new URL("fixtures/dns-domain-cases.json", 
 
 it("stores a DNS domain lower case and as punycode, and refuses what is no zone name (shared cases)", () => {
 	for (const [input, expected] of CASES.names) assert.deepEqual(normalizeDomainName(input), expected, input);
+});
+
+it("the stored names of the display cases show as the frontend shows them (shared cases)", () => {
+	for (const [name, shown] of CASES.display) {
+		assert.equal(normalizeDomainName(shown).name, name, shown);
+		assert.equal(domainToUnicode(name), shown, name);
+	}
 });
 
 it("refuses anything that is not a string", () => {
@@ -86,4 +94,13 @@ it("keeps no state for a key once its work has settled", async () => {
 	const run = lock(5, () => order.push("b"));
 	await run;
 	assert.deepEqual(order, ["a", "b"]);
+});
+
+it("calls each run without arguments: no run sees the result of the run before it", async () => {
+	const lock = createKeyedLock();
+	await lock(6, () => "the first owner's data");
+	const pending = lock(6, () => "queued result");
+	const seen = await lock(6, (...args) => args);
+	assert.equal(await pending, "queued result");
+	assert.deepEqual(seen, []);
 });

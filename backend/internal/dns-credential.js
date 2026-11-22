@@ -116,6 +116,8 @@ const internalDnsCredential = {
 
 		const { saved, changes } = await internalDnsDomain.withOwnerLock(row.owner_user_id, () =>
 			dnsCredentialModel.transaction(async (trx) => {
+				// the credential may have been deleted while this waited for the lock
+				if (!(await dnsCredentialModel.query(trx).findById(row.id))) throw new errs.ItemNotFoundError(row.id);
 				if (provider !== row.provider && (await internalDnsCredential.countCertificates(row.id, trx)) > 0) {
 					throw new errs.ValidationError("The provider cannot change while certificates use this credential");
 				}
@@ -146,6 +148,8 @@ const internalDnsCredential = {
 		// SQLite does not run the foreign key's cascade: the domains go in code, in the same transaction
 		const domains = await internalDnsDomain.withOwnerLock(row.owner_user_id, () =>
 			dnsCredentialModel.transaction(async (trx) => {
+				// another delete of it may have run while this waited for the lock
+				if (!(await dnsCredentialModel.query(trx).findById(row.id))) throw new errs.ItemNotFoundError(row.id);
 				const inUse = await internalDnsCredential.countCertificates(row.id, trx);
 				if (inUse > 0)
 					throw new errs.ValidationError(`DNS credential is still used by ${inUse} certificate(s)`);

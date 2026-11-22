@@ -1,14 +1,12 @@
-import { normalizeDomainName } from "../lib/dns-domain-name.js";
+import { ownerLock } from "../lib/dns-domain-lock.js";
+import { nameSearch, normalizeDomainName } from "../lib/dns-domain-name.js";
 import errs from "../lib/error.js";
-import { createKeyedLock } from "../lib/keyed-lock.js";
 import dnsCredentialModel from "../models/dns_credential.js";
 import dnsDomainModel from "../models/dns_domain.js";
 import internalAuditLog from "./audit-log.js";
 
-// The DNS domains (zones) of the DNS credentials; the only writer of npmpro_dns_domain. One owner never keeps a name
-// on two credentials; the table has no owner column to hold that as an index (the owner is the credential's), so the
-// check reads before it writes and every change of an owner's domains runs under that owner's lock.
-const ownerLock = createKeyedLock();
+// The DNS domains (zones) of the DNS credentials; the writer of npmpro_dns_domain besides a backup restore or merge.
+// Every change of an owner's domains runs under that owner's lock (lib/dns-domain-lock.js).
 
 const credentialMeta = (credential) => ({
 	dns_credential_id: credential.id,
@@ -68,13 +66,18 @@ const planNames = async (credential, inputs, stored, trx) => {
 		.orderBy("npmpro_dns_domain.name");
 	if (taken.length > 0) {
 		const domain = taken.map((row) => row.name).join(", ");
-		const credentials = [...new Set(taken.map((row) => row.credential_name))];
-		const credentialText =
-			credentials.length === 1 ? credentials[0] : `${credentials[0]} and ${credentials.length - 1} more`;
+		const [holder, ...others] = [...new Set(taken.map((row) => row.credential_name))];
+		if (others.length === 0) {
+			throw new errs.ValidationError(
+				`${domain} is already on the DNS credential '${holder}'`,
+				"error.dns-domain-taken",
+				{ values: { domain, credential: holder } },
+			);
+		}
 		throw new errs.ValidationError(
-			`${domain} is already on the DNS credential '${credentialText}'`,
-			"error.dns-domain-taken",
-			{ values: { domain, credential: credentialText } },
+			`${domain} is already on the DNS credential '${holder}' and ${others.length} more`,
+			"error.dns-domain-taken-more",
+			{ values: { domain, credential: holder, count: others.length } },
 		);
 	}
 	return { fresh, kept };
@@ -109,8 +112,8 @@ const internalDnsDomain = {
 		access.can("certificates:view");
 		const rows = listQuery(access);
 		if (typeof query === "string" && query !== "") {
-			const pattern = `%${query.toLowerCase().replace(/[\\%_]/gu, "\\$&")}%`;
-			rows.whereRaw("lower(npmpro_dns_domain.name) like ? escape '\\'", [pattern]);
+			const { sql, bindings } = nameSearch(query);
+			rows.whereRaw(sql, bindings);
 		}
 		if (expand?.includes("credential")) rows.withGraphFetched("credential.owner");
 		return await rows;
@@ -191,7 +194,11 @@ const internalDnsDomain = {
 	delete: async (access, { id }) => {
 		access.can("certificates:manage");
 		const domain = await internalDnsDomain.get(access, { id, expand: ["credential"] });
-		await ownerLock(domain.credential.owner_user_id, () => dnsDomainModel.query().deleteById(id));
+		await ownerLock(domain.credential.owner_user_id, async () => {
+			// the domain may have gone with its credential while this waited for the lock
+			const gone = await dnsDomainModel.query().deleteById(id);
+			if (gone === 0) throw new errs.ItemNotFoundError(id);
+		});
 		await internalAuditLog.add(access, {
 			action: "deleted",
 			object_type: "dns-domain",

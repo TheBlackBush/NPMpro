@@ -6,7 +6,7 @@ const createKeyedLock = () => {
 	const tails = new Map();
 	return (key, fn) => {
 		const name = String(key);
-		const run = (tails.get(name) ?? Promise.resolve()).then(fn);
+		const run = (tails.get(name) ?? Promise.resolve()).then(() => fn());
 		const tail = run.catch(() => {});
 		tails.set(name, tail);
 		void tail.then(() => {

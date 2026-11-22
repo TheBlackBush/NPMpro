@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import knexFactory from "knex";
+import { nameSearch } from "../lib/dns-domain-name.js";
 import { ENGINES, resetEngine } from "./support/servers.js";
 
 const NOW = "2026-11-23 10:00:00";
 
 // 20261123120000_dns_domains on the real database servers: a 253 character name in the unique index, the foreign
-// key, ON DELETE CASCADE and a rerun
+// key, ON DELETE CASCADE, a rerun and the search of GET /nginx/dns-domains?query= (its LIKE escape)
 for (const [name, label] of [
 	["postgres", "Postgres"],
 	["mysql", "MySQL"],
@@ -55,6 +56,38 @@ for (const [name, label] of [
 			);
 			await ctx.knex("npmpro_dns_credential").where({ id: credentialId }).del();
 			assert.equal(Number((await ctx.knex("npmpro_dns_domain").count({ count: "*" }))[0].count), 0);
+		});
+
+		it("searches the names without case, with %, _, ! and a backslash as plain characters", async () => {
+			const [inserted] = await ctx.knex("npmpro_dns_credential").insert(
+				{
+					created_on: NOW,
+					modified_on: NOW,
+					owner_user_id: 1,
+					name: "search",
+					provider: "cloudflare",
+					values: "v1:x",
+				},
+				["id"],
+			);
+			const credentialId = typeof inserted === "object" ? inserted.id : inserted;
+			const names = ["under-score.example", "underxscore.example", "pct.example"];
+			await ctx.knex("npmpro_dns_domain").insert(
+				names.map((domain) => ({
+					created_on: NOW,
+					modified_on: NOW,
+					dns_credential_id: credentialId,
+					name: domain,
+				})),
+			);
+			const search = async (text) => {
+				const { sql, bindings } = nameSearch(text);
+				const rows = await ctx.knex("npmpro_dns_domain").whereRaw(sql, bindings).orderBy("name");
+				return rows.map((row) => row.name);
+			};
+			assert.deepEqual(await search("PCT"), ["pct.example"]);
+			assert.deepEqual(await search("score"), ["under-score.example", "underxscore.example"]);
+			for (const text of ["r_s", "%", "!", "!%", "\\", "under\\"]) assert.deepEqual(await search(text), [], text);
 		});
 	});
 }

@@ -13,6 +13,7 @@ import {
 	swapFiles,
 } from "../lib/backup/restore-files.js";
 import { allowFile, RESTORE_ORDER, TYPES } from "../lib/backup/types.js";
+import { withAllOwnerLocks } from "../lib/dns-domain-lock.js";
 import { isRestartRule, rulesOf } from "../lib/runtime-rules.js";
 import { invalid, isTypeList, unknownMigrations, withoutStage } from "./backup-shared.js";
 
@@ -167,15 +168,17 @@ const createRestore = (
 		const asideDir = await store.createStageDir("restore");
 		try {
 			const data = await loadStageData(auto.stageDir, restoreTypes);
-			const { users } = await replaceTypes({
-				knex,
-				data,
-				types: restoreTypes,
-				adminUserId,
-				box,
-				// the users' sessions stay as they were before the failed restore
-				now: null,
-			});
+			const { users } = await withAllOwnerLocks(knex, () =>
+				replaceTypes({
+					knex,
+					data,
+					types: restoreTypes,
+					adminUserId,
+					box,
+					// the users' sessions stay as they were before the failed restore
+					now: null,
+				}),
+			);
 			await swapStage({ stageDir: auto.stageDir, types, asideDir, adminUserId, users });
 			if (types.includes("certificates")) await relinkCertbotLive({ dataDir, ids: certificateIdsBefore });
 			await applyRestored(restoreTypes);
@@ -226,7 +229,8 @@ const createRestore = (
 		try {
 			wereOnline = customFiles ? await onlineHosts() : null;
 			autoName = await automaticBackup(userId, page);
-			result = await dbStep();
+			// a domain save of any owner waits for the restore or merge, which checks one name per owner on its own
+			result = await withAllOwnerLocks(knex, dbStep);
 		} catch (error) {
 			// the database transaction rolled back, the files are untouched
 			log.error(`The ${what} failed before any change: ${error.message}`);
