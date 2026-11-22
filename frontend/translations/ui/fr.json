@@ -563,6 +563,7 @@
 	"error.dns-domain-one-label": "{domain} n'a qu'un seul label : un domaine DNS ressemble à example.com",
 	"error.dns-domain-other-owner": "Un domaine ne peut passer qu'à un identifiant DNS du même propriétaire",
 	"error.dns-domain-taken": "{domain} figure déjà sur l'identifiant DNS {credential}",
+	"error.dns-domain-taken-more": "{domain} figure déjà sur l'identifiant DNS {credential} et sur {count, plural, one {# autre identifiant DNS} other {# autres identifiants DNS}}",
 	"error.dns-domain-wildcard": "{domain} est un joker : ajoutez example.com, qui couvre *.example.com",
 	"error.forward-host-variable-admin-only": "Seuls les administrateurs peuvent utiliser une variable de requête ($) dans l'hôte de transfert.",
 	"error.invalid-auth": "Adresse e-mail ou mot de passe invalide",

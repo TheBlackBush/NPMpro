@@ -563,6 +563,7 @@
 	"error.dns-domain-one-label": "{domain} ha una sola etichetta: un dominio DNS ha la forma example.com",
 	"error.dns-domain-other-owner": "Un dominio si sposta solo su una credenziale DNS dello stesso proprietario",
 	"error.dns-domain-taken": "{domain} è già nella credenziale DNS {credential}",
+	"error.dns-domain-taken-more": "{domain} è già nella credenziale DNS {credential} e in {count, plural, one {# altra credenziale DNS} other {altre # credenziali DNS}}",
 	"error.dns-domain-wildcard": "{domain} è un carattere jolly: aggiungi example.com, che copre *.example.com",
 	"error.forward-host-variable-admin-only": "Solo gli amministratori possono usare una variabile di richiesta ($) nell'host di inoltro.",
 	"error.invalid-auth": "Email o password non validi",

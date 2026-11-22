@@ -563,6 +563,7 @@
 	"error.dns-domain-one-label": "{domain} heeft één label: een DNS-domein ziet eruit als example.com",
 	"error.dns-domain-other-owner": "Een domein gaat alleen naar DNS-inloggegevens van dezelfde eigenaar",
 	"error.dns-domain-taken": "{domain} staat al op de DNS-inloggegevens {credential}",
+	"error.dns-domain-taken-more": "{domain} staat al op de DNS-inloggegevens {credential} en op {count, plural, one {# andere DNS-inloggegevens} other {# andere DNS-inloggegevens}}",
 	"error.dns-domain-wildcard": "{domain} is een jokerteken: voeg example.com toe, dat *.example.com dekt",
 	"error.forward-host-variable-admin-only": "Alleen beheerders kunnen een aanvraagvariabele ($) gebruiken in de doorstuurhost.",
 	"error.invalid-auth": "Ongeldig e-mail of wachtwoord",

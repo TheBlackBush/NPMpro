@@ -144,7 +144,8 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 	const { data: providers, isPending: providersPending } = useDnsProviders();
 	const { mutateAsync: setDnsCredential } = useSetDnsCredential();
 	const { data: me } = useUser("me");
-	const { data: allDomains } = useDnsDomains(DOMAIN_EXPAND);
+	// fresh on every open: the duplicate marks must not name a domain that went with a deleted credential
+	const { data: allDomains } = useDnsDomains(DOMAIN_EXPAND, { refetchOnMount: "always" });
 	const [errorMsg, setErrorMsg] = useState(null);
 
 	const isNew = id === "new";

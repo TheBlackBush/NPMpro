@@ -563,6 +563,7 @@
 	"error.dns-domain-one-label": "{domain} has one label: a DNS domain looks like example.com",
 	"error.dns-domain-other-owner": "A domain moves only to a DNS credential of the same owner",
 	"error.dns-domain-taken": "{domain} is already on the DNS credential {credential}",
+	"error.dns-domain-taken-more": "{domain} is already on the DNS credential {credential} and on {count, plural, one {# other DNS credential} other {# other DNS credentials}}",
 	"error.dns-domain-wildcard": "{domain} is a wildcard: add example.com, which covers *.example.com",
 	"error.forward-host-variable-admin-only": "Only administrators can use a request variable ($) in the forward host.",
 	"error.invalid-auth": "Invalid email or password",

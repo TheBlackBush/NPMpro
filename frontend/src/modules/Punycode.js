@@ -1,5 +1,6 @@
-// A small RFC 3492 decoder, so the Domain fields judge an xn-- label the way the backend does (it round-trips the
-// label through domainToUnicode, which browsers do not have). Pure.
+// A small RFC 3492 decoder, so the Domain fields judge an xn-- label the way the backend does: the backend round-trips
+// the label through domainToUnicode, which browsers do not have; here the decoded label goes back through the
+// browser's own URL rules (UTS 46, as Node's). Pure.
 
 const BASE = 36;
 const T_MIN = 1;
@@ -11,7 +12,6 @@ const INITIAL_N = 128;
 const MAX_CODE_POINT = 0x10ffff;
 const MAX_PAYLOAD = 59;
 const ASCII_END = 0x7f;
-const LETTERS_NUMBERS_MARKS = /^[\p{L}\p{M}\p{N}]$/u;
 
 const digitOf = (code) => {
 	if (code >= 0x30 && code <= 0x39) return code - 0x16;
@@ -69,16 +69,23 @@ export function decodePunycode(payload) {
 	return String.fromCodePoint(...output);
 }
 
+/** @returns {string}  the host as a browser stores it (lower case, punycode), "" when the URL rules refuse it */
+export function toAscii(name) {
+	try {
+		return new URL(`http://${name}`).hostname;
+	} catch {
+		return "";
+	}
+}
+
 /**
  * @param   {string} label  one lower case label
- * @returns {boolean}  whether an xn-- label decodes to a real IDN label (letters, marks and numbers beyond ASCII)
+ * @returns {boolean}  whether an xn-- label is the stored form of a real IDN label: it decodes to text beyond ASCII
+ *                     that the URL rules turn back into the same label (emoji and symbols included, as the backend)
  */
 export function isValidAceLabel(label) {
 	const decoded = decodePunycode(label.slice("xn--".length));
-	if (decoded === null) return false;
-	const chars = [...decoded];
 	return (
-		chars.some((char) => char.codePointAt(0) > ASCII_END) &&
-		chars.every((char) => char.codePointAt(0) <= ASCII_END || LETTERS_NUMBERS_MARKS.test(char))
+		decoded !== null && [...decoded].some((char) => char.codePointAt(0) > ASCII_END) && toAscii(decoded) === label
 	);
 }

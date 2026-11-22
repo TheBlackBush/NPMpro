@@ -563,6 +563,7 @@
 	"error.dns-domain-one-label": "{domain} はラベルが 1 つだけです。DNS ドメインは example.com の形式です",
 	"error.dns-domain-other-owner": "ドメインは同じ所有者の DNS 認証情報にのみ移動できます",
 	"error.dns-domain-taken": "{domain} は DNS 認証情報 {credential} にすでにあります",
+	"error.dns-domain-taken-more": "{domain} は DNS 認証情報 {credential} とほかの {count, plural, other {# 件の DNS 認証情報}}にすでにあります",
 	"error.dns-domain-wildcard": "{domain} はワイルドカードです。*.example.com を含む example.com を追加してください",
 	"error.forward-host-variable-admin-only": "転送先ホストにリクエスト変数 ($) を使用できるのは管理者のみです。",
 	"error.invalid-auth": "無効なemailまたはパスワード",

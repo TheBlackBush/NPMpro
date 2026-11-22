@@ -1,7 +1,7 @@
 // The rules of the DNS domain fields (Add domains, the DNS credential window's Domains line). normalizeDnsDomain is
 // the twin of backend/lib/dns-domain-name.js: both tests run backend/test/fixtures/dns-domain-cases.json. Pure.
 
-import { decodePunycode, isValidAceLabel } from "./Punycode.js";
+import { decodePunycode, isValidAceLabel, toAscii } from "./Punycode.js";
 
 const MAX_NAME = 253;
 const LABEL = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/u;
@@ -9,15 +9,6 @@ const TRAILING_DOT = /\.$/u;
 const NOT_IN_A_NAME = /[\s/\\?#@:%[\]]/u;
 const IPV4 = /^\d{1,3}(?:\.\d{1,3}){3}$/u;
 const INVALID = Object.freeze({ error: "error.dns-domain-invalid" });
-
-/** @returns {string}  the host as a browser stores it (lower case, punycode), "" when the URL rules refuse it */
-export function toAscii(name) {
-	try {
-		return new URL(`http://${name}`).hostname;
-	} catch {
-		return "";
-	}
-}
 
 /**
  * @param   {unknown} input

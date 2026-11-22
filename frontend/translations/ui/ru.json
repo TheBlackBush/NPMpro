@@ -563,6 +563,7 @@
 	"error.dns-domain-one-label": "У {domain} одна метка: DNS-домен выглядит как example.com",
 	"error.dns-domain-other-owner": "Домен можно перенести только на учётные данные DNS того же владельца",
 	"error.dns-domain-taken": "{domain} уже есть в учётных данных DNS {credential}",
+	"error.dns-domain-taken-more": "{domain} уже есть в учётных данных DNS {credential} и ещё в {count, plural, one {# других учётных данных DNS} few {# других учётных данных DNS} many {# других учётных данных DNS} other {# других учётных данных DNS}}",
 	"error.dns-domain-wildcard": "{domain} это шаблон: добавьте example.com, он охватывает *.example.com",
 	"error.forward-host-variable-admin-only": "Только администраторы могут использовать переменную запроса ($) в хосте пересылки.",
 	"error.invalid-auth": "Неверный адрес эл. почты или пароль",

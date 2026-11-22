@@ -563,6 +563,7 @@
 	"error.dns-domain-one-label": "{domain}에는 레이블이 하나뿐입니다. DNS 도메인은 example.com 형식입니다",
 	"error.dns-domain-other-owner": "도메인은 같은 소유자의 DNS 자격 증명으로만 옮길 수 있습니다",
 	"error.dns-domain-taken": "{domain}은(는) 이미 DNS 자격 증명 {credential}에 있습니다",
+	"error.dns-domain-taken-more": "{domain}은(는) 이미 DNS 자격 증명 {credential} 및 다른 DNS 자격 증명 {count, plural, other {#개}}에 있습니다",
 	"error.dns-domain-wildcard": "{domain}은(는) 와일드카드입니다. *.example.com을 포함하는 example.com을 추가하세요",
 	"error.forward-host-variable-admin-only": "전달 호스트에 요청 변수($)를 사용할 수 있는 사람은 관리자뿐입니다.",
 	"error.invalid-auth": "이메일 또는 비밀번호가 잘못되었습니다.",

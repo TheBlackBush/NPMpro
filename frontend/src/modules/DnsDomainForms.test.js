@@ -1,14 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
-import {
-	displayDomain,
-	dnsDomainNamesRule,
-	normalizeDnsDomain,
-	storedForm,
-	takenNames,
-	toAscii,
-} from "./DnsDomainForms.js";
+import { displayDomain, dnsDomainNamesRule, normalizeDnsDomain, storedForm, takenNames } from "./DnsDomainForms.js";
+import { toAscii } from "./Punycode.js";
 
 const CASES = JSON.parse(
 	readFileSync(new URL("../../../backend/test/fixtures/dns-domain-cases.json", import.meta.url), "utf8"),
@@ -77,6 +71,10 @@ it("never refuses a stored name, names every taken name and keeps each name once
 		"xn--bcher-kva.de",
 		"bad name",
 	]);
+});
+
+it("shows a stored name in Unicode as the backend's domainToUnicode does (shared cases)", () => {
+	for (const [name, shown] of CASES.display) assert.equal(displayDomain(name), shown, name);
 });
 
 it("shows a stored name in Unicode and leaves every other name as it is", () => {

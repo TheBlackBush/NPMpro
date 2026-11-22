@@ -13,7 +13,7 @@ import {
 } from "src/modules/CertificateTabs";
 
 const TAB =
-	"relative inline-flex h-9 shrink-0 items-center whitespace-nowrap gap-2 px-3 text-sm font-medium text-muted-foreground hover:text-foreground";
+	"relative inline-flex h-9 shrink-0 items-center whitespace-nowrap gap-2 px-3 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:-outline-offset-2";
 const TAB_ACTIVE = "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-primary";
 
 /**
@@ -24,14 +24,6 @@ const TAB_ACTIVE = "text-foreground after:absolute after:inset-x-3 after:bottom-
 export function CertificateTabs() {
 	const { pathname } = useLocation();
 	const active = certificateTab(pathname);
-	const strip = useRef(null);
-	// on a phone the strip scrolls sideways: bring the open tab, with its badge, into view (after a render, since the badges arrive late)
-	useEffect(() => {
-		const open = strip.current?.querySelector("[aria-current]");
-		if (!(strip.current && open)) return;
-		const edge = open.offsetLeft + open.offsetWidth - strip.current.clientWidth;
-		if (edge > strip.current.scrollLeft) strip.current.scrollLeft = edge;
-	});
 	const certificates = useCertificates(CERTIFICATE_LIST_EXPAND);
 	const dnsCredentials = useDnsCredentials(DNS_CREDENTIAL_LIST_EXPAND);
 	const dnsDomains = useDnsDomains(DNS_DOMAIN_LIST_EXPAND);
@@ -40,6 +32,14 @@ export function CertificateTabs() {
 		"dns-credentials": dnsCredentials.data?.length,
 		domains: dnsDomains.data?.length,
 	};
+	const strip = useRef(null);
+	// on a phone the strip scrolls sideways: bring the open tab, with its badge, into view when the tab changes or a
+	// badge arrives (it widens the tab), never on another render, so a strip the user scrolled stays where it is
+	const badges = Object.values(counts).join(",");
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the open tab and the badges are the trigger
+	useEffect(() => {
+		strip.current?.querySelector("[aria-current]")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+	}, [active, badges]);
 
 	return (
 		<nav

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { decodePunycode, isValidAceLabel } from "./Punycode.js";
+import { decodePunycode, isValidAceLabel, toAscii } from "./Punycode.js";
 
 it("decodes a punycode payload", () => {
 	assert.equal(decodePunycode("bcher-kva"), "bücher");
@@ -25,5 +25,17 @@ it("accepts an xn-- label of a real IDN and refuses the others", () => {
 	assert.equal(isValidAceLabel("xn--"), false);
 	assert.equal(isValidAceLabel(`xn--${"a".repeat(60)}`), false);
 	assert.equal(isValidAceLabel("xn--abc-"), false);
-	assert.equal(isValidAceLabel("xn--n3h"), false);
+	// symbols and emoji are IDN labels too, as the backend's domainToUnicode round trip has them
+	assert.equal(isValidAceLabel("xn--n3h"), true);
+	assert.equal(isValidAceLabel("xn--i-7iq"), true);
+	assert.equal(isValidAceLabel("xn--e28h"), true);
+	// joiners and a label the URL rules write another way are not
+	assert.equal(isValidAceLabel("xn--0ug"), false);
+	assert.equal(isValidAceLabel("xn--1ug"), false);
+	assert.equal(isValidAceLabel("xn--ab-m1t"), false);
+});
+
+it("turns a host into the form a browser stores", () => {
+	assert.equal(toAscii("Bücher.DE"), "xn--bcher-kva.de");
+	assert.equal(toAscii("a b"), "");
 });

@@ -563,6 +563,7 @@
 	"error.dns-domain-one-label": "У {domain} одна мітка: DNS-домен виглядає як example.com",
 	"error.dns-domain-other-owner": "Домен можна перенести лише на облікові дані DNS того самого власника",
 	"error.dns-domain-taken": "{domain} уже є в облікових даних DNS {credential}",
+	"error.dns-domain-taken-more": "{domain} уже є в облікових даних DNS {credential} і ще в {count, plural, one {# інших облікових даних DNS} few {# інших облікових даних DNS} many {# інших облікових даних DNS} other {# інших облікових даних DNS}}",
 	"error.dns-domain-wildcard": "{domain} це шаблон: додайте example.com, він охоплює *.example.com",
 	"error.forward-host-variable-admin-only": "Лише адміністратори можуть використовувати змінну запиту ($) у хості пересилання.",
 	"error.invalid-auth": "Невірна адреса ел. пошти або пароль",

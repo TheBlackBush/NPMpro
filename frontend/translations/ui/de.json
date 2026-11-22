@@ -563,6 +563,7 @@
 	"error.dns-domain-one-label": "{domain} hat nur ein Label: eine DNS-Domain sieht aus wie example.com",
 	"error.dns-domain-other-owner": "Eine Domain kann nur zu DNS-Zugangsdaten desselben Besitzers verschoben werden",
 	"error.dns-domain-taken": "{domain} ist bereits bei den DNS-Zugangsdaten {credential}",
+	"error.dns-domain-taken-more": "{domain} ist bereits bei den DNS-Zugangsdaten {credential} und {count, plural, one {# weiteren DNS-Zugangsdaten} other {# weiteren DNS-Zugangsdaten}}",
 	"error.dns-domain-wildcard": "{domain} ist ein Platzhalter: fügen Sie example.com hinzu, das *.example.com abdeckt",
 	"error.forward-host-variable-admin-only": "Nur Administratoren können eine Anfragevariable ($) im Weiterleitungshost verwenden.",
 	"error.invalid-auth": "Ungültige E-Mail-Adresse oder Passwort",

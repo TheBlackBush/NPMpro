@@ -563,6 +563,7 @@
 	"error.dns-domain-one-label": "{domain} tiene una sola etiqueta: un dominio DNS tiene la forma example.com",
 	"error.dns-domain-other-owner": "Un dominio solo se mueve a una credencial DNS del mismo propietario",
 	"error.dns-domain-taken": "{domain} ya está en la credencial DNS {credential}",
+	"error.dns-domain-taken-more": "{domain} ya está en la credencial DNS {credential} y en {count, plural, one {# credencial DNS más} other {# credenciales DNS más}}",
 	"error.dns-domain-wildcard": "{domain} es un comodín: añada example.com, que cubre *.example.com",
 	"error.forward-host-variable-admin-only": "Solo los administradores pueden usar una variable de solicitud ($) en el host de reenvío.",
 	"error.invalid-auth": "Correo electrónico o contraseña no válidos",

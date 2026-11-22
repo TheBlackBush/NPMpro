@@ -6,6 +6,7 @@ import { DOMAIN_KEYS, useDnsDomains, useListFilters, usePaging } from "src/hooks
 import { T } from "src/locale";
 import { showDeleteConfirmModal, showDnsDomainModal, showDnsDomainsModal } from "src/modals";
 import { DNS_DOMAIN_LIST_EXPAND } from "src/modules/CertificateTabs";
+import { displayDomain } from "src/modules/DnsDomainForms";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { showObjectSuccess } from "src/notifications";
@@ -20,7 +21,13 @@ export default function TableWrapper() {
 	const { isFetching, isPending, isError, error, data } = useDnsDomains(DNS_DOMAIN_LIST_EXPAND);
 
 	const needle = filters.q.trim().toLowerCase();
-	const displayed = (data ?? []).filter((item) => needle === "" || item.name.toLowerCase().includes(needle));
+	// the rows show the Unicode form: a search finds a name in either form
+	const displayed = (data ?? []).filter(
+		(item) =>
+			needle === "" ||
+			item.name.toLowerCase().includes(needle) ||
+			displayDomain(item.name).toLowerCase().includes(needle),
+	);
 	const isFiltered = activeFilterCount(filters, []) > 0 && Boolean(data?.length);
 	// a search or a new sort starts on the first page
 	const paging = usePaging({
