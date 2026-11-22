@@ -384,6 +384,52 @@ async function certificateAuthority({ admin }) {
 	}
 }
 
+// The Edit window of an ACME certificate's domain names. Issuing is not part of the flows, so it runs on a Let's Encrypt
+// certificate the instance already has with a host that uses it (the live check has one) and otherwise says so and
+// skips. Nothing is saved: the window opens with the names, dropping a name a host uses shows the uncovered warning,
+// and Cancel then the discard question leaves the certificate as it was.
+async function editCertificateDomains({ admin }) {
+	const { page, api } = admin;
+	const expand = ["proxy_hosts", "redirection_hosts", "dead_hosts"].join(",");
+	const rows = await api("GET", `/nginx/certificates?expand=${expand}`);
+	const hostNames = (row) =>
+		[row.proxy_hosts, row.redirection_hosts, row.dead_hosts].flatMap((hosts) =>
+			(hosts ?? []).flatMap((host) => host.domain_names),
+		);
+	const certificate = rows.find((row) => row.provider === "letsencrypt" && hostNames(row).length > 0);
+	if (!certificate) {
+		console.log("edit certificate domains: no ACME certificate with a host, skipped");
+		return;
+	}
+	const used = hostNames(certificate).find((host) => certificate.domain_names.includes(host));
+	if (!used) {
+		console.log("edit certificate domains: no host name equal to a certificate name, skipped");
+		return;
+	}
+	const name = certificate.nice_name || certificate.domain_names[0];
+	await page.goto("/certificates");
+	await rowAction(page, name, "Edit");
+	await windowTitled(page, "Edit Domain Names");
+	const dialog = page.locator("[role=dialog][data-edit-domains]");
+	await dialog.waitFor();
+	const chips = dialog.locator("[data-slot=combobox-chips]");
+	for (const domain of certificate.domain_names) {
+		// biome-ignore lint/performance/noAwaitInLoops: each name is looked for in turn
+		await chips.getByText(domain, { exact: true }).waitFor();
+	}
+	if ((await dialog.locator("[data-uncovered-hosts]").count()) !== 0)
+		throw new Error("the warning shows before a change");
+	await dialog.getByRole("button", { name: `Remove ${used}`, exact: true }).click();
+	await dialog.locator("[data-uncovered-hosts]").waitFor();
+	await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+	await page.getByRole("alertdialog").getByRole("button", { name: "Discard changes", exact: true }).click();
+	await windowClosed(page);
+	const stored = await api("GET", `/nginx/certificates/${certificate.id}`);
+	if (JSON.stringify(stored.domain_names) !== JSON.stringify(certificate.domain_names)) {
+		throw new Error(`the names changed: ${JSON.stringify(stored.domain_names)}`);
+	}
+}
+
 export const windowFlows = [
 	{ name: "proxy location and access list", run: proxyLocationAccess },
 	{ name: "proxy host pages", run: proxyHostPages },
@@ -392,4 +438,5 @@ export const windowFlows = [
 	{ name: "unsaved changes", run: unsavedChangesOfAllWindows },
 	{ name: "close without errors", run: closeWithoutErrors },
 	{ name: "certificate authority", run: certificateAuthority },
+	{ name: "edit certificate domains", run: editCertificateDomains },
 ];
