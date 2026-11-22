@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { global as logger } from "../../logger.js";
+import { normalizeDomainName } from "../dns-domain-name.js";
 import { withValidPages } from "../landing-pages/backup-rows.js";
 import { BackupError } from "./format.js";
 import { applyReferences, planReferences, splitOrphanDomains } from "./references.js";
@@ -39,6 +40,7 @@ const REFERENCE_COLUMNS = [
 	"location_id",
 	"access_list_id",
 ];
+const DOMAIN_SOURCES = new Set(["typed", "fetched"]);
 const NO_SEQUENCE = new Set(["setting", "npmpro_proxy_host_access_list"]);
 const SECRET_TYPES = new Set([
 	"certificates",
@@ -116,6 +118,13 @@ const checkTypeData = (typeId, parsed) => {
 		if (!(Array.isArray(rows) && rows.every(isPlainObject)))
 			throw invalid(`data/${typeId}.json: ${table} is invalid`);
 		out[table] = rows;
+	}
+	// the stored form of a domain, as a merge checks it (import-checks.js); a domain of a credential the backup lacks is
+	// not refused here, it is dropped with a note
+	for (const row of out.npmpro_dns_domain ?? []) {
+		if (normalizeDomainName(row.name).name !== row.name || !DOMAIN_SOURCES.has(row.source)) {
+			throw invalid(`data/${typeId}.json: npmpro_dns_domain has an invalid row`);
+		}
 	}
 	const main = ITEM_TYPES[typeId]?.table;
 	for (const row of main ? out[main] : []) {

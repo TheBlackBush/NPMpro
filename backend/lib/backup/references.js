@@ -174,7 +174,7 @@ const planReferences = ({ finalRows, adminUserId }) => {
 	const keeper = new Map();
 	for (const row of [...kept].sort((a, b) => byId(a.dns_credential_id, b.dns_credential_id) || byId(a.id, b.id))) {
 		const owner = key(ownerOfCredential.get(key(row.dns_credential_id)));
-		const holder = `${owner}\u0000${row.name}`;
+		const holder = `${owner}\u0000${nameKey(row.name)}`;
 		if (keeper.has(holder)) {
 			changes.push(
 				domainChange(row, `DNS domain ${row.name}: the owner keeps it on DNS credential ${keeper.get(holder)}`),

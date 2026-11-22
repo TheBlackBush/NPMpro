@@ -4,6 +4,7 @@ import knexFactory from "knex";
 import { checkPageImport } from "../lib/backup/import-checks.js";
 import { mergeTypes } from "../lib/backup/merge-db.js";
 import { planMerge, readInstanceRows } from "../lib/backup/merge-plan.js";
+import { planReferences } from "../lib/backup/references.js";
 import { previewReplace, replaceTypes } from "../lib/backup/restore-db.js";
 import { selectRows } from "../lib/backup/select.js";
 import { TYPES } from "../lib/backup/types.js";
@@ -138,11 +139,11 @@ it("a merge adds a credential with its domains and skips a name the owner keeps"
 		await knex("npmpro_dns_domain").insert(domain(1, 1, "keep.example"));
 		const data = credentialsData(
 			[credential(3, 1, "Imported")],
-			[domain(5, 3, "KEEP.example"), domain(6, 3, "new.example", { source: "fetched" })],
+			[domain(5, 3, "keep.example"), domain(6, 3, "new.example", { source: "fetched" })],
 		);
 		const result = await merge(knex, { data, choices: { "dns_credentials:3": "add" } });
 		const added = result.maps.npmpro_dns_credential.get("3");
-		assert.deepEqual(result.skipped_domains, [{ name: "KEEP.example", credential: "Imported" }]);
+		assert.deepEqual(result.skipped_domains, [{ name: "keep.example", credential: "Imported" }]);
 		const rows = await knex("npmpro_dns_domain").where({ dns_credential_id: added });
 		assert.deepEqual(
 			rows.map((row) => [row.name, row.source]),
@@ -158,8 +159,7 @@ it("a merge onto an existing credential adds no domain", async () => {
 	try {
 		await knex("npmpro_dns_credential").insert({ id: 1, owner_user_id: 1, name: "Cloudflare", values: "v1:{}" });
 		const data = credentialsData([credential(3, 1, "Cloudflare")], [domain(5, 3, "new.example")]);
-		const items = undefined;
-		const result = await merge(knex, { data, items, choices: { "dns_credentials:3": "existing" } });
+		const result = await merge(knex, { data, choices: { "dns_credentials:3": "existing" } });
 		assert.equal(result.maps.npmpro_dns_credential.get("3"), 1);
 		assert.deepEqual(result.skipped_domains, []);
 		assert.equal((await knex("npmpro_dns_domain")).length, 0);
@@ -190,4 +190,60 @@ it("the import check refuses a domain row that is not in its stored form", async
 	} finally {
 		await knex.destroy();
 	}
+});
+
+it("a backup made before DNS domains has no domain table: a replace restore treats it as empty", async () => {
+	const knex = await open();
+	try {
+		await knex("npmpro_dns_credential").insert({ id: 1, owner_user_id: 1, name: "Old", values: "v1:{}" });
+		await knex("npmpro_dns_domain").insert(domain(1, 1, "kept-until-restore.example"));
+		const data = { dns_credentials: { npmpro_dns_credential: [credential(1, 1, "From backup")] } };
+		const result = await replaceTypes({ knex, data, types: ["dns_credentials"], adminUserId: 1, box, now: NOW });
+		assert.deepEqual(result.references, []);
+		assert.deepEqual(await knex("npmpro_dns_credential").pluck("name"), ["From backup"]);
+		assert.equal((await knex("npmpro_dns_domain")).length, 0);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a backup made before DNS domains has no domain table: a merge adds the credential without domains", async () => {
+	const knex = await open();
+	try {
+		const data = { dns_credentials: { npmpro_dns_credential: [credential(3, 1, "Imported")] } };
+		const result = await merge(knex, { data, choices: { "dns_credentials:3": "add" } });
+		assert.ok(result.maps.npmpro_dns_credential.get("3"));
+		assert.deepEqual(result.skipped_domains, []);
+		assert.equal((await knex("npmpro_dns_domain")).length, 0);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a replace restore refuses a domain row that is not in its stored form", async () => {
+	const knex = await open();
+	try {
+		for (const bad of [domain(1, 1, "Example.COM"), domain(1, 1, "a.example", { source: "x" })]) {
+			const data = credentialsData([credential(1, 1, "cf")], [bad]);
+			await assert.rejects(
+				replaceTypes({ knex, data, types: ["dns_credentials"], adminUserId: 1, box, now: NOW }),
+				{ code: "invalid-archive" },
+			);
+		}
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a replace restore keeps one name once per owner whatever its case", () => {
+	const finalRows = {
+		user: [{ id: 1 }],
+		npmpro_dns_credential: [credential(1, 1, "a"), credential(2, 1, "b")],
+		npmpro_dns_domain: [domain(1, 1, "x.example"), domain(2, 2, "X.example")],
+	};
+	const changes = planReferences({ finalRows, adminUserId: 1 });
+	assert.deepEqual(
+		changes.map((change) => [change.table, change.id, change.remove]),
+		[["npmpro_dns_domain", 2, true]],
+	);
 });

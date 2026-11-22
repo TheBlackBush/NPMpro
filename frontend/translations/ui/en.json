@@ -1189,6 +1189,8 @@
 	"settings.backup.merge.set-all-for": "Set all {type}",
 	"settings.backup.merge.show-all": "Show all changes",
 	"settings.backup.merge.show-more": "Show {count, plural, one {# more {one}} other {# more {type}}}",
+	"settings.backup.merge.skipped-domain": "{name}: kept out of {credential}",
+	"settings.backup.merge.skipped-domains": "DNS domains not added, their owner keeps the name already ({count})",
 	"settings.backup.merge.summary": "{shown} of {total} shown · {changed} changed from the default",
 	"settings.backup.merge.warning": "Nothing is deleted. Replaced items are overwritten. An automatic backup is made first.",
 	"settings.backup.mode": "Restore mode",
