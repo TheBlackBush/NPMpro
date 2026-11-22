@@ -48,10 +48,10 @@ it("offers wildcards only when permitted", () => {
 		values(domainSuggestions({ ...base, query: "ap" })).some((v) => v.startsWith("*")),
 		false,
 	);
-	const out = domainSuggestions({ ...base, query: "ap", wildcards: true });
+	const out = domainSuggestions({ ...base, query: "exam", wildcards: true });
 	assert.deepEqual(
 		values(out).filter((v) => v.startsWith("*")),
-		["*.example.com", "*.other.org"],
+		["*.example.com"],
 	);
 	assert.deepEqual(out.find((entry) => entry.value === "*.example.com").detail.kind, "wildcard");
 	assert.deepEqual(values(domainSuggestions({ ...base, query: "*", wildcards: true })), [
@@ -59,6 +59,16 @@ it("offers wildcards only when permitted", () => {
 		"*.other.org",
 	]);
 	assert.deepEqual(values(domainSuggestions({ ...base, query: "*", wildcards: false })), []);
+});
+
+it("lists wildcards only for a query that starts with a star or names part of a zone", () => {
+	const wild = (query) =>
+		values(domainSuggestions({ ...base, query, wildcards: true })).filter((v) => v.startsWith("*"));
+	assert.deepEqual(wild("ap"), []);
+	assert.deepEqual(wild("lc"), []);
+	assert.deepEqual(wild("exam"), ["*.example.com"]);
+	assert.deepEqual(wild("*"), ["*.example.com", "*.other.org"]);
+	assert.deepEqual(wild("*.oth"), ["*.other.org"]);
 });
 
 it("leaves out names the field holds (any case) and names the field refuses", () => {
@@ -77,6 +87,8 @@ it("offers at most eight of each group", () => {
 	const names = Array.from({ length: 12 }, (_, i) => ({ name: `ap${i}.used.test`, source: "proxy_host" }));
 	const out = domainSuggestions({ query: "ap", zones, names, values: [], wildcards: true });
 	assert.equal(out.filter((entry) => entry.groupLabelId === "domain-names.group.zones").length, 8);
+	const wild = domainSuggestions({ query: "*", zones, names, values: [], wildcards: true });
+	assert.equal(wild.filter((entry) => entry.groupLabelId === "domain-names.group.zones").length, 8);
 	assert.equal(out.filter((entry) => entry.groupLabelId === "domain-names.group.used").length, 8);
 });
 

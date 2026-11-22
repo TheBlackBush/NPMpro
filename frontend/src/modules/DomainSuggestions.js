@@ -65,7 +65,9 @@ export function domainSuggestions({ query, zones, names, values, wildcards = fal
 	if (wildcards) {
 		for (const [zoneName, zone] of byZone) {
 			const value = `*.${zoneName}`;
-			if (dot === -1 || value.includes(text) || (head === "*" && zoneName.startsWith(tail))) {
+			// a dot-free query lists wildcards only when it starts with "*" or is part of the zone name
+			const typedPart = dot === -1 && (text === "*" || zoneName.includes(text));
+			if (typedPart || (dot !== -1 && (value.includes(text) || (head === "*" && zoneName.startsWith(tail))))) {
 				add(zoneEntries, value, ZONES, { kind: "wildcard", credentialName: zone.credentialName });
 			}
 		}

@@ -5,7 +5,9 @@ import { NoticeAlert } from "../NoticeAlert";
 
 const list = (items) => intl.formatList(items, { type: "conjunction" });
 // domain names are shown as people write them; credential names are shown as they are
-const domains = (names) => list(names.map(displayDomain));
+// a name never breaks inside (at a hyphen): the text wraps between names; a name wider than the box breaks anywhere
+const Name = ({ name }) => <span className="inline-block max-w-full wrap-anywhere">{displayDomain(name)}</span>;
+const domains = (names) => list(names.map((name) => <Name key={name} name={name} />));
 
 function noteText(note) {
 	switch (note.kind) {
@@ -42,12 +44,14 @@ function noteText(note) {
 				{ id: "certificates.dns.spread" },
 				{
 					groups: list(
-						note.groups.map((group) =>
-							intl.formatMessage(
-								{ id: "certificates.dns.spread-group" },
-								{ names: domains(group.names), credential: group.credentialName },
-							),
-						),
+						note.groups.map((group) => (
+							<span key={group.credentialName}>
+								{intl.formatMessage(
+									{ id: "certificates.dns.spread-group" },
+									{ names: domains(group.names), credential: group.credentialName },
+								)}
+							</span>
+						)),
 					),
 				},
 			);

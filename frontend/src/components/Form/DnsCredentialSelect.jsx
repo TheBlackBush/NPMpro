@@ -17,9 +17,10 @@ import { FormField } from "./FormField";
  *                                      "name (provider)" and "+" opens the window without a preset provider
  * @param {number} [props.ownerUserId]  only this owner's credentials
  * @param {*}      [props.hint]
+ * @param {*}      [props.below]    shown right under the select, above the hint
  * @param {Function} [props.onUserChange]  called when the user picks a credential (or saves a new one here)
  */
-export function DnsCredentialSelect({ name, provider, ownerUserId, hint, onUserChange }) {
+export function DnsCredentialSelect({ name, provider, ownerUserId, hint, below, onUserChange }) {
 	const { field, fieldState } = useController({ name });
 	const error = fieldState.error?.message ?? null;
 	const { data, isPending } = useDnsCredentials();
@@ -40,42 +41,45 @@ export function DnsCredentialSelect({ name, provider, ownerUserId, hint, onUserC
 	return (
 		<FormField id="dnsCredential" label={<T id="dns-credentials.select" />} required hint={hint} error={error}>
 			{(control) => (
-				<div className="flex gap-2">
-					<div className="min-w-0 flex-1">
-						<Combobox
-							{...control}
-							ref={field.ref}
-							name={name}
-							loading={isPending}
-							onBlur={field.onBlur}
-							placeholder={intl.formatMessage({
-								id: options.length ? "dns-credentials.select" : "dns-credentials.none-for-provider",
-							})}
-							options={options}
-							value={options.some((o) => o.value === field.value) ? field.value : null}
-							onChange={(value) => {
-								onUserChange?.();
-								field.onChange(value ?? undefined);
-							}}
-						/>
-					</div>
-					<Button
-						size="icon"
-						aria-label={addLabel}
-						title={intl.formatMessage({ id: "tooltip.dns-credential-add" })}
-						onClick={() =>
-							showDnsCredentialModal("new", {
-								provider,
-								onSaved: (row) => {
+				<>
+					<div className="flex gap-2">
+						<div className="min-w-0 flex-1">
+							<Combobox
+								{...control}
+								ref={field.ref}
+								name={name}
+								loading={isPending}
+								onBlur={field.onBlur}
+								placeholder={intl.formatMessage({
+									id: options.length ? "dns-credentials.select" : "dns-credentials.none-for-provider",
+								})}
+								options={options}
+								value={options.some((o) => o.value === field.value) ? field.value : null}
+								onChange={(value) => {
 									onUserChange?.();
-									field.onChange(row.id);
-								},
-							})
-						}
-					>
-						<PlusIcon aria-hidden="true" />
-					</Button>
-				</div>
+									field.onChange(value ?? undefined);
+								}}
+							/>
+						</div>
+						<Button
+							size="icon"
+							aria-label={addLabel}
+							title={intl.formatMessage({ id: "tooltip.dns-credential-add" })}
+							onClick={() =>
+								showDnsCredentialModal("new", {
+									provider,
+									onSaved: (row) => {
+										onUserChange?.();
+										field.onChange(row.id);
+									},
+								})
+							}
+						>
+							<PlusIcon aria-hidden="true" />
+						</Button>
+					</div>
+					{below}
+				</>
 			)}
 		</FormField>
 	);
