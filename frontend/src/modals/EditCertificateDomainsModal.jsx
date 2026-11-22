@@ -17,7 +17,7 @@ import {
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
-import { uncoveredHosts } from "src/modules/CertificateDomains";
+import { sameNames, uncoveredHosts, uncoveredNames } from "src/modules/CertificateDomains";
 import { acmeDomainsValidate } from "src/modules/CertificateForms";
 import EasyModal from "src/modules/easyModal";
 import { sectionAccent } from "src/modules/SectionAccents";
@@ -44,17 +44,18 @@ const EditCertificateDomainsModal = EasyModal.create(({ certificate, visible, re
 	const { isSubmitting } = methods.formState;
 	const names = useWatch({ control: methods.control, name: "domainNames" });
 	const uncovered = uncoveredHosts(names ?? [], certificate);
+	const unchanged = sameNames(names ?? [], certificate.domainNames);
 
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
 		try {
 			await setCertificateDomains(certificate.id, values.domainNames);
 			showObjectSuccess("certificate", "updated");
-			remove();
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: ["certificates"] }),
 				queryClient.invalidateQueries({ queryKey: ["certificate", certificate.id] }),
 			]);
+			remove();
 		} catch (err) {
 			// the window stays open: a failed request leaves the certificate and its hosts as they were
 			setErrorMsg(<ApiErrorContent error={err} />);
@@ -84,7 +85,7 @@ const EditCertificateDomainsModal = EasyModal.create(({ certificate, visible, re
 							<NoticeAlert className="mt-3">
 								<T
 									id="certificate.edit-domains.uncovered"
-									data={{ hosts: uncovered.map((host) => host.domains.join(", ")).join("; ") }}
+									data={{ names: uncoveredNames(uncovered).join(", ") }}
 								/>
 							</NoticeAlert>
 						</div>
@@ -95,7 +96,7 @@ const EditCertificateDomainsModal = EasyModal.create(({ certificate, visible, re
 					<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 						<T id="cancel" />
 					</Button>
-					<FormSubmit isLoading={isSubmitting} disabled={isSubmitting}>
+					<FormSubmit isLoading={isSubmitting} disabled={isSubmitting || unchanged}>
 						<T id="save" />
 					</FormSubmit>
 				</AppModal.Footer>

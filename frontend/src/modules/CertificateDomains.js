@@ -1,6 +1,34 @@
 // Which hosts a changed list of certificate names leaves uncovered. Pure, so node --test checks it without a DOM.
 
 /**
+ * The ASCII (punycode, lower case) form of a name, so a Unicode name and its punycode form compare equal; a name the
+ * URL parser refuses is compared as typed. A wildcard keeps its `*.`.
+ */
+export function asciiName(name) {
+	const wildcard = name.startsWith("*.");
+	const rest = wildcard ? name.slice(2) : name;
+	let ascii = rest.toLowerCase();
+	try {
+		ascii = new URL(`http://${rest}`).hostname;
+	} catch {
+		// compared as typed
+	}
+	return wildcard ? `*.${ascii}` : ascii;
+}
+
+/**
+ * Whether the two lists hold the same names: as sets, in the ASCII form, like the backend's check (it lowercases and sorts)
+ *
+ * @param {string[]} a
+ * @param {string[]} b
+ * @returns {boolean}
+ */
+export function sameNames(a, b) {
+	const key = (names) => [...new Set(names.map(asciiName))].sort((x, y) => x.localeCompare(y)).join("\n");
+	return key(a) === key(b);
+}
+
+/**
  * Whether a certificate name covers a host name: the same name in any case, or a wildcard `*.x` for one label under x
  *
  * @param {string} name    a name of the certificate
@@ -8,8 +36,8 @@
  * @returns {boolean}
  */
 export function covers(name, domain) {
-	const certificateName = name.toLowerCase();
-	const hostName = domain.toLowerCase();
+	const certificateName = asciiName(name);
+	const hostName = asciiName(domain);
 	if (certificateName === hostName) return true;
 	if (!certificateName.startsWith("*.") || hostName.startsWith("*.")) return false;
 	const rest = hostName.split(".").slice(1).join(".");
@@ -38,4 +66,14 @@ export function uncoveredHosts(names, certificate) {
 		}
 	}
 	return result;
+}
+
+/**
+ * The names the new list leaves uncovered, each once, in the order of the hosts
+ *
+ * @param {{ domains: string[] }[]} hosts  uncoveredHosts()
+ * @returns {string[]}
+ */
+export function uncoveredNames(hosts) {
+	return [...new Set(hosts.flatMap((host) => host.domains))];
 }
