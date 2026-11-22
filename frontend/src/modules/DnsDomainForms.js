@@ -1,6 +1,8 @@
 // The rules of the DNS domain fields (Add domains, the DNS credential window's Domains line). normalizeDnsDomain is
 // the twin of backend/lib/dns-domain-name.js: both tests run backend/test/fixtures/dns-domain-cases.json. Pure.
 
+import { isValidAceLabel } from "./Punycode.js";
+
 const MAX_NAME = 253;
 const LABEL = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/u;
 const TRAILING_DOT = /\.$/u;
@@ -31,6 +33,8 @@ export function normalizeDnsDomain(input) {
 	const labels = ascii.split(".");
 	if (labels.length === 1 && LABEL.test(ascii)) return { error: "error.dns-domain-one-label" };
 	if (ascii.length > MAX_NAME || labels.length < 2 || !labels.every((label) => LABEL.test(label))) return INVALID;
+	// an xn-- label that does not decode to a real IDN label (xn--a.com), as the backend refuses it
+	if (labels.some((label) => label.startsWith("xn--") && !isValidAceLabel(label))) return INVALID;
 	return { name: ascii };
 }
 
