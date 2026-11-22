@@ -18,7 +18,7 @@ const ownerLock = createKeyedLock();
 const withAllOwnerLocks = async (knex, fn) => {
 	const users = await knex("user").pluck("id");
 	const owners = await knex("npmpro_dns_credential").distinct("owner_user_id").pluck("owner_user_id");
-	const keys = [...new Set([...users, ...owners].map(String))].sort();
+	const keys = [...new Set([...users, ...owners].map(String))].sort((a, b) => a.localeCompare(b));
 	const lockFrom = (index) => (index === keys.length ? fn() : ownerLock(keys[index], () => lockFrom(index + 1)));
 	return await lockFrom(0);
 };
