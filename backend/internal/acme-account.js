@@ -85,18 +85,50 @@ const withAccountLock = (server, fn) => {
 	return run;
 };
 
-/** @returns {Promise<string|null>}  the stored instance CA, null for Let's Encrypt */
-const readAcmeSetting = async () => (await settingModel.query().where("id", "acme").first())?.meta?.server ?? null;
+/** @returns {Promise<Object>}  the meta of the setting row "acme": server (the stored instance CA), removed */
+const readAcmeMeta = async () => (await settingModel.query().where("id", "acme").first())?.meta ?? {};
 
-/** @param {string|null} server  null: Let's Encrypt */
-const saveAcmeSetting = async (server) => {
-	const meta = { server };
+/** @returns {Promise<string|null>}  the stored instance CA, null for Let's Encrypt */
+const readAcmeSetting = async () => (await readAcmeMeta()).server ?? null;
+
+/** Stores keys of the setting row "acme" (the others stay) */
+const patchAcmeMeta = async (patch) => {
 	const existing = await settingModel.query().where("id", "acme").first();
+	const meta = { ...(existing?.meta ?? {}), ...patch };
 	if (existing) await settingModel.query().where("id", "acme").patch({ meta });
 	else
 		await settingModel
 			.query()
 			.insert({ id: "acme", name: "ACME", description: "The instance CA", value: "acme", meta });
+};
+
+/** @param {string|null} server  null: Let's Encrypt */
+const saveAcmeSetting = (server) => patchAcmeMeta({ server });
+
+/**
+ * The CAs an administrator removed (serverKey): their account folders stay on disk, and the start, a restore or a
+ * merge adopts none of them again until the CA is added again (or becomes the instance CA). Kept in the setting row
+ * "acme", so a runtime settings backup carries it.
+ *
+ * @returns {Promise<Set<string>>}
+ */
+const removedServers = async () => new Set((await readAcmeMeta()).removed ?? []);
+
+// one change of the removed list at a time: the callers hold different CAs' locks
+let removedQueue = Promise.resolve();
+
+/** Adds (removed true) or drops one CA of the removed list */
+const markRemoved = (server, removed) => {
+	const run = removedQueue.then(async () => {
+		const list = await removedServers();
+		const key = serverKey(server);
+		if (list.has(key) === removed) return;
+		if (removed) list.add(key);
+		else list.delete(key);
+		await patchAcmeMeta({ removed: [...list].sort((a, b) => a.localeCompare(b)) });
+	});
+	removedQueue = run.catch(() => {});
+	return run;
 };
 
 /**
@@ -718,10 +750,16 @@ const sweepReplaceFolders = async () => {
  */
 const syncAccountsWithFiles = async () => {
 	const confs = await listRenewalConfs();
+	const removed = await removedServers();
 	for (const server of knownServers(await acmeAccountModel.query(), confs, await serverFolders())) {
 		// under the CA's lock, so a registration running (after a restore or merge) is not overwritten
 		await withAccountLock(server, async () => {
 			const row = await accountRow(server);
+			if (removed.has(server)) {
+				// a removed CA stays removed; a row (a restore brought it) or the instance CA ends the removal
+				if (!(row || sameServer(server, instanceServer()))) return;
+				await markRemoved(server, false);
+			}
 			const accounts = await listAccountIds(server);
 			if (row?.state !== "registered" && accounts.length > 0) {
 				const named = (id) =>
@@ -966,13 +1004,17 @@ const saveAccountValues = (access, target, changes, { serverChanged, allowNew })
 		if (allowNew && (await accountRow(target))) {
 			refuseValue("server", "this CA already has an account", "error.acme-exists");
 		}
-		const row = await adoptUsableAccount(target, await accountRow(target));
+		const stored = await accountRow(target);
+		// a typed URL passes the guard also when its account exists, and before a kept folder is adopted (D6); a new
+		// registration reads the directory itself
+		const hasAccount = async () =>
+			(await isRegistered(stored)) || (await listAccountIds(stored?.server ?? target)).length > 0;
+		if (serverChanged && (await hasAccount())) await readDirectory(target);
+		const row = await adoptUsableAccount(target, stored);
 		const registered = await isRegistered(row);
 		const mail = checkedEmail(changes, row);
 		const eab = checkedEab(changes, row, registered);
 		let warning;
-		// a typed URL passes the guard also when its account exists (D6)
-		if (serverChanged && registered) await readDirectory(target);
 		if (registered) {
 			if (mail.changed) await updateEmailLocked(target, mail.email, { access });
 		} else if (serverChanged || mail.changed || eab.entered) {
@@ -997,6 +1039,8 @@ const saveAccountValues = (access, target, changes, { serverChanged, allowNew })
 				await storeRegistered(target, row, { email: values.email, accountId: result.accountId, access });
 			}
 		}
+		// a CA added again (or made the instance CA) is no longer a removed one
+		if (serverChanged && (await accountRow(target))) await markRemoved(target, false);
 		if (serverChanged || mail.changed || eab.entered) {
 			await audit(access, "updated", await accountRow(target), {
 				server: target,
@@ -1095,6 +1139,8 @@ const removeAccount = async (access, id) => {
 			throw new errs.ValidationError("This CA is the instance CA or a certificate uses it", "error.acme-in-use");
 		}
 		await acmeAccountModel.query().deleteById(row.id);
+		// its folder stays, and the start or a restore must not adopt it again
+		await markRemoved(row.server, true);
 		await audit(access, "deleted", row);
 	});
 	return await getSettings(access);
@@ -1107,7 +1153,9 @@ const removeAccount = async (access, id) => {
 const allowedAcmeServers = async () => {
 	const instance = instanceServer();
 	const rows = await acmeAccountModel.query().orderBy("server");
-	return [instance, ...rows.map((row) => row.server).filter((server) => !sameServer(server, instance))];
+	// the instance CA in its row's spelling, else its key: a certificate stores one spelling per CA
+	const own = rows.find((row) => sameServer(row.server, instance))?.server ?? serverKey(instance);
+	return [own, ...rows.map((row) => row.server).filter((server) => !sameServer(server, instance))];
 };
 
 /**
@@ -1399,6 +1447,7 @@ export {
 	registrationValues,
 	reloadAcmeAfterRestore,
 	removeAccount,
+	removedServers,
 	replaceAccount,
 	rewriteAccountConfs,
 	saveAccountValues,

@@ -57,6 +57,7 @@ beforeEach(async () => {
 	await model.query().delete();
 	await api.db("certificate").whereIn("id", [901, 902]).delete();
 	await api.db("audit_log").where("object_type", "acme-account").delete();
+	await api.db("setting").where("id", "acme").delete();
 	await rm(certbotDir("accounts"), { recursive: true, force: true });
 	await chmod(certbotDir(), 0o755).catch(() => {});
 	for (const name of await readdir(path.join(api.root, "fake"))) {
@@ -138,6 +139,57 @@ it("removes a CA's row unless a certificate uses it or it is the instance CA", a
 	assert.equal(refused.status, 400, refused.text);
 	assert.equal(refused.body.error.message_i18n, "error.acme-in-use");
 	assert.ok(await rowOf(LE));
+});
+
+it("a removed CA stays removed at the next start, restore or merge, until it is added again", async () => {
+	const { removedServers, syncAccountsWithFiles } = await import("../internal/acme-account.js");
+	await seedAccount(api, SECOND, SECOND_ACCOUNT);
+	const saved = await model
+		.query()
+		.insertAndFetch({ server: SECOND, account_id: SECOND_ACCOUNT, state: "registered" });
+	assert.equal((await admin.delete(`${ACCOUNTS}/${saved.id}`)).status, 200);
+	assert.deepEqual([...(await removedServers())], [SECOND]);
+
+	// what the start, a restore and a merge run: the kept folder is not adopted again
+	await syncAccountsWithFiles();
+	assert.equal(await rowOf(SECOND), undefined);
+	const manager = await api.limited({ visibility: "all", certificates: "manage" });
+	const list = await manager.get("/nginx/certificates/acme-servers");
+	assert.deepEqual(
+		list.body.map((entry) => entry.server),
+		[LE],
+	);
+	const meta = (await api.db("setting").where("id", "acme").first()).meta;
+	assert.deepEqual(JSON.parse(meta).removed, [SECOND]);
+
+	// added again: the kept account is adopted (no new registration) and the removal ends
+	const added = await admin.post(ACCOUNTS, { server: SECOND });
+	assert.equal(added.status, 200, added.text);
+	assert.equal((await rowOf(SECOND)).account_id, SECOND_ACCOUNT);
+	assert.equal((await normalizedCalls(api)).filter((line) => line.includes(" register ")).length, 0);
+	assert.deepEqual([...(await removedServers())], []);
+});
+
+it("a restored row of a removed CA ends the removal", async () => {
+	const { removedServers, syncAccountsWithFiles } = await import("../internal/acme-account.js");
+	await seedAccount(api, SECOND, SECOND_ACCOUNT);
+	const saved = await model
+		.query()
+		.insertAndFetch({ server: SECOND, account_id: SECOND_ACCOUNT, state: "registered" });
+	assert.equal((await admin.delete(`${ACCOUNTS}/${saved.id}`)).status, 200);
+	await model.query().insert({ server: SECOND, account_id: SECOND_ACCOUNT, state: "registered" });
+	await syncAccountsWithFiles();
+	assert.deepEqual([...(await removedServers())], []);
+	assert.equal((await rowOf(SECOND)).state, "registered");
+});
+
+it("refuses to add a blocked CA with a kept folder, and stores no row", async () => {
+	api.outside.dns.set("loop.lan", "::1");
+	await seedAccount(api, "https://loop.lan/dir", SECOND_ACCOUNT);
+	const blocked = await admin.post(ACCOUNTS, { server: "https://loop.lan/dir" });
+	assert.equal(blocked.status, 400, blocked.text);
+	assert.equal(blocked.body.error.message_i18n, "error.acme-blocked");
+	assert.equal(await rowOf("https://loop.lan/dir"), undefined);
 });
 
 it("needs an administrator, and a session for the removal", async () => {
