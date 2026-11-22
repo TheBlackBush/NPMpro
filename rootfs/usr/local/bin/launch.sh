@@ -146,12 +146,14 @@ if ! nginx -tq; then
         for core_name in main events http stream; do
             cp -p "/data/npmpro/nginx/core-$core_name.conf" "$core_backup/" 2> /dev/null || true
         done
+        cp -p /data/npmpro/nginx/resolver.conf "$core_backup/" 2> /dev/null || true
         if nginx-core-files.sh /data/npmpro/nginx && nginx -tq; then
             echo "The saved nginx settings did not pass nginx -t, the nginx settings files were rewritten from the environment."
         else
             for core_name in main events http stream; do
                 [ -f "$core_backup/core-$core_name.conf" ] && cp -p "$core_backup/core-$core_name.conf" /data/npmpro/nginx/
             done
+            [ -f "$core_backup/resolver.conf" ] && cp -p "$core_backup/resolver.conf" /data/npmpro/nginx/
         fi
         rm -rf "$core_backup"
     fi

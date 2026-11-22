@@ -157,14 +157,19 @@ const shellRun = (env, statusText = null) => {
 	});
 	if (result.status !== 0) throw new Error(result.stderr);
 	const read = (name) => readFileSync(path.join(dir, `core-${name}.conf`), "utf8");
-	const files = { main: read("main"), events: read("events"), http: read("http"), stream: read("stream") };
+	const files = {
+		main: read("main"),
+		events: read("events"),
+		http: read("http"),
+		stream: read("stream"),
+		resolver: readFileSync(path.join(dir, "resolver.conf"), "utf8"),
+	};
 	return { files, note: result.stderr.trim() || null };
 };
 const shellFiles = (env, statusText) => shellRun(env, statusText).files;
 // the renderer's files without the note
-// (resolver.conf is written by the shell twin from the next task on)
 const renderedFiles = (values, options) => {
-	const { affinityNote, resolver, ...files } = renderNginxCore(values, options);
+	const { affinityNote, ...files } = renderNginxCore(values, options);
 	return files;
 };
 // envs.sh exports (defaults filled in, the force rule applied)
@@ -182,6 +187,10 @@ const ENVS = {
 	NGINX_LOAD_LDAP_MODULE: "false",
 	NGINX_LOAD_NTLM_MODULE: "false",
 	NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE: "false",
+	NGINX_RESOLVER: "",
+	NGINX_RESOLVER_HOSTS: "true",
+	NGINX_RESOLVER_IPV6: "true",
+	NGINX_RESOLVER_VALID: "",
 };
 
 it("the shell twin matches the renderer", () => {
@@ -200,6 +209,10 @@ it("the shell twin matches the renderer", () => {
 		NGINX_LOAD_LDAP_MODULE: "true",
 		NGINX_LOAD_NTLM_MODULE: "true",
 		NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE: "true",
+		NGINX_RESOLVER: "1.1.1.1 [::1]:53",
+		NGINX_RESOLVER_HOSTS: "false",
+		NGINX_RESOLVER_IPV6: "false",
+		NGINX_RESOLVER_VALID: "30s",
 	};
 	assert.deepEqual(
 		shellFiles(variant),
@@ -216,6 +229,10 @@ it("the shell twin matches the renderer", () => {
 			module_ldap: true,
 			module_ntlm: true,
 			module_vts: true,
+			resolver_addresses: ["1.1.1.1", "[::1]:53"],
+			resolver_hosts: false,
+			resolver_ipv6: false,
+			resolver_valid: "30s",
 		}),
 	);
 });
@@ -282,6 +299,28 @@ it("--if-missing writes all four files when one is missing", () => {
 	assert.ok(existsSync(path.join(dir, "core-stream.conf")));
 	assert.equal(readFileSync(path.join(dir, "core-stream.conf"), "utf8"), expected.stream);
 	assert.equal(readFileSync(path.join(dir, "core-main.conf"), "utf8"), expected.main);
+});
+
+it("--if-missing writes a missing resolver.conf and keeps the four", () => {
+	const dir = mkdtempSync(path.join(tmpdir(), "nginx-core-"));
+	for (const name of NAMES) {
+		writeFileSync(path.join(dir, name), `# kept ${name}\n`);
+	}
+	ifMissing(dir);
+	for (const name of NAMES) {
+		assert.equal(readFileSync(path.join(dir, name), "utf8"), `# kept ${name}\n`);
+	}
+	assert.equal(readFileSync(path.join(dir, "resolver.conf"), "utf8"), renderNginxCore(DEFAULTS).resolver);
+});
+
+it("--if-missing keeps an existing resolver.conf", () => {
+	const dir = mkdtempSync(path.join(tmpdir(), "nginx-core-"));
+	for (const name of NAMES) {
+		writeFileSync(path.join(dir, name), `# kept ${name}\n`);
+	}
+	writeFileSync(path.join(dir, "resolver.conf"), "resolver 9.9.9.9;\n");
+	ifMissing(dir);
+	assert.equal(readFileSync(path.join(dir, "resolver.conf"), "utf8"), "resolver 9.9.9.9;\n");
 });
 
 // data-setup.sh also runs --trim-affinity: a mask kept from another CPU set must not name a CPU outside the allowed ones
