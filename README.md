@@ -13,6 +13,7 @@
   <a href="https://github.com/TheBlackBush/NPMpro/pkgs/container/npmpro"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fghcr-badge.elias.eu.org%2Fapi%2FTheBlackBush%2FNPMpro%2Fnpmpro&query=downloadCount&label=ghcr%20pulls&style=for-the-badge&logo=docker&logoColor=white" alt="GHCR pulls"></a>
   <a href="https://hub.docker.com/r/blackbush/npmpro"><img src="https://img.shields.io/docker/pulls/blackbush/npmpro?style=for-the-badge&logo=docker&logoColor=white&label=docker%20hub%20pulls" alt="Docker Hub pulls"></a>
   <img src="https://img.shields.io/badge/platforms-amd64v2%20%7C%20arm64-informational?style=for-the-badge" alt="Platforms amd64v2 and arm64">
+  <a href="https://github.com/sponsors/TheBlackBush"><img src="https://img.shields.io/badge/sponsor_on_github-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sponsor on GitHub"></a>
   <a href="https://ko-fi.com/M4M11W3R7J"><img src="https://img.shields.io/badge/support_me_on_ko--fi-F16061?style=for-the-badge&logo=kofi&logoColor=f5f5f5" alt="Ko-fi"></a>
 </p>
 
