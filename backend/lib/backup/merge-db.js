@@ -416,20 +416,19 @@ const mergeTypes = async ({
 			const current =
 				item.action === "take" ? await trx(SCHEDULE_TABLE).where({ id: item.target.id }).first() : null;
 			if (item.action === "take" && !current) throw new Error(`${item.key} has no schedule to take over`);
-			const passphrase = secrets
-				? source.passphrase
-				: source.protection === "passphrase"
-					? (current?.passphrase ?? null)
-					: null;
-			const [prepared] = TYPES[SCHEDULE_TYPE].restoreRows(
+			// without secrets only a passphrase schedule keeps the instance's sealed passphrase
+			let passphrase = null;
+			if (secrets) passphrase = source.passphrase;
+			else if (source.protection === "passphrase") passphrase = current?.passphrase ?? null;
+			const [schedule] = TYPES[SCHEDULE_TYPE].restoreRows(
 				TYPES[SCHEDULE_TYPE].secrets.seal({ [SCHEDULE_TABLE]: [{ ...source, passphrase }] }, box),
 				{ adminUserId, nowMs: now * 1000 },
 			)[SCHEDULE_TABLE];
 			if (item.action === "add") {
-				await inserter.insertWithNewId(SCHEDULE_TABLE, prepared);
+				await inserter.insertWithNewId(SCHEDULE_TABLE, schedule);
 			} else {
 				// a replaced schedule stays with its owner and keeps its id
-				await updateRow(SCHEDULE_TABLE, item.target.id, { ...prepared, owner_user_id: current.owner_user_id });
+				await updateRow(SCHEDULE_TABLE, item.target.id, { ...schedule, owner_user_id: current.owner_user_id });
 			}
 			count(item.type);
 		};
