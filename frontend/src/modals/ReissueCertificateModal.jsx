@@ -40,6 +40,8 @@ const ReissueCertificateModal = EasyModal.create(({ certificate, visible, remove
 	const hasOther = caOptions(servers, certificate.npmproAcmeServer).length > 0;
 
 	const onSubmit = async (values) => {
+		// Enter in the window submits too: nothing happens until a CA is chosen, like the disabled button
+		if (!values.npmproAcmeServer) return;
 		setErrorMsg(null);
 		try {
 			await reissueCertificate(certificate.id, values.npmproAcmeServer);
