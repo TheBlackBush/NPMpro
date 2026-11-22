@@ -12,6 +12,8 @@ const LEAD_IN = /^Unable to register an account with ACME server\.\s+(?=\S)/u;
 // a Python warning: "<file>.py:<line>: <Category>Warning: <text>" (InsecureRequestWarning, a DeprecationWarning after a
 // dependency update, ...), followed by indented lines
 const PYTHON_WARNING = /^\S+\.py:\d+: \w*Warning:/u;
+// certbot's first line of a renewal ("Renewing an existing certificate for a.example.com and 2 more"), no reason
+const RENEWING_LEAD = /^Renewing an existing certificate for\b/u;
 const WARNING_MARKS = ["InsecureRequestWarning", "warnings.warn"];
 
 const isWarning = (line) => PYTHON_WARNING.test(line) || WARNING_MARKS.some((mark) => line.includes(mark));
@@ -52,6 +54,7 @@ const cleanCertbotMessage = (output, { keepLines = false, max = MAX_CLEAN } = {}
 			inWarning = isWarning(raw);
 			continue;
 		}
+		if (RENEWING_LEAD.test(raw)) continue;
 		if (inWarning && INDENTED.test(raw)) continue;
 		inWarning = false;
 		const line = dropMarkers(raw);

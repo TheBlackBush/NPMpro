@@ -690,7 +690,7 @@ const internalCertificate = {
 				action: "domains-changed",
 				object_type: "certificate",
 				object_id: certificate.id,
-				meta: { old: current.domain_names, new: next },
+				meta: { old: current.domain_names, new: next, domain_names: next, nice_name: next.join(", ") },
 			});
 		} catch (err) {
 			logger.warn(`Certificate #${certificate.id}: the domain names audit entry was not written: ${err.message}`);
@@ -801,7 +801,12 @@ const internalCertificate = {
 					action: "ca-changed",
 					object_type: "certificate",
 					object_id: certificate.id,
-					meta: { old: oldServer ?? certificate.npmpro_acme_server ?? instanceServer(), new: target },
+					meta: {
+						old: oldServer ?? certificate.npmpro_acme_server ?? instanceServer(),
+						new: target,
+						domain_names: certificate.domain_names,
+						nice_name: certificate.nice_name,
+					},
 				});
 			} catch (err) {
 				logger.warn(

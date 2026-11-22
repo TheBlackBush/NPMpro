@@ -73,9 +73,6 @@ const EditCertificateDomainsModal = EasyModal.create(({ certificate, visible, re
 					</AppModal.Title>
 				</AppModal.Header>
 				<AppModal.Body>
-					<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
-						{errorMsg}
-					</ErrorAlert>
 					<p className="mb-3 text-muted-foreground">
 						<T id="certificate.edit-domains.note" />
 					</p>
@@ -91,6 +88,9 @@ const EditCertificateDomainsModal = EasyModal.create(({ certificate, visible, re
 						</div>
 					) : null}
 					<RequestProgress running={isSubmitting} propagationSeconds={certificate.npmproPropagationSeconds} />
+					<ErrorAlert className="mt-3" onClose={() => setErrorMsg(null)}>
+						{errorMsg}
+					</ErrorAlert>
 				</AppModal.Body>
 				<AppModal.Footer>
 					<Button variant="ghost" onClick={close} disabled={isSubmitting}>

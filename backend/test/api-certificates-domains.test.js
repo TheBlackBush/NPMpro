@@ -68,7 +68,12 @@ it("changes the names: its CA and account, the same lineage, the row, a reload a
 		.db("audit_log")
 		.where({ object_type: "certificate", object_id: created.id, action: "domains-changed" })
 		.first();
-	assert.deepEqual(JSON.parse(audit.meta), { old: ["a.example.com"], new: ["b.example.com", "c.example.com"] });
+	assert.deepEqual(JSON.parse(audit.meta), {
+		old: ["a.example.com"],
+		new: ["b.example.com", "c.example.com"],
+		domain_names: ["b.example.com", "c.example.com"],
+		nice_name: "b.example.com, c.example.com",
+	});
 });
 
 it("an unchanged list (another order, another case) runs nothing and answers the certificate", async () => {
@@ -222,7 +227,12 @@ it("a failure after certbot succeeded keeps the row on the new files, reloads ng
 		.db("audit_log")
 		.where({ object_type: "certificate", object_id: created.id, action: "domains-changed" })
 		.first();
-	assert.deepEqual(JSON.parse(audit.meta), { old: ["a.example.com"], new: ["b.example.com"] });
+	assert.deepEqual(JSON.parse(audit.meta), {
+		old: ["a.example.com"],
+		new: ["b.example.com"],
+		domain_names: ["b.example.com"],
+		nice_name: "b.example.com",
+	});
 });
 
 it("refuses a certificate whose CA was removed meanwhile, before certbot", async () => {
