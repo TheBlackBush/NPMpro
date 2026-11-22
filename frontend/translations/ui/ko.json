@@ -1896,6 +1896,18 @@
 	"settings.nginx.module.vts.hint": "vhost_traffic_status_* 지시어.",
 	"settings.nginx.modules": "모듈",
 	"settings.nginx.modules.description": "사용자 지정 설정의 지시어에 쓰는 선택적 nginx 모듈입니다.",
+	"settings.nginx.resolver": "DNS 리졸버",
+	"settings.nginx.resolver.addresses": "리졸버 주소",
+	"settings.nginx.resolver.addresses.hint": "비워 두면 컨테이너의 리졸버(/etc/resolv.conf)를 사용합니다. IPv4 주소 또는 대괄호로 묶은 IPv6 주소를 입력하며, 포트는 선택 사항입니다.",
+	"settings.nginx.resolver.duplicate": "{address}이(가) 두 번 나열되어 있습니다",
+	"settings.nginx.resolver.hosts": "/etc/hosts 사용",
+	"settings.nginx.resolver.info": "nginx가 업스트림 호스트 이름을 조회할 때 사용하는 DNS 서버입니다. 예를 들어 이름으로 지정한 전달 호스트에 쓰입니다. 변경한 목록은 nginx를 다시 불러오면 적용됩니다.",
+	"settings.nginx.resolver.invalid": "{address}은(는) 포트가 선택 사항인 IP 주소가 아닙니다. IPv6는 대괄호로 묶어야 합니다(예: [2606:4700::1111]:53)",
+	"settings.nginx.resolver.ipv6": "IPv6 응답",
+	"settings.nginx.resolver.too-many": "주소는 최대 8개",
+	"settings.nginx.resolver.valid": "응답 캐시 시간",
+	"settings.nginx.resolver.valid.invalid": "비워 두거나 30s, 5m처럼 1초 이상의 시간을 입력하세요(0과 ms는 불가)",
+	"settings.nginx.resolver.valid.placeholder": "레코드의 TTL",
 	"settings.nginx.rsa-pkcs1": "RSA PKCS#1 서명 허용",
 	"settings.nginx.rsa-pkcs1.hint": "RSA-PSS를 사용할 수 없는 오래된 클라이언트용입니다.",
 	"settings.nginx.secp-curves": "NIST P 곡선 허용",
@@ -2040,5 +2052,6 @@
 	"users": "사용자",
 	"users.lead": "NPMpro에 로그인할 수 있는 사용자와 각 계정에 허용되는 작업입니다.",
 	"users.oidc-hint": "사용자는 OIDC로도 로그인할 수 있습니다.",
-	"users.oidc-hint.link": "설정, 인증"
+	"users.oidc-hint.link": "설정, 인증",
+	"warning.resolver-no-answer": "{address}이(가) DNS 쿼리에 응답하지 않았습니다. 설정은 저장되었으니 주소를 확인하세요."
 }

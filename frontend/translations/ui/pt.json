@@ -1896,6 +1896,18 @@
 	"settings.nginx.module.vts.hint": "Diretivas vhost_traffic_status_*.",
 	"settings.nginx.modules": "Módulos",
 	"settings.nginx.modules.description": "Módulos opcionais do nginx para diretivas em configurações personalizadas.",
+	"settings.nginx.resolver": "Resolvedor DNS",
+	"settings.nginx.resolver.addresses": "Endereços do resolvedor",
+	"settings.nginx.resolver.addresses.hint": "Vazio: os resolvedores do contentor (/etc/resolv.conf). Um endereço IPv4 ou um endereço IPv6 entre parênteses retos, com uma porta opcional.",
+	"settings.nginx.resolver.duplicate": "{address} está repetido",
+	"settings.nginx.resolver.hosts": "Usar /etc/hosts",
+	"settings.nginx.resolver.info": "Os servidores DNS que o nginx consulta para os nomes dos anfitriões de origem, por exemplo um anfitrião de destino indicado como nome. Uma lista alterada aplica-se com um reinício da configuração do nginx.",
+	"settings.nginx.resolver.invalid": "{address} não é um endereço IP com uma porta opcional; o IPv6 vai entre parênteses retos, como [2606:4700::1111]:53",
+	"settings.nginx.resolver.ipv6": "Respostas IPv6",
+	"settings.nginx.resolver.too-many": "No máximo 8 endereços",
+	"settings.nginx.resolver.valid": "Guardar respostas em cache durante",
+	"settings.nginx.resolver.valid.invalid": "Deixe vazio ou introduza um tempo de um segundo ou mais, como 30s ou 5m (não 0, não ms)",
+	"settings.nginx.resolver.valid.placeholder": "o TTL do registo",
 	"settings.nginx.rsa-pkcs1": "Permitir assinaturas RSA PKCS#1",
 	"settings.nginx.rsa-pkcs1.hint": "Para clientes antigos que não podem usar RSA-PSS.",
 	"settings.nginx.secp-curves": "Permitir as curvas NIST P",
@@ -2040,5 +2052,6 @@
 	"users": "Utilizadores",
 	"users.lead": "Quem pode iniciar sessão no NPMpro e o que cada conta pode fazer.",
 	"users.oidc-hint": "Os utilizadores também podem iniciar sessão com OIDC.",
-	"users.oidc-hint.link": "Definições, Autenticação"
+	"users.oidc-hint.link": "Definições, Autenticação",
+	"warning.resolver-no-answer": "{address} não respondeu a uma consulta DNS. A definição foi guardada; verifique o endereço."
 }

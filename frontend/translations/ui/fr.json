@@ -1896,6 +1896,18 @@
 	"settings.nginx.module.vts.hint": "Directives vhost_traffic_status_*.",
 	"settings.nginx.modules": "Modules",
 	"settings.nginx.modules.description": "Modules nginx optionnels pour les directives des configurations personnalisées.",
+	"settings.nginx.resolver": "Résolveur DNS",
+	"settings.nginx.resolver.addresses": "Adresses du résolveur",
+	"settings.nginx.resolver.addresses.hint": "Vide : les résolveurs du conteneur (/etc/resolv.conf). Une adresse IPv4 ou une adresse IPv6 entre crochets, avec un port facultatif.",
+	"settings.nginx.resolver.duplicate": "{address} figure deux fois",
+	"settings.nginx.resolver.hosts": "Utiliser /etc/hosts",
+	"settings.nginx.resolver.info": "Les serveurs DNS que nginx interroge pour les noms d'hôtes en amont, par exemple un hôte de destination donné sous forme de nom. Une liste modifiée s'applique avec un rechargement de nginx.",
+	"settings.nginx.resolver.invalid": "{address} n'est pas une adresse IP avec un port facultatif ; IPv6 se place entre crochets, par exemple [2606:4700::1111]:53",
+	"settings.nginx.resolver.ipv6": "Réponses IPv6",
+	"settings.nginx.resolver.too-many": "8 adresses au maximum",
+	"settings.nginx.resolver.valid": "Mettre les réponses en cache pendant",
+	"settings.nginx.resolver.valid.invalid": "Laissez vide, ou saisissez une durée d'au moins une seconde, comme 30s ou 5m (pas 0, pas ms)",
+	"settings.nginx.resolver.valid.placeholder": "le TTL de l'enregistrement",
 	"settings.nginx.rsa-pkcs1": "Autoriser les signatures RSA PKCS#1",
 	"settings.nginx.rsa-pkcs1.hint": "Pour les anciens clients qui ne peuvent pas utiliser RSA-PSS.",
 	"settings.nginx.secp-curves": "Autoriser les courbes NIST P",
@@ -2040,5 +2052,6 @@
 	"users": "Utilisateurs",
 	"users.lead": "Qui peut se connecter à NPMpro et ce que chaque compte est autorisé à faire.",
 	"users.oidc-hint": "Les utilisateurs peuvent aussi se connecter via OIDC.",
-	"users.oidc-hint.link": "Paramètres, Authentification"
+	"users.oidc-hint.link": "Paramètres, Authentification",
+	"warning.resolver-no-answer": "{address} n'a pas répondu à une requête DNS. Le réglage est enregistré ; vérifiez l'adresse."
 }

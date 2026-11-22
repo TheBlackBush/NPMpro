@@ -1896,6 +1896,18 @@
 	"settings.nginx.module.vts.hint": "Directivas vhost_traffic_status_*.",
 	"settings.nginx.modules": "Módulos",
 	"settings.nginx.modules.description": "Módulos opcionales de nginx para directivas en configuraciones personalizadas.",
+	"settings.nginx.resolver": "Resolutor DNS",
+	"settings.nginx.resolver.addresses": "Direcciones del resolutor",
+	"settings.nginx.resolver.addresses.hint": "Vacío: los resolutores del contenedor (/etc/resolv.conf). Una dirección IPv4 o una dirección IPv6 entre corchetes, con un puerto opcional.",
+	"settings.nginx.resolver.duplicate": "{address} está repetida",
+	"settings.nginx.resolver.hosts": "Usar /etc/hosts",
+	"settings.nginx.resolver.info": "Los servidores DNS a los que nginx pregunta por los nombres de host de origen, por ejemplo un host de destino indicado como nombre. Una lista modificada se aplica con una recarga de nginx.",
+	"settings.nginx.resolver.invalid": "{address} no es una dirección IP con un puerto opcional; IPv6 va entre corchetes, como [2606:4700::1111]:53",
+	"settings.nginx.resolver.ipv6": "Respuestas IPv6",
+	"settings.nginx.resolver.too-many": "Como máximo 8 direcciones",
+	"settings.nginx.resolver.valid": "Guardar respuestas en caché durante",
+	"settings.nginx.resolver.valid.invalid": "Déjalo vacío o introduce un tiempo de un segundo o más, como 30s o 5m (no 0, no ms)",
+	"settings.nginx.resolver.valid.placeholder": "el TTL del registro",
 	"settings.nginx.rsa-pkcs1": "Permitir firmas RSA PKCS#1",
 	"settings.nginx.rsa-pkcs1.hint": "Para clientes antiguos que no pueden usar RSA-PSS.",
 	"settings.nginx.secp-curves": "Permitir las curvas NIST P",
@@ -2040,5 +2052,6 @@
 	"users": "Usuarios",
 	"users.lead": "Quién puede iniciar sesión en NPMpro y qué puede hacer cada cuenta.",
 	"users.oidc-hint": "Los usuarios también pueden iniciar sesión con OIDC.",
-	"users.oidc-hint.link": "Configuración, Autenticación"
+	"users.oidc-hint.link": "Configuración, Autenticación",
+	"warning.resolver-no-answer": "{address} no respondió a una consulta DNS. El ajuste está guardado; revisa la dirección."
 }

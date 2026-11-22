@@ -1896,6 +1896,18 @@
 	"settings.nginx.module.vts.hint": "vhost_traffic_status_* 指令。",
 	"settings.nginx.modules": "模块",
 	"settings.nginx.modules.description": "用于自定义配置中指令的可选 nginx 模块。",
+	"settings.nginx.resolver": "DNS 解析器",
+	"settings.nginx.resolver.addresses": "解析器地址",
+	"settings.nginx.resolver.addresses.hint": "留空：使用容器的解析器（/etc/resolv.conf）。填写 IPv4 地址，或放在方括号中的 IPv6 地址，可带端口。",
+	"settings.nginx.resolver.duplicate": "{address} 重复列出",
+	"settings.nginx.resolver.hosts": "使用 /etc/hosts",
+	"settings.nginx.resolver.info": "nginx 用来解析上游主机名的 DNS 服务器，例如以名称填写的转发主机。更改后的列表在 nginx 重新加载后生效。",
+	"settings.nginx.resolver.invalid": "{address} 不是 IP 地址（可带端口）；IPv6 需放在方括号中，例如 [2606:4700::1111]:53",
+	"settings.nginx.resolver.ipv6": "IPv6 应答",
+	"settings.nginx.resolver.too-many": "最多 8 个地址",
+	"settings.nginx.resolver.valid": "应答缓存时长",
+	"settings.nginx.resolver.valid.invalid": "留空，或输入不小于一秒的时间，例如 30s 或 5m（不能是 0，也不能是 ms）",
+	"settings.nginx.resolver.valid.placeholder": "记录的 TTL",
 	"settings.nginx.rsa-pkcs1": "允许 RSA PKCS#1 签名",
 	"settings.nginx.rsa-pkcs1.hint": "适用于无法使用 RSA-PSS 的旧客户端。",
 	"settings.nginx.secp-curves": "允许 NIST P 曲线",
@@ -2040,5 +2052,6 @@
 	"users": "用户列表",
 	"users.lead": "谁可以登录 NPMpro，以及每个账户可以做什么。",
 	"users.oidc-hint": "用户也可以使用 OIDC 登录。",
-	"users.oidc-hint.link": "设置，认证"
+	"users.oidc-hint.link": "设置，认证",
+	"warning.resolver-no-answer": "{address} 未响应 DNS 查询。设置已保存；请检查该地址。"
 }

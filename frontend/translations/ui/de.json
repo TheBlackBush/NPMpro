@@ -1896,6 +1896,18 @@
 	"settings.nginx.module.vts.hint": "vhost_traffic_status_*-Direktiven.",
 	"settings.nginx.modules": "Module",
 	"settings.nginx.modules.description": "Optionale nginx-Module für Direktiven in eigenen Konfigurationen.",
+	"settings.nginx.resolver": "DNS-Resolver",
+	"settings.nginx.resolver.addresses": "Resolver-Adressen",
+	"settings.nginx.resolver.addresses.hint": "Leer: die Resolver des Containers (/etc/resolv.conf). Eine IPv4-Adresse oder eine IPv6-Adresse in eckigen Klammern, optional mit Port.",
+	"settings.nginx.resolver.duplicate": "{address} ist doppelt aufgeführt",
+	"settings.nginx.resolver.hosts": "/etc/hosts verwenden",
+	"settings.nginx.resolver.info": "Die DNS-Server, die nginx nach den Namen von Upstream-Hosts fragt, zum Beispiel bei einem als Name angegebenen Weiterleitungs-Host. Eine geänderte Liste gilt nach einem nginx-Reload.",
+	"settings.nginx.resolver.invalid": "{address} ist keine IP-Adresse mit optionalem Port; IPv6 steht in eckigen Klammern, etwa [2606:4700::1111]:53",
+	"settings.nginx.resolver.ipv6": "IPv6-Antworten",
+	"settings.nginx.resolver.too-many": "Höchstens 8 Adressen",
+	"settings.nginx.resolver.valid": "Antworten zwischenspeichern für",
+	"settings.nginx.resolver.valid.invalid": "Leer lassen oder eine Zeit ab einer Sekunde eingeben, etwa 30s oder 5m (nicht 0, nicht ms)",
+	"settings.nginx.resolver.valid.placeholder": "die TTL des Eintrags",
 	"settings.nginx.rsa-pkcs1": "RSA-PKCS#1-Signaturen erlauben",
 	"settings.nginx.rsa-pkcs1.hint": "Für alte Clients, die RSA-PSS nicht verwenden können.",
 	"settings.nginx.secp-curves": "NIST-P-Kurven erlauben",
@@ -2040,5 +2052,6 @@
 	"users": "Benutzer",
 	"users.lead": "Wer sich bei NPMpro anmelden darf und was jedes Konto tun darf.",
 	"users.oidc-hint": "Benutzer können sich auch mit OIDC anmelden.",
-	"users.oidc-hint.link": "Einstellungen, Authentifizierung"
+	"users.oidc-hint.link": "Einstellungen, Authentifizierung",
+	"warning.resolver-no-answer": "{address} hat eine DNS-Anfrage nicht beantwortet. Die Einstellung ist gespeichert; prüfen Sie die Adresse."
 }
