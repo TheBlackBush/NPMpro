@@ -141,18 +141,6 @@ export function DNSProviderFields({ className }) {
 		setValue("npmproDnsCredentialId", null, { shouldDirty: true, shouldValidate: submitted });
 		credentialBox.current?.querySelector("#dnsCredential")?.focus();
 	};
-	// with a provider the note sits right under the credential select, otherwise under the provider select
-	const statusNote = (
-		<div role="status" aria-live="polite">
-			{note ? (
-				<DnsChallengeNote
-					note={note}
-					onUseAnother={chooseAnother}
-					className={providerId ? "mt-3" : "mt-3 mb-0"}
-				/>
-			) : null}
-		</div>
-	);
 	return (
 		<FormSection boxed className={className} legend={<T id="certificates.dns.section" />}>
 			<NoticeAlert className="mb-3">
@@ -165,12 +153,21 @@ export function DNSProviderFields({ className }) {
 						name="npmproDnsCredentialId"
 						provider={providerId}
 						hint={<T id="certificates.dns.credentials-saved-note" />}
-						below={statusNote}
 						onUserChange={picked}
 					/>
 				</div>
 			) : null}
-			{providerId ? null : statusNote}
+			{/* one live region, always mounted in this place (under the credential, or the provider without one), so
+			    a note that arrives or changes is announced; the note inside is not a region of its own */}
+			<div role="status" aria-live="polite">
+				{note ? (
+					<DnsChallengeNote
+						note={note}
+						onUseAnother={chooseAnother}
+						className={providerId ? "mb-3" : "mt-3"}
+					/>
+				) : null}
+			</div>
 			{providerId ? <PropagationInput /> : null}
 		</FormSection>
 	);

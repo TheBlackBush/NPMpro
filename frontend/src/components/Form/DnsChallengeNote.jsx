@@ -62,7 +62,8 @@ function noteText(note) {
 
 /**
  * What the DNS challenge box says about its credential for the window's names (challengeSuggestion): why a
- * credential was preselected, that the chosen one has no domain for a name, or that no single credential fits.
+ * credential was preselected, that the chosen one has no domain for a name, or that no single credential fits. Not a
+ * live region itself: the caller keeps one mounted around it.
  *
  * @param {Object}   props
  * @param {Object}   props.note           { kind, ... } of challengeSuggestion
@@ -71,7 +72,7 @@ function noteText(note) {
  */
 export function DnsChallengeNote({ note, onUseAnother, className }) {
 	return (
-		<NoticeAlert variant={note.kind === "not-covered" ? "warning" : "info"} className={className}>
+		<NoticeAlert variant={note.kind === "not-covered" ? "warning" : "info"} role="none" className={className}>
 			<div data-dns-suggestion={note.kind} className="flex flex-wrap items-center justify-between gap-2">
 				<span>{noteText(note)}</span>
 				{note.kind === "suggested" && onUseAnother ? (
