@@ -452,11 +452,9 @@ it("replaces the domains on a save and keeps them when the field is left out", a
 	const replaced = await admin.put(url, { domains: ["lab.ex2.example", "new.ex2.example"] });
 	assert.equal(replaced.status, 200, replaced.text);
 	assert.deepEqual(replaced.body.domains, ["lab.ex2.example", "new.ex2.example"]);
-	const meta = await api
-		.db("audit_log")
-		.where({ object_type: "dns-credential", object_id: created.id, action: "updated" });
-	assert.deepEqual(JSON.parse(meta[0].meta).domains_added, ["new.ex2.example"]);
-	assert.deepEqual(JSON.parse(meta[0].meta).domains_removed, ["ex2.example"]);
+	const meta = await credentialAudit(created.id, "updated");
+	assert.deepEqual(meta.domains_added, ["new.ex2.example"]);
+	assert.deepEqual(meta.domains_removed, ["ex2.example"]);
 	const renamed = await admin.put(url, { name: `${created.name} renamed` });
 	assert.equal(renamed.status, 200, renamed.text);
 	assert.deepEqual(renamed.body.domains, ["lab.ex2.example", "new.ex2.example"]);
@@ -522,6 +520,7 @@ it("deletes its domains with the credential; a credential in use keeps both", as
 	const free = await create({ ...cloudflare(), domains: ["gone.example", "gone2.example"] });
 	const done = await admin.delete(`${BASE}/${free.id}`);
 	assert.equal(done.status, 200, done.text);
+	assert.deepEqual(done.body.domains, ["gone.example", "gone2.example"]);
 	assert.equal((await domainRows(free.id)).length, 0);
 	assert.deepEqual((await credentialAudit(free.id, "deleted")).domains, ["gone.example", "gone2.example"]);
 	const used = await create({ ...cloudflare(), domains: ["kept.example"] });
@@ -530,4 +529,32 @@ it("deletes its domains with the credential; a credential in use keeps both", as
 	assert.equal(refused.status, 400, refused.text);
 	assert.equal((await domainRows(used.id)).length, 1);
 	assert.equal((await api.db("npmpro_dns_credential").where({ id: used.id }).first()).id, used.id);
+});
+
+it("hides another user's credential and its domains from a user limited to their own items", async () => {
+	const own = await api.limited({ visibility: "user", certificates: "manage" });
+	const foreign = await create({ ...cloudflare(), domains: ["hidden.example"] });
+	assert.equal((await own.get(`${BASE}/${foreign.id}?expand=domains`)).status, 404);
+	const list = await own.get(`${BASE}?expand=domains`);
+	assert.equal(list.status, 200, list.text);
+	assert.equal(
+		list.body.some((row) => row.id === foreign.id),
+		false,
+	);
+});
+
+it("lets an administrator edit another owner's domains under that owner's one-domain rule", async () => {
+	const own = await api.limited({ visibility: "user", certificates: "manage" });
+	const theirs = await create({ ...cloudflare(), domains: ["theirs.example"] }, own);
+	const spare = await create(cloudflare(), own);
+	const adminSame = await create({ ...cloudflare(), domains: ["shared.example"] });
+	assert.deepEqual(adminSame.domains, ["shared.example"]);
+	const replaced = await admin.put(`${BASE}/${theirs.id}`, { domains: ["shared.example", "theirs2.example"] });
+	assert.equal(replaced.status, 200, replaced.text);
+	assert.deepEqual(replaced.body.domains, ["shared.example", "theirs2.example"]);
+	assert.equal(replaced.body.owner_user_id, own.user.id);
+	const clash = await admin.put(`${BASE}/${spare.id}`, { domains: ["theirs2.example"] });
+	assert.equal(clash.status, 400, clash.text);
+	assert.equal(clash.body.error.message_i18n, "error.dns-domain-taken");
+	assert.equal((await domainRows(spare.id)).length, 0);
 });

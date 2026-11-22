@@ -71,10 +71,10 @@ const internalDnsCredential = {
 		if (!dnsPlugins[data.provider]) throw new errs.ValidationError(`Unknown DNS provider '${data.provider}'`);
 		assertProviderForNew(data.provider);
 		const ownerUserId = access.token.getUserId(1);
-		await internalDnsCredential.assertNameFree(ownerUserId, data.name);
 
 		const { row, changes } = await internalDnsDomain.withOwnerLock(ownerUserId, () =>
 			dnsCredentialModel.transaction(async (trx) => {
+				await internalDnsCredential.assertNameFree(ownerUserId, data.name, trx);
 				const inserted = await dnsCredentialModel.query(trx).insertAndFetch({
 					owner_user_id: ownerUserId,
 					name: data.name,
@@ -103,14 +103,8 @@ const internalDnsCredential = {
 		const provider = data.provider ?? row.provider;
 		if (!dnsPlugins[provider]) throw new errs.ValidationError(`Unknown DNS provider '${provider}'`);
 		if (provider !== row.provider) assertProviderForNew(provider);
-		if (provider !== row.provider && (await internalDnsCredential.countCertificates(row.id)) > 0) {
-			throw new errs.ValidationError("The provider cannot change while certificates use this credential");
-		}
 		if (provider !== row.provider && data.fields === undefined && data.ini === undefined) {
 			throw new errs.ValidationError("Changing the DNS provider requires entering its credentials");
-		}
-		if (data.name !== undefined && data.name !== row.name) {
-			await internalDnsCredential.assertNameFree(row.owner_user_id, data.name);
 		}
 
 		const patch = { name: data.name ?? row.name, provider };
@@ -122,6 +116,12 @@ const internalDnsCredential = {
 
 		const { saved, changes } = await internalDnsDomain.withOwnerLock(row.owner_user_id, () =>
 			dnsCredentialModel.transaction(async (trx) => {
+				if (provider !== row.provider && (await internalDnsCredential.countCertificates(row.id, trx)) > 0) {
+					throw new errs.ValidationError("The provider cannot change while certificates use this credential");
+				}
+				if (data.name !== undefined && data.name !== row.name) {
+					await internalDnsCredential.assertNameFree(row.owner_user_id, data.name, trx);
+				}
 				const patched = await dnsCredentialModel.query(trx).patchAndFetchById(row.id, patch);
 				const domainChanges =
 					data.domains === undefined
@@ -143,11 +143,12 @@ const internalDnsCredential = {
 	delete: async (access, data) => {
 		access.can("certificates:manage");
 		const row = await internalDnsCredential.get(access, { id: data.id });
-		const inUse = await internalDnsCredential.countCertificates(row.id);
-		if (inUse > 0) throw new errs.ValidationError(`DNS credential is still used by ${inUse} certificate(s)`);
 		// SQLite does not run the foreign key's cascade: the domains go in code, in the same transaction
 		const domains = await internalDnsDomain.withOwnerLock(row.owner_user_id, () =>
 			dnsCredentialModel.transaction(async (trx) => {
+				const inUse = await internalDnsCredential.countCertificates(row.id, trx);
+				if (inUse > 0)
+					throw new errs.ValidationError(`DNS credential is still used by ${inUse} certificate(s)`);
 				const names = await internalDnsDomain.namesOf(row.id, trx);
 				await internalDnsDomain.removeAllLocked(row.id, trx);
 				await dnsCredentialModel.query(trx).deleteById(row.id);
@@ -163,10 +164,10 @@ const internalDnsCredential = {
 		return { ...toPublic(row), domains };
 	},
 
-	countCertificates: (id) => certificateModel.query().where("npmpro_dns_credential_id", id).resultSize(),
+	countCertificates: (id, trx) => certificateModel.query(trx).where("npmpro_dns_credential_id", id).resultSize(),
 
-	assertNameFree: async (ownerUserId, name) => {
-		const taken = await dnsCredentialModel.query().where({ owner_user_id: ownerUserId, name }).resultSize();
+	assertNameFree: async (ownerUserId, name, trx) => {
+		const taken = await dnsCredentialModel.query(trx).where({ owner_user_id: ownerUserId, name }).resultSize();
 		if (taken > 0) throw new errs.ValidationError(`A DNS credential named '${name}' already exists`);
 	},
 
