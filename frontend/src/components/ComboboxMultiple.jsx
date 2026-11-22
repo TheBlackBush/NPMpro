@@ -101,11 +101,11 @@ export function MultipleCombobox({
 	// nothing to list: an empty creatable field (domain names) stays closed until something is typed
 	const hasContent = loading || list.keys.length > 0 || query.trim() !== "";
 	const shown = open && hasContent && !locked;
-	const listKeys = list.keys.join();
+	const listKeys = list.keys.join("\u0000");
 	// createFirst: the options arrive from the caller one render after the typed text, so the highlight follows the
 	// list that is shown (the first entry: "Add ..." or the option that is exactly the typed text)
 	useEffect(() => {
-		if (createFirst) setActive(listKeys === "" ? "" : listKeys.split(",")[0]);
+		if (createFirst) setActive(listKeys === "" ? "" : listKeys.split("\u0000")[0]);
 	}, [createFirst, listKeys]);
 
 	const changeQuery = (text) => {
