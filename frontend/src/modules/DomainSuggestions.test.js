@@ -101,6 +101,20 @@ it("shows Unicode text, carries the ASCII value, and matches typed Unicode", () 
 	assert.deepEqual(values(typed), ["www.xn--bcher-kva.de"]);
 });
 
+it("finds IDN names from a typed Unicode prefix", () => {
+	const zones = [{ name: "xn--bcher-kva.de", dnsCredentialId: 1, credentialName: "c" }];
+	const names = [{ name: "shop.xn--bcher-kva.de", source: "proxy_host" }];
+	const input = { zones, names, values: [], wildcards: true };
+	// "bü" has no ASCII form that is part of the stored names: it is matched against the Unicode form
+	const partial = values(domainSuggestions({ ...input, query: "bü" }));
+	assert.ok(partial.includes("*.xn--bcher-kva.de"));
+	assert.ok(partial.includes("shop.xn--bcher-kva.de"));
+	const dotted = values(domainSuggestions({ ...input, query: "www.bü" }));
+	assert.ok(dotted.includes("www.xn--bcher-kva.de"));
+	const zone = values(domainSuggestions({ ...input, query: "bücher.d" }));
+	assert.ok(zone.includes("xn--bcher-kva.de"));
+});
+
 it("offers no wildcard in any form where the field takes none", () => {
 	const names = [{ name: "*.example.com", source: "certificate" }, ...NAMES];
 	const plain = values(domainSuggestions({ ...base, names, query: "exam" }));
