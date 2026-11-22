@@ -61,7 +61,7 @@ const DnsDomainModal = EasyModal.create(({ id, visible, remove }) => {
 
 	return (
 		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static" data-dns-domain-window>
-			{error && <ErrorAlert error={error} className="m-3" />}
+			{error && !domain && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
 			{!(isPending || error || domain) && (
 				<>
@@ -77,7 +77,7 @@ const DnsDomainModal = EasyModal.create(({ id, visible, remove }) => {
 					</AppModal.Footer>
 				</>
 			)}
-			{error && (
+			{error && !domain && (
 				<AppModal.Footer>
 					<Button variant="ghost" onClick={close}>
 						<T id="action.close" />
