@@ -34,7 +34,9 @@ import { SingleCombobox } from "./ComboboxSingle";
  * @param {boolean}  [props.filter]         true by default; false: the options already answer the query (the caller
  *                                           filters them) and are listed as given. An option may carry groupLabel:
  *                                           consecutive options with one label are listed under that heading
- * @param {boolean}  [props.createFirst]     multiple and creatable: "Add ..." is the first entry and the highlighted one
+ * @param {boolean}  [props.createFirst]     multiple and creatable: "Add ..." is the first entry and the highlighted one;
+ *                                           without it only an option that is exactly the typed text is highlighted,
+ *                                           else none, so Enter adds what was typed (createFirstActive)
  * @param {Function} [props.normalize]       multiple: (entry) => the form two entries are compared in
  * @param {Object}   [props.separators]      multiple: WORD_ENTRIES (default, spaces and commas separate) or
  *                                           LINE_ENTRIES (only commas and line breaks: entries may hold spaces)

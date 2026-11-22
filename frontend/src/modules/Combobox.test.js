@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { it } from "node:test";
+import { describe, it } from "node:test";
 import {
 	appendEntries,
 	canCreate,
+	createFirstActive,
 	exactFirst,
 	filterOptions,
 	groupsOf,
@@ -13,6 +14,7 @@ import {
 	removeLast,
 	splitEntries,
 } from "./Combobox.js";
+import { domainSuggestions } from "./DomainSuggestions.js";
 
 it("splits pasted lists on commas, spaces and new lines", () => {
 	assert.deepEqual(splitEntries(" a.com, b.com\nc.com  d.com,,"), ["a.com", "b.com", "c.com", "d.com"]);
@@ -132,4 +134,72 @@ it("canCreate on the values refuses the ASCII form of a Unicode label", () => {
 		canCreate("xn--bcher-kva.de", options, [], (o) => o.value),
 		false,
 	);
+});
+
+describe("createFirstActive", () => {
+	const label = (o) => o.label;
+	const value = (o) => o.value;
+	const keyOf = (v) => `o:${v}`;
+	const zones = [{ name: "example.com", credentialName: "main" }];
+	const names = [{ name: "www.example.com", source: "proxy_host" }];
+	// the keys and the highlight of a Domain Names field (filter false, createFirst) for a query
+	const activeFor = ({ query, values = [], wildcards = true, isValid = () => true, offerCreate }) => {
+		const items = exactFirst(
+			domainSuggestions({ query, zones, names, values, wildcards, isValid }),
+			query,
+			label,
+			value,
+		);
+		const createKey = offerCreate ? "create:" : null;
+		const keys = orderKeys({ itemKeys: items.map((o) => keyOf(o.value)), createKey, createFirst: true });
+		return {
+			keys,
+			active: createFirstActive({
+				keys,
+				createKey: "create:",
+				items,
+				query,
+				getLabel: label,
+				getValue: value,
+				keyOf,
+			}),
+		};
+	};
+
+	it("highlights nothing for a name the field already holds", () => {
+		const { keys, active } = activeFor({ query: "example.com", values: ["example.com"], offerCreate: false });
+		// the list still offers other names (a wildcard, a used name), but Enter must not pick one
+		assert.deepEqual(keys, ["o:*.example.com", "o:www.example.com"]);
+		assert.equal(active, "");
+	});
+
+	it("highlights nothing for text the field refuses", () => {
+		// a certificate window refuses a bare label such as "app"
+		const { keys, active } = activeFor({
+			query: "app",
+			isValid: (name) => name.includes("."),
+			offerCreate: false,
+		});
+		assert.ok(keys.includes("o:app.example.com"));
+		assert.equal(active, "");
+	});
+
+	it("highlights the option that is exactly the typed text", () => {
+		const { keys, active } = activeFor({ query: "WWW.example.com", offerCreate: false });
+		assert.equal(keys[0], "o:www.example.com");
+		assert.equal(active, "o:www.example.com");
+	});
+
+	it("highlights Add when it is offered", () => {
+		const { keys, active } = activeFor({ query: "new.example.com", offerCreate: true });
+		assert.equal(keys[0], "create:");
+		assert.equal(active, "create:");
+	});
+
+	it("highlights nothing for an empty query or an exact option that is not listed", () => {
+		const items = [{ label: "a.example.com", value: "a.example.com", disabled: true }];
+		const base = { createKey: "create:", items, getLabel: label, getValue: value, keyOf };
+		assert.equal(createFirstActive({ ...base, keys: [], query: "" }), "");
+		assert.equal(createFirstActive({ ...base, keys: [], query: "a.example.com" }), "");
+	});
 });

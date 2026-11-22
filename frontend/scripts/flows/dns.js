@@ -295,6 +295,24 @@ async function domainPicker({ admin }) {
 		await page.getByRole("button", { name: "Add Certificate", exact: true }).first().click();
 		await page.getByRole("menuitem", { name: "Certbot via DNS", exact: true }).click();
 		const dns = page.getByRole("dialog");
+		// a name the field holds, typed again with Enter, adds nothing: not the wildcard nor a name that contains it
+		input = await typeDomain(dns, "flow-pick.example");
+		await input.press("Enter");
+		await dns.locator("[data-slot=combobox-chips]").getByText("flow-pick.example", { exact: true }).waitFor();
+		input = await typeDomain(dns, "flow-pick.example");
+		await optionNamed(page, "*.flow-pick.example").first().waitFor();
+		const highlighted = page.locator("[cmdk-item][aria-selected=true]");
+		if ((await highlighted.count()) !== 0) throw new Error("an entry is highlighted for a name the field holds");
+		await input.press("Enter");
+		await settled(page);
+		const again = await chipsOf(dns);
+		if (JSON.stringify(again) !== JSON.stringify(["flow-pick.example"]))
+			throw new Error(`Enter on a held name changed the names to ${again}`);
+		// an arrow key still highlights the first entry
+		input = await typeDomain(dns, "flow-pick.example");
+		await optionNamed(page, "*.flow-pick.example").first().waitFor();
+		await input.press("ArrowDown");
+		await highlighted.first().waitFor();
 		await typeDomain(dns, "*");
 		await optionNamed(page, "*.flow-pick.example").filter({ hasText: "wildcard" }).first().waitFor();
 		await optionNamed(page, "*.flow-pick.example").first().click();

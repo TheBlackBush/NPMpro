@@ -183,3 +183,32 @@ export function exactFirst(items, query, getLabel, getValue) {
 	if (index <= 0) return items;
 	return [items[index], ...items.slice(0, index), ...items.slice(index + 1)];
 }
+
+/**
+ * The entry a createFirst list highlights, so Enter adds exactly the typed text: "Add ..." when it is offered (it
+ * leads), else the option that is exactly the typed text (by label or value, case-insensitive), else none. With none
+ * highlighted, Enter commits the typed text itself: a name the field holds adds nothing, text the field refuses stays
+ * with its message. An arrow key still moves to the first entry.
+ *
+ * @param   {Object}   input
+ * @param   {string[]} input.keys       the keys of the list, in order (orderKeys)
+ * @param   {string}   input.createKey  the key of "Add ..."
+ * @param   {Object[]} input.items      the options shown
+ * @param   {string}   input.query      the typed text
+ * @param   {Function} input.getLabel   (option) => its label
+ * @param   {Function} input.getValue   (option) => its value
+ * @param   {Function} input.keyOf      (value) => the key of an option
+ * @returns {string}   a key of keys, or "" for none
+ */
+export function createFirstActive({ keys, createKey, items, query, getLabel, getValue, keyOf }) {
+	if (keys.includes(createKey)) return createKey;
+	const needle = String(query ?? "")
+		.trim()
+		.toLowerCase();
+	if (needle === "") return "";
+	const exact = (items ?? []).find(
+		(o) => !o.disabled && [getLabel(o), getValue(o)].some((text) => String(text ?? "").toLowerCase() === needle),
+	);
+	const key = exact ? keyOf(getValue(exact)) : "";
+	return keys.includes(key) ? key : "";
+}
