@@ -5,9 +5,10 @@ import { certificateActionKeys } from "./CertificateActions.js";
 const le = { provider: "letsencrypt", npmproDnsChallenge: false, inUse: false };
 const dns = { ...le, npmproDnsChallenge: true, npmproDnsProvider: "cloudflare" };
 
-it("offers test and renew but no edit for an HTTP Let's Encrypt certificate", () => {
+it("offers test, edit and renew for an HTTP Let's Encrypt certificate", () => {
 	assert.deepEqual(certificateActionKeys(le, { canManage: true }), [
 		"test",
+		"edit",
 		"renew",
 		"reissue",
 		"download",
@@ -17,6 +18,7 @@ it("offers test and renew but no edit for an HTTP Let's Encrypt certificate", ()
 
 it("offers no test but the DNS credential change for a DNS Let's Encrypt certificate", () => {
 	assert.deepEqual(certificateActionKeys(dns, { canManage: true }), [
+		"edit",
 		"renew",
 		"reissue",
 		"change-dns",
@@ -44,6 +46,7 @@ it("offers edit but no renew and no test for an uploaded or mTLS certificate", (
 it("never offers delete for a certificate in use", () => {
 	assert.deepEqual(certificateActionKeys({ ...le, inUse: true }, { canManage: true }), [
 		"test",
+		"edit",
 		"renew",
 		"reissue",
 		"download",

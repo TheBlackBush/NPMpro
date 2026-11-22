@@ -79,7 +79,7 @@ function CertificateActions({ certificate, ...handlers }) {
 					label: <T id={def.label} />,
 					icon: def.icon,
 					onSelect: () => handlers[def.handler]?.(def.arg(certificate)),
-					// the Edit item is the row's edit button (custom and mTLS certificates)
+					// the Edit item is the row's edit button (every kind of certificate for a manager)
 					primary: key === "edit",
 					ariaLabel: key === "edit" ? intl.formatMessage({ id: "list.row-edit" }, { name }) : undefined,
 					destructive: key === "delete",

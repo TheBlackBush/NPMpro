@@ -3,6 +3,7 @@ import { it } from "node:test";
 import { createIntl } from "react-intl";
 import en from "../../translations/ui/en.json" with { type: "json" };
 import {
+	acmeDomainsValidate,
 	changeDnsCredentialValidate,
 	credentialFieldValues,
 	customCertificateValidate,
@@ -190,4 +191,15 @@ it("an error text gets its own message without its trailing full stop", () => {
 it("an other status without detail falls back to the failed message", () => {
 	assert.deepEqual(reachabilityMessage("other:"), { id: "certificates.http.reachability-failed-to-check" });
 	assert.deepEqual(reachabilityMessage("other: "), { id: "certificates.http.reachability-failed-to-check" });
+});
+
+it("edited ACME certificate: wildcards only with the DNS challenge", () => {
+	const wildcard = { domainNames: ["*.example.com"] };
+	assert.deepEqual(acmeDomainsValidate(rules, { dnsChallenge: false })(wildcard), {
+		domainNames: "Invalid domain: *.example.com",
+	});
+	assert.deepEqual(acmeDomainsValidate(rules, { dnsChallenge: true })(wildcard), {});
+	assert.deepEqual(acmeDomainsValidate(rules, { dnsChallenge: true })({ domainNames: [] }), {
+		domainNames: "This is required",
+	});
 });
