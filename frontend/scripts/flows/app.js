@@ -1278,8 +1278,8 @@ const RESOLVER_SWITCH = "#runtime-resolverHosts";
 const UNKNOWN_RESOLVER = "dns.example";
 
 // The DNS resolver card of Settings, nginx: it shows, the hosts switch is read-only when its env var is set, and a
-// name typed as an address (not yet a chip) enables Save, and the save is refused with its message and sends no
-// request. No resolver address is saved: a save reloads nginx with it.
+// name typed as an address (not yet a chip) enables Save, the save is refused with its message and sends no request,
+// and leaving the page with the typed text asks first. No resolver address is saved: a save reloads nginx with it.
 async function dnsResolver({ admin }) {
 	const { page, api, errors } = admin;
 	const before = JSON.stringify(await api("GET", "/settings/runtime/nginx"));
@@ -1309,6 +1309,17 @@ async function dnsResolver({ admin }) {
 	if (await save.isDisabled()) throw new Error("Save stays disabled with a typed address");
 	await save.click();
 	await page.getByText(`${UNKNOWN_RESOLVER} is not an IP address`, { exact: false }).first().waitFor();
+	// the typed text is still an unsaved change: leaving through the menu asks, Keep editing stays, Discard leaves
+	const menuLink = page.locator('header nav a[href="/access"]').filter({ visible: true }).first();
+	await menuLink.click();
+	const ask = page.getByRole("alertdialog");
+	await ask.getByRole("button", { name: "Keep editing", exact: true }).click();
+	await ask.waitFor({ state: "detached" });
+	if (!page.url().endsWith("/settings/nginx")) throw new Error("Keep editing left the page");
+	if ((await addresses.inputValue()) !== UNKNOWN_RESOLVER) throw new Error("Keep editing lost the typed address");
+	await menuLink.click();
+	await ask.getByRole("button", { name: "Discard changes", exact: true }).click();
+	await page.waitForURL("**/access");
 	if (changes.length > 0) throw new Error(`a save request was sent: ${changes}`);
 	if (JSON.stringify(await api("GET", "/settings/runtime/nginx")) !== before)
 		throw new Error("the nginx settings changed");

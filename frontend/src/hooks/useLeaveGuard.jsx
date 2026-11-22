@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useFormState } from "react-hook-form";
+import { usePendingEntries } from "src/components/Form/HookForm";
 import { askDiscard } from "src/modals/DiscardChangesModal";
 
 let guards = 0;
@@ -54,11 +55,13 @@ const useLeaveGuard = (dirty) => {
 };
 
 /**
- * Place inside a HookForm: asks before leaving the page with unsaved changes (useLeaveGuard), not while a save runs
+ * Place inside a HookForm: asks before leaving the page with unsaved changes (useLeaveGuard), not while a save runs;
+ * typed text that is not a value yet (usePendingEntry) counts as a change too
  */
 function LeaveGuard() {
 	const { isDirty, isSubmitting } = useFormState();
-	useLeaveGuard(isDirty && !isSubmitting);
+	const pending = usePendingEntries().size > 0;
+	useLeaveGuard((isDirty || pending) && !isSubmitting);
 	return null;
 }
 
