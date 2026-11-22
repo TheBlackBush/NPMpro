@@ -40,6 +40,10 @@ las credenciales guardadas no se podrán leer después de una restauración.
 Los proveedores sin formulario usan el cuadro de texto INI, donde pegas el contenido del
 archivo de credenciales de ese proveedor.
 
+#### Dominios
+
+Una credencial lista los dominios (zonas DNS) que gestiona, como `example.com`. La pestaña **Dominios** de la página Certificados lista los dominios de todas tus credenciales.
+
 ### Certificado Personalizado
 
 Usa esta opción para cargar tu propio Certificado TLS, proporcionado por tu propia

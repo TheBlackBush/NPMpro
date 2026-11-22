@@ -30,6 +30,10 @@ kunnen de opgeslagen inloggegevens na een herstel niet worden gelezen.
 Providers zonder formulier gebruiken het INI-tekstvak, waarin u de inhoud van het
 inloggegevensbestand voor die provider plakt.
 
+#### Domeinen
+
+Inloggegevens bevatten een lijst van de domeinen (DNS-zones) die ze beheren, zoals `example.com`. Het tabblad **Domeinen** van de pagina Certificaten toont de domeinen van al uw inloggegevens.
+
 ### Aangepast certificaat
 
 Gebruik deze optie om uw eigen TLS-certificaat te uploaden, zoals verstrekt door uw eigen Certificaatautoriteit.

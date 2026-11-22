@@ -31,6 +31,10 @@ po przywróceniu zapisanych danych uwierzytelniających nie będzie można odczy
 Dostawcy bez formularza używają pola tekstowego INI, do którego wklejasz zawartość
 pliku z danymi uwierzytelniającymi tego dostawcy.
 
+#### Domeny
+
+Dane uwierzytelniające zawierają listę domen (stref DNS), którymi zarządzają, na przykład `example.com`. Karta **Domeny** na stronie Certyfikaty pokazuje domeny wszystkich Twoich danych uwierzytelniających.
+
 ### Własny certyfikat
 
 Użyj tej opcji, aby przesłać własny certyfikat TLS, dostarczony przez twój własny urząd certyfikacji.

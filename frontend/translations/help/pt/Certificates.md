@@ -39,6 +39,10 @@ as credenciais guardadas não poderão ser lidas após um restauro.
 Os fornecedores sem formulário usam a caixa de texto INI, onde colas o conteúdo do
 ficheiro de credenciais desse fornecedor.
 
+#### Domínios
+
+Uma credencial lista os domínios (zonas DNS) que gere, como `example.com`. O separador **Domínios** da página Certificados lista os domínios de todas as tuas credenciais.
+
 ### Certificado Personalizado
 
 Usa esta opção para carregar o teu próprio Certificado TLS, fornecido pela
