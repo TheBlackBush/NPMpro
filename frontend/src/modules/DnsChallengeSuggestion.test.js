@@ -69,3 +69,28 @@ it("the credential's name comes from the credential list when given", () => {
 	});
 	assert.equal(out.note.credentialName, "Cloudflare main");
 });
+
+it("a provider picked by hand without a credential suggests nothing", () => {
+	const out = challengeSuggestion({ names: ["a.example.com"], zones: ZONES, userId: 1, handPicked: true });
+	assert.deepEqual(out, { preselect: null, note: null });
+});
+
+it("counts only names that have a bare name", () => {
+	const out = challengeSuggestion({ names: ["a.example.com", ".", "  "], zones: ZONES, userId: 1 });
+	assert.equal(out.note.count, 1);
+});
+
+it("matches a Unicode-typed name through its stored form", () => {
+	const zones = [
+		{
+			name: "xn--bcher-kva.de",
+			dnsCredentialId: 7,
+			ownerUserId: 1,
+			credentialName: "C7",
+			ownerName: "U1",
+			provider: "ovh",
+		},
+	];
+	const out = challengeSuggestion({ names: ["www.bücher.de"], zones, userId: 1 });
+	assert.deepEqual(out.preselect, { provider: "ovh", credentialId: 7 });
+});

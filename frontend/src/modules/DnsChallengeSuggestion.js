@@ -1,4 +1,4 @@
-import { matchNames, uncoveredBy } from "./DnsDomainMatch.js";
+import { bareName, matchNames, uncoveredBy } from "./DnsDomainMatch.js";
 
 // What the DNS challenge box suggests for the names of its window (D3): the credential whose domains cover every
 // name is preselected with a note saying why, until the user picks a provider or credential by hand; a hand pick that
@@ -15,7 +15,7 @@ import { matchNames, uncoveredBy } from "./DnsDomainMatch.js";
  * @returns {{ preselect: Object|null, note: Object|null }}
  */
 export function challengeSuggestion({ names, zones, credentials, userId, credentialId = null, handPicked = false }) {
-	const list = (names ?? []).filter((name) => String(name ?? "").trim() !== "");
+	const list = (names ?? []).filter((name) => bareName(name) !== "");
 	const none = { preselect: null, note: null };
 	if (list.length === 0) return none;
 	const matchZones = (zones ?? []).map((zone) => ({
@@ -37,6 +37,8 @@ export function challengeSuggestion({ names, zones, credentials, userId, credent
 					: null,
 		};
 	}
+	// a provider picked by hand without a credential: nothing is suggested
+	if (handPicked) return none;
 	const match = matchNames(list, matchZones, userId);
 	switch (match.kind) {
 		case "one":

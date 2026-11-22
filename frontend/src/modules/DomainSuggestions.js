@@ -6,6 +6,7 @@ import { toAscii } from "./Punycode.js";
 // Pure.
 
 const LIMIT = 8;
+const WILDCARD_LEAD = /^\*(?:\.|$)/u;
 const ASCII_END = 128;
 const ZONES = "domain-names.group.zones";
 const USED = "domain-names.group.used";
@@ -29,6 +30,8 @@ export function domainSuggestions({ query, zones, names, values, wildcards = fal
 	// the stored names are ASCII: typed Unicode text is matched in its stored form
 	const text = [...typed].every((char) => char.codePointAt(0) < ASCII_END) ? typed : toAscii(typed) || typed;
 	if (text === "") return [];
+	// "*" is only ever the leading "*." label (or a bare "*"), and only where the field takes wildcards
+	if (text.includes("*") && (!wildcards || text.replace(WILDCARD_LEAD, "").includes("*"))) return [];
 	const held = new Set((values ?? []).map((value) => String(value).trim().toLowerCase()));
 	const offered = new Set();
 	const add = (list, value, groupLabelId, detail) => {
@@ -69,7 +72,9 @@ export function domainSuggestions({ query, zones, names, values, wildcards = fal
 	}
 
 	const used = [];
-	const matching = (names ?? []).filter((entry) => entry.name.toLowerCase().includes(text));
+	const matching = (names ?? []).filter(
+		(entry) => entry.name.toLowerCase().includes(text) && (wildcards || !entry.name.startsWith("*")),
+	);
 	const starts = matching.filter((entry) => entry.name.toLowerCase().startsWith(text)).sort(byName);
 	const contains = matching.filter((entry) => !entry.name.toLowerCase().startsWith(text)).sort(byName);
 	for (const entry of [...starts, ...contains]) add(used, entry.name, USED, { kind: "used", source: entry.source });

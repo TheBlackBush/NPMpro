@@ -88,3 +88,24 @@ it("shows Unicode text, carries the ASCII value, and matches typed Unicode", () 
 	const typed = domainSuggestions({ query: "www.bücher", zones, names: [], values: [], wildcards: false });
 	assert.deepEqual(values(typed), ["www.xn--bcher-kva.de"]);
 });
+
+it("offers no wildcard in any form where the field takes none", () => {
+	const names = [{ name: "*.example.com", source: "certificate" }, ...NAMES];
+	const plain = values(domainSuggestions({ ...base, names, query: "exam" }));
+	assert.equal(
+		plain.some((value) => value.startsWith("*")),
+		false,
+	);
+	assert.equal(plain.includes("api.example.com"), true);
+	assert.deepEqual(values(domainSuggestions({ ...base, names, query: "*x" })), []);
+	assert.deepEqual(values(domainSuggestions({ ...base, names, query: "*.ex" })), []);
+	const out = domainSuggestions({ ...base, names, query: "exam", wildcards: true });
+	assert.equal(values(out).includes("*.example.com"), true);
+});
+
+it("takes a star only as the leading wildcard label", () => {
+	for (const query of ["*x", "a*", "a*b", "*.a*", "**"]) {
+		assert.deepEqual(values(domainSuggestions({ ...base, query, wildcards: true })), [], query);
+	}
+	assert.deepEqual(values(domainSuggestions({ ...base, query: "*.ex", wildcards: true })), ["*.example.com"]);
+});
