@@ -49,6 +49,18 @@
 	},
 	{
 		"type": "index",
+		"name": "npmpro_dns_domain_credential_name",
+		"table": "npmpro_dns_domain",
+		"sql": "CREATE UNIQUE INDEX `npmpro_dns_domain_credential_name` on `npmpro_dns_domain` (`dns_credential_id`, `name`)"
+	},
+	{
+		"type": "index",
+		"name": "npmpro_dns_domain_name",
+		"table": "npmpro_dns_domain",
+		"sql": "CREATE INDEX `npmpro_dns_domain_name` on `npmpro_dns_domain` (`name`)"
+	},
+	{
+		"type": "index",
 		"name": "npmpro_location_proxy_host_id_index",
 		"table": "npmpro_location",
 		"sql": "CREATE INDEX `npmpro_location_proxy_host_id_index` on \"npmpro_location\" (`proxy_host_id`)"
@@ -214,6 +226,12 @@
 		"name": "npmpro_dns_credential",
 		"table": "npmpro_dns_credential",
 		"sql": "CREATE TABLE \"npmpro_dns_credential\" (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `owner_user_id` integer not null, `name` varchar(255) not null, `provider` varchar(255) not null, `values` text not null)"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_dns_domain",
+		"table": "npmpro_dns_domain",
+		"sql": "CREATE TABLE `npmpro_dns_domain` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `dns_credential_id` integer not null, `name` varchar(253) not null, `source` varchar(16) not null default 'typed', constraint `npmpro_dns_domain_credential_fk` foreign key(`dns_credential_id`) references `npmpro_dns_credential`(`id`) on delete CASCADE)"
 	},
 	{
 		"type": "table",

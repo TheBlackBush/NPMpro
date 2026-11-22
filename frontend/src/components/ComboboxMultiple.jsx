@@ -72,6 +72,8 @@ export function MultipleCombobox({
 	aria,
 	className,
 	chipClassName,
+	chipProps,
+	chipLabel,
 }) {
 	const values = Array.isArray(value) ? value : [];
 	const [open, setOpen] = useState(false);
@@ -206,18 +208,23 @@ export function MultipleCombobox({
 						}}
 					>
 						{values.map((entry, index) => {
-							const label = labelOf(entry, options, getOptionLabel, getOptionValue);
+							const label = chipLabel
+								? chipLabel(entry)
+								: labelOf(entry, options, getOptionLabel, getOptionValue);
+							const { srText, ...extra } = chipProps?.(entry) ?? {};
 							return (
 								<Badge
 									key={String(entry)}
 									variant="secondary"
 									data-window-start-skip=""
+									{...extra}
 									className={cn(
 										"h-6 max-w-full gap-0.5 pr-0.5 text-sm font-normal",
 										chipClassName?.(entry),
 									)}
 								>
 									<TruncatedText>{label}</TruncatedText>
+									{srText ? <span className="sr-only">{srText}</span> : null}
 									{locked ? null : (
 										<TapTooltip
 											content={intl.formatMessage({ id: "combobox.remove" }, { value: label })}

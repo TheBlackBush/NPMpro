@@ -40,6 +40,10 @@ the saved credentials cannot be read after a restore.
 Providers without a form use the INI text box, where you paste the content of the
 credentials file for that provider.
 
+#### Domains
+
+A credential lists the domains (DNS zones) it manages, such as `example.com`. The **Domains** tab of the Certificates page lists the domains of all your credentials.
+
 ### Custom Certificate
 
 Use this option to upload your own TLS Certificate, as provided by your own

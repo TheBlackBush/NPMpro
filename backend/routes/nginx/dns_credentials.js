@@ -10,7 +10,7 @@ const listSchema = {
 	type: "object",
 	additionalProperties: false,
 	properties: {
-		expand: { $ref: "common#/properties/expand", items: { enum: ["owner", "certificates"] } },
+		expand: { $ref: "common#/properties/expand", items: { enum: ["owner", "certificates", "domains"] } },
 		query: { $ref: "common#/properties/query" },
 	},
 };
@@ -21,7 +21,7 @@ const credentialSchema = {
 	additionalProperties: false,
 	properties: {
 		credential_id: { $ref: "common#/properties/id" },
-		expand: { $ref: "common#/properties/expand", items: { enum: ["owner", "certificates"] } },
+		expand: { $ref: "common#/properties/expand", items: { enum: ["owner", "certificates", "domains"] } },
 	},
 };
 

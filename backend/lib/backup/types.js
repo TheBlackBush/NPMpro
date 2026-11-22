@@ -241,7 +241,8 @@ const TYPES = {
 		},
 	},
 	dns_credentials: {
-		tables: [{ table: "npmpro_dns_credential" }],
+		// the domains of a credential hold only names: no secret column
+		tables: [{ table: "npmpro_dns_credential" }, { table: "npmpro_dns_domain" }],
 		files: NO_FILES,
 		secrets: {
 			export: (rowsByTable, box) =>

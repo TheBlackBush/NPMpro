@@ -18,6 +18,7 @@ export * from "./useDelayElapsed";
 export * from "./useDirectorySuggestions";
 export * from "./useDnsCredential";
 export * from "./useDnsCredentials";
+export * from "./useDnsDomains";
 export * from "./useDnsProviders";
 export * from "./useElapsed";
 export * from "./useHealth";

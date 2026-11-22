@@ -43,6 +43,9 @@ import { SingleCombobox } from "./ComboboxSingle";
  * @param {string}   [props.name]            a hidden input with the value (comma separated with multiple)
  * @param {*}        [props.ref]             the button or the input (react-hook-form focuses it)
  * @param {Function} [props.chipClassName]   multiple: (value) => extra classes of that value's chip
+ * @param {Function} [props.chipProps]       multiple: (value) => extra attributes of that value's chip; srText is shown to
+ *                                           screen readers only
+ * @param {Function} [props.chipLabel]       multiple: (value) => the text of that value's chip (default: its label)
  * @param {string}   [props.className]       of the wrapper
  */
 export function Combobox({
@@ -75,6 +78,8 @@ export function Combobox({
 	name,
 	className,
 	chipClassName,
+	chipProps,
+	chipLabel,
 	...rest
 }) {
 	const ownId = useId();
@@ -126,6 +131,8 @@ export function Combobox({
 					commitRef={commitRef}
 					onQueryChange={onQueryChange}
 					chipClassName={chipClassName}
+					chipProps={chipProps}
+					chipLabel={chipLabel}
 				/>
 			) : (
 				<SingleCombobox {...shared} value={value} clearable={clearable} searchable={searchable} />

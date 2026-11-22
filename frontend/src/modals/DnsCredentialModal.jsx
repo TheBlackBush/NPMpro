@@ -6,6 +6,7 @@ import {
 	Button,
 	Combobox,
 	DnsCredentialValuesFields,
+	DnsDomainNamesField,
 	ErrorAlert,
 	FormField,
 	FormSubmit,
@@ -21,13 +22,16 @@ import {
 	DirtyTracker,
 	useCanManage,
 	useDnsCredential,
+	useDnsDomains,
 	useDnsProviders,
 	useSetDnsCredential,
 	useUnsavedChangesGuard,
+	useUser,
 } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { credentialFieldValues, dnsCredentialValidate } from "src/modules/CertificateForms";
+import { dnsDomainNamesRule, takenNames } from "src/modules/DnsDomainForms";
 import EasyModal from "src/modules/easyModal";
 import { windowTitleId } from "src/modules/HostForms";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
@@ -54,7 +58,12 @@ const defaultGroup = (provider, credential) => {
 };
 
 const toPayload = (values, id, provider) => {
-	const base = { id: id === "new" ? undefined : id, name: values.name, provider: values.provider };
+	const base = {
+		id: id === "new" ? undefined : id,
+		name: values.name,
+		provider: values.provider,
+		domains: values.domains,
+	};
 	if (!provider?.fields || values.useIni) return { ...base, ini: values.ini };
 	const activeGroup = provider.oneOf ? values.oneOfGroup : null;
 	const fields = provider.fields
@@ -63,7 +72,17 @@ const toPayload = (values, id, provider) => {
 	return { ...base, fields };
 };
 
-const emptyCredential = { name: "", provider: "", useIni: false, fieldValues: {}, ini: "", oneOfGroup: "" };
+const DOMAIN_EXPAND = ["credential"];
+
+const emptyCredential = {
+	name: "",
+	provider: "",
+	useIni: false,
+	fieldValues: {},
+	ini: "",
+	oneOfGroup: "",
+	domains: [],
+};
 
 // the provider select: another provider starts with its own empty fields, and the old fields' messages go
 function ProviderSelect({ providers, options, locked }) {
@@ -124,6 +143,9 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 	const { data, isPending, error } = useDnsCredential(id);
 	const { data: providers, isPending: providersPending } = useDnsProviders();
 	const { mutateAsync: setDnsCredential } = useSetDnsCredential();
+	const { data: me } = useUser("me");
+	// fresh on every open: the duplicate marks must not name a domain that went with a deleted credential
+	const { data: allDomains } = useDnsDomains(DOMAIN_EXPAND, { refetchOnMount: "always" });
 	const [errorMsg, setErrorMsg] = useState(null);
 
 	const isNew = id === "new";
@@ -142,6 +164,7 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 			fieldValues: credentialFieldValues(provider, credential),
 			ini: "",
 			oneOfGroup: defaultGroup(provider, credential),
+			domains: credential.domains ?? [],
 		};
 	};
 
@@ -149,8 +172,16 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 	const methods = useAppForm({
 		defaultValues: emptyCredential,
 		values: ready ? initialValuesFor(data) : undefined,
-		validate: (values) =>
-			dnsCredentialValidate(validations, { providers: providers ?? [], credential: data })(values),
+		validate: (values) => {
+			const errors = dnsCredentialValidate(validations, { providers: providers ?? [], credential: data })(values);
+			const taken = takenNames(values.domains, {
+				credentialId: isNew ? null : id,
+				ownerUserId: isNew ? me?.id : data?.ownerUserId,
+				domains: allDomains,
+			});
+			const domains = dnsDomainNamesRule(validations, taken, data?.domains)(values.domains);
+			return domains ? { ...errors, domains } : errors;
+		},
 	});
 	const { isSubmitting } = methods.formState;
 
@@ -200,6 +231,10 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 							/>
 							<ProviderSelect providers={providers} options={options} locked={locked} />
 							<CredentialValues providers={providers} data={data} />
+							<DnsDomainNamesField
+								credentialId={isNew ? null : id}
+								ownerUserId={isNew ? me?.id : data.ownerUserId}
+							/>
 						</fieldset>
 					</AppModal.Body>
 					<AppModal.Footer>

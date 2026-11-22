@@ -294,6 +294,28 @@
 								"items": {
 									"type": "string"
 								}
+							},
+							"skippedDomains": {
+								"type": "array",
+								"description": "Merge only: DNS domains of an added DNS credential that were not added because their owner already keeps the name on another credential",
+								"items": {
+									"type": "object",
+									"additionalProperties": false,
+									"required": [
+										"name",
+										"credential"
+									],
+									"properties": {
+										"name": {
+											"type": "string",
+											"description": "The domain name as the backup holds it."
+										},
+										"credential": {
+											"type": "string",
+											"description": "The name of the added DNS credential that would have held it."
+										}
+									}
+								}
 							}
 						},
 						"description": "Replace returns references and skippedUsers; merge returns cleared and needsSecrets"
@@ -326,6 +348,7 @@
 								},
 								"cleared": [],
 								"needsSecrets": [],
+								"skippedDomains": [],
 								"restartNeeded": false,
 								"runtimeFailed": [],
 								"offlineHosts": []

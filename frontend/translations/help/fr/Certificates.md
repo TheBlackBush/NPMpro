@@ -32,6 +32,10 @@ les identifiants enregistrés ne pourront pas être lus après une restauration.
 Les fournisseurs sans formulaire utilisent la zone de texte INI, dans laquelle vous collez le contenu du
 fichier d'identifiants de ce fournisseur.
 
+#### Domaines
+
+Un identifiant liste les domaines (zones DNS) qu'il gère, par exemple `example.com`. L'onglet **Domaines** de la page Certificats liste les domaines de tous vos identifiants.
+
 ## Certificat personnalisé
 
 Utilisez cette option pour importer votre propre certificat TLS, fourni par votre autorité de certification.

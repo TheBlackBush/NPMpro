@@ -206,7 +206,14 @@ function Result({ result, types, plan, onOpen }) {
 			) : null}
 			<ItemList titleId="settings.backup.restore.references.done" items={referenceItems(result.references)} />
 			<ItemList titleId="settings.backup.restore.skipped-users" items={userItems(result.skippedUsers)} />
-			{merged ? <MergeNotes plan={plan} cleared={result.cleared} needsSecrets={result.needsSecrets} /> : null}
+			{merged ? (
+				<MergeNotes
+					plan={plan}
+					cleared={result.cleared}
+					needsSecrets={result.needsSecrets}
+					skippedDomains={result.skippedDomains}
+				/>
+			) : null}
 		</>
 	);
 }

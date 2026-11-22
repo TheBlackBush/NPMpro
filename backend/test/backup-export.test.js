@@ -8,6 +8,7 @@ import { it } from "node:test";
 import knexFactory from "knex";
 import { exportStage, verifyStage } from "../lib/backup/export.js";
 import { up as createAcmeAccountTable } from "../migrations/20261119120000_acme_accounts.js";
+import { up as createDnsDomainTable } from "../migrations/20261123120000_dns_domains.js";
 
 process.env.TZ = "UTC";
 
@@ -43,6 +44,7 @@ const sqlite = async () => {
 		t.string("name");
 		t.text("values");
 	});
+	await createDnsDomainTable(knex);
 	await knex.schema.createTable("certificate", (t) => {
 		t.increments("id");
 		t.string("provider");

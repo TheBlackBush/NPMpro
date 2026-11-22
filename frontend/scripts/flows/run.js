@@ -9,6 +9,7 @@ import { randomBytes } from "node:crypto";
 import process from "node:process";
 import { chromium, webkit } from "playwright";
 import { appFlows } from "./app.js";
+import { dnsFlows } from "./dns.js";
 import { hostFlows } from "./hosts.js";
 import { ADMIN_EMAIL, removeFlowData, signIn, VIEWER_EMAIL } from "./lib.js";
 import { windowFlows } from "./windows.js";
@@ -29,7 +30,7 @@ const VIEWER_PERMISSIONS = {
 	certificates: "view",
 };
 
-const flows = [...hostFlows, ...windowFlows, ...appFlows].filter(
+const flows = [...hostFlows, ...windowFlows, ...appFlows, ...dnsFlows].filter(
 	(flow) => only.length === 0 || only.includes(flow.name),
 );
 // FLOWS_CDP (a remote Chromium's DevTools WebSocket URL, for machines that cannot launch one) is for local runs only;

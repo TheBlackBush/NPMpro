@@ -1,6 +1,7 @@
+import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router";
 import { CountBadge } from "src/components/CountBadge";
-import { useCertificates, useDnsCredentials } from "src/hooks";
+import { useCertificates, useDnsCredentials, useDnsDomains } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import {
@@ -8,10 +9,11 @@ import {
 	CERTIFICATE_TABS,
 	certificateTab,
 	DNS_CREDENTIAL_LIST_EXPAND,
+	DNS_DOMAIN_LIST_EXPAND,
 } from "src/modules/CertificateTabs";
 
 const TAB =
-	"relative inline-flex h-9 items-center gap-2 px-3 text-sm font-medium text-muted-foreground hover:text-foreground";
+	"relative inline-flex h-9 shrink-0 items-center whitespace-nowrap gap-2 px-3 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:-outline-offset-2";
 const TAB_ACTIVE = "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-primary";
 
 /**
@@ -24,13 +26,27 @@ export function CertificateTabs() {
 	const active = certificateTab(pathname);
 	const certificates = useCertificates(CERTIFICATE_LIST_EXPAND);
 	const dnsCredentials = useDnsCredentials(DNS_CREDENTIAL_LIST_EXPAND);
+	const dnsDomains = useDnsDomains(DNS_DOMAIN_LIST_EXPAND);
 	const counts = {
 		certificates: certificates.data?.length,
 		"dns-credentials": dnsCredentials.data?.length,
+		domains: dnsDomains.data?.length,
 	};
+	const strip = useRef(null);
+	// on a phone the strip scrolls sideways: bring the open tab, with its badge, into view when the tab changes or a
+	// badge arrives (it widens the tab), never on another render, so a strip the user scrolled stays where it is
+	const badges = Object.values(counts).join(",");
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the open tab and the badges are the trigger
+	useEffect(() => {
+		strip.current?.querySelector("[aria-current]")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+	}, [active, badges]);
 
 	return (
-		<nav aria-label={intl.formatMessage({ id: "certificates-dns" })} className="flex border-b">
+		<nav
+			ref={strip}
+			aria-label={intl.formatMessage({ id: "certificates-dns" })}
+			className="flex overflow-x-auto border-b"
+		>
 			{CERTIFICATE_TABS.map((tab) => (
 				<Link
 					key={tab.key}

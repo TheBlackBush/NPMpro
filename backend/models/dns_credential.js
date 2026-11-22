@@ -1,6 +1,7 @@
 import { Model } from "objection";
 import db from "../db.js";
 import certificateModel from "./certificate.js";
+import dnsDomainModel from "./dns_domain.js";
 import now from "./now_helper.js";
 import userModel from "./user.js";
 
@@ -40,6 +41,14 @@ class DnsCredential extends Model {
 				join: {
 					from: "npmpro_dns_credential.id",
 					to: "certificate.npmpro_dns_credential_id",
+				},
+			},
+			domains: {
+				relation: Model.HasManyRelation,
+				modelClass: dnsDomainModel,
+				join: {
+					from: "npmpro_dns_credential.id",
+					to: "npmpro_dns_domain.dns_credential_id",
 				},
 			},
 		};

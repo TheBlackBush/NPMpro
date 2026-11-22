@@ -10,7 +10,7 @@ import {
 	ListToolbar,
 	LoadingPage,
 } from "src/components";
-import { useDnsCredentials, useListFilters } from "src/hooks";
+import { DOMAIN_KEYS, useDnsCredentials, useListFilters } from "src/hooks";
 import { T } from "src/locale";
 import { showDeleteConfirmModal, showDnsCredentialModal } from "src/modals";
 import { DNS_CREDENTIAL_LIST_EXPAND } from "src/modules/CertificateTabs";
@@ -93,7 +93,8 @@ export default function TableWrapper() {
 								await deleteDnsCredential(id);
 								showObjectSuccess("dns-credential", "deleted");
 							},
-							invalidations: [["dns-credentials"], ["dns-credential", id], ["certificates"]],
+							// the backend deletes the credential's domains with it
+							invalidations: [...DOMAIN_KEYS, ["certificates"]],
 							children: <T id="object.delete.content" tData={{ object: "dns-credential" }} />,
 							subject: credential?.name,
 						});

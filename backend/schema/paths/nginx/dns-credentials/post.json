@@ -57,6 +57,16 @@
 						},
 						"ini": {
 							"$ref": "../../../components/dns-credential-object.json#/properties/ini"
+						},
+						"domains": {
+							"type": "array",
+							"maxItems": 100,
+							"items": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 253
+							},
+							"description": "The DNS domains (zones) the credential manages, such as example.com. Replaces the stored list; left out, the list stays. A name the owner keeps on another credential refuses the save."
 						}
 					}
 				},
@@ -71,6 +81,10 @@
 									"key": "dns_cloudflare_api_token",
 									"value": "YOUR_CLOUDFLARE_TOKEN"
 								}
+							],
+							"domains": [
+								"example.com",
+								"lab.example.com"
 							]
 						}
 					},
@@ -115,7 +129,10 @@
 									}
 								],
 								"ini_set": false,
-								"decrypt_error": false
+								"decrypt_error": false,
+								"domains": [
+									"example.com"
+								]
 							}
 						}
 					},

@@ -33,6 +33,10 @@ le credenziali salvate non potranno essere lette dopo un ripristino.
 I provider senza un modulo usano la casella di testo INI, in cui incolli il contenuto del
 file delle credenziali per quel provider.
 
+#### Domini
+
+Una credenziale elenca i domini (zone DNS) che gestisce, come `example.com`. La scheda **Domini** della pagina Certificati elenca i domini di tutte le tue credenziali.
+
 ### Certificato personalizzato
 
 Utilizza questa opzione per caricare il tuo certificato TLS, fornito dalla tua autorità di certificazione.

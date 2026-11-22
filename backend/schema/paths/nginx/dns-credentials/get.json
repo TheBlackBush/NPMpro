@@ -16,12 +16,13 @@
 		{
 			"in": "query",
 			"name": "expand",
-			"description": "Relations to add to each credential of the answer: one or both of `owner` (the user who created it) and `certificates` (the certificates that use it), separated by commas.",
+			"description": "Relations to add to each credential of the answer: any of `owner` (the user who created it), `certificates` (the certificates that use it) and `domains` (the names of its DNS domains), separated by commas.",
 			"schema": {
 				"type": "string",
 				"enum": [
 					"owner",
-					"certificates"
+					"certificates",
+					"domains"
 				]
 			}
 		}
@@ -56,7 +57,10 @@
 										}
 									],
 									"ini_set": false,
-									"decrypt_error": false
+									"decrypt_error": false,
+									"domains": [
+										"example.com"
+									]
 								},
 								{
 									"id": 2,
@@ -80,7 +84,10 @@
 										}
 									],
 									"ini_set": false,
-									"decrypt_error": false
+									"decrypt_error": false,
+									"domains": [
+										"example.com"
+									]
 								}
 							]
 						}

@@ -19,7 +19,10 @@ const ITEM_TYPES = {
 			["access_list_client", "access_list_id"],
 		],
 	},
-	dns_credentials: { table: "npmpro_dns_credential", children: [] },
+	dns_credentials: {
+		table: "npmpro_dns_credential",
+		children: [["npmpro_dns_domain", "dns_credential_id"]],
+	},
 	users: {
 		table: "user",
 		children: [

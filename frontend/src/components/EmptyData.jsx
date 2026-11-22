@@ -20,6 +20,8 @@ function EmptyData({
 	permission,
 	icon: Icon,
 	section,
+	message,
+	subtitle,
 }) {
 	const ShownIcon = isFiltered || !Icon ? Search : Icon;
 	const stacked = useStacked();
@@ -61,12 +63,10 @@ function EmptyData({
 						</>
 					) : (
 						<>
-							<p className="m-0 font-medium">
-								<T id="object.empty" tData={{ objects }} />
-							</p>
+							<p className="m-0 font-medium">{message ?? <T id="object.empty" tData={{ objects }} />}</p>
 							<HasPermission section={permissionSection} permission={permission || MANAGE} hideError>
 								<p className="m-0 text-sm text-muted-foreground">
-									<T id="empty-subtitle" />
+									{subtitle ?? <T id="empty-subtitle" />}
 								</p>
 								<div className="mt-2">
 									{customAddBtn ?? (

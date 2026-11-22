@@ -5,7 +5,7 @@ const fetchDnsCredential = (id) => {
 	if (id === "new") {
 		return Promise.resolve({ id: 0, name: "", provider: "", fields: [], iniSet: false, decryptError: false });
 	}
-	return getDnsCredential(id, ["certificates"]);
+	return getDnsCredential(id, ["certificates", "domains"]);
 };
 
 const useDnsCredential = (id) =>
@@ -24,6 +24,8 @@ const useSetDnsCredential = () => {
 				queryClient.invalidateQueries({ queryKey: ["dns-credential", id] }),
 				queryClient.invalidateQueries({ queryKey: ["dns-credentials"] }),
 				queryClient.invalidateQueries({ queryKey: ["certificates"] }),
+				queryClient.invalidateQueries({ queryKey: ["dns-domains"] }),
+				queryClient.invalidateQueries({ queryKey: ["dns-domain-suggestions"] }),
 				queryClient.invalidateQueries({ queryKey: ["audit-logs"] }),
 			]);
 		},

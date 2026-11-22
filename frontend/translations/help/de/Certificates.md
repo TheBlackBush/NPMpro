@@ -40,6 +40,10 @@ können die gespeicherten Zugangsdaten nach einer Wiederherstellung nicht gelese
 Provider ohne Formular verwenden das INI-Textfeld, in das Sie den Inhalt der
 Zugangsdaten-Datei für diesen Provider einfügen.
 
+#### Domains
+
+Zugangsdaten führen die Domains (DNS-Zonen) auf, die sie verwalten, zum Beispiel `example.com`. Der Tab **Domains** der Seite Zertifikate listet die Domains aller Ihrer Zugangsdaten auf.
+
 ### Benutzerdefiniertes Zertifikat
 
 Verwenden Sie diese Option, um Ihr eigenes TLS-Zertifikat hochzuladen, das Ihnen von Ihrer eigenen

@@ -6,6 +6,7 @@ const HOST_TABLES = ["proxy_host", "redirection_host", "dead_host", "stream"];
 const OWNED_TABLES = [...HOST_TABLES, "certificate", "access_list", "npmpro_dns_credential"];
 const LINK_TABLE = "npmpro_proxy_host_access_list";
 const CREDENTIAL_TABLE = "npmpro_dns_credential";
+const DOMAIN_TABLE = "npmpro_dns_domain";
 // npmpro_dns_credential.name is a varchar(255), unique per owner
 const MAX_NAME = 255;
 
@@ -30,6 +31,34 @@ const freeName = (name, taken) => {
 		const candidate = `${base.slice(0, MAX_NAME - suffix.length)}${suffix}`;
 		if (!taken.has(nameKey(candidate))) return candidate;
 	}
+};
+
+const domainChange = (row, label) => ({
+	table: DOMAIN_TABLE,
+	id: row.id,
+	column: "*",
+	remove: true,
+	from: row.dns_credential_id,
+	to: null,
+	label,
+});
+
+/**
+ * The domain rows whose credential is not in the given credential rows, as removals with their note.
+ *
+ * @param   {Array<Object>}  domains
+ * @param   {Array<Object>}  credentials
+ * @returns {{ kept: Array<Object>, orphans: Array<Object> }}
+ */
+const splitOrphanDomains = (domains, credentials) => {
+	const credentialIds = idSet(credentials);
+	const kept = [];
+	const orphans = [];
+	for (const row of domains) {
+		if (credentialIds.has(key(row.dns_credential_id))) kept.push(row);
+		else orphans.push(domainChange(row, `DNS domain ${row.name}: credential #${row.dns_credential_id} not found`));
+	}
+	return { kept, orphans };
 };
 
 /**
@@ -130,6 +159,29 @@ const planReferences = ({ finalRows, adminUserId }) => {
 		}
 	}
 
+	// the domains: a name is kept once per owner, on the credential with the lowest id (a credential handed to the admin
+	// may now share an owner with one that has the name)
+	const { kept, orphans } = splitOrphanDomains(rows(DOMAIN_TABLE), rows(CREDENTIAL_TABLE));
+	changes.push(...orphans);
+	const credentialNames = new Map(rows(CREDENTIAL_TABLE).map((row) => [key(row.id), row.name]));
+	const ownerOfCredential = new Map(
+		rows(CREDENTIAL_TABLE).map((row) => [
+			key(row.id),
+			userIds.has(key(row.owner_user_id)) ? row.owner_user_id : adminUserId,
+		]),
+	);
+	const byId = (a, b) => Number(a) - Number(b);
+	const keeper = new Map();
+	for (const row of [...kept].sort((a, b) => byId(a.dns_credential_id, b.dns_credential_id) || byId(a.id, b.id))) {
+		const owner = key(ownerOfCredential.get(key(row.dns_credential_id)));
+		const holder = `${owner}\u0000${nameKey(row.name)}`;
+		if (keeper.has(holder)) {
+			changes.push(
+				domainChange(row, `DNS domain ${row.name}: the owner keeps it on DNS credential ${keeper.get(holder)}`),
+			);
+		} else keeper.set(holder, credentialNames.get(key(row.dns_credential_id)) ?? `#${row.dns_credential_id}`);
+	}
+
 	return changes;
 };
 
@@ -144,6 +196,10 @@ const planReferences = ({ finalRows, adminUserId }) => {
 const applyReferences = async (trx, changes) => {
 	const updates = new Map();
 	for (const change of changes) {
+		if (change.remove) {
+			await trx(change.table).where({ id: change.id }).del();
+			continue;
+		}
 		if (change.column === "*") {
 			await trx(change.table)
 				.where({
@@ -161,4 +217,4 @@ const applyReferences = async (trx, changes) => {
 	for (const { table, id, values } of updates.values()) await trx(table).where({ id }).update(values);
 };
 
-export { applyReferences, freeName, planReferences };
+export { applyReferences, freeName, planReferences, splitOrphanDomains };

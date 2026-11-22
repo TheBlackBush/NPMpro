@@ -21,6 +21,7 @@ import monitoringRoutes from "./monitoring.js";
 import accessListsRoutes from "./nginx/access_lists.js";
 import certificatesHostsRoutes from "./nginx/certificates.js";
 import dnsCredentialsRoutes from "./nginx/dns_credentials.js";
+import dnsDomainsRoutes from "./nginx/dns_domains.js";
 import oidcRoutes from "./oidc.js";
 import reportsRoutes from "./reports.js";
 import schemaRoutes from "./schema.js";
@@ -141,6 +142,7 @@ router.use(
 router.use("/api/nginx/access-lists", accessListsRoutes);
 router.use("/api/nginx/certificates", certificatesHostsRoutes);
 router.use("/api/nginx/dns-credentials", dnsCredentialsRoutes);
+router.use("/api/nginx/dns-domains", dnsDomainsRoutes);
 
 /** ALL /api/*: 404 for every other route */
 router.all(/(?<path>.+)/u, (req, _, next) => {

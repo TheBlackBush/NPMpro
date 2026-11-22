@@ -25,6 +25,7 @@ const ROUTERS = [
 	["GET", "/nginx/access-lists"],
 	["GET", "/nginx/certificates"],
 	["GET", "/nginx/dns-credentials"],
+	["GET", "/nginx/dns-domains"],
 	["GET", "/oidc/config"],
 	["GET", "/schema"],
 	["GET", "/auth"],

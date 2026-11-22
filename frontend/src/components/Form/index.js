@@ -8,6 +8,7 @@ export * from "./DirectoryField";
 export * from "./DNSProviderFields";
 export * from "./DnsCredentialSelect";
 export * from "./DnsCredentialValuesFields";
+export * from "./DnsDomainNamesField";
 export * from "./DomainNamesField";
 export * from "./FormErrorNote";
 export * from "./FormField";

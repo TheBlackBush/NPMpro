@@ -54,7 +54,10 @@
 									}
 								],
 								"ini_set": false,
-								"decrypt_error": false
+								"decrypt_error": false,
+								"domains": [
+									"example.com"
+								]
 							}
 						}
 					},
