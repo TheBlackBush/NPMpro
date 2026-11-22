@@ -52,7 +52,7 @@ When a saved setting applies:
 | nginx | DNS servers for upstream names, space separated (IPv4 or [IPv6], optional :port, at most 8). Empty (the default): the container's /etc/resolv.conf | `NGINX_RESOLVER` | on save, with an nginx reload; also Settings, nginx, DNS resolver; a set variable locks the field |
 | nginx | Answer names from /etc/hosts (default `true`) | `NGINX_RESOLVER_HOSTS` | on save, with an nginx reload; also Settings, nginx, DNS resolver; a set variable locks the field |
 | nginx | Ask for IPv6 addresses too (default `true`) | `NGINX_RESOLVER_IPV6` | on save, with an nginx reload; also Settings, nginx, DNS resolver; a set variable locks the field |
-| nginx | How long nginx keeps an answer: seconds, or parts with units such as `30s`, `5m` or `1h30m` (never `ms`, not a bare `0`). Empty (the default): the record's TTL | `NGINX_RESOLVER_VALID` | on save, with an nginx reload; also Settings, nginx, DNS resolver; a set variable locks the field |
+| nginx | How long nginx keeps an answer: seconds, or parts with units such as `30s`, `5m` or `1h30m` (never `ms`, not a bare `0`). Empty (the default): the record's TTL; `0s` or another zero such as `0m` means the same as empty | `NGINX_RESOLVER_VALID` | on save, with an nginx reload; also Settings, nginx, DNS resolver; a set variable locks the field |
 | Advanced | Format nginx configs | `DISABLE_NGINX_BEAUTIFIER` (inverted) | immediately |
 | Advanced | Gravatar profile pictures (a real photo only; a user without one, or with Gravatar off, gets their initials drawn by NPMpro) | `DISABLE_GRAVATAR` (inverted) | immediately (a user's picture is refreshed when the user is created (also by the first OIDC sign-in) or saved) |
 | Advanced | Time zone | `TZ` | after a restart |
