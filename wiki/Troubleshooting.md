@@ -40,6 +40,7 @@ NPMpro tests the nginx config whenever it writes one. If the test fails, the hos
 - **Must-Staple:** Let's Encrypt refuses Must-Staple requests. Turn OCSP Must-Staple off with Let's Encrypt.
 - **Rate limits:** Let's Encrypt limits how many certificates you can request; after many failed attempts wait before trying again. See https://letsencrypt.org/docs/rate-limits/.
 - **Other CAs:** ZeroSSL needs an email (NPMpro fetches the EAB pair for it); Google Trust Services needs an email and an EAB key ID and HMAC key (`gcloud publicca external-account-key create`). Enter them in the Connect window of Settings, Certificates, ACME account, or set the `ACME_*` variables. A failed registration shows the CA's message on the account card (Show details); **Try again** retries, **Change** opens the window to correct the values.
+- **Editing the domain names fails:** the certificate is requested again, so the same causes apply (challenge, DNS, rate limits). The window then shows the CA's message and the certificate keeps its old names. "The certificate's CA changed meanwhile" means another request changed it first: reload the list and try again.
 - The backend log in `docker logs npmpro` has the certbot output.
 
 ## HTTP/3 does not work

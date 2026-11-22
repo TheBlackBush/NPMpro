@@ -15,6 +15,8 @@ below as its release notes.
 - **Certificates:** request a certificate from another CA than the instance default (administrators add CAs under Other
   CAs in Settings, Certificates), see each certificate's CA in the list, and re-issue a certificate on another CA (the
   old certificate is revoked, except on a re-issue to Let's Encrypt staging, which the window warns about).
+- **Certificates:** edit the domain names of an ACME certificate (Edit in its row); it is requested again under the same
+  entry, the window warns about names hosts still use, and a failure changes nothing.
 - **Hosts:** a one-line description on proxy, redirection and 404 hosts and up to 10 tags on every host type, shown in
   automatic brand colours picked from the tag's name, with a Tags filter and search in the lists.
 - **Hosts:** a custom location with exactly `/.well-known/acme-challenge/` passes the ACME challenges to its own
