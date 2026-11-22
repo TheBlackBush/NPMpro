@@ -15,6 +15,7 @@ import {
 	isRestartPending,
 	restartPendingFields,
 	runtimeSettingsPayload,
+	warningTexts,
 } from "src/modules/RuntimeSettings";
 import { unlockedErrors } from "src/modules/SettingsForms";
 import { showError, showObjectSuccess, showWarning } from "src/notifications";
@@ -31,14 +32,6 @@ const formatMessage = (id, values) => intl.formatMessage({ id }, values);
 
 const RuntimeContext = createContext(null);
 
-/**
- * The warnings of a save answer as texts (the answer's warnings carry a translation key and its values, here the
- * address), each with the key of the setting it belongs to
- */
-const warningsOf = (answer) =>
-	(answer?.warnings ?? [])
-		.filter((warning) => hasMessage(warning.messageI18n))
-		.map(({ key, messageI18n, ...values }) => ({ key: camel(key), text: formatMessage(messageI18n, values) }));
 // lock reasons of a setting, not of an env var (backend SETTING_LOCK_REASONS)
 const SETTING_LOCK_REASONS = new Set(["goaccess-setting", "force-mlkem-setting", "crowdsec-setting"]);
 
@@ -194,7 +187,7 @@ function RuntimeForm({ group, titleId, leadId, top, data, toForm, toApi, validat
 			if (!isEmptyPayload(payload)) {
 				const answer = await save(payload);
 				showObjectSuccess("setting", "saved");
-				const found = warningsOf(answer);
+				const found = warningTexts(answer, hasMessage, formatMessage);
 				setWarnings(found);
 				for (const warning of found) showWarning(warning.text);
 			}

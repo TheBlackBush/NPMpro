@@ -1899,6 +1899,7 @@
 	"settings.nginx.resolver": "DNS resolver",
 	"settings.nginx.resolver.addresses": "Resolver addresses",
 	"settings.nginx.resolver.addresses.hint": "Empty: the container's resolvers (/etc/resolv.conf). An IPv4 address or an IPv6 address in brackets, with an optional port.",
+	"settings.nginx.resolver.duplicate": "{address} is listed twice",
 	"settings.nginx.resolver.hosts": "Use /etc/hosts",
 	"settings.nginx.resolver.info": "The DNS servers nginx asks for upstream host names, for example a forward host given as a name. A changed list applies with an nginx reload.",
 	"settings.nginx.resolver.invalid": "{address} is not an IP address with an optional port; IPv6 goes in brackets, such as [2606:4700::1111]:53",

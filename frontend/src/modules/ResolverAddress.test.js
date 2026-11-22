@@ -56,6 +56,18 @@ it("the cache time is empty, a bare number other than 0, or ordered parts, never
 	}
 });
 
+it("a duplicate and a stored value", () => {
+	assert.deepEqual(resolverValidate(rules, { resolverAddresses: ["1.1.1.1", "1.1.1.1"], resolverValid: "" }, {}), {
+		resolverAddresses: "1.1.1.1 is listed twice",
+	});
+	// a stored value that fails the rule passes while it is unchanged, and is refused once changed
+	const stored = { resolverAddresses: ["dns.example"], resolverValid: "500ms" };
+	const same = { resolverAddresses: ["dns.example"], resolverValid: " 500ms " };
+	assert.deepEqual(resolverValidate(rules, same, stored), {});
+	const changed = { resolverAddresses: ["dns.example", "x"], resolverValid: "0" };
+	assert.deepEqual(Object.keys(resolverValidate(rules, changed, stored)), ["resolverAddresses", "resolverValid"]);
+});
+
 it("the resolver fields' errors name the address and the time", () => {
 	const ok = { resolverAddresses: ["1.1.1.1"], resolverValid: "" };
 	assert.deepEqual(resolverValidate(rules, ok), {});

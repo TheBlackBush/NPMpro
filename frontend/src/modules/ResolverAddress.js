@@ -47,21 +47,31 @@ export const isResolverValid = (value) =>
 	typeof value === "string" && (value === "" || (isNginxTime(value) && value !== "0" && !value.includes("ms")));
 
 /**
- * The resolver fields' errors, as the nginx form validate gives them
+ * The resolver fields' errors, as the nginx form validate gives them. A value equal to the stored one (data, as the
+ * API returns it) is never refused: a save that keeps it passes.
  *
  * @param   {Object}  rules   Validations
  * @param   {Object}  values  form values
+ * @param   {Object}  [data]  the loaded group
  * @returns {Object}
  */
-export const resolverValidate = (rules, values) => {
+export const resolverValidate = (rules, values, data) => {
 	const errors = {};
-	const problem = resolverAddressProblem(values.resolverAddresses ?? []);
-	if (problem?.error === "too-many") {
-		errors.resolverAddresses = rules.message("settings.nginx.resolver.too-many");
-	} else if (problem) {
-		errors.resolverAddresses = rules.message("settings.nginx.resolver.invalid", { address: problem.address ?? "" });
+	const addresses = values.resolverAddresses ?? [];
+	if (JSON.stringify(addresses) !== JSON.stringify(data?.resolverAddresses)) {
+		const problem = resolverAddressProblem(addresses);
+		if (problem?.error === "too-many") {
+			errors.resolverAddresses = rules.message("settings.nginx.resolver.too-many");
+		} else if (problem?.error === "duplicate") {
+			errors.resolverAddresses = rules.message("settings.nginx.resolver.duplicate", { address: problem.address });
+		} else if (problem) {
+			errors.resolverAddresses = rules.message("settings.nginx.resolver.invalid", {
+				address: problem.address ?? "",
+			});
+		}
 	}
-	if (!isResolverValid(String(values.resolverValid ?? "").trim())) {
+	const valid = String(values.resolverValid ?? "").trim();
+	if (valid !== (data?.resolverValid ?? "") && !isResolverValid(valid)) {
 		errors.resolverValid = rules.message("settings.nginx.resolver.valid.invalid");
 	}
 	return errors;

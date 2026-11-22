@@ -10,7 +10,7 @@ import { Part, RuntimeSection, useRuntimeSection } from "./Runtime/RuntimeSectio
 import { StatusAlert } from "./StatusAlert";
 
 const validateNginx = nginxValidate(validations);
-const validate = (values, data) => ({ ...validateNginx(values, data), ...resolverValidate(validations, values) });
+const validate = (values, data) => ({ ...validateNginx(values, data), ...resolverValidate(validations, values, data) });
 
 // a typed address is taken only when it is an address and the list has room, as the save checks it
 const isNewAddress = (text, held) => isResolverAddress(text) && held.length < MAX_RESOLVER_ADDRESSES;

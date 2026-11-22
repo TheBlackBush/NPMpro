@@ -280,6 +280,20 @@ const fieldOfError = (group, text) => {
 const isServableCertificate = (cert) =>
 	cert?.provider !== "mtls" && Array.isArray(cert?.domainNames) && cert.domainNames.length > 0;
 
+/**
+ * The warnings of a save answer as { key (camelCase), text }: each carries a translation key and its values (here the
+ * address); one whose key is not known is dropped
+ *
+ * @param   {Object}    answer
+ * @param   {Function}  hasMessage      (id) => whether the id is translated
+ * @param   {Function}  formatMessage   (id, values) => the text
+ * @returns {{ key: string, text: string }[]}
+ */
+const warningTexts = (answer, hasMessage, formatMessage) =>
+	(answer?.warnings ?? [])
+		.filter((warning) => hasMessage(warning.messageI18n))
+		.map(({ key, messageI18n, ...values }) => ({ key: camel(key), text: formatMessage(messageI18n, values) }));
+
 export {
 	appliesMessageId,
 	defaultKeySize,
@@ -297,4 +311,5 @@ export {
 	runtimeSettingsPayload,
 	timeZoneOptions,
 	trustedIpLines,
+	warningTexts,
 };

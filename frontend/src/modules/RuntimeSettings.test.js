@@ -18,6 +18,7 @@ import {
 	runtimeSettingsPayload,
 	timeZoneOptions,
 	trustedIpLines,
+	warningTexts,
 } from "./RuntimeSettings.js";
 
 it("keySizeOptions follows the key type", () => {
@@ -255,4 +256,20 @@ it("trustedIpLines keeps every non-blank line, valid or not, so typed text count
 	assert.deepEqual(trustedIpLines(""), []);
 	const valid = "10.0.0.1\n192.168.0.0/16";
 	assert.deepEqual(trustedIpLines(valid), parseTrustedIps(valid).list);
+});
+
+it("warningTexts gives the text of each known warning with its camelCase key", () => {
+	const known = (id) => id === "warning.resolver-no-answer";
+	const format = (id, values) => `${id} ${values.address}`;
+	const answer = {
+		warnings: [
+			{ key: "resolver_addresses", address: "9.9.9.9", messageI18n: "warning.resolver-no-answer" },
+			{ key: "resolver_addresses", address: "8.8.8.8", messageI18n: "warning.unknown" },
+		],
+	};
+	assert.deepEqual(warningTexts(answer, known, format), [
+		{ key: "resolverAddresses", text: "warning.resolver-no-answer 9.9.9.9" },
+	]);
+	assert.deepEqual(warningTexts({}, known, format), []);
+	assert.deepEqual(warningTexts(undefined, known, format), []);
 });
