@@ -47,6 +47,7 @@ export * from "./getDatabase";
 export * from "./getDatabaseMove";
 export * from "./getDnsCredential";
 export * from "./getDnsCredentials";
+export * from "./getDnsDomainSuggestions";
 export * from "./getDnsDomains";
 export * from "./getEnvironment";
 export * from "./getGeoipSettings";

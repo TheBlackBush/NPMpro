@@ -6,7 +6,7 @@ Gebruik **Dupliceren** in het menu van de host om een host naar een nieuw venste
 
 ### Details
 
-- **Domeinnamen**: de namen die worden omgeleid. Verplicht. Wildcards zijn voor een nieuw certificaat alleen toegestaan met de DNS-challenge.
+- **Domeinnamen**: de namen die worden omgeleid. Verplicht. Wildcards zijn voor een nieuw certificaat alleen toegestaan met de DNS-challenge. Het veld stelt de domeinen van je DNS-inloggegevens en de al gebruikte namen voor. Elke andere naam kun je nog steeds typen.
 - **Beschrijving**: optioneel, één regel (maximaal 255 tekens) die zegt waar de host voor dient. Ze staat in de lijst onder de domeinnamen en de zoekfunctie vindt haar.
 - **Schema**: het schema van het doel. „behouden (zelfde als het verzoek)” is de standaard en behoudt `http` of `https` van het bezoek. Of kies `http` of `https`.
 - **Doorgestuurd Domein**: het domein waarheen bezoekers worden gestuurd, bijvoorbeeld `example.com`. Verplicht.

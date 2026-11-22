@@ -20,6 +20,7 @@ export * from "./useDnsCredential";
 export * from "./useDnsCredentials";
 export * from "./useDnsDomains";
 export * from "./useDnsProviders";
+export * from "./useDomainSuggestions";
 export * from "./useElapsed";
 export * from "./useHealth";
 export * from "./useHostReport";

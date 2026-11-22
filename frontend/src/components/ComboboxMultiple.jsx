@@ -1,6 +1,6 @@
 import { Command as CommandRoot, useCommandState } from "cmdk";
 import { XIcon } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { TapTooltip } from "src/components/TapTooltip";
 import { TruncatedText } from "src/components/TruncatedText";
 import { Badge } from "src/components/ui/badge";
@@ -8,8 +8,21 @@ import { Button } from "src/components/ui/button";
 import { Popover, PopoverAnchor, PopoverContent } from "src/components/ui/popover";
 import { cn } from "src/lib/utils";
 import { intl } from "src/locale";
-import { appendEntries, partitionEntries, removeLast, WORD_ENTRIES } from "src/modules/Combobox";
-import { ComboboxItems, keepScroll, labelOf, listFor, popoverClass, useElementId } from "./ComboboxParts";
+import { appendEntries, createFirstActive, partitionEntries, removeLast, WORD_ENTRIES } from "src/modules/Combobox";
+import {
+	ComboboxItems,
+	CREATE_KEY,
+	keepScroll,
+	labelOf,
+	listFor,
+	optionKey,
+	popoverClass,
+	useElementId,
+} from "./ComboboxParts";
+
+// the cmdk value while no entry is highlighted: a key no item has. An empty value would make cmdk highlight the first
+// item again as soon as items mount.
+const NO_HIGHLIGHT = "none:";
 
 /**
  * The text input of a multiple combobox, inside cmdk's root so its keys move through the list. cmdk renders no
@@ -64,6 +77,8 @@ export function MultipleCombobox({
 	emptyText,
 	createText,
 	isValidNew,
+	filter,
+	createFirst,
 	normalize,
 	separators = WORD_ENTRIES,
 	commitRef,
@@ -92,11 +107,32 @@ export function MultipleCombobox({
 		getOptionLabel,
 		getOptionValue,
 		createText,
+		filter,
+		createFirst,
 	};
 	const list = listFor({ ...listArgs, query });
 	// nothing to list: an empty creatable field (domain names) stays closed until something is typed
 	const hasContent = loading || list.keys.length > 0 || query.trim() !== "";
 	const shown = open && hasContent && !locked;
+	const listKeys = list.keys.join("\u0000");
+	// createFirst: only "Add ..." or the option that is exactly the typed text is highlighted, so Enter adds exactly
+	// the typed text; with neither, nothing is (Enter then commits the text with the field's own checks)
+	const highlightOf = (shownList, text) =>
+		createFirstActive({
+			keys: shownList.keys,
+			createKey: CREATE_KEY,
+			items: shownList.items,
+			query: text,
+			getLabel: getOptionLabel,
+			getValue: getOptionValue,
+			keyOf: optionKey,
+		}) || NO_HIGHLIGHT;
+	const firstActive = createFirst ? highlightOf(list, query) : "";
+	// the options arrive from the caller one render after the typed text, so the highlight follows the list shown
+	// biome-ignore lint/correctness/useExhaustiveDependencies: listKeys is the shown list, a new one resets the highlight
+	useEffect(() => {
+		if (createFirst) setActive(firstActive);
+	}, [createFirst, listKeys, firstActive]);
 
 	const changeQuery = (text) => {
 		setQuery(text);
@@ -104,9 +140,12 @@ export function MultipleCombobox({
 	};
 	const typed = (text) => {
 		changeQuery(text);
-		setActive(listFor({ ...listArgs, query: text }).keys[0] ?? "");
+		const next = listFor({ ...listArgs, query: text });
+		setActive(createFirst ? highlightOf(next, text) : (next.keys[0] ?? ""));
 		if (!locked) setOpen(true);
 	};
+	// an arrow key with nothing highlighted (createFirst) or on the closed list: the first entry
+	const highlightFirst = () => setActive(list.keys[0] ?? "");
 	// add the valid entries of a text; the others stay in the input to be corrected
 	const commit = (text) => {
 		// each entry is checked against the values plus the entries accepted before it, so a pasted list cannot
@@ -152,10 +191,11 @@ export function MultipleCombobox({
 		if (key === "Home" || key === "End") {
 			// the caret moves in the text, cmdk must not take these keys
 			event.stopPropagation();
-		} else if ((key === "ArrowDown" || key === "ArrowUp") && !shown) {
+		} else if ((key === "ArrowDown" || key === "ArrowUp") && !(shown && highlighted)) {
 			event.preventDefault();
 			event.stopPropagation();
-			typed(query);
+			if (!shown) typed(query);
+			highlightFirst();
 		} else if (key === "Enter" && !highlighted) {
 			// no option to choose: add what was typed (creatable), or open the list
 			event.preventDefault();
@@ -290,6 +330,7 @@ export function MultipleCombobox({
 						renderOption={renderOption}
 						getOptionLabel={getOptionLabel}
 						getOptionValue={getOptionValue}
+						createFirst={createFirst}
 						onPick={pick}
 						onCreate={() => {
 							commit(query);

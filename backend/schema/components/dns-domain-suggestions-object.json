@@ -1,0 +1,81 @@
+{
+	"type": "object",
+	"description": "The suggestions for domain name fields",
+	"required": [
+		"zones",
+		"names"
+	],
+	"additionalProperties": false,
+	"properties": {
+		"zones": {
+			"type": "array",
+			"description": "The DNS domains of the credentials you can see",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"name",
+					"dns_credential_id",
+					"credential_name",
+					"provider",
+					"owner_user_id",
+					"owner_name"
+				],
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "The DNS domain (zone) name"
+					},
+					"dns_credential_id": {
+						"type": "integer",
+						"description": "The ID of the DNS credential that manages the domain"
+					},
+					"credential_name": {
+						"type": "string",
+						"description": "The name of that DNS credential"
+					},
+					"provider": {
+						"type": "string",
+						"description": "The DNS provider of that credential"
+					},
+					"owner_user_id": {
+						"type": "integer",
+						"description": "The ID of the user who owns the credential"
+					},
+					"owner_name": {
+						"type": "string",
+						"description": "The name of the user who owns the credential"
+					}
+				}
+			}
+		},
+		"names": {
+			"type": "array",
+			"description": "Domain names your hosts and certificates already use, each once, sorted by name (at most 2000)",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"name",
+					"source"
+				],
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "The domain name"
+					},
+					"source": {
+						"type": "string",
+						"description": "The first place the name was found",
+						"enum": [
+							"proxy_host",
+							"redirection_host",
+							"dead_host",
+							"certificate"
+						]
+					}
+				}
+			}
+		}
+	}
+}

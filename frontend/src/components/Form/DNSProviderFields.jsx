@@ -1,17 +1,24 @@
+import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 import { Combobox } from "src/components/Combobox";
+import { FieldDescription } from "src/components/ui/field";
 import { Input } from "src/components/ui/input";
-import { useDnsProviders } from "src/hooks";
+import { useDnsCredentials, useDnsProviders, useDomainSuggestions, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
+import { challengeSuggestion, suggestionStep } from "src/modules/DnsChallengeSuggestion";
 import { NoticeAlert } from "../NoticeAlert";
+import { DnsChallengeNote } from "./DnsChallengeNote";
 import { DnsCredentialSelect } from "./DnsCredentialSelect";
 import { FormField } from "./FormField";
 import { FormSection } from "./FormSection";
 import { useRecheckDependent } from "./HookForm";
 
+// the id of the credential hint, which sits below the challenge note (outside the credential field)
+const SAVED_NOTE_ID = "dnsCredential-saved-note";
+
 // the provider; another provider's credential does not fit, so a change empties it (its message shows again once
 // it may). className: of the field, "mb-0" while it is the last one in the box
-function ProviderSelect({ providerId, className }) {
+function ProviderSelect({ providerId, className, onUserChange }) {
 	const { setValue } = useFormContext();
 	const { field, fieldState } = useController({ name: "npmproDnsProvider" });
 	const recheckCredential = useRecheckDependent("npmproDnsCredentialId");
@@ -44,6 +51,7 @@ function ProviderSelect({ providerId, className }) {
 					value={field.value ?? null}
 					onBlur={field.onBlur}
 					onChange={(value) => {
+						onUserChange();
 						field.onChange(value);
 						setValue("npmproDnsCredentialId", null, { shouldDirty: true });
 						recheckCredential();
@@ -97,23 +105,80 @@ function PropagationInput() {
  *                                     "mb-0" because its request section has the margin below)
  */
 export function DNSProviderFields({ className }) {
+	const { setValue, formState } = useFormContext();
 	const providerId = useWatch({ name: "npmproDnsProvider" });
+	const credentialId = useWatch({ name: "npmproDnsCredentialId" });
+	const domainNames = useWatch({ name: "domainNames" });
+	const { data: user } = useUser("me");
+	const { data: credentials } = useDnsCredentials();
+	const { data: suggested } = useDomainSuggestions();
+	// the user chose the provider or the credential, or the form holds a saved credential: a suggestion never
+	// replaces it
+	const [handPicked, setHandPicked] = useState(() => Boolean(credentialId));
+	const picked = () => setHandPicked(true);
+	const credentialBox = useRef(null);
+	const { preselect, note } = challengeSuggestion({
+		names: domainNames,
+		zones: suggested?.zones,
+		credentials,
+		userId: user?.id,
+		credentialId,
+		handPicked,
+	});
+	// what the suggestion put into the fields, to clear it again when the names stop matching
+	const applied = useRef(null);
+	const submitted = formState.isSubmitted;
+	useEffect(() => {
+		const step = suggestionStep({ preselect, providerId, credentialId, applied: applied.current, handPicked });
+		applied.current = step.applied;
+		const options = { shouldDirty: true, shouldValidate: submitted };
+		if (step.set) {
+			setValue("npmproDnsProvider", step.set.provider, options);
+			setValue("npmproDnsCredentialId", step.set.credentialId, options);
+		} else if (step.clear) {
+			setValue("npmproDnsProvider", null, options);
+			setValue("npmproDnsCredentialId", null, options);
+		}
+	}, [handPicked, preselect, providerId, credentialId, submitted, setValue]);
+	const chooseAnother = () => {
+		setHandPicked(true);
+		setValue("npmproDnsCredentialId", null, { shouldDirty: true, shouldValidate: submitted });
+		credentialBox.current?.querySelector("#dnsCredential")?.focus();
+	};
 	return (
 		<FormSection boxed className={className} legend={<T id="certificates.dns.section" />}>
 			<NoticeAlert className="mb-3">
 				<T id="certificates.dns.warning" />
 			</NoticeAlert>
-			<ProviderSelect providerId={providerId} className={providerId ? undefined : "mb-0"} />
+			<ProviderSelect providerId={providerId} className={providerId ? undefined : "mb-0"} onUserChange={picked} />
 			{providerId ? (
-				<>
+				<div ref={credentialBox}>
 					<DnsCredentialSelect
 						name="npmproDnsCredentialId"
 						provider={providerId}
-						hint={<T id="certificates.dns.credentials-saved-note" />}
+						describedBy={SAVED_NOTE_ID}
+						onUserChange={picked}
 					/>
-					<PropagationInput />
-				</>
+				</div>
 			) : null}
+			{/* one live region, always mounted in this place (under the credential, or the provider without one), so
+			    a note that arrives or changes is announced; the note inside is not a region of its own. It comes
+			    before the credential's hint, so "Use another" stays in view on a phone */}
+			<div role="status" aria-live="polite">
+				{note ? (
+					<DnsChallengeNote
+						note={note}
+						onUseAnother={chooseAnother}
+						className={providerId ? "mb-3" : "mt-3"}
+					/>
+				) : null}
+			</div>
+			{providerId ? (
+				<FieldDescription id={SAVED_NOTE_ID} className="-mt-1 mb-3">
+					<T id="certificates.dns.credentials-saved-note" />
+				</FieldDescription>
+			) : null}
+			{providerId ? <PropagationInput /> : null}
 		</FormSection>
 	);
 }

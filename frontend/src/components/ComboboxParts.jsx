@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { CommandEmpty, CommandItem, CommandList } from "src/components/ui/command";
+import { CommandEmpty, CommandGroup, CommandItem, CommandList } from "src/components/ui/command";
 import { intl } from "src/locale";
-import { canCreate, filterOptions } from "src/modules/Combobox";
+import { canCreate, exactFirst, filterOptions, groupsOf, orderKeys } from "src/modules/Combobox";
 
 // the cmdk value of the "Add ..." item; option items are "o:" and their value
 export const CREATE_KEY = "create:";
@@ -44,24 +44,35 @@ export function listFor({
 	getOptionLabel,
 	getOptionValue,
 	createText,
+	filter = true,
+	createFirst = false,
 }) {
 	const chosen = new Set(values.map(String));
 	// a multiple field does not offer what it already holds
 	const pool = multiple ? options.filter((option) => !chosen.has(String(getOptionValue(option)))) : options;
-	const items = filterOptions(pool, query, getOptionLabel);
 	const trimmed = query.trim();
 	const labels = values.map((value) => labelOf(value, options, getOptionLabel, getOptionValue));
 	const offer =
 		creatable &&
 		canCreate(trimmed, options, multiple ? labels : [], getOptionLabel) &&
+		// the value too: the ASCII form of a Unicode label is the same name
+		canCreate(trimmed, options, [], getOptionValue) &&
 		(isValidNew ? isValidNew(trimmed, values) : true);
 	const createLabel = offer
 		? (textFor(createText, trimmed) ?? intl.formatMessage({ id: "combobox.create" }, { value: trimmed }))
 		: null;
-	const keys = [
-		...items.filter((option) => !option.disabled).map((option) => optionKey(getOptionValue(option))),
-		...(createLabel ? [CREATE_KEY] : []),
-	];
+	// filter false: the options already answer the query; an option that is exactly the typed text leads when
+	// "Add ..." leads, so Enter takes the typed text
+	const matching = filter ? filterOptions(pool, query, getOptionLabel) : pool;
+	const items =
+		createFirst && !filter && !createLabel
+			? exactFirst(matching, trimmed, getOptionLabel, getOptionValue)
+			: matching;
+	const keys = orderKeys({
+		itemKeys: items.filter((option) => !option.disabled).map((option) => optionKey(getOptionValue(option))),
+		createKey: createLabel ? CREATE_KEY : null,
+		createFirst,
+	});
 	return { items, createLabel, keys };
 }
 
@@ -80,7 +91,27 @@ export function ComboboxItems({
 	getOptionValue,
 	onPick,
 	onCreate,
+	createFirst = false,
 }) {
+	const createItem = list.createLabel ? (
+		<CommandItem value={CREATE_KEY} onSelect={onCreate}>
+			<span className="min-w-0 flex-1 break-all">{list.createLabel}</span>
+		</CommandItem>
+	) : null;
+	const renderItem = (option) => {
+		const key = optionKey(getOptionValue(option));
+		return (
+			<CommandItem
+				key={key}
+				value={key}
+				disabled={Boolean(option.disabled)}
+				data-checked={key === selectedKey}
+				onSelect={() => onPick(option)}
+			>
+				<div className="min-w-0 flex-1">{renderOption ? renderOption(option) : getOptionLabel(option)}</div>
+			</CommandItem>
+		);
+	};
 	return (
 		<CommandList ref={listRef} label={intl.formatMessage({ id: "combobox.options" })}>
 			<CommandEmpty className="py-4">
@@ -90,27 +121,17 @@ export function ComboboxItems({
 			</CommandEmpty>
 			{list.items.length > 0 || list.createLabel ? (
 				<div className="p-1">
-					{list.items.map((option) => {
-						const key = optionKey(getOptionValue(option));
-						return (
-							<CommandItem
-								key={key}
-								value={key}
-								disabled={Boolean(option.disabled)}
-								data-checked={key === selectedKey}
-								onSelect={() => onPick(option)}
-							>
-								<div className="min-w-0 flex-1">
-									{renderOption ? renderOption(option) : getOptionLabel(option)}
-								</div>
-							</CommandItem>
-						);
-					})}
-					{list.createLabel ? (
-						<CommandItem value={CREATE_KEY} onSelect={onCreate}>
-							<span className="min-w-0 flex-1 break-all">{list.createLabel}</span>
-						</CommandItem>
-					) : null}
+					{createFirst ? createItem : null}
+					{groupsOf(list.items).map((group, index) =>
+						group.label ? (
+							<CommandGroup key={`g:${index}:${group.label}`} heading={group.label} className="p-0">
+								{group.items.map(renderItem)}
+							</CommandGroup>
+						) : (
+							group.items.map(renderItem)
+						),
+					)}
+					{createFirst ? null : createItem}
 				</div>
 			) : null}
 		</CommandList>

@@ -34,6 +34,10 @@ inloggegevensbestand voor die provider plakt.
 
 Inloggegevens bevatten een lijst van de domeinen (DNS-zones) die ze beheren, zoals `example.com`. Het tabblad **Domeinen** van de pagina Certificaten toont de domeinen van al uw inloggegevens.
 
+Het veld **Domeinnamen** stelt de domeinen van je DNS-inloggegevens voor en de namen die hosts en certificaten al gebruiken (de namen van een stream komen uit het certificaat). Elke andere naam kun je nog steeds typen: `<naam> toevoegen` staat bovenaan en Enter voegt toe wat je typte.
+
+Bij de DNS-challenge stelt het venster de DNS-inloggegevens voor waarvan de domeinen alle namen dekken en legt uit waarom. Je kunt ze op elk moment wijzigen, en inloggegevens die je zelf koos blijven behouden.
+
 ### Aangepast certificaat
 
 Gebruik deze optie om uw eigen TLS-certificaat te uploaden, zoals verstrekt door uw eigen Certificaatautoriteit.

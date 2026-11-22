@@ -6,7 +6,7 @@ Użyj **Klonuj** w menu hosta, aby skopiować host do nowego okna dodawania. Kop
 
 ### Szczegóły
 
-- **Nazwy domen**: nazwy, których używają odwiedzający. Wymagane. Dla nowego certyfikatu symbole wieloznaczne (`*.example.com`) wymagają wyzwania DNS.
+- **Nazwy domen**: nazwy, których używają odwiedzający. Wymagane. Dla nowego certyfikatu symbole wieloznaczne (`*.example.com`) wymagają wyzwania DNS. Pole podpowiada domeny Twoich danych uwierzytelniających DNS i nazwy już używane. Nadal można wpisać dowolną inną nazwę.
 - **Opis**: opcjonalna, jedna linia (do 255 znaków), która mówi, do czego służy host. Widać ją na liście pod nazwami domen, a wyszukiwarka ją znajduje.
 - **Schemat**: jak NPMpro łączy się z usługą: `http://`, `https://`, `grpc://`, `grpcs://`, `path` (serwuje pliki lub PHP z folderu) lub `empty` (bez upstreamu). Domyślnie `http://`. Zmiana schematu wyłącza opcje, które do niego nie pasują.
 - **Docelowa nazwa hosta / IP / ścieżka**: adres usługi. Możesz dodać podścieżkę, na przykład `127.0.0.1/path`. Przy `path` wpisz zamiast tego folder. Zamontuj pliki w `/var/www`; tylko administratorzy mogą użyć folderu poza nim. Nazwa zaczynająca się od `cu_` wskazuje Twój własny blok upstream nginx (zobacz Load balancing w wiki).

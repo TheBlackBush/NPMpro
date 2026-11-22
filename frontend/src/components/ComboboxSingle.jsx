@@ -32,6 +32,7 @@ export function SingleCombobox({
 	emptyText,
 	createText,
 	isValidNew,
+	filter,
 	onBlur,
 	aria,
 	className,
@@ -56,6 +57,7 @@ export function SingleCombobox({
 		getOptionLabel,
 		getOptionValue,
 		createText,
+		filter,
 	});
 
 	const changeOpen = (next, seed = "") => {

@@ -44,6 +44,10 @@ archivo de credenciales de ese proveedor.
 
 Una credencial lista los dominios (zonas DNS) que gestiona, como `example.com`. La pestaña **Dominios** de la página Certificados lista los dominios de todas tus credenciales.
 
+El campo **Nombres de Dominio** sugiere los dominios de tus credenciales DNS y los nombres que ya usan hosts y certificados (los nombres de un stream proceden de su certificado). Se puede escribir cualquier otro nombre: `Añadir <nombre>` aparece primero e Intro añade lo que escribiste.
+
+Con el desafío DNS, la ventana sugiere la credencial DNS cuyos dominios cubren todos los nombres e indica el motivo. Puedes cambiarla en cualquier momento, y una credencial elegida por ti se conserva.
+
 ### Certificado Personalizado
 
 Usa esta opción para cargar tu propio Certificado TLS, proporcionado por tu propia

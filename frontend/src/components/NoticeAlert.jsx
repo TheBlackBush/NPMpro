@@ -2,7 +2,8 @@ import { InfoIcon, TriangleAlertIcon } from "lucide-react";
 import { Alert } from "src/components/ui/alert";
 import { cn } from "src/lib/utils";
 
-function NoticeAlert({ variant = "warning", children, className, role }) {
+// an informational notice: role "status" (polite) unless the caller asks for "alert" (assertive)
+function NoticeAlert({ variant = "warning", children, className, role = "status" }) {
 	const Icon = variant === "info" ? InfoIcon : TriangleAlertIcon;
 	return (
 		<Alert

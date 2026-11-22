@@ -6,7 +6,7 @@ Verwenden Sie **Klonen** im Menü des Hosts, um einen Host in ein neues Fenster 
 
 ### Details
 
-- **Domains**: die Namen, die Besucher verwenden. Erforderlich. Für ein neues Zertifikat brauchen Wildcards (`*.example.com`) die DNS Challenge.
+- **Domains**: die Namen, die Besucher verwenden. Erforderlich. Für ein neues Zertifikat brauchen Wildcards (`*.example.com`) die DNS Challenge. Das Feld schlägt die Domains deiner DNS-Zugangsdaten und die bereits verwendeten Namen vor. Jeder andere Name kann weiterhin getippt werden.
 - **Beschreibung**: optional, eine Zeile (bis zu 255 Zeichen), die sagt, wofür der Host da ist. Sie erscheint in der Liste unter den Domains und die Suche findet sie.
 - **Schema**: wie NPMpro mit dem Dienst spricht: `http://`, `https://`, `grpc://`, `grpcs://`, `path` (Dateien oder PHP aus einem Ordner ausliefern) oder `empty` (kein Upstream). Standard `http://`. Eine Änderung des Schemas schaltet Optionen aus, die nicht dazu passen.
 - **Forward Hostname / IP / Pfad**: die Adresse des Dienstes. Sie können einen Unterpfad angeben, zum Beispiel `127.0.0.1/path`. Bei `path` geben Sie stattdessen einen Ordner an. Binden Sie Ihre Dateien unter `/var/www` ein; nur Administratoren können einen Ordner außerhalb davon verwenden. Ein Name, der mit `cu_` beginnt, verweist auf Ihren eigenen nginx-Upstream-Block (siehe Load balancing im Wiki).
