@@ -499,17 +499,23 @@ it("defaults to the instance CA, nothing while the list is missing", () => {
 
 it("labels the options and marks the default and the CAs not connected yet", () => {
 	assert.deepEqual(caOptions(caServers), [
-		{ value: CA_LE, labelId: "acme.preset.letsencrypt", isDefault: true, notConnected: false },
-		{ value: CA_ZERO, labelId: "acme.preset.zerossl", isDefault: false, notConnected: true },
-		{ value: "https://ca.example.com/dir", text: "ca.example.com", isDefault: false, notConnected: true },
+		{ value: CA_LE, labelId: "acme.preset.letsencrypt", isDefault: true, notConnected: false, waiting: false },
+		{ value: CA_ZERO, labelId: "acme.preset.zerossl", isDefault: false, notConnected: true, waiting: false },
+		{
+			value: "https://ca.example.com/dir",
+			text: "ca.example.com",
+			isDefault: false,
+			notConnected: true,
+			waiting: false,
+		},
 	]);
 });
 
 it("leaves the excluded CA out and keeps a pending one connectable", () => {
 	const list = [...caServers.slice(0, 1), { ...caServers[1], state: "pending" }];
 	assert.deepEqual(
-		caOptions(list, CA_LE).map((option) => [option.value, option.notConnected]),
-		[[CA_ZERO, false]],
+		caOptions(list, CA_LE).map((option) => [option.value, option.notConnected, option.waiting]),
+		[[CA_ZERO, false, true]],
 	);
 	assert.deepEqual(caOptions(undefined), []);
 });

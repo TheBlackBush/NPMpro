@@ -330,8 +330,9 @@ async function certificateAuthority({ admin }) {
 		// the cell under the CA header, not the Provider column that also says Let's Encrypt
 		const headers = await page.locator("thead th").allInnerTexts();
 		const column = headers.findIndex((text) => text.trim() === "CA");
-		await revealRow(page, "flow-ca");
-		const cell = await rowOf(page, "flow-ca").locator("td").nth(column).textContent();
+		// the row shows the certificate's domain (the uploaded CN), the nice name only names its actions
+		await revealRow(page, "flow.example.com");
+		const cell = await rowOf(page, "flow.example.com").locator("td").nth(column).textContent();
 		if (cell.trim() !== "Let's Encrypt") throw new Error(`the CA cell shows "${cell}"`);
 		const serversLoaded = page.waitForResponse(ACME_SERVERS_URL);
 		for (const menuItem of ["Certbot via HTTP", "Certbot via DNS"]) {

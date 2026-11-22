@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useWatch } from "react-hook-form";
 import { reissueCertificate } from "src/api/backend";
 import {
 	AcmeServerField,
@@ -35,6 +36,7 @@ const ReissueCertificateModal = EasyModal.create(({ certificate, visible, remove
 	const [errorMsg, setErrorMsg] = useState(null);
 	const methods = useAppForm({ defaultValues: { npmproAcmeServer: "" } });
 	const { isSubmitting } = methods.formState;
+	const chosen = useWatch({ control: methods.control, name: "npmproAcmeServer" });
 	const hasOther = caOptions(servers, certificate.npmproAcmeServer).length > 0;
 
 	const onSubmit = async (values) => {
@@ -68,7 +70,7 @@ const ReissueCertificateModal = EasyModal.create(({ certificate, visible, remove
 						<ErrorAlert error={error} />
 					) : isPending || hasOther ? (
 						<>
-							<p className="text-muted-foreground">
+							<p className="mb-3 text-muted-foreground">
 								<T id="certificate.reissue.note" />
 							</p>
 							<AcmeServerField exclude={certificate.npmproAcmeServer ?? undefined} />
@@ -84,7 +86,7 @@ const ReissueCertificateModal = EasyModal.create(({ certificate, visible, remove
 					<Button variant="ghost" onClick={remove} disabled={isSubmitting}>
 						<T id="cancel" />
 					</Button>
-					<FormSubmit isLoading={isSubmitting} disabled={isSubmitting || !hasOther}>
+					<FormSubmit isLoading={isSubmitting} disabled={isSubmitting || !hasOther || !chosen}>
 						<T id="action.reissue" />
 					</FormSubmit>
 				</AppModal.Footer>

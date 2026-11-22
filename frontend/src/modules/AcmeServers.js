@@ -12,7 +12,7 @@ export const defaultCa = (servers) => servers?.find((server) => server.instance)
 
 /**
  * The options of the CA select: the label (labelId of a preset or the host text), whether it is the default CA and
- * whether it is not connected yet; `exclude` leaves one CA out (the certificate's current CA)
+ * whether it is not connected yet or waiting (not reachable yet); `exclude` leaves one CA out (the certificate's current CA)
  *
  * @param {{ server: string, state: string, instance: boolean }[]} servers
  * @param {string} [exclude]
@@ -26,4 +26,6 @@ export const caOptions = (servers, exclude) =>
 			...acmeServerLabel(server.server),
 			isDefault: server.instance,
 			notConnected: notConnected(server),
+			// the CA did not answer at the last try: a request at it likely fails
+			waiting: server.state === "pending",
 		}));

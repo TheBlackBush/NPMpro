@@ -153,7 +153,7 @@ export function useColumns() {
 			),
 			columnHelper.accessor(caName, {
 				id: "ca",
-				meta: { mobile: "hide-lg" },
+				meta: { mobile: "summary", summaryText: caName },
 				header: intl.formatMessage({ id: "column.ca" }),
 				cell: (info) => info.getValue(),
 			}),

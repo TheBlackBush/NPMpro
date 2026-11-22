@@ -3,7 +3,7 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { ZipArchive } from "archiver";
 import dayjs from "dayjs";
-import { sameServer } from "../lib/acme-server.js";
+import { LETSENCRYPT_STAGING_SERVER, sameServer } from "../lib/acme-server.js";
 import { assertProviderForNew, runCertbot } from "../lib/certbot.js";
 import { CERTBOT_INI } from "../lib/certbot-ini.js";
 import { assertCertificateUse, customCertPath, liveCertPath, mtlsCertFile } from "../lib/certificate-files.js";
@@ -613,7 +613,21 @@ const internalCertificate = {
 			});
 		}
 
-		await runCertonly({ ...certificate, npmpro_acme_server: target }, access, { extra: ["--force-renewal"] });
+		// certbot refuses to replace a valid certificate with a test one unless it may break it
+		const extra = sameServer(target, LETSENCRYPT_STAGING_SERVER)
+			? ["--force-renewal", "--break-my-certs"]
+			: ["--force-renewal"];
+		try {
+			await runCertonly({ ...certificate, npmpro_acme_server: target }, access, { extra });
+		} catch (err) {
+			// a failed run answers a public message the window shows, the certificate stays as it was
+			if (!(err instanceof errs.CommandError)) throw err;
+			throw new errs.ValidationError(
+				`The CA did not issue the certificate: ${err.message}`,
+				"error.acme-reissue-failed",
+				{ values: { message: err.message }, cause: err },
+			);
+		}
 
 		const certInfo = await internalCertificate.getCertificateInfoFromFile(
 			`${internalCertificate.getLiveCertPath(certificate.id)}/fullchain.pem`,

@@ -12,6 +12,7 @@ const SECOND_ACCOUNT = "c".repeat(32);
 const INI = "/run/npmpro/certbot.ini";
 const ACCOUNT = /--account [0-9a-f]{32}/gu;
 const ACCOUNT_LINE = /^account = (?<id>.+)$/mu;
+const REISSUE_FAILED = /^The CA did not issue the certificate: Challenge failed/u;
 const NO_REVOKE_FILES = /--cert-path .*--reason superseded/u;
 const accountOf = (conf) => ACCOUNT_LINE.exec(conf).groups.id;
 
@@ -85,8 +86,10 @@ it("a failed re-issue changes nothing: the row, the conf and no revoke", async (
 	await api.outside.clearCalls();
 
 	const failed = await admin.post(`${CERTS}/${created.id}/reissue`, { npmpro_acme_server: SECOND });
-	assert.equal(failed.status, 500, failed.text);
-	assert.equal(failed.body.error.output, "Challenge failed at the second CA");
+	assert.equal(failed.status, 400, failed.text);
+	assert.equal(failed.body.error.message_i18n, "error.acme-reissue-failed");
+	assert.equal(failed.body.error.message_values.message, "Challenge failed at the second CA");
+	assert.match(failed.body.error.message, REISSUE_FAILED);
 	assert.deepEqual(await row(created.id), stored);
 	assert.equal(await readFile(confOf(created.id), "utf8"), conf);
 	assert.equal(await readFile(live, "utf8"), files);
@@ -165,4 +168,22 @@ it("a Let's Encrypt row without live files answers a clear error and runs nothin
 	assert.equal(refused.status, 400, refused.text);
 	assert.equal(refused.body.error.message_i18n, "error.acme-reissue-no-files");
 	assert.deepEqual(await calls(), []);
+});
+
+it("a re-issue at Let's Encrypt staging adds --break-my-certs, any other CA does not", async () => {
+	const model = (await import("../models/acme_account.js")).default;
+	const staging = "https://acme-staging-v02.api.letsencrypt.org/directory";
+	const stagingAccount = "d".repeat(32);
+	await seedAccount(api, staging, stagingAccount);
+	await model.query().insert({ server: staging, account_id: stagingAccount, state: "registered" });
+	try {
+		const created = await issued();
+		await api.outside.clearCalls();
+		const done = await admin.post(`${CERTS}/${created.id}/reissue`, { npmpro_acme_server: staging });
+		assert.equal(done.status, 200, done.text);
+		const [certonly] = await normalizedCalls(api);
+		assert.ok(certonly.endsWith("--force-renewal --break-my-certs"), certonly);
+	} finally {
+		await model.query().delete().where({ server: staging });
+	}
 });

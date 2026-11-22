@@ -132,7 +132,7 @@ function AccountRow({ state, ca, actions, trailing, ...rest }) {
 				</div>
 				<Details state={state} />
 			</div>
-			<div className="flex shrink-0 items-center gap-2 max-md:w-full max-md:[&>button]:flex-1">
+			<div className="flex shrink-0 items-center gap-2 max-md:w-full max-md:[&>button:not([data-acme-action=remove])]:flex-1">
 				{cardButtons(state.kind).map(({ key, primary }) => (
 					<Button
 						key={cardButtonKey(key)}
@@ -148,7 +148,8 @@ function AccountRow({ state, ca, actions, trailing, ...rest }) {
 						<T id={actions[key].id} />
 					</Button>
 				))}
-				{trailing}
+				{/* the instance row keeps the Remove slot, so the buttons of every row end at the same x */}
+				{trailing ?? <span aria-hidden="true" className="size-8 shrink-0 max-md:hidden" />}
 			</div>
 		</div>
 	);
@@ -247,6 +248,7 @@ function OtherAccountRow({ data, account }) {
 				<Button
 					variant="ghost"
 					size="icon"
+					className="size-10 md:size-8"
 					data-acme-action="remove"
 					aria-label={t("settings.certificates.acme.other.remove.label", { ca })}
 					onClick={onRemove}
