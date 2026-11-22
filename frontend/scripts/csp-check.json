@@ -207,6 +207,20 @@
 			]
 		},
 		{
+			"name": "domain picker open",
+			"route": "/nginx/proxy",
+			"steps": [
+				{ "click": "role=button[name='Add Proxy Host']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] #domainNames" },
+				{ "press": "f" },
+				{ "press": "l" },
+				{ "waitFor": "[cmdk-item]" },
+				{ "press": "Escape" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "redirection host window",
 			"route": "/nginx/redirection",
 			"steps": [
