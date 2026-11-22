@@ -17,7 +17,8 @@ const QUERY_OR_FRAGMENT = /[?#]/u;
 export const presetOf = (server) => ACME_PRESETS.find((preset) => preset.server === server)?.id ?? CUSTOM;
 
 export function acmeServerLabel(server) {
-	const id = ACME_PRESETS.find((preset) => preset.server === server)?.id;
+	// any spelling of a preset is that preset (serverKey, as the backend's presetOf)
+	const id = ACME_PRESETS.find((preset) => serverKey(preset.server) === serverKey(server))?.id;
 	if (id) return { labelId: `acme.preset.${id}` };
 	try {
 		return { text: new URL(server).host };
@@ -93,6 +94,87 @@ export const accountOf = (data, server) => {
 	const wanted = serverKey(server);
 	return (data.accounts ?? []).find((account) => serverKey(account.server) === wanted) ?? null;
 };
+
+const sameCa = (a, b) => serverKey(a) === serverKey(b);
+
+const plainLabel = (server) => {
+	const { labelId, text } = acmeServerLabel(server);
+	return labelId ?? text;
+};
+
+/**
+ * The stored accounts of the other CAs (every row but the instance CA's), sorted by CA label; labelOf turns a server
+ * into the label shown (default: the preset id or the host)
+ */
+export const otherAccounts = (data, labelOf = plainLabel) =>
+	(data.accounts ?? [])
+		.filter((account) => !sameCa(account.server, data.server))
+		.sort((a, b) => labelOf(a.server).localeCompare(labelOf(b.server)));
+
+/** The CAs the Add window offers: the presets without a row that are not the instance CA, then Custom (ids) */
+export const addChoices = (data) => {
+	const taken = [data.server, ...(data.accounts ?? []).map((account) => account.server)];
+	return [
+		...ACME_PRESETS.filter((preset) => !taken.some((server) => sameCa(server, preset.server))).map(
+			(preset) => preset.id,
+		),
+		CUSTOM,
+	];
+};
+
+/** The first values of the Add window: the first CA it offers, nothing typed */
+export const addDefaults = (data) => ({
+	preset: addChoices(data)[0],
+	customUrl: "",
+	email: "",
+	eabKid: "",
+	eabHmacKey: "",
+});
+
+/**
+ * What the Connect window works on, so its rules (account lookup, EAB, email) hold for any CA: the instance CA's
+ * settings as they are, an account's row as its own (no env lock applies to it), and the Add window without a row
+ */
+export const accountContext = (data, account) =>
+	account
+		? {
+				...data,
+				server: account.server,
+				email: account.email ?? "",
+				account,
+				locked: [],
+				lockedBy: {},
+				eabHmacKeySet: account.eabHmacKeySet === true,
+			}
+		: { ...data, locked: [], lockedBy: {}, eabHmacKeySet: false };
+
+/**
+ * The body of an add (account null: server, email, the EAB pair) or an update (the changed email and a typed EAB
+ * pair only) of another CA's account
+ */
+export function acmeAccountPayload(values, account) {
+	const out = {};
+	const email = values.email.trim();
+	if (account === null) {
+		out.server = serverOfForm(values);
+		if (email !== "") out.email = email;
+	} else if (email !== (account.email ?? "")) {
+		out.email = email;
+	}
+	const kid = values.eabKid.trim();
+	const hmac = values.eabHmacKey.trim();
+	// an add sends the pair whole; an update sends each typed key (D6)
+	if (account === null ? kid !== "" && hmac !== "" : kid !== "") out.eabKid = kid;
+	if (account === null ? kid !== "" && hmac !== "" : hmac !== "") out.eabHmacKey = hmac;
+	return out;
+}
+
+/** What Connect does for another CA: add (no row yet), save (values changed), register (a row not registered) or nothing */
+export function otherPlan(values, account) {
+	if (account === null) return "add";
+	if (Object.keys(acmeAccountPayload(values, account)).length > 0) return "save";
+	return account.state === "registered" ? "nothing" : "register";
+}
 
 /**
  * The server a register or profiles call names: none for the instance CA (the backend takes its own, also an
@@ -233,6 +315,21 @@ export const acmeFormValidate = (rules, data) => (values) => {
 	const email = values.email.trim();
 	if (email !== (data.email ?? "") && email !== "" && !EMAIL.test(email)) {
 		errors.email = rules.message("error.invalid-email");
+	}
+	return errors;
+};
+
+/** The Add window's checks: the card's, a custom CA needs its URL, and not one that already has an account */
+export const acmeAddValidate = (rules, data) => (values) => {
+	const errors = acmeFormValidate(rules, { server: "", email: "" })(values);
+	const url = values.customUrl.trim();
+	if (values.preset === CUSTOM && url === "") errors.customUrl = rules.message("error.acme-url");
+	else if (
+		values.preset === CUSTOM &&
+		!errors.customUrl &&
+		[data.server, ...(data.accounts ?? []).map((account) => account.server)].some((server) => sameCa(server, url))
+	) {
+		errors.customUrl = rules.message("error.acme-exists");
 	}
 	return errors;
 };

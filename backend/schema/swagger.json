@@ -195,6 +195,11 @@
 				"$ref": "./paths/nginx/certificates/dns-providers/get.json"
 			}
 		},
+		"/nginx/certificates/acme-servers": {
+			"get": {
+				"$ref": "./paths/nginx/certificates/acme-servers/get.json"
+			}
+		},
 		"/nginx/certificates/validate": {
 			"post": {
 				"$ref": "./paths/nginx/certificates/validate/post.json"
@@ -226,6 +231,11 @@
 		"/nginx/certificates/{certID}/renew": {
 			"post": {
 				"$ref": "./paths/nginx/certificates/certID/renew/post.json"
+			}
+		},
+		"/nginx/certificates/{certID}/reissue": {
+			"post": {
+				"$ref": "./paths/nginx/certificates/certID/reissue/post.json"
 			}
 		},
 		"/nginx/certificates/{certID}/upload": {
@@ -425,6 +435,19 @@
 		"/settings/acme/replace": {
 			"post": {
 				"$ref": "./paths/settings/acme/replace/post.json"
+			}
+		},
+		"/settings/acme/accounts": {
+			"post": {
+				"$ref": "./paths/settings/acme/accounts/post.json"
+			}
+		},
+		"/settings/acme/accounts/{accountID}": {
+			"put": {
+				"$ref": "./paths/settings/acme/accounts/accountID/put.json"
+			},
+			"delete": {
+				"$ref": "./paths/settings/acme/accounts/accountID/delete.json"
 			}
 		},
 		"/settings/acme/profiles": {

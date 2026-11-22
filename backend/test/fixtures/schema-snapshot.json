@@ -183,7 +183,7 @@
 		"type": "table",
 		"name": "certificate",
 		"table": "certificate",
-		"sql": "CREATE TABLE \"certificate\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `owner_user_id` integer NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `provider` varchar(255) NOT NULL, `nice_name` varchar(255) NOT NULL DEFAULT '', `domain_names` json NOT NULL, `expires_on` datetime NOT NULL, `meta` json NOT NULL, \"npmpro_reuse_key\" integer NOT NULL DEFAULT '0', \"npmpro_dns_challenge\" integer NOT NULL DEFAULT '0', \"npmpro_dns_provider\" varchar(255) NOT NULL DEFAULT '', \"npmpro_propagation_seconds\" integer NOT NULL DEFAULT '0', \"npmpro_dns_credential_id\" integer NULL DEFAULT null)"
+		"sql": "CREATE TABLE \"certificate\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `owner_user_id` integer NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `provider` varchar(255) NOT NULL, `nice_name` varchar(255) NOT NULL DEFAULT '', `domain_names` json NOT NULL, `expires_on` datetime NOT NULL, `meta` json NOT NULL, \"npmpro_reuse_key\" integer NOT NULL DEFAULT '0', \"npmpro_dns_challenge\" integer NOT NULL DEFAULT '0', \"npmpro_dns_provider\" varchar(255) NOT NULL DEFAULT '', \"npmpro_propagation_seconds\" integer NOT NULL DEFAULT '0', \"npmpro_dns_credential_id\" integer NULL DEFAULT null, `npmpro_acme_server` varchar(255) null default null)"
 	},
 	{
 		"type": "table",

@@ -35,3 +35,7 @@ fichier d'identifiants de ce fournisseur.
 ## Certificat personnalisé
 
 Utilisez cette option pour importer votre propre certificat TLS, fourni par votre autorité de certification.
+
+### Autorité de certification
+
+Un certificat demandé à un serveur ACME est délivré par l'AC choisie dans sa fenêtre : l'AC de l'instance (marquée « par défaut ») ou une autre AC qu'un administrateur a ajoutée dans Paramètres, Certificats et TLS, sous **Autres AC**. La liste affiche l'AC de chaque certificat dans la colonne **AC**. **Réémettre** dans le menu du certificat le redemande à une autre AC sous le même nom ; en cas d'échec, le certificat actuel est conservé.

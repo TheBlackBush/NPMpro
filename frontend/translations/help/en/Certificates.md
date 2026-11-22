@@ -44,3 +44,7 @@ credentials file for that provider.
 
 Use this option to upload your own TLS Certificate, as provided by your own
 Certificate Authority.
+
+### Certificate authority
+
+A certificate requested from an ACME server is issued by the CA chosen in its window: the instance CA (marked "default") or another CA an administrator added in Settings, Certificates & TLS, under **Other CAs**. The list shows each certificate's CA in the **CA** column. **Re-issue** in the certificate's menu requests it again from another CA under the same name; if that fails, the current certificate stays.

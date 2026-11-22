@@ -3,7 +3,7 @@ import net from "node:net";
 import path from "node:path";
 import { domainToASCII } from "node:url";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
-import { requestOptionsFor } from "../lib/acme-server.js";
+import { requestOptionsFor, sameServer } from "../lib/acme-server.js";
 import { parseRenewalConf } from "../lib/backup/renewal-conf.js";
 import { installPlugin, runCertbot } from "../lib/certbot.js";
 import { requestOptionArgs } from "../lib/certbot-account.js";
@@ -15,11 +15,21 @@ import { rooted } from "../lib/paths.js";
 import { getRuntimeConfig } from "../lib/runtime-config.js";
 import { ssl as logger } from "../logger.js";
 import pjson from "../package.json" with { type: "json" };
-import { ensureAccountLocked, instanceServer, withAccountLock, withRenewalLock } from "./acme-account.js";
+import {
+	allowedAcmeServers,
+	ensureAccountLocked,
+	instanceServer,
+	withAccountLock,
+	withRenewalLock,
+} from "./acme-account.js";
 import internalDnsCredential from "./dns-credential.js";
 
 const renewalConfOf = (id) => rooted(`/data/tls/certbot/renewal/npm-${id}.conf`);
 const CERT_FILE = /^cert(?<n>\d*)\.pem$/u;
+
+/** the private key next to a certificate file of a lineage (cert3.pem to privkey3.pem) */
+const keyFileOf = (certPath) =>
+	path.join(path.dirname(certPath), path.basename(certPath).replace(CERT_FILE, "privkey$<n>.pem"));
 
 /** server and account of a certificate's renewal conf, empty when it has none */
 const renewalParamsOf = async (id) => {
@@ -32,16 +42,19 @@ const renewalParamsOf = async (id) => {
 
 /**
  * Runs certbot for a request or a renewal; a failure carries the readable message (the CA's sentence and certbot's
- * reason, without its log path and warning blocks) as the error output
+ * reason, without its log path and warning blocks) as the error output, marked certbotRun (a failed plugin install is
+ * another CommandError)
  */
 const runCertbotCleaned = async (args) => {
 	try {
 		return await runCertbot(args);
 	} catch (err) {
 		if (!(err instanceof errs.CommandError)) throw err;
-		throw new errs.CommandError(cleanCertbotMessage(err.message, { keepLines: true, max: REQUEST_MAX }), {
+		const cleaned = new errs.CommandError(cleanCertbotMessage(err.message, { keepLines: true, max: REQUEST_MAX }), {
 			cause: err,
 		});
+		cleaned.certbotRun = true;
+		throw cleaned;
 	}
 };
 
@@ -77,7 +90,16 @@ const acmeTarget = async (server, access) => {
 const withAcmeTarget = (certificate, access, fn) => {
 	// the CA is resolved once: the lock and the account are always the same CA's
 	const server = certificate.npmpro_acme_server ?? instanceServer();
-	return withAccountLock(server, async () => fn(await acmeTarget(server, access)));
+	return withAccountLock(server, async () => {
+		// a Remove of the CA's account between the create's check and this lock must not register it again lazily
+		if (!(await allowedAcmeServers()).some((allowed) => sameServer(allowed, server))) {
+			throw new errs.ValidationError(
+				"npmpro_acme_server: an administrator sets this CA up in Settings first",
+				"error.acme-ca-not-allowed",
+			);
+		}
+		return await fn(await acmeTarget(server, access));
+	});
 };
 
 /** Revokes by the account first, then with the certificate's own key (fact 12); both best effort */
@@ -122,83 +144,101 @@ const revokeBestEffort = async ({ server, account, certName, certPath, keyPath, 
 	}
 };
 
+/** the certonly of a request through the HTTP challenge, run under the CA's lock by runCertonly */
+const certonlyWebroot = (certificate, target, extra) => {
+	logger.info(`Requesting Certbot certificates for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`);
+
+	certificate.domain_names = certificate.domain_names.map((v) => v.replace(/^\[|\]$/gu, ""));
+	const { ips = [], domains = [] } = Object.groupBy(certificate.domain_names, (entry) =>
+		net.isIP(entry) === 0 ? "domains" : "ips",
+	);
+
+	return runCertbotCleaned([
+		"--config",
+		CERTBOT_INI,
+		"certonly",
+		...target.args,
+		"--cert-name",
+		`npm-${certificate.id}`,
+		...(domains.length > 0 ? ["--domains", domains.map(domainToASCII).join(",")] : []),
+		...ips.flatMap((ip) => ["--ip-address", ip]),
+		...(certificate.npmpro_reuse_key ? ["--reuse-key"] : ["--no-reuse-key"]),
+		"--authenticator",
+		"webroot",
+		...extra,
+	]);
+};
+
+/** the certonly of a request through the DNS challenge, run under the CA's lock by runCertonly */
+const certonlyDns = async (certificate, dnsPlugin, target, extra) => {
+	await installPlugin(certificate.npmpro_dns_provider);
+
+	logger.info(
+		`Requesting Certbot certificates via ${dnsPlugin.name} for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`,
+	);
+
+	const credentialsLocation = rooted(`/tmp/certbot-credentials/credentials-${certificate.id}`);
+	await internalDnsCredential.writeCertificateFile(certificate);
+
+	try {
+		const result = await runCertbotCleaned([
+			"--config",
+			CERTBOT_INI,
+			"certonly",
+			...target.args,
+			"--cert-name",
+			`npm-${certificate.id}`,
+			"--domains",
+			certificate.domain_names.map(domainToASCII).join(","),
+			...(certificate.npmpro_reuse_key ? ["--reuse-key"] : ["--no-reuse-key"]),
+			"--authenticator",
+			dnsPlugin.full_plugin_name,
+			`--${dnsPlugin.full_plugin_name}-credentials`,
+			credentialsLocation,
+			...(certificate.npmpro_propagation_seconds > 0
+				? [`--${dnsPlugin.full_plugin_name}-propagation-seconds`, certificate.npmpro_propagation_seconds]
+				: []),
+			...extra,
+		]);
+		logger.info(result);
+		return result;
+	} catch (err) {
+		await rm(credentialsLocation, { force: true });
+		throw err;
+	}
+};
+
+/**
+ * The certonly of a certificate at its CA (the row's, else the instance CA), under that CA's lock with its account
+ * ensured: the HTTP or the DNS challenge by the row, extra appended (--force-renewal for a re-issue)
+ *
+ * @param   {Object}    certificate
+ * @param   {Access}    access
+ * @param   {Object}    [options]
+ * @param   {string[]}  [options.extra]  more certbot arguments
+ * @returns {Promise<string>}  certbot's output
+ */
+const runCertonly = async (certificate, access, { extra = [] } = {}) => {
+	if (!certificate.npmpro_dns_challenge) {
+		return await withAcmeTarget(certificate, access, (target) => certonlyWebroot(certificate, target, extra));
+	}
+	const dnsPlugin = dnsPlugins[certificate.npmpro_dns_provider];
+	if (!dnsPlugin) {
+		throw new errs.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
+	}
+	// the account first (a failed check installs nothing), under the CA's lock for the whole run
+	return await withAcmeTarget(certificate, access, (target) => certonlyDns(certificate, dnsPlugin, target, extra));
+};
+
 const certificateAcme = {
 	/** Requests a certificate through the HTTP challenge */
 	requestCertbot: async (certificate, access) => {
-		logger.info(
-			`Requesting Certbot certificates for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`,
-		);
-
-		certificate.domain_names = certificate.domain_names.map((v) => v.replace(/^\[|\]$/gu, ""));
-		const { ips = [], domains = [] } = Object.groupBy(certificate.domain_names, (entry) =>
-			net.isIP(entry) === 0 ? "domains" : "ips",
-		);
-
-		const result = await withAcmeTarget(certificate, access, (target) =>
-			runCertbotCleaned([
-				"--config",
-				CERTBOT_INI,
-				"certonly",
-				...target.args,
-				"--cert-name",
-				`npm-${certificate.id}`,
-				...(domains.length > 0 ? ["--domains", domains.map(domainToASCII).join(",")] : []),
-				...ips.flatMap((ip) => ["--ip-address", ip]),
-				...(certificate.npmpro_reuse_key ? ["--reuse-key"] : ["--no-reuse-key"]),
-				"--authenticator",
-				"webroot",
-			]),
-		);
+		const result = await runCertonly(certificate, access);
 		logger.success(result);
 		return result;
 	},
 
-	requestCertbotWithDnsChallenge: async (certificate, access) => {
-		const dnsPlugin = dnsPlugins[certificate.npmpro_dns_provider];
-		if (!dnsPlugin) {
-			throw new errs.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
-		}
-		// the account first (a failed check installs nothing), under the CA's lock for the whole run
-		return await withAcmeTarget(certificate, access, async (target) => {
-			await installPlugin(certificate.npmpro_dns_provider);
-
-			logger.info(
-				`Requesting Certbot certificates via ${dnsPlugin.name} for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`,
-			);
-
-			const credentialsLocation = rooted(`/tmp/certbot-credentials/credentials-${certificate.id}`);
-			await internalDnsCredential.writeCertificateFile(certificate);
-
-			try {
-				const result = await runCertbotCleaned([
-					"--config",
-					CERTBOT_INI,
-					"certonly",
-					...target.args,
-					"--cert-name",
-					`npm-${certificate.id}`,
-					"--domains",
-					certificate.domain_names.map(domainToASCII).join(","),
-					...(certificate.npmpro_reuse_key ? ["--reuse-key"] : ["--no-reuse-key"]),
-					"--authenticator",
-					dnsPlugin.full_plugin_name,
-					`--${dnsPlugin.full_plugin_name}-credentials`,
-					credentialsLocation,
-					...(certificate.npmpro_propagation_seconds > 0
-						? [
-								`--${dnsPlugin.full_plugin_name}-propagation-seconds`,
-								certificate.npmpro_propagation_seconds,
-							]
-						: []),
-				]);
-				logger.info(result);
-				return result;
-			} catch (err) {
-				await rm(credentialsLocation, { force: true });
-				throw err;
-			}
-		});
-	},
+	requestCertbotWithDnsChallenge: (certificate, access) => runCertonly(certificate, access),
 
 	renewCertbot: async (certificate, access) => {
 		const dnsPlugin = certificate.npmpro_dns_challenge ? dnsPlugins[certificate.npmpro_dns_provider] : null;
@@ -232,10 +272,7 @@ const certificateAcme = {
 					server: params.get("server"),
 					account: params.get("account"),
 					certPath: oldCertPath,
-					keyPath: path.join(
-						path.dirname(oldCertPath),
-						path.basename(oldCertPath).replace(CERT_FILE, "privkey$<n>.pem"),
-					),
+					keyPath: keyFileOf(oldCertPath),
 					reason: "superseded",
 				});
 
@@ -369,5 +406,5 @@ const certificateAcme = {
 	},
 };
 
-export { revokeBestEffort, withAcmeTarget };
+export { keyFileOf, renewalParamsOf, revokeBestEffort, runCertonly, withAcmeTarget };
 export default certificateAcme;

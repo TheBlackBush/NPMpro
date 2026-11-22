@@ -7,7 +7,9 @@ import {
 	cleanUp,
 	openFromMenu,
 	openTab,
+	revealRow,
 	rowAction,
+	rowOf,
 	rowShows,
 	saveWindow,
 	uploadCertificate,
@@ -299,6 +301,89 @@ async function accessListDeniedPage({ admin }) {
 	}
 }
 
+const FLOW_CA = "https://acme-v02.api.letsencrypt.org/directory";
+const CA_FIELD = /^Certificate authority/u;
+const ACME_SERVERS_URL = /\/api\/nginx\/certificates\/acme-servers/u;
+const CERTIFICATE_LIST_URL = /\/api\/nginx\/certificates(?:\?|$)/u;
+
+const TRAILING_SLASHES = /\/+$/u;
+// a CA URL compared in any case of its scheme and host and without a trailing slash (enough for the flow's lists)
+const caKey = (server) => server.toLowerCase().replace(TRAILING_SLASHES, "");
+
+// The CA of a certificate: the list has the CA column with the certificate's CA. With the one CA of a fresh instance
+// the create windows show no CA select and Re-issue says there is no other CA; with several CAs (an instance where an
+// administrator added some) the create windows show the select and Re-issue offers the other CAs, nothing chosen.
+// Cancel closes each window. The list answer is rewritten so the uploaded certificate looks like a Let's Encrypt one.
+async function certificateAuthority({ admin }) {
+	const { page, api } = admin;
+	try {
+		await uploadCertificate(api, "flow-ca");
+		await page.route(CERTIFICATE_LIST_URL, async (route) => {
+			const answer = await route.fetch();
+			const rows = await answer.json();
+			await route.fulfill({
+				response: answer,
+				json: rows.map((row) =>
+					row.nice_name === "flow-ca"
+						? { ...row, provider: "letsencrypt", npmpro_acme_server: FLOW_CA, npmpro_dns_challenge: false }
+						: row,
+				),
+			});
+		});
+		await page.goto("/certificates");
+		await page.getByRole("columnheader", { name: "CA", exact: true }).waitFor();
+		// the cell under the CA header, not the Provider column that also says Let's Encrypt
+		const headers = await page.locator("thead th").allInnerTexts();
+		const column = headers.findIndex((text) => text.trim() === "CA");
+		// the row shows the certificate's domain (the uploaded CN), the nice name only names its actions
+		await revealRow(page, "flow.example.com");
+		const cell = await rowOf(page, "flow.example.com").locator("td").nth(column).textContent();
+		if (cell.trim() !== "Let's Encrypt") throw new Error(`the CA cell shows "${cell}"`);
+		const serversLoaded = page.waitForResponse(ACME_SERVERS_URL);
+		let servers;
+		for (const menuItem of ["Certbot via HTTP", "Certbot via DNS"]) {
+			// biome-ignore lint/performance/noAwaitInLoops: one window after the other
+			await page.getByRole("button", { name: "Add Certificate", exact: true }).first().click();
+			await page.getByRole("menuitem", { name: menuItem, exact: true }).click();
+			await page.getByRole("dialog").waitFor();
+			// the list of CAs has answered (cached for the second window) before the select is looked for
+			servers ??= await (await serversLoaded).json();
+			const field = page.getByRole("dialog").getByText(CA_FIELD);
+			if (servers.length > 1) {
+				await field.waitFor();
+			} else {
+				await page.evaluate(
+					() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+				);
+				if ((await field.count()) > 0) throw new Error(`${menuItem}: the CA select shows with one CA`);
+			}
+			await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
+			await windowClosed(page);
+		}
+		const others = servers.filter((entry) => caKey(entry.server) !== caKey(FLOW_CA));
+		await rowAction(page, "flow-ca", "Re-issue");
+		await windowTitled(page, "Re-issue Certificate");
+		const reissue = page.getByRole("dialog");
+		if (others.length > 0) {
+			await reissue.getByText(CA_FIELD).waitFor();
+			await reissue.getByRole("combobox").click();
+			const options = await page.getByRole("option").count();
+			if (options !== others.length) throw new Error(`Re-issue offers ${options} CAs, not ${others.length}`);
+			await page.keyboard.press("Escape");
+		} else {
+			await reissue.getByText("There is no other certificate authority").waitFor();
+		}
+		// nothing is chosen yet, so there is nothing to re-issue at
+		if (!(await reissue.getByRole("button", { name: "Re-issue", exact: true }).isDisabled()))
+			throw new Error("Re-issue is enabled with no CA chosen");
+		await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
+		await windowClosed(page);
+	} finally {
+		await page.unroute(CERTIFICATE_LIST_URL);
+		await cleanUp(api);
+	}
+}
+
 export const windowFlows = [
 	{ name: "proxy location and access list", run: proxyLocationAccess },
 	{ name: "proxy host pages", run: proxyHostPages },
@@ -306,4 +391,5 @@ export const windowFlows = [
 	{ name: "nginx error and re-save", run: nginxErrorResave },
 	{ name: "unsaved changes", run: unsavedChangesOfAllWindows },
 	{ name: "close without errors", run: closeWithoutErrors },
+	{ name: "certificate authority", run: certificateAuthority },
 ];

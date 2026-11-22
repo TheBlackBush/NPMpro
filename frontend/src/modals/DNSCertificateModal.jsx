@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useWatch } from "react-hook-form";
 import { createCertificate } from "src/api/backend";
 import {
+	AcmeServerField,
 	ApiErrorContent,
 	AppModal,
 	Button,
@@ -82,6 +83,7 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 					</ErrorAlert>
 					<DomainNamesField isWildcardPermitted dnsProviderWildcardSupported forCertificate />
 					<DNSProviderFields />
+					<AcmeServerField />
 					<SwitchList className="mt-3">
 						<SwitchField
 							id="npmproReuseKey"

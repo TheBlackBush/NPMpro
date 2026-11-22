@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Download, FlaskConical, KeyRound, RefreshCw, ShieldCheck, SquarePen, Trash2 } from "lucide-react";
+import { Download, FlaskConical, KeyRound, RefreshCw, RotateCcw, ShieldCheck, SquarePen, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import {
 	CertificateInUseFormatter,
@@ -15,6 +15,7 @@ import { PagedTable } from "src/components/Table/TablePagination";
 import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
 import { useCanManage } from "src/hooks";
 import { intl, T } from "src/locale";
+import { acmeServerLabel } from "src/modules/AcmeAccount";
 import { certificateActionKeys } from "src/modules/CertificateActions";
 import { CERTIFICATES } from "src/modules/Permissions";
 import { AddCertificateMenu } from "./AddCertificateMenu";
@@ -37,6 +38,12 @@ const providerSummary = (row) => {
 	const name = intl.formatMessage({ id: certificateProviderTranslation(row.provider) });
 	return row.provider === "letsencrypt" && row.npmproDnsChallenge ? `${name} \u2013 ${row.npmproDnsProvider}` : name;
 };
+// the CA that issued the certificate (a preset's name or the host), empty for an uploaded or mTLS one
+export const caName = (row) => {
+	if (!row.npmproAcmeServer) return "";
+	const { labelId, text } = acmeServerLabel(row.npmproAcmeServer);
+	return labelId ? intl.formatMessage({ id: labelId }) : text;
+};
 const inUseSummary = (row) =>
 	intl.formatMessage({ id: isInUse(row) ? "certificate.in-use" : "certificate.not-in-use" });
 
@@ -44,6 +51,7 @@ const actionDefs = {
 	test: { label: "test", icon: FlaskConical, handler: "onTest", arg: (row) => row.domainNames },
 	edit: { label: "action.edit", icon: SquarePen, handler: "onEdit", arg: (row) => row },
 	renew: { label: "action.renew", icon: RefreshCw, handler: "onRenew", arg: (row) => row.id },
+	reissue: { label: "action.reissue", icon: RotateCcw, handler: "onReissue", arg: (row) => row },
 	"change-dns": {
 		label: "dns-credentials.change",
 		icon: KeyRound,
@@ -143,6 +151,12 @@ export function useColumns() {
 					},
 				},
 			),
+			columnHelper.accessor(caName, {
+				id: "ca",
+				meta: { mobile: "summary", summaryText: caName },
+				header: intl.formatMessage({ id: "column.ca" }),
+				cell: (info) => info.getValue(),
+			}),
 			columnHelper.accessor((row) => row.expiresOn, {
 				id: "expiresOn",
 				meta: { mobile: "title-below" },
@@ -197,6 +211,7 @@ export default function Table({
 	isFetching,
 	onDelete,
 	onRenew,
+	onReissue,
 	onDownload,
 	onTest,
 	onEdit,
@@ -214,7 +229,10 @@ export default function Table({
 		columns: columnHelper.columns(columns),
 		data,
 		// the row handlers live here, not in the columns (see useColumns)
-		meta: { isFetching, actions: { onChangeDnsCredential, onDelete, onDownload, onEdit, onRenew, onTest } },
+		meta: {
+			isFetching,
+			actions: { onChangeDnsCredential, onDelete, onDownload, onEdit, onReissue, onRenew, onTest },
+		},
 		state: { sorting, pagination: { pageIndex: paging.pageIndex, pageSize: paging.pageSize } },
 		onSortingChange,
 	});

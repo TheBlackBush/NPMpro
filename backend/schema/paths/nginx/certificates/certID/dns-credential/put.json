@@ -74,6 +74,7 @@
 								],
 								"expires_on": "2027-02-15T09:35:00.000Z",
 								"npmpro_reuse_key": false,
+								"npmpro_acme_server": "https://acme-v02.api.letsencrypt.org/directory",
 								"npmpro_dns_challenge": true,
 								"npmpro_dns_provider": "cloudflare",
 								"npmpro_dns_credential_id": 2,

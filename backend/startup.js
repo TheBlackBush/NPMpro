@@ -1,4 +1,5 @@
 import {
+	fillCertificateServers,
 	loadAcmeServer,
 	sweepReplaceFolders,
 	sweepRunFolders,
@@ -105,6 +106,7 @@ const prepareApp = async ({ background = true } = {}) => {
 
 	try {
 		await syncAccountsWithFiles();
+		await fillCertificateServers();
 	} catch (err) {
 		logger.error(`Could not check the ACME accounts: ${err.message}`);
 	}

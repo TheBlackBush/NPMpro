@@ -129,7 +129,7 @@ const serverKey = (server) => {
 const sameServer = (a, b) => serverKey(a) === serverKey(b);
 
 /** @returns {string|null}  the preset id of a directory URL */
-const presetOf = (server) => ACME_PRESETS.find((preset) => preset.server === server)?.id ?? null;
+const presetOf = (server) => ACME_PRESETS.find((preset) => sameServer(preset.server, server))?.id ?? null;
 
 /**
  * What a request to a CA passes (certbot then keeps it in the renewal conf): the instance profile and must-staple on

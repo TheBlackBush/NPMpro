@@ -36,6 +36,7 @@ before(async () => {
 			"/data/tls/certbot/renewal/npm-5.conf": conf(`${PEBBLE}/`, D),
 			"/data/tls/certbot/renewal/npm-6.conf": conf("https://acme-v01.api.letsencrypt.org/directory", D),
 			"/data/tls/certbot/renewal/npm-7.conf": conf("https://nocreds.test/dir", D),
+			"/data/tls/certbot/renewal/npm-8.conf": conf("https://Old.Test/dir", D),
 			"/tmp/acme-register-crashed/certbot.ini": "email = old@example.com\neab-hmac-key = secret\n",
 			"/tmp/keep-me/file": "x",
 		},
@@ -114,6 +115,79 @@ it("marks a registered account whose folder is gone as pending", async () => {
 	const row = await model.query().where("server", "https://ca.other/acme").first();
 	assert.equal(row.state, "pending");
 	assert.equal(row.account_id, null);
+});
+
+it("fills the CA of each certificate from its renewal conf, else the instance CA, and leaves custom ones null", async () => {
+	const { fillCertificateServers } = await import("../internal/acme-account.js");
+	const insert = (id, provider) =>
+		api.db("certificate").insert({
+			id,
+			owner_user_id: 1,
+			created_on: "2026-01-01 00:00:00",
+			modified_on: "2026-01-01 00:00:00",
+			provider,
+			nice_name: `c${id}`,
+			domain_names: "[]",
+			expires_on: "2099-01-01 00:00:00",
+			meta: "{}",
+		});
+	// 5: a trailing slash on a CA with a row, 6: a v01 conf, 8: a CA without a row, 9: no conf, 10: custom
+	for (const [id, provider] of [
+		[5, "letsencrypt"],
+		[6, "letsencrypt"],
+		[8, "letsencrypt"],
+		[9, "letsencrypt"],
+		[10, "other"],
+	]) {
+		await insert(id, provider);
+	}
+	await api.db("certificate").where({ id: 6 }).update({ npmpro_acme_server: "https://keep.test/dir" });
+	assert.equal(await fillCertificateServers(), 3);
+	const servers = Object.fromEntries(
+		(await api.db("certificate").whereIn("id", [5, 6, 8, 9, 10])).map((row) => [row.id, row.npmpro_acme_server]),
+	);
+	assert.deepEqual(servers, {
+		5: PEBBLE,
+		6: "https://keep.test/dir",
+		8: "https://old.test/dir",
+		9: PEBBLE,
+		10: null,
+	});
+	await api.db("certificate").where({ id: 6 }).update({ npmpro_acme_server: null });
+	assert.equal(await fillCertificateServers(), 1);
+	assert.equal((await api.db("certificate").where({ id: 6 }).first()).npmpro_acme_server, LE);
+	assert.equal(await fillCertificateServers(), 0);
+	assert.deepEqual(await normalizedCalls(api), []);
+});
+
+it("stores the instance CA of a certificate without a conf in its normalized form", async () => {
+	const { fillCertificateServers } = await import("../internal/acme-account.js");
+	const insert = (id) =>
+		api.db("certificate").insert({
+			id,
+			owner_user_id: 1,
+			created_on: "2026-01-01 00:00:00",
+			modified_on: "2026-01-01 00:00:00",
+			provider: "letsencrypt",
+			nice_name: `c${id}`,
+			domain_names: "[]",
+			expires_on: "2099-01-01 00:00:00",
+			meta: "{}",
+		});
+	const saved = process.env.ACME_SERVER;
+	try {
+		for (const [id, instance, expected] of [
+			[21, "https://PEBBLE.test:14000/dir/", PEBBLE],
+			[22, "https://Nowhere.Test/dir/", "https://nowhere.test/dir"],
+		]) {
+			await insert(id);
+			process.env.ACME_SERVER = instance;
+			assert.equal(await fillCertificateServers(), 1);
+			assert.equal((await api.db("certificate").where({ id }).first()).npmpro_acme_server, expected);
+		}
+	} finally {
+		process.env.ACME_SERVER = saved;
+	}
 });
 
 it("updates the recorded email from ACME_EMAIL in the background; a failure stays on the row", async () => {

@@ -11,6 +11,7 @@
 		"domain_names",
 		"expires_on",
 		"npmpro_reuse_key",
+		"npmpro_acme_server",
 		"npmpro_dns_challenge",
 		"npmpro_dns_provider",
 		"npmpro_dns_credential_id",
@@ -109,6 +110,16 @@
 			"type": "boolean",
 			"default": false,
 			"example": false
+		},
+		"npmpro_acme_server": {
+			"description": "The CA that issued the certificate (an ACME directory URL); null for custom and mTLS certificates. On a create request: the CA to request from, default the instance CA",
+			"type": [
+				"string",
+				"null"
+			],
+			"maxLength": 255,
+			"pattern": "^https?://\\S+$",
+			"example": "https://acme-v02.api.letsencrypt.org/directory"
 		},
 		"npmpro_dns_provider": {
 			"description": "DNS provider",

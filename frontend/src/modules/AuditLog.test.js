@@ -23,7 +23,14 @@ it("the token events are in the lists", () => {
 
 it("the ACME account events are in the lists", () => {
 	assert.ok(AUDIT_OBJECT_TYPES.includes("acme-account"));
-	for (const a of ["registered", "registration-failed", "email-updated", "replaced", "replace-failed"]) {
+	for (const a of [
+		"registered",
+		"registration-failed",
+		"email-updated",
+		"replaced",
+		"replace-failed",
+		"ca-changed",
+	]) {
 		assert.ok(AUDIT_ACTIONS.includes(a), a);
 	}
 });

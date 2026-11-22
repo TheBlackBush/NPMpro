@@ -10,6 +10,7 @@ import {
 	isZeroSsl,
 	LETSENCRYPT_SERVER,
 	normalizeServer,
+	presetOf,
 	resolveAcmeServer,
 	sameServer,
 	serverKey,
@@ -43,6 +44,7 @@ import { getRuntimeConfig, invalidate } from "../lib/runtime-config.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { ssl as logger } from "../logger.js";
 import acmeAccountModel from "../models/acme_account.js";
+import certificateModel from "../models/certificate.js";
 import now from "../models/now_helper.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
@@ -83,19 +85,56 @@ const withAccountLock = (server, fn) => {
 	return run;
 };
 
-/** @returns {Promise<string|null>}  the stored instance CA, null for Let's Encrypt */
-const readAcmeSetting = async () => (await settingModel.query().where("id", "acme").first())?.meta?.server ?? null;
+/** @returns {Promise<Object>}  the meta of the setting row "acme": server (the stored instance CA), removed */
+const readAcmeMeta = async () => (await settingModel.query().where("id", "acme").first())?.meta ?? {};
 
-/** @param {string|null} server  null: Let's Encrypt */
-const saveAcmeSetting = async (server) => {
-	const meta = { server };
+/** @returns {Promise<string|null>}  the stored instance CA, null for Let's Encrypt */
+const readAcmeSetting = async () => (await readAcmeMeta()).server ?? null;
+
+// one writer of the setting row "acme" at a time: an instance CA save and a Remove or Add of another CA hold
+// different CA locks, and each write reads the row first
+let acmeRowQueue = Promise.resolve();
+
+/** Runs fn after every earlier write of the setting row "acme" */
+const inAcmeRowQueue = (fn) => {
+	const run = acmeRowQueue.then(fn);
+	acmeRowQueue = run.catch(() => {});
+	return run;
+};
+
+/** Stores keys of the setting row "acme" (the others stay); the caller is in the queue */
+const writeAcmeMeta = async (patch) => {
 	const existing = await settingModel.query().where("id", "acme").first();
+	const meta = { ...(existing?.meta ?? {}), ...patch };
 	if (existing) await settingModel.query().where("id", "acme").patch({ meta });
 	else
 		await settingModel
 			.query()
 			.insert({ id: "acme", name: "ACME", description: "The instance CA", value: "acme", meta });
 };
+
+/** @param {string|null} server  null: Let's Encrypt */
+const saveAcmeSetting = (server) => inAcmeRowQueue(() => writeAcmeMeta({ server }));
+
+/**
+ * The CAs an administrator removed (serverKey): their account folders stay on disk, and the start, a restore or a
+ * merge adopts none of them again until the CA is added again (or becomes the instance CA). Kept in the setting row
+ * "acme", so a runtime settings backup carries it.
+ *
+ * @returns {Promise<Set<string>>}
+ */
+const removedServers = async () => new Set((await readAcmeMeta()).removed ?? []);
+
+/** Adds (removed true) or drops one CA of the removed list */
+const markRemoved = (server, removed) =>
+	inAcmeRowQueue(async () => {
+		const list = await removedServers();
+		const key = serverKey(server);
+		if (list.has(key) === removed) return;
+		if (removed) list.add(key);
+		else list.delete(key);
+		await writeAcmeMeta({ removed: [...list].sort((a, b) => a.localeCompare(b)) });
+	});
 
 /**
  * Loads the stored instance CA (the start, a restore). A value stored before the scheme and host were lower-cased
@@ -720,6 +759,12 @@ const syncAccountsWithFiles = async () => {
 		// under the CA's lock, so a registration running (after a restore or merge) is not overwritten
 		await withAccountLock(server, async () => {
 			const row = await accountRow(server);
+			// read under the lock: a Remove or Add of this CA meanwhile is seen
+			if ((await removedServers()).has(server)) {
+				// a removed CA stays removed; a row (a restore brought it) or the instance CA ends the removal
+				if (!(row || sameServer(server, instanceServer()))) return;
+				await markRemoved(server, false);
+			}
 			const accounts = await listAccountIds(server);
 			if (row?.state !== "registered" && accounts.length > 0) {
 				const named = (id) =>
@@ -749,12 +794,38 @@ const syncAccountsWithFiles = async () => {
 };
 
 /**
+ * Certificates from before the column npmpro_acme_server: each Let's Encrypt row without a CA gets the CA of its
+ * renewal conf (in the spelling of that CA's account row, else the CA key: a v01 conf names the v02 CA), else the
+ * instance CA. Files and rows only: no network, no certbot; a missing renewal folder is no error.
+ *
+ * @returns {Promise<number>}  the rows filled
+ */
+const fillCertificateServers = async () => {
+	const rows = await certificateModel.query().where("provider", "letsencrypt").whereNull("npmpro_acme_server");
+	if (rows.length === 0) return 0;
+	const accounts = await acmeAccountModel.query();
+	const spelled = (server) => {
+		const normal = normalizeServer(server);
+		return accounts.find((row) => sameServer(row.server, normal))?.server ?? serverKey(normal);
+	};
+	const servers = new Map(
+		(await listRenewalConfs()).filter((conf) => conf.server).map((conf) => [conf.certificateId, conf.server]),
+	);
+	for (const row of rows) {
+		const server = spelled(servers.has(row.id) ? servers.get(row.id) : instanceServer());
+		await certificateModel.query().where("id", row.id).patch({ npmpro_acme_server: server });
+	}
+	return rows.length;
+};
+
+/**
  * After a restore or a merge of certificates or runtime settings, once the runtime settings are loaded with the
  * restored CA (loadAcmeServer runs before them): rows and files, the renewal options of the CA's certificates and
  * envs.sh's line
  */
 const reloadAcmeAfterRestore = async () => {
 	await syncAccountsWithFiles();
+	await fillCertificateServers();
 	await syncRenewalOptions();
 	await writeStartupSettings();
 };
@@ -920,39 +991,40 @@ const checkedEab = (changes, row, registered) => {
 };
 
 /**
- * PUT /settings/acme: locked keys are dropped; only changed values are checked (rule 2). A changed CA without an
- * account, or new account values, register now: not reachable stores them as pending with a warning (D4), a refusal
- * stores nothing. An email change of a registered account needs its CA (D13). EAB values only count while the account
- * is not registered (fact 10).
+ * The save of one CA's account values, under that CA's lock (the body of every save path: the instance CA's PUT, an
+ * added CA, an edited one). Only changed values are checked (rule 2). A CA without an account, or new account values,
+ * register now: not reachable stores them as pending with a warning (D4), a refusal stores nothing. An email change of
+ * a registered account needs its CA (D13). EAB values only count while the account is not registered (fact 10).
  *
- * @param   {Access}  access
- * @param   {Object}  body  server, email, eab_kid, eab_hmac_key (all optional)
- * @returns {Promise<Object>}  the GET answer, plus warning "unreachable" when the account was stored as pending
+ * @param   {Access}   access
+ * @param   {string}   target                the CA (normalized)
+ * @param   {Object}   changes               email, eab_kid, eab_hmac_key (locked keys already dropped)
+ * @param   {Object}   options
+ * @param   {boolean}  options.serverChanged  the CA is a new one for its role (a typed URL passes the guard)
+ * @param   {boolean}  options.allowNew       the save adds a CA that has no row and is not the instance CA
+ * @returns {Promise<string|undefined>}  "unreachable" when the account was stored as pending
  */
-const saveSettings = async (access, body) => {
-	access.canAdmin();
-	const changes = pickEditable(body ?? {}, lockedKeys(), ACME_KEYS);
-	if (changes.server !== undefined) changes.server = normalizeServer(changes.server);
-	const before = instanceServer();
-	const target = changes.server ?? before;
-	const serverChanged = !sameServer(target, before);
-	if (serverChanged && !isDirectoryUrl(target)) {
-		refuseValue("server", "must be an https ACME directory URL", "error.acme-url");
-	}
-	const prevValues = (await getRuntimeConfig("certificates")).values;
-	let warning;
-	await withAccountLock(target, async () => {
-		const row = await adoptUsableAccount(target, await accountRow(target));
+const saveAccountValues = (access, target, changes, { serverChanged, allowNew }) =>
+	withAccountLock(target, async () => {
+		if (allowNew && (await accountRow(target))) {
+			refuseValue("server", "this CA already has an account", "error.acme-exists");
+		}
+		const stored = await accountRow(target);
+		// a typed URL passes the guard also when its account exists, and before a kept folder is adopted (D6); a new
+		// registration reads the directory itself
+		const hasAccount = async () =>
+			(await isRegistered(stored)) || (await listAccountIds(stored?.server ?? target)).length > 0;
+		if (serverChanged && (await hasAccount())) await readDirectory(target);
+		const row = await adoptUsableAccount(target, stored);
 		const registered = await isRegistered(row);
 		const mail = checkedEmail(changes, row);
 		const eab = checkedEab(changes, row, registered);
-		// a typed URL passes the guard also when its account exists (D6)
-		if (serverChanged && registered) await readDirectory(target);
+		let warning;
 		if (registered) {
 			if (mail.changed) await updateEmailLocked(target, mail.email, { access });
 		} else if (serverChanged || mail.changed || eab.entered) {
-			// the save's target is the instance CA from now on: the env email and EAB pair count for it (D5)
-			const values = registrationValues(target, row, { asInstance: true });
+			// a save that makes the CA the instance CA: the env email and EAB pair count for it (D5)
+			const values = registrationValues(target, row, { asInstance: serverChanged && !allowNew });
 			if (mail.given) values.email = mail.email;
 			if (eab.entered) values.eab = { kid: eab.kid, hmac: eab.hmac };
 			// a stored row keeps its spelling: certbot's folder gets that one (ensureAccountLocked)
@@ -972,6 +1044,8 @@ const saveSettings = async (access, body) => {
 				await storeRegistered(target, row, { email: values.email, accountId: result.accountId, access });
 			}
 		}
+		// a CA added again (or made the instance CA) is no longer a removed one
+		if (serverChanged && (await accountRow(target))) await markRemoved(target, false);
 		if (serverChanged || mail.changed || eab.entered) {
 			await audit(access, "updated", await accountRow(target), {
 				server: target,
@@ -979,9 +1053,133 @@ const saveSettings = async (access, body) => {
 				eab_entered: eab.entered,
 			});
 		}
+		return warning;
 	});
+
+/**
+ * PUT /settings/acme: locked keys are dropped; the instance CA's account values are saved (saveAccountValues), and a
+ * changed CA becomes the instance CA.
+ *
+ * @param   {Access}  access
+ * @param   {Object}  body  server, email, eab_kid, eab_hmac_key (all optional)
+ * @returns {Promise<Object>}  the GET answer, plus warning "unreachable" when the account was stored as pending
+ */
+const saveSettings = async (access, body) => {
+	access.canAdmin();
+	const changes = pickEditable(body ?? {}, lockedKeys(), ACME_KEYS);
+	if (changes.server !== undefined) changes.server = normalizeServer(changes.server);
+	const before = instanceServer();
+	const target = changes.server ?? before;
+	const serverChanged = !sameServer(target, before);
+	if (serverChanged && !isDirectoryUrl(target)) {
+		refuseValue("server", "must be an https ACME directory URL", "error.acme-url");
+	}
+	const prevValues = (await getRuntimeConfig("certificates")).values;
+	const warning = await saveAccountValues(access, target, changes, { serverChanged, allowNew: false });
 	if (serverChanged) await setInstanceServer(access, target, prevValues);
 	return { ...(await getSettings(access)), ...(warning ? { warning } : {}) };
+};
+
+/**
+ * POST /settings/acme/accounts: adds a CA that is not the instance CA and has no account yet (the same save as the
+ * instance account: registered now, or pending when the CA cannot be reached; a refusal stores nothing)
+ *
+ * @param   {Access}  access
+ * @param   {Object}  body  server, email, eab_kid, eab_hmac_key (the last three optional)
+ * @returns {Promise<Object>}  the GET answer, plus warning "unreachable"
+ */
+const addAccount = async (access, body) => {
+	access.canAdmin();
+	const target = normalizeServer(body.server);
+	if (!isDirectoryUrl(target)) refuseValue("server", "must be an https ACME directory URL", "error.acme-url");
+	if (sameServer(target, instanceServer())) {
+		refuseValue("server", "this CA already has an account", "error.acme-exists");
+	}
+	const changes = pickEditable(body, [], ["email", "eab_kid", "eab_hmac_key"]);
+	const warning = await saveAccountValues(access, target, changes, { serverChanged: true, allowNew: true });
+	return { ...(await getSettings(access)), ...(warning ? { warning } : {}) };
+};
+
+const accountById = async (id) => {
+	const row = await acmeAccountModel.query().findById(id);
+	if (!row) throw new errs.ItemNotFoundError(id);
+	return row;
+};
+
+/**
+ * PUT /settings/acme/accounts/{id}: new account values of a stored CA (the same save as the instance account; the
+ * env locks of the instance CA apply to its row)
+ *
+ * @param   {Access}  access
+ * @param   {number}  id
+ * @param   {Object}  body  email, eab_kid, eab_hmac_key (all optional)
+ * @returns {Promise<Object>}  the GET answer, plus warning "unreachable"
+ */
+const updateAccount = async (access, id, body) => {
+	access.canAdmin();
+	const { server } = await accountById(id);
+	const locked = sameServer(server, instanceServer()) ? lockedKeys() : [];
+	const changes = pickEditable(body ?? {}, locked, ["email", "eab_kid", "eab_hmac_key"]);
+	const warning = await saveAccountValues(access, server, changes, { serverChanged: false, allowNew: false });
+	return { ...(await getSettings(access)), ...(warning ? { warning } : {}) };
+};
+
+/**
+ * DELETE /settings/acme/accounts/{id}: forgets the row of a CA no certificate uses (the account stays at the CA and
+ * its folder stays); never the instance CA's
+ *
+ * @param   {Access}  access
+ * @param   {number}  id
+ * @returns {Promise<Object>}  the GET answer
+ */
+const removeAccount = async (access, id) => {
+	access.canAdmin();
+	const { server } = await accountById(id);
+	await withAccountLock(server, async () => {
+		const row = await accountById(id);
+		const used = (await certificateModel.query().whereNotNull("npmpro_acme_server")).some((certificate) =>
+			sameServer(certificate.npmpro_acme_server, row.server),
+		);
+		if (used || sameServer(row.server, instanceServer())) {
+			throw new errs.ValidationError("This CA is the instance CA or a certificate uses it", "error.acme-in-use");
+		}
+		await acmeAccountModel.query().deleteById(row.id);
+		// its folder stays, and the start or a restore must not adopt it again
+		await markRemoved(row.server, true);
+		await audit(access, "deleted", row);
+	});
+	return await getSettings(access);
+};
+
+/**
+ * @returns {Promise<string[]>}  the CAs a certificate may be requested at: the instance CA, then every CA with an
+ *          account row (the rows' spelling)
+ */
+const allowedAcmeServers = async () => {
+	const instance = instanceServer();
+	const rows = await acmeAccountModel.query().orderBy("server");
+	// the instance CA in its row's spelling, else its key: a certificate stores one spelling per CA
+	const own = rows.find((row) => sameServer(row.server, instance))?.server ?? serverKey(instance);
+	return [own, ...rows.map((row) => row.server).filter((server) => !sameServer(server, instance))];
+};
+
+/**
+ * GET /nginx/certificates/acme-servers: what a user who manages certificates may choose from: no email, no EAB, no
+ * error message
+ *
+ * @param   {Access}  access
+ * @returns {Promise<Object[]>}  server, preset, state (registered, pending, failed, none) and instance
+ */
+const acmeServersList = async (access) => {
+	access.can("certificates:manage");
+	const instance = instanceServer();
+	const rows = await acmeAccountModel.query();
+	return (await allowedAcmeServers()).map((server) => ({
+		server,
+		preset: presetOf(server),
+		state: rows.find((row) => sameServer(row.server, server))?.state ?? "none",
+		instance: sameServer(server, instance),
+	}));
 };
 
 /**
@@ -1214,22 +1412,37 @@ const replaceAccount = async (access, body) => {
 	});
 };
 
-const internalAcmeAccount = { getSettings, listProfiles, registerNow, replaceAccount, saveSettings };
+const internalAcmeAccount = {
+	acmeServersList,
+	addAccount,
+	getSettings,
+	listProfiles,
+	registerNow,
+	removeAccount,
+	replaceAccount,
+	saveSettings,
+	updateAccount,
+};
 
 export {
 	accountRow,
 	accountView,
+	acmeServersList,
+	addAccount,
+	allowedAcmeServers,
 	attemptRegistration,
 	audit,
 	baseIni,
 	ensureAccount,
 	ensureAccountLocked,
+	fillCertificateServers,
 	getSettings,
 	inRunFolder,
 	instanceServer,
 	listProfiles,
 	loadAcmeServer,
 	lockedKeys,
+	markRemoved,
 	open,
 	prepareRenewalLocked,
 	prepareRenewals,
@@ -1239,8 +1452,11 @@ export {
 	registerNow,
 	registrationValues,
 	reloadAcmeAfterRestore,
+	removeAccount,
+	removedServers,
 	replaceAccount,
 	rewriteAccountConfs,
+	saveAccountValues,
 	saveAcmeSetting,
 	saveSettings,
 	scrub,
@@ -1253,6 +1469,7 @@ export {
 	syncAccountsWithFiles,
 	syncEnvEmail,
 	syncRenewalOptions,
+	updateAccount,
 	updateEmail,
 	updateEmailLocked,
 	upsertRow,

@@ -44,3 +44,7 @@ archivo de credenciales de ese proveedor.
 
 Usa esta opción para cargar tu propio Certificado TLS, proporcionado por tu propia
 Autoridad de Certificación.
+
+### Autoridad de certificación
+
+Un certificado solicitado a un servidor ACME lo emite la CA elegida en su ventana: la CA de la instancia (marcada como «predeterminada») u otra CA que un administrador añadió en Ajustes, Certificados y TLS, en **Otras CA**. La lista muestra la CA de cada certificado en la columna **CA**. **Reemitir**, en el menú del certificado, lo solicita de nuevo a otra CA con el mismo nombre; si falla, se conserva el certificado actual.

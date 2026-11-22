@@ -1283,7 +1283,7 @@ async function acmeAccount({ admin }) {
 	await page.goto("/settings/certificates");
 	const card = page.locator(ACME_CARD);
 	await card.waitFor();
-	const state = await card.locator("[data-acme-state]").getAttribute("data-acme-state");
+	const state = await card.locator("[data-acme-state]").first().getAttribute("data-acme-state");
 	if (!ACME_STATES.includes(state)) throw new Error(`the card shows the state "${state}"`);
 	console.log(`  acme account: state ${state}`);
 
@@ -1346,7 +1346,7 @@ async function acmeAccount({ admin }) {
 	const account = (before.accounts ?? []).find((entry) => entry.server === before.server);
 	if (account?.state === "registered") {
 		await page.goto("/settings/certificates");
-		await card.locator("[data-acme-action=replace]").click();
+		await card.locator("[data-acme-action=replace]").first().click();
 		const replace = page.locator("[data-acme-replace]");
 		await replace.waitFor();
 		const expected = emailLocked ? before.email : (account.email ?? "");
@@ -1361,6 +1361,45 @@ async function acmeAccount({ admin }) {
 		if (replaceRequests.length > 0) throw new Error(`Cancel sent ${replaceRequests.length} replace request(s)`);
 	} else {
 		console.log("  acme account: no registered account, Replace step not run");
+	}
+
+	// 7. the Other CAs list: the empty line on an instance without another CA, else a row per CA; Add a CA refuses a
+	// blocked URL in the window and stores nothing
+	await page.goto("/settings/certificates");
+	const others = card.locator("[data-acme-others]");
+	await others.waitFor();
+	const otherRows = (before.accounts ?? []).filter((entry) => entry.server !== before.server).length;
+	if (otherRows === 0) {
+		await others.locator("[data-acme-others-empty]").waitFor();
+		console.log("  acme account: no other CA, the empty line shows");
+	} else if ((await others.locator("[data-acme-other]").count()) !== otherRows) {
+		throw new Error("the Other CAs list does not show a row per stored account");
+	}
+	await others.locator("[data-acme-action=add]").click();
+	await connect.waitFor();
+	await connect.getByText("Add a certificate authority").first().waitFor();
+	await connect.locator("#acme-ca").click();
+	await page.getByRole("option", { name: "Custom URL", exact: true }).click();
+	await connect.locator("#acme-url").fill(ACME_URL_A);
+	await connect.getByRole("button", { name: "Connect", exact: true }).click();
+	await connect.locator("[data-acme-refused]").waitFor();
+	await connect.getByText("This address is not allowed").first().waitFor();
+	await connect.getByRole("button", { name: "Cancel", exact: true }).click();
+	await page.getByRole("button", { name: "Discard changes", exact: true }).click();
+	await windowClosed(page);
+	const added = await api("GET", "/settings/acme");
+	if (JSON.stringify(added.accounts) !== JSON.stringify(before.accounts))
+		throw new Error("the refused Add a CA stored an account");
+
+	// 8. Remove on another CA's row asks first; Cancel keeps the account (the real removal is a live check)
+	if (otherRows > 0) {
+		await others.locator("[data-acme-other] [data-acme-action=remove]").first().click();
+		await page.getByRole("alertdialog").getByText("The account stays at the CA").waitFor();
+		await page.getByRole("alertdialog").getByRole("button", { name: "Cancel", exact: true }).click();
+		await windowClosed(page);
+		const afterCancel = await api("GET", "/settings/acme");
+		if (JSON.stringify(afterCancel.accounts) !== JSON.stringify(before.accounts))
+			throw new Error("Cancel in the Remove question changed the accounts");
 	}
 	if (admin.errors.length > 0) throw new Error(`page error: ${admin.errors[0]}`);
 }

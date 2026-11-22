@@ -33,3 +33,7 @@ inloggegevensbestand voor die provider plakt.
 ### Aangepast certificaat
 
 Gebruik deze optie om uw eigen TLS-certificaat te uploaden, zoals verstrekt door uw eigen Certificaatautoriteit.
+
+### Certificeringsinstantie
+
+Een certificaat dat bij een ACME-server is aangevraagd, wordt uitgegeven door de CA die in het venster is gekozen: de CA van de instantie (gemarkeerd als "standaard") of een andere CA die een beheerder heeft toegevoegd bij Instellingen, Certificaten en TLS, onder **Andere CA's**. De lijst toont de CA van elk certificaat in de kolom **CA**. **Opnieuw uitgeven** in het menu van het certificaat vraagt het onder dezelfde naam opnieuw aan bij een andere CA; mislukt dat, dan blijft het huidige certificaat behouden.

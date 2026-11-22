@@ -427,7 +427,9 @@ it("answers a clear error for an unreachable CA and leaves no certificate", asyn
 	api.outside.dns.set("down.lan", "192.168.1.31");
 	acmeDirectory(api, DOWN, { status: 503, body: "down" });
 	const rows = await countRows(api, "certificate");
-	await api.db("npmpro_acme_account").where({ server: ACME }).delete();
+	await api.db("npmpro_acme_account").delete();
+	// a CA with a row that has no account yet registers at the request
+	await (await import("../models/acme_account.js")).default.query().insert({ server: DOWN, state: "pending" });
 	await rm(path.join(api.root, "data/tls/certbot/accounts"), { recursive: true, force: true });
 	const { default: acmeAccount } = await import("../internal/certificate-acme.js");
 	await assert.rejects(
@@ -669,4 +671,167 @@ it("the HTTP challenge test needs certificates:manage (it writes into the public
 	});
 	const answer = await viewer.post("/nginx/certificates/test-http", { domains: ["view.example.com"] });
 	assert.equal(answer.status, 403, answer.text);
+});
+
+const SECOND = "https://second.lan/dir";
+const SECOND_ACCOUNT = "c".repeat(32);
+const setUpSecond = async () => {
+	const model = (await import("../models/acme_account.js")).default;
+	await model.query().delete();
+	await seedAccount(api, SECOND, SECOND_ACCOUNT);
+	return await model.query().insertAndFetch({ server: SECOND, account_id: SECOND_ACCOUNT, state: "registered" });
+};
+
+it("requests a certificate from a set-up second CA: its server and account, none of the instance options, the row keeps it", async () => {
+	await setUpSecond();
+	const created = await requested(["a.example.com"], { npmpro_acme_server: "https://Second.LAN/dir" });
+	assert.deepEqual(await certbotCalls(), [
+		`certbot --config ${INI} certonly --server ${SECOND} --account ID --cert-name npm-${created.id} --domains a.example.com --no-reuse-key --authenticator webroot`,
+	]);
+	assert.equal(created.npmpro_acme_server, SECOND);
+	assert.equal((await row(created.id)).npmpro_acme_server, SECOND);
+});
+
+it("a request without a CA stores the instance CA", async () => {
+	const created = await requested(["a.example.com"]);
+	assert.equal((await row(created.id)).npmpro_acme_server, ACME);
+	const again = await requested(["a.example.com"], { npmpro_acme_server: "https://ACME.test/directory" });
+	assert.equal((await row(again.id)).npmpro_acme_server, ACME);
+});
+
+it("a CA outside the list is refused before any certbot call, for an administrator and a manager", async () => {
+	await setUpSecond();
+	const manager = await api.limited({
+		visibility: "all",
+		certificates: "manage",
+		proxy_hosts: "hidden",
+		redirection_hosts: "hidden",
+		dead_hosts: "hidden",
+		streams: "hidden",
+		access_lists: "hidden",
+	});
+	const rows = await countRows(api, "certificate");
+	for (const session of [admin, manager]) {
+		const refused = await session.post(CERTS, {
+			provider: "letsencrypt",
+			domain_names: ["a.example.com"],
+			npmpro_acme_server: "https://typo.lan/dir",
+		});
+		assert.equal(refused.status, 400, refused.text);
+		assert.equal(refused.body.error.message_i18n, "error.acme-ca-not-allowed");
+	}
+	assert.equal(await countRows(api, "certificate"), rows);
+	assert.deepEqual(await certbotCalls(), []);
+});
+
+it("a custom certificate drops the CA field", async () => {
+	const { default: certificateModel } = await import("../models/certificate.js");
+	const made = await admin.post(CERTS, { provider: "other", nice_name: "custom", npmpro_acme_server: SECOND });
+	assert.equal(made.status, 201, made.text);
+	assert.equal((await certificateModel.query().findById(made.body.id)).npmpro_acme_server, null);
+});
+
+it("a delete of a CA's account waits for a running request at that CA and then refuses (the row is stored first)", async () => {
+	const account = await setUpSecond();
+	const { withAccountLock } = await import("../internal/acme-account.js");
+	let release;
+	const held = withAccountLock(
+		SECOND,
+		() =>
+			new Promise((resolve) => {
+				release = resolve;
+			}),
+	);
+	await new Promise((resolve) => setImmediate(resolve));
+	const create = admin.post(CERTS, {
+		provider: "letsencrypt",
+		domain_names: ["a.example.com"],
+		npmpro_acme_server: SECOND,
+	});
+	for (
+		let tries = 0;
+		tries < 100 && !(await api.db("certificate").where({ npmpro_acme_server: SECOND }).first());
+		tries++
+	) {
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	}
+	assert.ok(
+		await api.db("certificate").where({ npmpro_acme_server: SECOND }).first(),
+		"the row is stored before certonly",
+	);
+	const removal = admin.delete(`/settings/acme/accounts/${account.id}`);
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	assert.deepEqual(await certbotCalls(), [], "nothing ran while the CA's lock is held");
+	release();
+	await held;
+	const [created, removed] = await Promise.all([create, removal]);
+	assert.equal(created.status, 201, created.text);
+	assert.equal(removed.status, 400, removed.text);
+	assert.equal(removed.body.error.message_i18n, "error.acme-in-use");
+	assert.ok(await (await import("../models/acme_account.js")).default.query().findById(account.id));
+});
+
+it("requests a DNS-challenge certificate from a second CA with its server, account and the DNS flags", async () => {
+	await setUpSecond();
+	const { certificate } = await dnsRequested("cf-token-SECRET", { npmpro_acme_server: SECOND });
+	const calls = await certbotCalls();
+	assert.equal(calls.length, 1);
+	assert.ok(
+		calls[0].includes(`certonly --server ${SECOND} --account ID --cert-name npm-${certificate.id}`),
+		calls[0],
+	);
+	assert.ok(calls[0].includes("--authenticator"), calls[0]);
+	assert.ok(calls[0].includes("credentials-"), calls[0]);
+	assert.equal((await row(certificate.id)).npmpro_acme_server, SECOND);
+});
+
+it("a failed certonly at a second CA leaves no certificate row", async () => {
+	await setUpSecond();
+	const rows = await countRows(api, "certificate");
+	await certbotFails(api, "Challenge failed for domain fail.example.com");
+	const failed = await admin.post(CERTS, {
+		provider: "letsencrypt",
+		domain_names: ["fail.example.com"],
+		npmpro_acme_server: SECOND,
+	});
+	assert.equal(failed.status, 500, failed.text);
+	assert.equal(await countRows(api, "certificate"), rows);
+});
+
+it("a CA whose account is removed after the create's check is refused inside the lock, not registered again", async () => {
+	const account = await setUpSecond();
+	await api.db("certificate").where({ npmpro_acme_server: SECOND }).delete();
+	const { withAccountLock } = await import("../internal/acme-account.js");
+	const model = (await import("../models/acme_account.js")).default;
+	let release;
+	const held = withAccountLock(
+		SECOND,
+		() =>
+			new Promise((resolve) => {
+				release = resolve;
+			}),
+	);
+	await new Promise((resolve) => setImmediate(resolve));
+	const create = admin.post(CERTS, {
+		provider: "letsencrypt",
+		domain_names: ["a.example.com"],
+		npmpro_acme_server: SECOND,
+	});
+	for (
+		let tries = 0;
+		tries < 100 && !(await api.db("certificate").where({ npmpro_acme_server: SECOND }).first());
+		tries++
+	) {
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	}
+	// the row of the CA's account goes while the request waits for the lock
+	await model.query().deleteById(account.id);
+	release();
+	await held;
+	const refused = await create;
+	assert.equal(refused.status, 400, refused.text);
+	assert.equal(refused.body.error.message_i18n, "error.acme-ca-not-allowed");
+	assert.equal(await model.query().where("server", SECOND).first(), undefined);
+	assert.deepEqual(await certbotCalls(), []);
+	assert.equal(await api.db("certificate").where({ npmpro_acme_server: SECOND }).first(), undefined);
 });

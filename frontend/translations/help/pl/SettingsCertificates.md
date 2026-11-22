@@ -8,6 +8,8 @@ Zmienna ustawiona w kontenerze ma pierwszeństwo przed interfejsem i blokuje pol
 
 **Konto ACME.** Karta pokazuje połączenie z urzędem certyfikacji (CA): Połączono, Oczekiwanie (CA był jeszcze nieosiągalny), Niepowodzenie (z komunikatem CA) lub Niepołączone. **Zmień** lub **Połącz** otwiera okno, w którym wybierasz CA (Let's Encrypt, ZeroSSL, Google Trust Services albo adres URL katalogu innego urzędu, https, nie ten host), adres e-mail i klucze EAB. ZeroSSL wymaga adresu e-mail, Google adresu e-mail i kluczy EAB. **Połącz** rejestruje konto; nieosiągalny CA można mimo to zapisać, a połączy się przy następnym żądaniu certyfikatu. **Spróbuj ponownie** ponawia połączenie. Każdy urząd ma własne konto; certyfikaty pozostają przy urzędzie, który je wystawił, dopóki nie zostaną wystawione ponownie. **Zamień konto** jest przyciskiem obok **Zmień**: rejestruje nowe konto i przenosi na nie certyfikaty urzędu; dezaktywuj stare tylko wtedy, gdy jego klucz wyciekł.
 
+**Inne urzędy CA.** Pod głównym połączeniem ta lista zawiera konta w kolejnych urzędach CA, po jednym wierszu na urząd, ze stanem i przyciskami (**Zmień**, **Spróbuj ponownie** lub **Zamień konto**, **Usuń**); **Dodaj urząd CA** otwiera to samo okno. Każdy certyfikat jest zamawiany w urzędzie wybranym w jego oknie i pozostaje przy nim. Urzędy CA dodają tylko administratorzy; kto może zarządzać certyfikatami, wybiera spośród nich. **Usuń** jest odrzucane, dopóki urząd jest używany przez instancję lub certyfikat; samo konto zostaje w urzędzie, a jego pliki zostają na dysku.
+
 ### Żądania certyfikatów
 
 Działają od następnego żądania certyfikatu.

@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+	addAcmeAccount,
+	deleteAcmeAccount,
 	getAcmeProfiles,
 	getAcmeSettings,
 	registerAcmeAccount,
 	replaceAcmeAccount,
+	updateAcmeAccount,
 	updateAcmeSettings,
 } from "src/api/backend";
 
@@ -27,9 +30,13 @@ const useInvalidateAcme = () => {
 	const queryClient = useQueryClient();
 	return () =>
 		Promise.all(
-			[["acme-settings"], ["acme-profiles"], ["runtime-settings", "certificates"], ["audit-logs"]].map(
-				(queryKey) => queryClient.invalidateQueries({ queryKey }),
-			),
+			[
+				["acme-settings"],
+				["acme-servers"],
+				["acme-profiles"],
+				["runtime-settings", "certificates"],
+				["audit-logs"],
+			].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
 		);
 };
 
@@ -48,4 +55,28 @@ const useReplaceAcmeAccount = () => {
 	return useMutation({ mutationFn: (values) => replaceAcmeAccount(values), onSuccess: invalidate });
 };
 
-export { useAcmeProfiles, useAcmeSettings, useRegisterAcmeAccount, useReplaceAcmeAccount, useSaveAcmeSettings };
+const useAddAcmeAccount = () => {
+	const invalidate = useInvalidateAcme();
+	return useMutation({ mutationFn: (values) => addAcmeAccount(values), onSettled: invalidate });
+};
+
+const useUpdateAcmeAccount = () => {
+	const invalidate = useInvalidateAcme();
+	return useMutation({ mutationFn: ({ id, values }) => updateAcmeAccount(id, values), onSettled: invalidate });
+};
+
+const useDeleteAcmeAccount = () => {
+	const invalidate = useInvalidateAcme();
+	return useMutation({ mutationFn: (id) => deleteAcmeAccount(id), onSettled: invalidate });
+};
+
+export {
+	useAcmeProfiles,
+	useAcmeSettings,
+	useAddAcmeAccount,
+	useDeleteAcmeAccount,
+	useRegisterAcmeAccount,
+	useReplaceAcmeAccount,
+	useSaveAcmeSettings,
+	useUpdateAcmeAccount,
+};

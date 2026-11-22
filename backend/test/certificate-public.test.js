@@ -31,6 +31,7 @@ const CERTIFICATE_KEYS = [
 	"pauseRenewals",
 	"performTestForDomain",
 	"processExpiringHosts",
+	"reissue",
 	"renew",
 	"renewCertbot",
 	"requestCertbot",
