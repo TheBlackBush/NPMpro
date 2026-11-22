@@ -7,6 +7,7 @@
 		"/nginx/stream",
 		"/certificates",
 		"/certificates/dns-credentials",
+		"/certificates/domains",
 		"/access",
 		"/audit-log",
 		"/users",
@@ -298,6 +299,15 @@
 			"steps": [
 				{ "click": "role=button[name='Add DNS credential']" },
 				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "add domains window",
+			"route": "/certificates/domains",
+			"steps": [
+				{ "click": "role=button[name='Add domains']" },
+				{ "waitFor": "[data-dns-domains-window]" },
 				{ "press": "Escape" }
 			]
 		},
