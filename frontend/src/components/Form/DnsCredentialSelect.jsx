@@ -17,8 +17,9 @@ import { FormField } from "./FormField";
  *                                      "name (provider)" and "+" opens the window without a preset provider
  * @param {number} [props.ownerUserId]  only this owner's credentials
  * @param {*}      [props.hint]
+ * @param {Function} [props.onUserChange]  called when the user picks a credential (or saves a new one here)
  */
-export function DnsCredentialSelect({ name, provider, ownerUserId, hint }) {
+export function DnsCredentialSelect({ name, provider, ownerUserId, hint, onUserChange }) {
 	const { field, fieldState } = useController({ name });
 	const error = fieldState.error?.message ?? null;
 	const { data, isPending } = useDnsCredentials();
@@ -52,7 +53,10 @@ export function DnsCredentialSelect({ name, provider, ownerUserId, hint }) {
 							})}
 							options={options}
 							value={options.some((o) => o.value === field.value) ? field.value : null}
-							onChange={(value) => field.onChange(value ?? undefined)}
+							onChange={(value) => {
+								onUserChange?.();
+								field.onChange(value ?? undefined);
+							}}
 						/>
 					</div>
 					<Button
@@ -60,7 +64,13 @@ export function DnsCredentialSelect({ name, provider, ownerUserId, hint }) {
 						aria-label={addLabel}
 						title={intl.formatMessage({ id: "tooltip.dns-credential-add" })}
 						onClick={() =>
-							showDnsCredentialModal("new", { provider, onSaved: (row) => field.onChange(row.id) })
+							showDnsCredentialModal("new", {
+								provider,
+								onSaved: (row) => {
+									onUserChange?.();
+									field.onChange(row.id);
+								},
+							})
 						}
 					>
 						<PlusIcon aria-hidden="true" />

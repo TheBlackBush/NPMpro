@@ -6,6 +6,7 @@ export * from "./ChoiceGroup";
 export * from "./CodeInput";
 export * from "./DirectoryField";
 export * from "./DNSProviderFields";
+export * from "./DnsChallengeNote";
 export * from "./DnsCredentialSelect";
 export * from "./DnsCredentialValuesFields";
 export * from "./DnsDomainNamesField";
