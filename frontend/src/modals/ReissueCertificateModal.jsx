@@ -67,7 +67,6 @@ const ReissueCertificateModal = EasyModal.create(({ certificate, visible, remove
 					</AppModal.Title>
 				</AppModal.Header>
 				<AppModal.Body>
-					<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 					{error ? (
 						<ErrorAlert error={error} />
 					) : isPending || hasOther ? (
@@ -88,6 +87,9 @@ const ReissueCertificateModal = EasyModal.create(({ certificate, visible, remove
 						</NoticeAlert>
 					)}
 					<RequestProgress running={isSubmitting} propagationSeconds={certificate.npmproPropagationSeconds} />
+					<ErrorAlert className="mt-3" onClose={() => setErrorMsg(null)}>
+						{errorMsg}
+					</ErrorAlert>
 				</AppModal.Body>
 				<AppModal.Footer>
 					<Button variant="ghost" onClick={remove} disabled={isSubmitting}>

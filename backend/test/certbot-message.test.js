@@ -145,3 +145,17 @@ it("keeps a line that only mentions a warning in the CA's sentence", () => {
 		"Warning: the rate limit is near",
 	);
 });
+
+it("drops certbot's Renewing an existing certificate lead line", () => {
+	const output = [
+		"Renewing an existing certificate for b15.example.org and 2 more domains",
+		"",
+		"Certbot failed to authenticate some domains (authenticator: webroot).",
+		"  Domain: b15.example.org",
+	].join("\n");
+	assert.equal(
+		cleanCertbotMessage(output, { keepLines: true }),
+		"Certbot failed to authenticate some domains (authenticator: webroot).\nDomain: b15.example.org",
+	);
+	assert.ok(!cleanCertbotMessage(output).includes("Renewing"));
+});

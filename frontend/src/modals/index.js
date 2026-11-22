@@ -9,6 +9,7 @@ export * from "./DeadHostModal";
 export * from "./DeleteConfirmModal";
 export * from "./DNSCertificateModal";
 export * from "./DnsCredentialModal";
+export * from "./EditCertificateDomainsModal";
 export * from "./EventDetailsModal";
 export * from "./ExportItemsModal";
 export * from "./HelpModal";

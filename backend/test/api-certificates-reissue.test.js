@@ -73,7 +73,12 @@ it("issues again at another CA: its server and account, the row and conf follow,
 		.db("audit_log")
 		.where({ object_type: "certificate", object_id: created.id, action: "ca-changed" })
 		.first();
-	assert.deepEqual(JSON.parse(audit.meta), { old: ACME, new: SECOND });
+	assert.deepEqual(JSON.parse(audit.meta), {
+		old: ACME,
+		new: SECOND,
+		domain_names: ["a.example.com"],
+		nice_name: "a.example.com",
+	});
 });
 
 it("a failed re-issue changes nothing: the row, the conf and no revoke", async () => {

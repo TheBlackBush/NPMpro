@@ -44,6 +44,12 @@ export const dnsCertificateValidate = (rules) =>
 	}));
 
 /**
+ * The domain names of a Let's Encrypt certificate that is edited: wildcards only with the DNS challenge
+ */
+export const acmeDomainsValidate = (rules, { dnsChallenge }) =>
+	fieldsValidate({ domainNames: rules.validateDomains(Boolean(dnsChallenge), true) });
+
+/**
  * A custom (or mTLS CA) certificate: the name only when it is created (it cannot be renamed), the certificate file,
  * and the key file unless it is an mTLS CA
  *

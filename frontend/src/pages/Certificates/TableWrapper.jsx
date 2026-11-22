@@ -14,6 +14,7 @@ import {
 	showChangeDnsCredentialModal,
 	showCustomCertificateModal,
 	showDeleteConfirmModal,
+	showEditCertificateDomainsModal,
 	showReachabilityModal,
 	showReissueCertificateModal,
 	showRenewCertificateModal,
@@ -104,7 +105,11 @@ export default function TableWrapper() {
 					onReissue={showReissueCertificateModal}
 					onChangeDnsCredential={showChangeDnsCredentialModal}
 					onDownload={handleDownload}
-					onEdit={(cert) => showCustomCertificateModal(cert)}
+					onEdit={(cert) =>
+						cert.provider === "letsencrypt"
+							? showEditCertificateDomainsModal(cert)
+							: showCustomCertificateModal(cert)
+					}
 					onTest={(domains) => showReachabilityModal(domains)}
 					onDelete={(id) => {
 						const certificate = data?.find((item) => item.id === id);

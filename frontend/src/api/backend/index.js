@@ -74,6 +74,7 @@ export * from "./restoreBackup";
 export * from "./revokeSessions";
 export * from "./runBackupSchedule";
 export * from "./setCertificateDnsCredential";
+export * from "./setCertificateDomains";
 export * from "./setPermissions";
 export * from "./startDatabaseMove";
 export * from "./testCrowdsecSettings";

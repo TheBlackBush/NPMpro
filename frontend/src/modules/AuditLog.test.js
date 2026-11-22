@@ -30,6 +30,7 @@ it("the ACME account events are in the lists", () => {
 		"replaced",
 		"replace-failed",
 		"ca-changed",
+		"domains-changed",
 	]) {
 		assert.ok(AUDIT_ACTIONS.includes(a), a);
 	}

@@ -384,6 +384,61 @@ async function certificateAuthority({ admin }) {
 	}
 }
 
+// The Edit window of an ACME certificate's domain names. Issuing is not part of the flows, so the list answer is
+// rewritten: an uploaded certificate looks like a Let's Encrypt one with a proxy host that uses two of its names.
+// Nothing is saved: the window opens with the names and Save disabled, dropping a name the host uses shows the
+// uncovered warning, and Cancel then the discard question closes it.
+async function editCertificateDomains({ admin }) {
+	const { page, api } = admin;
+	const names = ["flow-a.example.com", "flow-b.example.com"];
+	try {
+		await uploadCertificate(api, "flow-edit-domains");
+		await page.route(CERTIFICATE_LIST_URL, async (route) => {
+			const answer = await route.fetch();
+			const rows = await answer.json();
+			await route.fulfill({
+				response: answer,
+				json: rows.map((row) =>
+					row.nice_name === "flow-edit-domains"
+						? {
+								...row,
+								provider: "letsencrypt",
+								domain_names: names,
+								npmpro_acme_server: FLOW_CA,
+								npmpro_dns_challenge: false,
+								proxy_hosts: [{ id: 999999, domain_names: names }],
+							}
+						: row,
+				),
+			});
+		});
+		await page.goto("/certificates");
+		await rowAction(page, "flow-edit-domains", "Edit");
+		await windowTitled(page, "Edit Domain Names");
+		const dialog = page.locator("[role=dialog][data-edit-domains]");
+		await dialog.waitFor();
+		const chips = dialog.locator("[data-slot=combobox-chips]");
+		for (const domain of names) {
+			// biome-ignore lint/performance/noAwaitInLoops: each name is looked for in turn
+			await chips.getByText(domain, { exact: true }).waitFor();
+		}
+		if (!(await dialog.getByRole("button", { name: "Save", exact: true }).isDisabled()))
+			throw new Error("Save is enabled with the names unchanged");
+		if ((await dialog.locator("[data-uncovered-hosts]").count()) !== 0)
+			throw new Error("the warning shows before a change");
+		await dialog.getByRole("button", { name: `Remove ${names[1]}`, exact: true }).click();
+		await dialog.locator("[data-uncovered-hosts]").waitFor();
+		if (await dialog.getByRole("button", { name: "Save", exact: true }).isDisabled())
+			throw new Error("Save is disabled with a changed list");
+		await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+		await page.getByRole("alertdialog").getByRole("button", { name: "Discard changes", exact: true }).click();
+		await windowClosed(page);
+	} finally {
+		await page.unroute(CERTIFICATE_LIST_URL);
+		await cleanUp(api);
+	}
+}
+
 export const windowFlows = [
 	{ name: "proxy location and access list", run: proxyLocationAccess },
 	{ name: "proxy host pages", run: proxyHostPages },
@@ -392,4 +447,5 @@ export const windowFlows = [
 	{ name: "unsaved changes", run: unsavedChangesOfAllWindows },
 	{ name: "close without errors", run: closeWithoutErrors },
 	{ name: "certificate authority", run: certificateAuthority },
+	{ name: "edit certificate domains", run: editCertificateDomains },
 ];

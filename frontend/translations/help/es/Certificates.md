@@ -47,4 +47,4 @@ Autoridad de Certificación.
 
 ### Autoridad de certificación
 
-Un certificado solicitado a un servidor ACME lo emite la CA elegida en su ventana: la CA de la instancia (marcada como «predeterminada») u otra CA que un administrador añadió en Ajustes, Certificados y TLS, en **Otras CA**. La lista muestra la CA de cada certificado en la columna **CA**. **Reemitir**, en el menú del certificado, lo solicita de nuevo a otra CA con el mismo nombre; si falla, se conserva el certificado actual.
+Un certificado solicitado a un servidor ACME lo emite la CA elegida en su ventana: la CA de la instancia (marcada como «predeterminada») u otra CA que un administrador añadió en Ajustes, Certificados y TLS, en **Otras CA**. La lista muestra la CA de cada certificado en la columna **CA**. **Reemitir**, en el menú del certificado, lo solicita de nuevo a otra CA con el mismo nombre; si falla, se conserva el certificado actual. **Editar** en un certificado ACME cambia sus nombres de dominio: el certificado se solicita de nuevo con la misma entrada, la ventana avisa de los nombres que aún usan hosts y un fallo no cambia nada.

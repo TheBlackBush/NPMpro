@@ -18,7 +18,7 @@ function ApiErrorContent({ error }) {
 
 	return (
 		<>
-			<span className="break-words">{message}</span>
+			<span className="wrap-anywhere whitespace-pre-line">{message}</span>
 			{output ? (
 				<>
 					<div>
@@ -33,7 +33,7 @@ function ApiErrorContent({ error }) {
 						</Button>
 					</div>
 					{showDetails ? (
-						<pre className="mt-2 mb-0 max-h-80 overflow-auto font-mono text-xs break-words whitespace-pre-wrap">
+						<pre className="mt-2 mb-0 max-h-80 overflow-auto font-mono text-xs wrap-anywhere whitespace-pre-wrap">
 							{output}
 						</pre>
 					) : null}
@@ -64,7 +64,7 @@ function ErrorAlert({ error, children, onClose, className }) {
 	return (
 		<Alert ref={ref} tabIndex={-1} variant="destructive" className={cn("outline-none", className)}>
 			<CircleAlertIcon aria-hidden="true" />
-			<div className="break-words">{children ?? <ApiErrorContent error={error} />}</div>
+			<div className="min-w-0 wrap-anywhere">{children ?? <ApiErrorContent error={error} />}</div>
 			{onClose ? (
 				<AlertAction>
 					<Button
