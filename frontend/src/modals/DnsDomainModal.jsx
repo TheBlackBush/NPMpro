@@ -15,6 +15,7 @@ import {
 import { DirtyTracker, useCanManage, useDnsDomains, useMoveDnsDomain, useUnsavedChangesGuard } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
+import { displayDomain } from "src/modules/DnsDomainForms";
 import EasyModal from "src/modules/easyModal";
 import { fieldsValidate } from "src/modules/HookForm";
 import { windowTitleId } from "src/modules/HostForms";
@@ -101,8 +102,8 @@ const DnsDomainModal = EasyModal.create(({ id, visible, remove }) => {
 								<span className="font-medium text-sm">
 									<T id="dns-domain" />
 								</span>
-								<span className="wrap-anywhere text-sm" data-dns-domain-name>
-									{domain.name}
+								<span className="wrap-anywhere text-sm" data-dns-domain-name title={domain.name}>
+									{displayDomain(domain.name)}
 								</span>
 							</div>
 							<DnsCredentialSelect

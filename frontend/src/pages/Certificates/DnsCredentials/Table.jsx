@@ -8,6 +8,7 @@ import { Badge } from "src/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
 import { useCanManage, useDnsProviders } from "src/hooks";
 import { intl, T } from "src/locale";
+import { displayDomain } from "src/modules/DnsDomainForms";
 import { CERTIFICATES } from "src/modules/Permissions";
 
 function UsedBy({ certificates }) {
@@ -44,7 +45,7 @@ function Domains({ domains }) {
 	const more = domains.length - SHOWN_DOMAINS;
 	return (
 		<div className="flex min-w-0 flex-wrap items-center gap-x-2">
-			<span className="wrap-anywhere">{domains.slice(0, SHOWN_DOMAINS).join(", ")}</span>
+			<span className="wrap-anywhere">{domains.slice(0, SHOWN_DOMAINS).map(displayDomain).join(", ")}</span>
 			{more > 0 ? (
 				<Popover>
 					<PopoverTrigger asChild>
@@ -58,8 +59,8 @@ function Domains({ domains }) {
 					</PopoverTrigger>
 					<PopoverContent align="start" className="w-auto max-w-80">
 						{domains.map((name) => (
-							<div key={name} className="wrap-anywhere">
-								{name}
+							<div key={name} className="wrap-anywhere" title={name}>
+								{displayDomain(name)}
 							</div>
 						))}
 					</PopoverContent>

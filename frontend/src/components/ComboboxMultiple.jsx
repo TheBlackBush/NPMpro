@@ -73,6 +73,7 @@ export function MultipleCombobox({
 	className,
 	chipClassName,
 	chipProps,
+	chipLabel,
 }) {
 	const values = Array.isArray(value) ? value : [];
 	const [open, setOpen] = useState(false);
@@ -207,7 +208,9 @@ export function MultipleCombobox({
 						}}
 					>
 						{values.map((entry, index) => {
-							const label = labelOf(entry, options, getOptionLabel, getOptionValue);
+							const label = chipLabel
+								? chipLabel(entry)
+								: labelOf(entry, options, getOptionLabel, getOptionValue);
 							const { srText, ...extra } = chipProps?.(entry) ?? {};
 							return (
 								<Badge

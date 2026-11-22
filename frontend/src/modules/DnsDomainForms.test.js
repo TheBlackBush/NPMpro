@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
-import { dnsDomainNamesRule, normalizeDnsDomain, storedForm, takenNames, toAscii } from "./DnsDomainForms.js";
+import {
+	displayDomain,
+	dnsDomainNamesRule,
+	normalizeDnsDomain,
+	storedForm,
+	takenNames,
+	toAscii,
+} from "./DnsDomainForms.js";
 
 const CASES = JSON.parse(
 	readFileSync(new URL("../../../backend/test/fixtures/dns-domain-cases.json", import.meta.url), "utf8"),
@@ -70,4 +77,14 @@ it("never refuses a stored name, names every taken name and keeps each name once
 		"xn--bcher-kva.de",
 		"bad name",
 	]);
+});
+
+it("shows a stored name in Unicode and leaves every other name as it is", () => {
+	assert.equal(displayDomain("xn--bcher-kva.de"), "bücher.de");
+	assert.equal(displayDomain("www.xn--bcher-kva.de"), "www.bücher.de");
+	assert.equal(displayDomain("example.com"), "example.com");
+	// an xn-- label that is no real IDN label stays as stored
+	assert.equal(displayDomain("xn--a.com"), "xn--a.com");
+	assert.equal(displayDomain(undefined), "");
+	assert.equal(normalizeDnsDomain(displayDomain("xn--bcher-kva.de")).name, "xn--bcher-kva.de");
 });

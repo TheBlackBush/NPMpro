@@ -2,7 +2,7 @@ import { useController } from "react-hook-form";
 import { Combobox } from "src/components/Combobox";
 import { useDnsDomains } from "src/hooks";
 import { intl, T } from "src/locale";
-import { normalizeDnsDomain, storedForm, takenNames } from "src/modules/DnsDomainForms";
+import { displayDomain, normalizeDnsDomain, storedForm, takenNames } from "src/modules/DnsDomainForms";
 import { FormField } from "./FormField";
 import { usePendingEntry, useReadOnly } from "./HookForm";
 
@@ -44,8 +44,11 @@ export function DnsDomainNamesField({ name = "domains", id = "dnsDomains", label
 					onQueryChange={(text) => pending.setPending(text.trim() !== "")}
 					placeholder={intl.formatMessage({ id: "dns-domains.names.placeholder" })}
 					chipClassName={(entry) => (taken.has(entry) ? TAKEN_CHIP : undefined)}
-					chipProps={(entry) =>
-						taken.has(entry)
+					chipLabel={displayDomain}
+					chipProps={(entry) => ({
+						// the stored (ASCII) form of a name shown in Unicode
+						title: displayDomain(entry) === entry ? undefined : entry,
+						...(taken.has(entry)
 							? {
 									"data-dns-domain-taken": "",
 									srText: intl.formatMessage(
@@ -53,8 +56,8 @@ export function DnsDomainNamesField({ name = "domains", id = "dnsDomains", label
 										{ credential: taken.get(entry) },
 									),
 								}
-							: undefined
-					}
+							: {}),
+					})}
 					onChange={(next) => field.onChange(storedForm(next))}
 				/>
 			)}

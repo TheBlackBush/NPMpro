@@ -16,6 +16,7 @@ import { TapTooltip } from "src/components/TapTooltip";
 import { useCanManage, useDnsProviders, useUser } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDnsDomainsModal } from "src/modals";
+import { displayDomain } from "src/modules/DnsDomainForms";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 
 function DomainActions({ domain, onDelete, onEdit }) {
@@ -90,9 +91,18 @@ export function useColumns() {
 				id: "name",
 				meta: { mobile: "title" },
 				header: intl.formatMessage({ id: "dns-domains.name" }),
-				cell: (info) => (
-					<ValueWithDateFormatter value={info.row.original.name} createdOn={info.row.original.createdOn} />
-				),
+				cell: (info) => {
+					const { name, createdOn } = info.row.original;
+					const shown = displayDomain(name);
+					return (
+						<ValueWithDateFormatter
+							value={shown}
+							createdOn={createdOn}
+							// the stored form under a name shown in Unicode
+							below={shown === name ? null : <div className="text-muted-foreground">{name}</div>}
+						/>
+					);
+				},
 			}),
 			columnHelper.accessor((row) => row.credential?.name ?? "", {
 				id: "credential",
