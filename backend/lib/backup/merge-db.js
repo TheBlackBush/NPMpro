@@ -231,6 +231,36 @@ const mergeTypes = async ({
 			return credentialNames.get(key(ownerId));
 		};
 
+		// the domain names an owner keeps, on any credential; a name added by this merge joins the set
+		const domainNames = new Map();
+		const domainNamesOf = async (ownerId) => {
+			if (!domainNames.has(key(ownerId))) {
+				const names = await trx("npmpro_dns_domain")
+					.join("npmpro_dns_credential", "npmpro_dns_credential.id", "npmpro_dns_domain.dns_credential_id")
+					.where("npmpro_dns_credential.owner_user_id", ownerId)
+					.pluck("npmpro_dns_domain.name");
+				domainNames.set(key(ownerId), new Set(names.map(lower)));
+			}
+			return domainNames.get(key(ownerId));
+		};
+		const skippedDomains = [];
+
+		// a credential the plan adds brings its domains, except the names its owner already keeps
+		const addDomains = async (row, owner, credentialId, credentialName) => {
+			const taken = await domainNamesOf(owner);
+			const own = (prepared.dns_credentials.npmpro_dns_domain ?? []).filter(
+				(child) => key(child.dns_credential_id) === key(row.id),
+			);
+			for (const child of own) {
+				if (taken.has(lower(child.name))) {
+					skippedDomains.push({ name: child.name, credential: credentialName });
+					continue;
+				}
+				taken.add(lower(child.name));
+				await inserter.insertWithNewId("npmpro_dns_domain", { ...child, dns_credential_id: credentialId });
+			}
+		};
+
 		const addCredential = async (row) => {
 			const owner = ownerOf(row.owner_user_id);
 			const taken = await namesOf(owner);
@@ -241,7 +271,9 @@ const mergeTypes = async ({
 				{ npmpro_dns_credential: [{ ...row, owner_user_id: owner, name, values }] },
 				box,
 			).npmpro_dns_credential;
-			return await inserter.insertWithNewId("npmpro_dns_credential", sealed);
+			const credentialId = await inserter.insertWithNewId("npmpro_dns_credential", sealed);
+			await addDomains(row, owner, credentialId, name);
+			return credentialId;
 		};
 
 		const addCertificate = async (row, item) => {
@@ -415,7 +447,18 @@ const mergeTypes = async ({
 			else if (kind === "schedule") await writeSchedule(item);
 			else await writeSetting(item);
 		}
-		return { counts, maps, certificateMoves, replacedUserIds, avatarMoves, cleared: cleared.size };
+		if (skippedDomains.length > 0) {
+			logger.info(`Merge: ${skippedDomains.length} DNS domain(s) skipped, their owner keeps the name already`);
+		}
+		return {
+			counts,
+			maps,
+			certificateMoves,
+			replacedUserIds,
+			avatarMoves,
+			cleared: cleared.size,
+			skipped_domains: skippedDomains,
+		};
 	});
 };
 

@@ -3,7 +3,7 @@ import path from "node:path";
 import { global as logger } from "../../logger.js";
 import { withValidPages } from "../landing-pages/backup-rows.js";
 import { BackupError } from "./format.js";
-import { applyReferences, planReferences } from "./references.js";
+import { applyReferences, planReferences, splitOrphanDomains } from "./references.js";
 import { coerceRow } from "./rows.js";
 import { ITEM_TYPES } from "./select.js";
 import { RESTORE_ORDER, TYPES } from "./types.js";
@@ -20,6 +20,7 @@ const REFERENCE_TABLES = [
 	"certificate",
 	"access_list",
 	"npmpro_dns_credential",
+	"npmpro_dns_domain",
 	...HOST_TABLES,
 	"npmpro_proxy_host_access_list",
 ];
@@ -33,6 +34,7 @@ const REFERENCE_COLUMNS = [
 	"certificate_id",
 	"npmpro_mtls_certificate_id",
 	"npmpro_dns_credential_id",
+	"dns_credential_id",
 	"proxy_host_id",
 	"location_id",
 	"access_list_id",
@@ -406,6 +408,8 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 		let skippedUsers = [];
 		let users = null;
 		const revokedTokens = [];
+		// domains of a credential the backup does not hold: dropped before the insert (MySQL and Postgres enforce the key)
+		const droppedDomains = [];
 		for (const typeId of chosen) {
 			const type = TYPES[typeId];
 			const sealed = type.secrets.seal(remapOwners(prepared[typeId], idMap), box);
@@ -422,6 +426,14 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 				({ users } = result);
 				continue;
 			}
+			if (typeId === "dns_credentials") {
+				const { kept: domains, orphans } = splitOrphanDomains(
+					rowsByTable.npmpro_dns_domain,
+					rowsByTable.npmpro_dns_credential,
+				);
+				rowsByTable.npmpro_dns_domain = domains;
+				droppedDomains.push(...orphans);
+			}
 			for (const { table, where } of type.tables) {
 				if (table === kept.table) continue;
 				await inserter.insert(table, rowsByTable[table]);
@@ -432,8 +444,9 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 		for (const table of inserter.touched) await inserter.resetSequence(table);
 		const finalRows = {};
 		for (const table of REFERENCE_TABLES) finalRows[table] = await readReferenceRows(trx, table);
-		const references = planReferences({ finalRows, adminUserId });
-		await applyReferences(trx, references);
+		const planned = planReferences({ finalRows, adminUserId });
+		await applyReferences(trx, planned);
+		const references = [...droppedDomains, ...planned];
 		return { references, skippedUsers, counts, users, revokedTokens };
 	});
 };

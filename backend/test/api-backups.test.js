@@ -368,6 +368,24 @@ it("restores the tags of a host from a backup", async () => {
 	assert.deepEqual(row.npmpro_tags, ["Lab"]);
 });
 
+it("a backup of DNS credentials restores their domains", async () => {
+	const created = await admin.post("/nginx/dns-credentials", {
+		name: "Backed up",
+		provider: "cloudflare",
+		fields: [{ key: "dns_cloudflare_api_token", value: "t".repeat(40) }],
+		domains: ["bk-one.example", "bk-two.example"],
+	});
+	assert.equal(created.status, 201, created.text);
+	const entry = await keep({ types: ["dns_credentials"] });
+	assert.equal((await admin.delete(`/nginx/dns-credentials/${created.body.id}`)).status, 200);
+	assert.deepEqual((await admin.get("/nginx/dns-domains")).body, []);
+	const { token } = await inspect(entry.name);
+	const done = await admin.post(`${BASE}/restore/${token}`, { types: ["dns_credentials"], confirm: true });
+	assert.equal(done.status, 200, done.text);
+	const restored = await admin.get("/nginx/dns-domains");
+	assert.deepEqual(restored.body.map((row) => row.name).sort(), ["bk-one.example", "bk-two.example"]);
+});
+
 it("cancels a restore session, after which its token has expired", async () => {
 	const entry = await keep();
 	const { token } = await inspect(entry.name);

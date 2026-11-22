@@ -6,6 +6,7 @@ import dnsCredentialSchema from "../../schema/components/dns-credential-object.j
 import proxyHostSchema from "../../schema/components/proxy-host-object.json" with { type: "json" };
 import redirectionHostSchema from "../../schema/components/redirection-host-object.json" with { type: "json" };
 import streamSchema from "../../schema/components/stream-object.json" with { type: "json" };
+import { normalizeDomainName } from "../dns-domain-name.js";
 import {
 	assertConfigFields,
 	assertHostConfig,
@@ -24,6 +25,7 @@ import { ITEM_TYPES } from "./select.js";
 
 const WRITES = new Set(["add", "replace"]);
 const LOCATION_TABLE = "npmpro_location";
+const DOMAIN_SOURCES = new Set(["typed", "fetched"]);
 // the host types, the key of their config guard rules, the schema their API create and update use and their forward
 // target field
 const HOSTS = {
@@ -229,6 +231,16 @@ const checkRowValues = ({ typeId, row, data }) => {
 		return;
 	}
 	checkSchema(LINKED[typeId], row);
+	if (typeId === "dns_credentials") {
+		const domains = (data.dns_credentials?.npmpro_dns_domain ?? []).filter(
+			(child) => String(child.dns_credential_id) === String(row.id),
+		);
+		for (const child of domains) {
+			if (normalizeDomainName(child.name).name !== child.name || !DOMAIN_SOURCES.has(child.source)) {
+				throw new FieldError("domains");
+			}
+		}
+	}
 	if (typeId === "certificates") {
 		checkSchema(common, row, { properties: { domain_names: CERTIFICATE_DOMAINS } });
 	}

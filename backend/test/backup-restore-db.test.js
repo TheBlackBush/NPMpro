@@ -7,6 +7,7 @@ import knexFactory from "knex";
 import { loadStageData, previewReplace, replaceTypes, sequenceResetQuery } from "../lib/backup/restore-db.js";
 import { up as upOidcLink } from "../migrations/20261112120000_oidc_identity_link.js";
 import { up as createAcmeAccountTable } from "../migrations/20261119120000_acme_accounts.js";
+import { up as createDnsDomainTable } from "../migrations/20261123120000_dns_domains.js";
 
 process.env.TZ = "UTC";
 
@@ -85,6 +86,7 @@ const sqlite = async () => {
 		t.text("values").notNull();
 		t.unique(["owner_user_id", "name"]);
 	});
+	await createDnsDomainTable(knex);
 	await knex.schema.createTable("setting", (t) => {
 		t.string("id").primary();
 		t.string("name").notNull();
