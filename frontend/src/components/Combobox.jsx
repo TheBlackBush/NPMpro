@@ -31,6 +31,10 @@ import { SingleCombobox } from "./ComboboxSingle";
  * @param {string|Function} [props.emptyText]   or (query) => text
  * @param {string|Function} [props.createText]  or (query) => text
  * @param {Function} [props.isValidNew]      (query, values) => whether a typed value may be added
+ * @param {boolean}  [props.filter]         true by default; false: the options already answer the query (the caller
+ *                                           filters them) and are listed as given. An option may carry groupLabel:
+ *                                           consecutive options with one label are listed under that heading
+ * @param {boolean}  [props.createFirst]     multiple and creatable: "Add ..." is the first entry and the highlighted one
  * @param {Function} [props.normalize]       multiple: (entry) => the form two entries are compared in
  * @param {Object}   [props.separators]      multiple: WORD_ENTRIES (default, spaces and commas separate) or
  *                                           LINE_ENTRIES (only commas and line breaks: entries may hold spaces)
@@ -68,6 +72,8 @@ export function Combobox({
 	emptyText,
 	createText,
 	isValidNew,
+	filter = true,
+	createFirst = false,
 	normalize = defaultNormalize,
 	separators,
 	commitRef,
@@ -115,6 +121,7 @@ export function Combobox({
 		emptyText,
 		createText,
 		isValidNew,
+		filter,
 		onBlur,
 		aria,
 		className,
@@ -126,6 +133,7 @@ export function Combobox({
 				<MultipleCombobox
 					{...shared}
 					value={value}
+					createFirst={createFirst}
 					normalize={normalize}
 					separators={separators}
 					commitRef={commitRef}

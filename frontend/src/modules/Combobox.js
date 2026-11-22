@@ -123,3 +123,63 @@ export function partitionEntries(text, isValid = () => true, separators = WORD_E
 export function isEmptyValue(value) {
 	return value === null || value === undefined || value === "";
 }
+
+/**
+ * The options grouped for the list: consecutive options with the same groupLabel share one group, the options without
+ * one stay together under a null label
+ *
+ * @param   {Object[]} items
+ * @returns {Array<{ label: string|null, items: Object[] }>}
+ */
+export function groupsOf(items) {
+	const groups = [];
+	for (const item of items ?? []) {
+		const label = item.groupLabel ?? null;
+		const last = groups.at(-1);
+		if (last && last.label === label) last.items.push(item);
+		else groups.push({ label, items: [item] });
+	}
+	return groups;
+}
+
+/**
+ * The keys of the list in order: the options, then the "Add ..." entry; with createFirst the entry leads (and is the
+ * one the field highlights, so Enter adds exactly the typed text)
+ *
+ * @param   {Object}   input
+ * @param   {string[]} input.itemKeys
+ * @param   {string}   [input.createKey]  absent when "Add ..." is not offered
+ * @param   {boolean}  [input.createFirst]
+ * @returns {string[]}
+ */
+export function orderKeys({ itemKeys, createKey, createFirst = false }) {
+	if (!createKey) return itemKeys;
+	return createFirst ? [createKey, ...itemKeys] : [...itemKeys, createKey];
+}
+
+/**
+ * The options with the one that is exactly the typed text (by label or value, case-insensitive) moved first, for a
+ * createFirst list that offers no "Add ..." because that option already is the text: Enter then picks it, not another
+ * option that merely contains it
+ *
+ * @param   {Object[]} items
+ * @param   {string}   query
+ * @param   {Function} getLabel  (option) => its label
+ * @param   {Function} getValue  (option) => its value
+ * @returns {Object[]}
+ */
+export function exactFirst(items, query, getLabel, getValue) {
+	const needle = String(query ?? "")
+		.trim()
+		.toLowerCase();
+	const index =
+		needle === ""
+			? -1
+			: items.findIndex(
+					(o) =>
+						!o.disabled &&
+						[getLabel(o), getValue(o)].some((text) => String(text ?? "").toLowerCase() === needle),
+				);
+	if (index <= 0) return items;
+	return [items[index], ...items.slice(0, index), ...items.slice(index + 1)];
+}

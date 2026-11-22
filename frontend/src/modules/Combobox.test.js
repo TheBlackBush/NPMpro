@@ -3,9 +3,12 @@ import { it } from "node:test";
 import {
 	appendEntries,
 	canCreate,
+	exactFirst,
 	filterOptions,
+	groupsOf,
 	isEmptyValue,
 	LINE_ENTRIES,
+	orderKeys,
 	partitionEntries,
 	removeLast,
 	splitEntries,
@@ -92,4 +95,33 @@ it("keeps spaces inside an entry in line mode, splitting on commas and new lines
 	assert.deepEqual(appendEntries(["a"], ["b", "A", "c"]), ["a", "b", "c"]);
 	// the default stays the word mode of the domain names
 	assert.deepEqual(splitEntries("a.example.com b.example.com"), ["a.example.com", "b.example.com"]);
+});
+
+it("groupsOf keeps consecutive options of a group together", () => {
+	const groups = groupsOf([{ groupLabel: "A" }, { groupLabel: "A" }, { groupLabel: "B" }, {}]);
+	assert.deepEqual(
+		groups.map((g) => g.label),
+		["A", "B", null],
+	);
+	assert.deepEqual(
+		groups.map((g) => g.items.length),
+		[2, 1, 1],
+	);
+	assert.deepEqual(groupsOf([]), []);
+});
+
+it("createFirst lists Add first", () => {
+	assert.deepEqual(orderKeys({ itemKeys: ["o:a"], createKey: "create:", createFirst: true }), ["create:", "o:a"]);
+	assert.deepEqual(orderKeys({ itemKeys: ["o:a"], createKey: "create:" }), ["o:a", "create:"]);
+	assert.deepEqual(orderKeys({ itemKeys: ["o:a"], createKey: null, createFirst: true }), ["o:a"]);
+});
+
+it("a fully typed name leads the list, never a suggestion that contains it", () => {
+	const options = [{ value: "www.example.com" }, { value: "example.com" }, { value: "example.com.au" }];
+	const label = (o) => o.value;
+	// no "Add ..." is offered when an option is the text: that option must be the first (highlighted) one
+	assert.equal(exactFirst(options, "Example.com", label, label)[0].value, "example.com");
+	// with "Add ..." leading, Enter adds the typed name; without a match the order is kept
+	assert.deepEqual(exactFirst(options, "exam", label, label), options);
+	assert.deepEqual(exactFirst(options, "", label, label), options);
 });

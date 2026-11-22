@@ -64,6 +64,8 @@ export function MultipleCombobox({
 	emptyText,
 	createText,
 	isValidNew,
+	filter,
+	createFirst,
 	normalize,
 	separators = WORD_ENTRIES,
 	commitRef,
@@ -92,6 +94,8 @@ export function MultipleCombobox({
 		getOptionLabel,
 		getOptionValue,
 		createText,
+		filter,
+		createFirst,
 	};
 	const list = listFor({ ...listArgs, query });
 	// nothing to list: an empty creatable field (domain names) stays closed until something is typed
@@ -290,6 +294,7 @@ export function MultipleCombobox({
 						renderOption={renderOption}
 						getOptionLabel={getOptionLabel}
 						getOptionValue={getOptionValue}
+						createFirst={createFirst}
 						onPick={pick}
 						onCreate={() => {
 							commit(query);
