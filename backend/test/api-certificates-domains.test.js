@@ -194,6 +194,47 @@ it("the certificate list with the hosts expanded gives the domain names the wind
 	assert.deepEqual(expanded.body.dead_hosts[0].domain_names, ["gone.example.com"]);
 });
 
+it("takes the expiry of the new certificate", async () => {
+	const created = await issued();
+	const longer = await makeCertificate(path.join(api.root, "fake"), "b.example.com", 90);
+	await certbotSucceeds(api, longer);
+	const done = await put(created.id, ["b.example.com"]);
+	assert.equal(done.status, 200, done.text);
+	const issuedAt = new Date(created.expires_on).getTime();
+	assert.ok(new Date((await row(created.id)).expires_on).getTime() - issuedAt > 50 * 86400000);
+	assert.notEqual(done.body.expires_on, created.expires_on);
+});
+
+it("a failure after certbot succeeded keeps the row on the new files, reloads nginx, writes the audit entry and answers the error", async () => {
+	const created = await issued();
+	const broken = path.join(api.root, "fake/broken.pem");
+	await writeFile(broken, "not a certificate");
+	await certbotSucceeds(api, { certificate: broken, key: pair.key });
+	const reloadsBefore = reloads(api);
+
+	const failed = await put(created.id, ["b.example.com"]);
+	assert.notEqual(failed.status, 200, failed.text);
+	const stored = await row(created.id);
+	assert.deepEqual(JSON.parse(stored.domain_names), ["b.example.com"]);
+	assert.equal(stored.nice_name, "b.example.com");
+	assert.ok(reloads(api) > reloadsBefore);
+	const audit = await api
+		.db("audit_log")
+		.where({ object_type: "certificate", object_id: created.id, action: "domains-changed" })
+		.first();
+	assert.deepEqual(JSON.parse(audit.meta), { old: ["a.example.com"], new: ["b.example.com"] });
+});
+
+it("refuses a certificate whose CA was removed meanwhile, before certbot", async () => {
+	const created = await issued();
+	await api.db("certificate").where({ id: created.id }).update({ npmpro_acme_server: "https://gone.lan/dir" });
+	await api.outside.clearCalls();
+	const refused = await put(created.id, ["b.example.com"]);
+	assert.equal(refused.status, 400, refused.text);
+	assert.equal(refused.body.error.message_i18n, "error.acme-ca-not-allowed");
+	assert.deepEqual(await calls(), []);
+});
+
 it("needs certificates:manage", async () => {
 	const created = await issued();
 	const viewer = await api.limited({

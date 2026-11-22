@@ -621,8 +621,28 @@ const internalCertificate = {
 				.join("\n");
 		if (key(next) === key(certificate.domain_names)) return certificate;
 
+		// the row as it is under the CA's lock: another change may have come in since the first read
+		let current = certificate;
+		let unchanged = false;
+		const guard = async () => {
+			current = await internalCertificate.get(access, { id: certificate.id });
+			if (
+				!sameServer(
+					current.npmpro_acme_server ?? instanceServer(),
+					certificate.npmpro_acme_server ?? instanceServer(),
+				)
+			) {
+				throw new errs.ValidationError(
+					"The certificate's CA changed meanwhile, try again",
+					"error.acme-ca-changed-meanwhile",
+				);
+			}
+			unchanged = key(next) === key(current.domain_names);
+			return unchanged;
+		};
+
 		try {
-			await runCertonly({ ...certificate, domain_names: next }, access);
+			await runCertonly({ ...certificate, domain_names: next }, access, { guard });
 		} catch (err) {
 			// a failed certbot run answers a public message the window shows, the certificate stays as it was
 			if (!(err instanceof errs.CommandError && err.certbotRun)) throw err;
@@ -632,30 +652,31 @@ const internalCertificate = {
 				{ values: { message: err.message }, cause: err },
 			);
 		}
+		if (unchanged) return current;
 
+		// certbot succeeded: the files carry the new names, so the row, nginx and the audit follow whatever happens next
 		let updatedCertificate;
+		let failure;
+		const patch = { domain_names: next, nice_name: getNiceName(next) };
 		try {
 			const certInfo = await internalCertificate.getCertificateInfoFromFile(
 				`${internalCertificate.getLiveCertPath(certificate.id)}/fullchain.pem`,
 			);
-			updatedCertificate = await certificateModel.query().patchAndFetchById(certificate.id, {
-				domain_names: next,
-				nice_name: getNiceName(next),
-				expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
-			});
+			patch.expires_on = dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss");
 		} catch (err) {
-			// the files carry the new names: the row follows them, best effort
+			failure = err;
+		}
+		try {
+			updatedCertificate = await certificateModel.query().patchAndFetchById(certificate.id, patch);
+		} catch (err) {
+			failure ??= err;
 			try {
-				await certificateModel
-					.query()
-					.where("id", certificate.id)
-					.patch({ domain_names: next, nice_name: getNiceName(next) });
+				await certificateModel.query().where("id", certificate.id).patch(patch);
 			} catch (patchErr) {
 				logger.warn(
 					`Certificate #${certificate.id}: its new domain names could not be stored: ${patchErr.message}`,
 				);
 			}
-			throw err;
 		}
 
 		try {
@@ -663,15 +684,19 @@ const internalCertificate = {
 		} catch (err) {
 			// the change happened and the host configs are valid
 			logger.warn(`Certificate #${certificate.id} has new domain names but nginx did not reload: ${err.message}`);
-		} finally {
+		}
+		try {
 			await internalAuditLog.add(access, {
 				action: "domains-changed",
 				object_type: "certificate",
 				object_id: certificate.id,
-				meta: { old: certificate.domain_names, new: next },
+				meta: { old: current.domain_names, new: next },
 			});
+		} catch (err) {
+			logger.warn(`Certificate #${certificate.id}: the domain names audit entry was not written: ${err.message}`);
 		}
 
+		if (failure) throw failure;
 		return updatedCertificate;
 	},
 
@@ -723,7 +748,19 @@ const internalCertificate = {
 		const toTestCa = sameServer(target, LETSENCRYPT_STAGING_SERVER);
 		const extra = toTestCa ? ["--force-renewal", "--break-my-certs"] : ["--force-renewal"];
 		try {
-			await runCertonly({ ...certificate, npmpro_acme_server: target }, access, { extra });
+			// under the target CA's lock: the certificate must still have the CA it was read with
+			const guard = async () => {
+				const fresh = await internalCertificate.get(access, { id: certificate.id });
+				const was = certificate.npmpro_acme_server ?? instanceServer();
+				if (!sameServer(fresh.npmpro_acme_server ?? instanceServer(), was)) {
+					throw new errs.ValidationError(
+						"The certificate's CA changed meanwhile, try again",
+						"error.acme-ca-changed-meanwhile",
+					);
+				}
+				return false;
+			};
+			await runCertonly({ ...certificate, npmpro_acme_server: target }, access, { extra, guard });
 		} catch (err) {
 			// a failed certbot run answers a public message the window shows, the certificate stays as it was
 			if (!(err instanceof errs.CommandError && err.certbotRun)) throw err;
@@ -759,12 +796,18 @@ const internalCertificate = {
 				logger.warn(`Certificate #${certificate.id} was issued again but nginx did not reload: ${err.message}`);
 			}
 		} finally {
-			await internalAuditLog.add(access, {
-				action: "ca-changed",
-				object_type: "certificate",
-				object_id: certificate.id,
-				meta: { old: oldServer ?? certificate.npmpro_acme_server ?? instanceServer(), new: target },
-			});
+			try {
+				await internalAuditLog.add(access, {
+					action: "ca-changed",
+					object_type: "certificate",
+					object_id: certificate.id,
+					meta: { old: oldServer ?? certificate.npmpro_acme_server ?? instanceServer(), new: target },
+				});
+			} catch (err) {
+				logger.warn(
+					`Certificate #${certificate.id}: the CA change audit entry was not written: ${err.message}`,
+				);
+			}
 		}
 
 		if (!reloaded || toTestCa) return updatedCertificate;

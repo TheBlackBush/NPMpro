@@ -501,6 +501,7 @@
 	"error.access.duplicate-usernames": "Authorization Usernames must be unique",
 	"error.acme-blocked": "This address is not allowed: this host, link-local and multicast addresses are blocked.",
 	"error.acme-busy": "Certbot is busy with another task. Nothing was changed: try again in a minute.",
+	"error.acme-ca-changed-meanwhile": "The certificate's CA changed meanwhile. Reload the list and try again.",
 	"error.acme-ca-not-allowed": "This certificate authority is not set up. An administrator sets it up in Settings first.",
 	"error.acme-domains-acme-only": "Only certificates from a certificate authority have domain names to change.",
 	"error.acme-domains-failed": "The CA did not issue the certificate: {message}",
