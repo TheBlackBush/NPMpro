@@ -1,0 +1,102 @@
+{
+	"operationId": "createDnsDomains",
+	"summary": "Add DNS domains to a credential",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "The credential and the domains to add to it",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"dns_credential_id",
+						"names"
+					],
+					"properties": {
+						"dns_credential_id": {
+							"type": "integer",
+							"minimum": 1,
+							"description": "ID of the DNS credential to add the domains to",
+							"example": 1
+						},
+						"names": {
+							"type": "array",
+							"minItems": 1,
+							"maxItems": 100,
+							"description": "Domains such as example.com; a wildcard is not a domain, example.com covers *.example.com",
+							"items": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 253,
+								"example": "example.com"
+							}
+						},
+						"source": {
+							"type": "string",
+							"enum": [
+								"typed",
+								"fetched"
+							],
+							"default": "typed",
+							"description": "How the domains were found: typed in (the default) or fetched from the DNS provider"
+						}
+					}
+				},
+				"example": {
+					"dns_credential_id": 1,
+					"names": [
+						"example.com",
+						"example.org"
+					]
+				}
+			}
+		}
+	},
+	"responses": {
+		"201": {
+			"description": "The domains that were added (a name the credential already had is skipped)",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"id": 1,
+									"created_on": "2026-11-23T09:30:00.000Z",
+									"modified_on": "2026-11-23T09:30:00.000Z",
+									"dns_credential_id": 1,
+									"name": "example.com",
+									"source": "typed"
+								},
+								{
+									"id": 2,
+									"created_on": "2026-11-23T09:30:00.000Z",
+									"modified_on": "2026-11-23T09:30:00.000Z",
+									"dns_credential_id": 1,
+									"name": "example.org",
+									"source": "typed"
+								}
+							]
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/dns-domain-list.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Adds domains to a DNS credential. Each name is stored in lower case ASCII. A name the credential already has is skipped. A name the credential's owner keeps on another credential refuses the whole request, and nothing is stored.\n\nNeeds: Certificates manage"
+}

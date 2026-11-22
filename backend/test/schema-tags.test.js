@@ -64,6 +64,7 @@ it("puts every route under its API path name", async () => {
 	const schema = await getCompiledSchema();
 	const tagOf = (method, path) => schema.paths[path][method].tags[0];
 	assert.equal(tagOf("get", "/nginx/dns-credentials"), "certificates");
+	assert.equal(tagOf("get", "/nginx/dns-domains"), "certificates");
 	assert.equal(tagOf("get", "/nginx/certificates"), "certificates");
 	assert.equal(tagOf("post", "/users/setup"), "public");
 	assert.equal(tagOf("get", "/oidc/callback"), "public");

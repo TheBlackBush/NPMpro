@@ -15,7 +15,7 @@ before(async () => {
 after(() => api?.stop());
 
 const BAD_IDS = ["abc", "0", "1.5", "1abc", "-1"];
-const URLS = ["/nginx/access-lists", "/nginx/certificates", "/nginx/dns-credentials"];
+const URLS = ["/nginx/access-lists", "/nginx/certificates", "/nginx/dns-credentials", "/nginx/dns-domains"];
 
 it("answers PUT and DELETE with an id that is no positive integer with 400", async () => {
 	for (const url of URLS) {

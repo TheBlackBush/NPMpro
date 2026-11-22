@@ -26,6 +26,7 @@ const listSchema = {
 				"access-list",
 				"certificate",
 				"dns-credential",
+				"dns-domain",
 				"user",
 				"setting",
 				"backup-schedule",

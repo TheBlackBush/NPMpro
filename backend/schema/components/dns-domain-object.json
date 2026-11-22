@@ -1,0 +1,75 @@
+{
+	"type": "object",
+	"description": "A DNS domain (zone) a saved DNS credential manages. Domain Names fields suggest it and the DNS challenge matches names to its credential; hosts and certificates keep plain names.",
+	"required": [
+		"id",
+		"created_on",
+		"modified_on",
+		"dns_credential_id",
+		"name",
+		"source"
+	],
+	"additionalProperties": false,
+	"properties": {
+		"id": {
+			"$ref": "../common.json#/properties/id"
+		},
+		"created_on": {
+			"$ref": "../common.json#/properties/created_on"
+		},
+		"modified_on": {
+			"$ref": "../common.json#/properties/modified_on"
+		},
+		"dns_credential_id": {
+			"type": "integer",
+			"minimum": 1,
+			"example": 1,
+			"description": "ID of the DNS credential that manages the domain; the domain's owner is the credential's owner"
+		},
+		"name": {
+			"type": "string",
+			"minLength": 3,
+			"maxLength": 253,
+			"example": "example.com",
+			"description": "The domain in lower case ASCII (an internationalized name as punycode), without a trailing dot; it covers itself and every name below it"
+		},
+		"source": {
+			"type": "string",
+			"enum": [
+				"typed",
+				"fetched"
+			],
+			"example": "typed",
+			"description": "How the domain was added: typed in, or fetched from the DNS provider"
+		},
+		"credential": {
+			"type": "object",
+			"description": "The DNS credential, without its values; only with `expand=credential`",
+			"additionalProperties": false,
+			"properties": {
+				"id": {
+					"$ref": "../common.json#/properties/id"
+				},
+				"created_on": {
+					"$ref": "../common.json#/properties/created_on"
+				},
+				"modified_on": {
+					"$ref": "../common.json#/properties/modified_on"
+				},
+				"owner_user_id": {
+					"$ref": "../common.json#/properties/user_id"
+				},
+				"name": {
+					"$ref": "./dns-credential-object.json#/properties/name"
+				},
+				"provider": {
+					"$ref": "./dns-credential-object.json#/properties/provider"
+				},
+				"owner": {
+					"$ref": "./user-object.json",
+					"description": "The user who owns the credential"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,71 @@
+{
+	"operationId": "getDnsDomains",
+	"summary": "List DNS domains",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "query",
+			"name": "expand",
+			"description": "Relations to add to each domain of the answer: `credential` (the DNS credential of the domain, with its owner)",
+			"schema": {
+				"type": "string",
+				"enum": [
+					"credential"
+				]
+			}
+		},
+		{
+			"in": "query",
+			"name": "query",
+			"description": "Only domains whose name contains this text",
+			"schema": {
+				"type": "string"
+			}
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The DNS domains, ordered by name",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"id": 1,
+									"created_on": "2026-11-23T09:30:00.000Z",
+									"modified_on": "2026-11-23T09:30:00.000Z",
+									"dns_credential_id": 1,
+									"name": "example.com",
+									"source": "typed"
+								},
+								{
+									"id": 2,
+									"created_on": "2026-11-23T09:30:00.000Z",
+									"modified_on": "2026-11-23T09:30:00.000Z",
+									"dns_credential_id": 1,
+									"name": "example.org",
+									"source": "typed"
+								}
+							]
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/dns-domain-list.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Lists the DNS domains of the saved DNS credentials, ordered by name. A user limited to their own items sees only the domains of their own credentials.\n\nNeeds: Certificates view"
+}

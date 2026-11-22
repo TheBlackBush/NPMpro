@@ -267,6 +267,25 @@
 				"$ref": "./paths/nginx/dns-credentials/credentialID/delete.json"
 			}
 		},
+		"/nginx/dns-domains": {
+			"get": {
+				"$ref": "./paths/nginx/dns-domains/get.json"
+			},
+			"post": {
+				"$ref": "./paths/nginx/dns-domains/post.json"
+			}
+		},
+		"/nginx/dns-domains/{domainID}": {
+			"get": {
+				"$ref": "./paths/nginx/dns-domains/domainID/get.json"
+			},
+			"put": {
+				"$ref": "./paths/nginx/dns-domains/domainID/put.json"
+			},
+			"delete": {
+				"$ref": "./paths/nginx/dns-domains/domainID/delete.json"
+			}
+		},
 		"/nginx/proxy-hosts": {
 			"get": {
 				"$ref": "./paths/nginx/proxy-hosts/get.json"
