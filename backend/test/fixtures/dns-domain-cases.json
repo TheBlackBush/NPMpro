@@ -23,6 +23,11 @@
 		["a-.example.com", { "error": "error.dns-domain-invalid" }],
 		["a..example.com", { "error": "error.dns-domain-invalid" }],
 		["example.com..", { "error": "error.dns-domain-invalid" }],
+		["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example.com", { "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example.com" }],
+		["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example.com", { "error": "error.dns-domain-invalid" }],
+		["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com", { "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com" }],
+		["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.coma", { "error": "error.dns-domain-invalid" }],
+		["xn--a.com", { "error": "error.dns-domain-invalid" }],
 		["~^regex$", { "error": "error.dns-domain-invalid" }]
 	],
 	"zones": [
@@ -33,6 +38,8 @@
 		{ "name": "shared.net", "credentialId": 4, "ownerUserId": 2 },
 		{ "name": "team.io", "credentialId": 5, "ownerUserId": 2 },
 		{ "name": "team.io", "credentialId": 6, "ownerUserId": 3 },
+		{ "name": "tied.example.com", "credentialId": 8, "ownerUserId": 2 },
+		{ "name": "tied.example.com", "credentialId": 9, "ownerUserId": 3 },
 		{ "name": "xn--bcher-kva.de", "credentialId": 7, "ownerUserId": 1 }
 	],
 	"match": [
@@ -49,6 +56,10 @@
 		{ "title": "the other owner gets their own in the same tie", "names": ["a.shared.net"], "userId": 2, "expected": { "kind": "one", "credentialId": 4, "zones": ["shared.net"] } },
 		{ "title": "an administrator who owns neither sees the tie as a conflict", "names": ["a.shared.net"], "userId": 9, "expected": { "kind": "conflict", "names": ["a.shared.net"], "credentialIds": [3, 4] } },
 		{ "title": "a conflict wins over the covered names", "names": ["a.team.io", "b.example.com"], "userId": 1, "expected": { "kind": "conflict", "names": ["a.team.io"], "credentialIds": [5, 6] } },
+		{ "title": "a tie on the longest zone wins over a unique shorter zone", "names": ["a.tied.example.com"], "userId": 1, "expected": { "kind": "conflict", "names": ["a.tied.example.com"], "credentialIds": [8, 9] } },
+		{ "title": "a stacked wildcard is stripped to the name under it", "names": ["*.*.example.com"], "userId": 1, "expected": { "kind": "one", "credentialId": 1, "zones": ["example.com"] } },
+		{ "title": "no signed-in user: an owner tie is a conflict, a unique zone still matches", "names": ["a.shared.net"], "userId": null, "expected": { "kind": "conflict", "names": ["a.shared.net"], "credentialIds": [3, 4] } },
+		{ "title": "no signed-in user and a unique zone", "names": ["a.example.com"], "userId": null, "expected": { "kind": "one", "credentialId": 1, "zones": ["example.com"] } },
 		{ "title": "an IDN name matches its punycode zone", "names": ["www.bücher.de"], "userId": 1, "expected": { "kind": "one", "credentialId": 7, "zones": ["xn--bcher-kva.de"] } }
 	],
 	"uncovered": [

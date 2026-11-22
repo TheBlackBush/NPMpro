@@ -7,7 +7,7 @@ import { domainToASCII } from "node:url";
 // A zone is { name, credentialId, ownerUserId }; callers map their rows to that form.
 
 const TRAILING_DOT = /\.$/u;
-const WILDCARD = /^\*\./u;
+const WILDCARD = /^(?:\*\.)+/u;
 
 /** a name as the zones are stored: lower case, punycode, no trailing dot, a wildcard as the name it is under */
 const bareName = (name) => {

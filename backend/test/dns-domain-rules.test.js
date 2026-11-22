@@ -5,15 +5,16 @@ import { coveringZone, matchNames, uncoveredBy } from "../lib/dns-domain-match.j
 import { normalizeDomainName } from "../lib/dns-domain-name.js";
 import { createKeyedLock } from "../lib/keyed-lock.js";
 
+const BOOM = /boom/u;
+const SYNC = /sync/u;
 const CASES = JSON.parse(readFileSync(new URL("fixtures/dns-domain-cases.json", import.meta.url), "utf8"));
 
 it("stores a DNS domain lower case and as punycode, and refuses what is no zone name (shared cases)", () => {
 	for (const [input, expected] of CASES.names) assert.deepEqual(normalizeDomainName(input), expected, input);
 });
 
-it("refuses a label over 63, a name over 253 and anything that is not a string", () => {
-	assert.deepEqual(normalizeDomainName(`${"a".repeat(63)}.example.com`), { name: `${"a".repeat(63)}.example.com` });
-	for (const input of [`${"a".repeat(64)}.example.com`, `${"a.".repeat(126)}example.com`, null, 42, ["a.com"]]) {
+it("refuses anything that is not a string", () => {
+	for (const input of [null, undefined, 42, ["a.com"]]) {
 		assert.deepEqual(normalizeDomainName(input), { error: "error.dns-domain-invalid" }, String(input));
 	}
 });
@@ -59,11 +60,30 @@ it("runs one function at a time per key, other keys freely, and frees a key afte
 	await Promise.all([first, second]);
 	assert.deepEqual(order, ["other", "first", "second"]);
 	await assert.rejects(
-		lock(3, async () => {
-			throw new Error("boom");
-		}),
-		/boom/u,
+		lock(3, () => Promise.reject(new Error("boom"))),
+		BOOM,
 	);
 	assert.equal(await lock(3, async () => "free"), "free");
 	assert.equal(await lock("3", async () => "same key as a string"), "same key as a string");
+});
+
+it("frees a key after a synchronous throw and still runs the run queued behind it", async () => {
+	const lock = createKeyedLock();
+	const failing = lock(4, () => {
+		throw new Error("sync");
+	});
+	const queued = lock(4, () => "queued ran");
+	await assert.rejects(failing, SYNC);
+	assert.equal(await queued, "queued ran");
+});
+
+it("keeps no state for a key once its work has settled", async () => {
+	const lock = createKeyedLock();
+	const order = [];
+	await lock(5, () => order.push("a"));
+	await new Promise((resolve) => setImmediate(resolve));
+	// a key with no pending work starts at once, in the same tick as the call
+	const run = lock(5, () => order.push("b"));
+	await run;
+	assert.deepEqual(order, ["a", "b"]);
 });

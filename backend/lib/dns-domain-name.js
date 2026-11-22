@@ -1,5 +1,5 @@
 import { isIP } from "node:net";
-import { domainToASCII } from "node:url";
+import { domainToASCII, domainToUnicode } from "node:url";
 
 // The name of a DNS domain (a zone) a DNS credential manages: stored lower case and in ASCII (an IDN as punycode),
 // without the trailing dot, with two labels or more of letters, digits and hyphens; no wildcard, no address.
@@ -28,6 +28,8 @@ const normalizeDomainName = (input) => {
 	const labels = ascii.split(".");
 	if (labels.length === 1 && LABEL.test(ascii)) return { error: "error.dns-domain-one-label" };
 	if (ascii.length > MAX_NAME || labels.length < 2 || !labels.every((label) => LABEL.test(label))) return INVALID;
+	// an xn-- label that does not decode to a real IDN label (xn--a.com) stays as it is when converted back
+	if (labels.some((label) => label.startsWith("xn--") && domainToUnicode(label) === label)) return INVALID;
 	return { name: ascii };
 };
 
