@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router";
 import { CountBadge } from "src/components/CountBadge";
-import { useCertificates, useDnsCredentials } from "src/hooks";
+import { useCertificates, useDnsCredentials, useDnsDomains } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import {
@@ -8,6 +8,7 @@ import {
 	CERTIFICATE_TABS,
 	certificateTab,
 	DNS_CREDENTIAL_LIST_EXPAND,
+	DNS_DOMAIN_LIST_EXPAND,
 } from "src/modules/CertificateTabs";
 
 const TAB =
@@ -24,9 +25,11 @@ export function CertificateTabs() {
 	const active = certificateTab(pathname);
 	const certificates = useCertificates(CERTIFICATE_LIST_EXPAND);
 	const dnsCredentials = useDnsCredentials(DNS_CREDENTIAL_LIST_EXPAND);
+	const dnsDomains = useDnsDomains(DNS_DOMAIN_LIST_EXPAND);
 	const counts = {
 		certificates: certificates.data?.length,
 		"dns-credentials": dnsCredentials.data?.length,
+		domains: dnsDomains.data?.length,
 	};
 
 	return (
