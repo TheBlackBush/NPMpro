@@ -91,7 +91,6 @@ export default function TableWrapper() {
 							subject: domain?.name,
 						});
 					}}
-					onNew={() => showDnsDomainsModal()}
 				/>
 			)}
 		</ListPage>

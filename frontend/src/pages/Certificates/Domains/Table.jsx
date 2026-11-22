@@ -113,6 +113,8 @@ export function useColumns() {
 			}),
 			columnHelper.accessor((row) => row.source, {
 				id: "source",
+				// the source (typed or fetched) with the date in its tooltip: sorting by the source word is no use
+				enableSorting: false,
 				meta: {
 					mobile: "summary",
 					summaryText: (row) => intl.formatMessage({ id: `dns-domains.source.${row.source}` }),
