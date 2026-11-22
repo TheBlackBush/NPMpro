@@ -71,7 +71,6 @@
 							"proxy_host",
 							"redirection_host",
 							"dead_host",
-							"stream",
 							"certificate"
 						]
 					}

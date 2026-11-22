@@ -116,9 +116,19 @@ const mayView = (access, permission) => {
 	try {
 		access.can(permission);
 		return true;
-	} catch {
-		return false;
+	} catch (error) {
+		if (error instanceof errs.PermissionError) return false;
+		throw error;
 	}
+};
+
+// a stored name as the picker shows it: lower case, ASCII; a wildcard keeps its "*." and a name that does not
+// normalize (a regular expression, a bad name) is left out
+const suggestedName = (name) => {
+	const wildcard = name.startsWith("*.");
+	const done = normalizeDomainName(wildcard ? name.slice(2) : name);
+	if (!("name" in done)) return null;
+	return wildcard ? `*.${done.name}` : done.name;
 };
 
 // domain_names is a JSON text column (an array on Postgres)
@@ -178,10 +188,10 @@ const internalDnsDomain = {
 			if (ownOnly(access)) query.where("owner_user_id", access.token.getUserId(1));
 			for (const row of await query) {
 				for (const name of namesOfRow(row.domain_names)) {
-					const key = name.toLowerCase();
-					if (name.startsWith("~") || seen.has(key)) continue;
-					seen.add(key);
-					names.push({ name, source });
+					const normalized = suggestedName(name);
+					if (normalized === null || seen.has(normalized)) continue;
+					seen.add(normalized);
+					names.push({ name: normalized, source });
 				}
 			}
 		}

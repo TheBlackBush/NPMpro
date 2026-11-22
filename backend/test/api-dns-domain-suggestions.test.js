@@ -3,6 +3,7 @@ import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
 
 const URL = "/nginx/dns-domains/suggestions";
+const TOKEN = "cf-token-suggestions-1234567890";
 const STAMP = "2026-01-01 00:00:00";
 
 let api;
@@ -14,7 +15,7 @@ const credential = async (session, domains) => {
 	const done = await session.post("/nginx/dns-credentials", {
 		name: `Credential ${credentials}`,
 		provider: "cloudflare",
-		fields: [{ key: "dns_cloudflare_api_token", value: "cf-token-suggestions-1234567890" }],
+		fields: [{ key: "dns_cloudflare_api_token", value: TOKEN }],
 	});
 	if (done.status !== 201) throw new Error(`credential create answered ${done.status}: ${done.text}`);
 	const added = await session.post("/nginx/dns-domains", { dns_credential_id: done.body.id, names: domains });
@@ -29,17 +30,12 @@ const insert = (table, owner, names, extra = {}) =>
 		domain_names: JSON.stringify(names),
 		...extra,
 	});
-const insertHost = (table, owner, names) =>
-	insert(
-		table,
-		owner,
-		names,
-		table === "proxy_host"
-			? { meta: "{}", forward_host: "10.0.0.1", forward_port: 80, forward_scheme: "http" }
-			: table === "redirection_host"
-				? { meta: "{}", forward_domain_name: "t.example.org" }
-				: { meta: "{}" },
-	);
+const HOST_COLUMNS = {
+	proxy_host: { meta: "{}", forward_host: "10.0.0.1", forward_port: 80, forward_scheme: "http" },
+	redirection_host: { meta: "{}", forward_domain_name: "t.example.org" },
+	dead_host: { meta: "{}" },
+};
+const insertHost = (table, owner, names) => insert(table, owner, names, HOST_COLUMNS[table]);
 const insertCertificate = (owner, names, extra = {}) =>
 	insert("certificate", owner, names, {
 		provider: "other",
@@ -88,16 +84,24 @@ it("answers the zones of the visible credentials with their credential and owner
 	);
 });
 
+it("holds no credential secret", async () => {
+	await credential(admin, ["secret-check.example"]);
+	const done = await admin.get(URL);
+	assert.equal(done.text.includes(TOKEN), false);
+	assert.equal(done.text.includes("values"), false);
+});
+
 it("lists the names of hosts and certificates once, sorted, with their source", async () => {
 	await clearNames();
 	await insertHost("proxy_host", 1, ["app.example.com", "www.example.com"]);
 	await insertHost("redirection_host", 1, ["old.example.com"]);
 	await insertHost("dead_host", 1, ["gone.example.com"]);
-	await insertCertificate(1, ["App.Example.com", "*.example.com"]);
+	await insertCertificate(1, ["App.Example.com", "*.example.com", "*.Bücher.de", "not a name"]);
 	const done = await admin.get(URL);
 	assert.equal(done.status, 200, done.text);
 	assert.deepEqual(done.body.names, [
 		{ name: "*.example.com", source: "certificate" },
+		{ name: "*.xn--bcher-kva.de", source: "certificate" },
 		{ name: "app.example.com", source: "proxy_host" },
 		{ name: "gone.example.com", source: "dead_host" },
 		{ name: "old.example.com", source: "redirection_host" },
@@ -110,6 +114,7 @@ it("filters by host type permission", async () => {
 	await insertHost("proxy_host", 1, ["proxy.example.com"]);
 	await insertHost("redirection_host", 1, ["redirect.example.com"]);
 	await insertCertificate(1, ["cert.example.com"]);
+	await insertHost("dead_host", 1, ["dead.example.com"]);
 	const user = await api.limited({
 		visibility: "all",
 		proxy_hosts: "view",
@@ -124,7 +129,21 @@ it("filters by host type permission", async () => {
 		{ name: "cert.example.com", source: "certificate" },
 		{ name: "proxy.example.com", source: "proxy_host" },
 	]);
-	assert.equal(JSON.stringify(done.body).includes("redirect.example.com"), false);
+	assert.equal(done.text.includes("redirect.example.com"), false);
+	const noProxy = await api.limited({
+		visibility: "all",
+		proxy_hosts: "hidden",
+		access_lists: "hidden",
+		redirection_hosts: "view",
+		dead_hosts: "view",
+		certificates: "view",
+	});
+	const other = await noProxy.get(URL);
+	assert.deepEqual(
+		other.body.names.map((entry) => entry.name),
+		["cert.example.com", "dead.example.com", "redirect.example.com"],
+	);
+	assert.equal(other.text.includes("proxy.example.com"), false);
 });
 
 it("applies visibility to the names", async () => {
@@ -133,16 +152,22 @@ it("applies visibility to the names", async () => {
 		visibility: "user",
 		proxy_hosts: "view",
 		access_lists: "view",
+		redirection_hosts: "view",
+		dead_hosts: "view",
 		certificates: "view",
 	});
 	await insertHost("proxy_host", own.user.id, ["mine.example.com"]);
+	await insertHost("redirection_host", own.user.id, ["mine-redirect.example.com"]);
+	await insertHost("dead_host", own.user.id, ["mine-404.example.com"]);
 	await insertHost("proxy_host", 1, ["theirs.example.com"]);
+	await insertHost("redirection_host", 1, ["theirs-redirect.example.com"]);
+	await insertHost("dead_host", 1, ["theirs-404.example.com"]);
 	await insertCertificate(own.user.id, ["mine-cert.example.com"]);
 	await insertCertificate(1, ["theirs-cert.example.com"]);
 	const done = await own.get(URL);
 	assert.deepEqual(
 		done.body.names.map((entry) => entry.name),
-		["mine-cert.example.com", "mine.example.com"],
+		["mine-404.example.com", "mine-cert.example.com", "mine-redirect.example.com", "mine.example.com"],
 	);
 });
 
@@ -152,7 +177,8 @@ it("leaves out regular expression names and stops at 2000", async () => {
 	const first = await admin.get(URL);
 	assert.deepEqual(first.body.names, [{ name: "plain.example.com", source: "proxy_host" }]);
 	const many = Array.from({ length: 2100 }, (_, index) => `n${String(index).padStart(4, "0")}.example.com`);
-	await insertCertificate(1, many);
+	await insertCertificate(1, many.slice(0, 1100));
+	await insertHost("proxy_host", 1, many.slice(1100));
 	const done = await admin.get(URL);
 	assert.equal(done.body.names.length, 2000);
 });
