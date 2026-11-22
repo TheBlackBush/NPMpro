@@ -8,6 +8,7 @@ below as its release notes.
 
 ### Added
 
+- **DNS:** Domain Names fields suggest the DNS domains of your credentials and the names hosts and certificates use, and the DNS challenge suggests the credential whose domains cover the names.
 - **DNS:** DNS credentials know the domains (zones) they manage: a Domains tab under Certificates & DNS, a Domains line in the credential window, and domains in backups.
 - **Certificates:** the ACME account in Settings, Certificates as a connection: a status card (Connected, Waiting, Failed or Not
   connected) with Change, Try again and Connect, and a Connect window for the CA (Let's Encrypt, ZeroSSL, Google Trust
