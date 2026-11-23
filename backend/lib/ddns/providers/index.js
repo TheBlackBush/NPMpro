@@ -17,6 +17,26 @@ const providerForCredential = (credentialProvider) =>
 
 const listsDomains = (credentialProvider) => providerForCredential(credentialProvider) !== null;
 
+/** The providers that can read and write records (OVH and PowerDNS only list zones) */
+const updaterFor = (credentialProvider) => {
+	const provider = providerForCredential(credentialProvider);
+	return typeof provider?.read === "function" && typeof provider?.write === "function" ? provider : null;
+};
+
+/** The updater providers as GET /nginx/ddns/providers shows them */
+const PROVIDER_LIST = Object.freeze(
+	PROVIDERS.filter((provider) => updaterFor(provider.credentialProvider)).map((provider) => ({
+		id: provider.id,
+		label: provider.label,
+		credential_provider: provider.credentialProvider,
+		record_types: provider.recordTypes,
+		proxied: provider.proxied,
+		ipv6: provider.ipv6,
+		admin_only: provider.adminOnly,
+		wildcards: provider.wildcards,
+	})),
+);
+
 /** One zone list, all its pages included, ends after this long */
 const ZONE_LIST_DEADLINE_MS = 60_000;
 
@@ -50,4 +70,13 @@ const listProviderZones = async (provider, { fields, secrets, deadlineMs = ZONE_
 	}
 };
 
-export { listProviderZones, listsDomains, PROVIDERS, providerById, providerForCredential, ZONE_LIST_DEADLINE_MS };
+export {
+	listProviderZones,
+	listsDomains,
+	PROVIDER_LIST,
+	PROVIDERS,
+	providerById,
+	providerForCredential,
+	updaterFor,
+	ZONE_LIST_DEADLINE_MS,
+};
