@@ -63,7 +63,7 @@ const validateResolverValid = (value) =>
 		: "must be empty or an nginx time in seconds or longer such as 30s or 5m, not 0 and not ms";
 
 // Dynamic DNS: a time from 1m to 24h as a bare number of seconds or parts with the units w d h m s in this order
-// (envs.sh checks the same); ms, M and y are refused
+// (envs.sh has no check: an invalid env value is dropped with a warning); ms, M and y are refused
 const DDNS_TIME = /^(?:[0-9]+|(?:[0-9]+w)?(?:[0-9]+d)?(?:[0-9]+h)?(?:[0-9]+m)?(?:[0-9]+s)?)$/u;
 const DDNS_TIME_PART = /(?<amount>[0-9]+)(?<unit>[wdhms])/gu;
 const DDNS_TIME_SECONDS = { w: 604800, d: 86400, h: 3600, m: 60, s: 1 };
@@ -99,7 +99,7 @@ const ddnsTimeRule = (key, env) => ({
 	applies: "immediately",
 });
 
-// a public IP service: an https URL without credentials (envs.sh checks the same pattern)
+// a public IP service: an https URL without credentials (envs.sh has no check)
 const DDNS_SERVICE_URL = /^https:\/\/(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:.]+\])(?::[0-9]{1,5})?(?:\/[A-Za-z0-9._~/%-]*)?$/u;
 const DDNS_MAX_SERVICES = 10;
 const DDNS_MAX_URL_LENGTH = 200;
@@ -133,7 +133,7 @@ const ddnsServiceRule = (key, env, defaults) => ({
 		const host = refusedServiceHost(value);
 		return host === null ? null : `${host} is an address the server may not call`;
 	},
-	// one bad word drops the whole env value, as envs.sh refuses it at the start
+	// one bad word drops the whole env value and logs a warning
 	parseEnv: (raw) => {
 		const list = raw.trim().split(WHITESPACE).filter(Boolean);
 		return validateServiceList(list) === null ? list : undefined;
