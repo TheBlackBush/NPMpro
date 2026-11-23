@@ -29,17 +29,19 @@ const until = async (check) => {
 };
 
 before(async () => {
-	api = await startApi({ env: { DDNS_IPV4_SERVICES: "https://ip1.test" } });
+	api = await startApi({ env: { DDNS_IPV4_SERVICES: "https://ip1.test https://ip2.test" } });
 	({ pauseDdns, resumeDdns } = await import("../internal/ddns.js"));
 	admin = await api.admin();
-	api.outside.dns.set("ip1.test", "198.51.100.50");
 	api.outside.dns.set("api.cloudflare.com", "198.51.100.20");
-	api.outside.http
-		.get("https://ip1.test")
-		.intercept({ path: "/", method: "GET" })
-		.reply(() => ({ statusCode: 200, data: `${PUBLIC_IP}\n` }))
-		.delay(SLOW_MS)
-		.persist();
+	for (const host of ["ip1.test", "ip2.test"]) {
+		api.outside.dns.set(host, "198.51.100.50");
+		api.outside.http
+			.get(`https://${host}`)
+			.intercept({ path: "/", method: "GET" })
+			.reply(() => ({ statusCode: 200, data: `${PUBLIC_IP}\n` }))
+			.delay(SLOW_MS)
+			.persist();
+	}
 	const pool = api.outside.http.get(CF);
 	pool.intercept({ path: ZONE_LOOKUP, method: "GET" })
 		.reply(() => ({ statusCode: 200, data: { success: true, result: [{ id: "zone1" }] }, responseOptions: json }))

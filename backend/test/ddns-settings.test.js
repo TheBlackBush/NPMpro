@@ -13,6 +13,7 @@ const rule = (key) => RUNTIME_RULES.find((entry) => entry.group === "ddns" && en
 const MINUTE = 60_000;
 const FROM_1M = /from 1m to 24h/u;
 const SERVER_MAY_NOT_CALL = /an address the server may not call/u;
+const TOO_FEW = /needs at least 2 URLs/u;
 const NOT_A_DNS_SERVER = /not a DNS server address/u;
 const LISTED_TWICE = /listed twice/u;
 
@@ -106,28 +107,32 @@ it("takes a stored value that is valid and falls back for an invalid one", () =>
 	);
 });
 
-it("takes the service lists from the env, one bad word drops the whole value", () => {
+it("takes the service lists from the env, one bad word or a single URL drops the whole value", () => {
 	const set = mergeRuntimeConfig(
 		"ddns",
 		{},
 		userEnv({
 			DDNS_IPV4_SERVICES: "https://a.example  https://b.example/ip",
-			DDNS_IPV6_SERVICES: "https://[2606::1]/",
+			DDNS_IPV6_SERVICES: "https://[2606::1]/ https://v6.example",
 		}),
 	);
 	assert.deepEqual(set.values.ipv4_services, ["https://a.example", "https://b.example/ip"]);
-	assert.deepEqual(set.values.ipv6_services, ["https://[2606::1]/"]);
+	assert.deepEqual(set.values.ipv6_services, ["https://[2606::1]/", "https://v6.example"]);
 	assert.deepEqual(set.locked, ["ipv4_services", "ipv6_services"]);
 	const bad = mergeRuntimeConfig("ddns", {}, userEnv({ DDNS_IPV4_SERVICES: "https://a.example http://b.example" }));
 	assert.deepEqual(bad.values.ipv4_services, DEFAULT_IPV4_SERVICES);
 	assert.deepEqual(bad.locked, []);
+	// a new address needs a second service to confirm it: one URL alone is refused like a bad word
+	const one = mergeRuntimeConfig("ddns", {}, userEnv({ DDNS_IPV4_SERVICES: "https://a.example" }));
+	assert.deepEqual(one.values.ipv4_services, DEFAULT_IPV4_SERVICES);
+	assert.deepEqual(one.invalid, [{ key: "ipv4_services", source: "env" }]);
 	assert.equal(
 		rule("ipv4_services").toEnv(["https://a.example", "https://b.example"]),
 		"https://a.example https://b.example",
 	);
 });
 
-it("validates the service lists: https URLs only, 1 to 10", () => {
+it("validates the shape of the service lists: https URLs only, 1 to 10", () => {
 	const check = rule("ipv4_services");
 	assert.equal(
 		check.validate(["https://api.ipify.org", "https://[2606:4700::1111]/x", "https://ip.example:8443/a/b"]),
@@ -155,13 +160,25 @@ it("validates the service lists: https URLs only, 1 to 10", () => {
 it("refuses a service URL with an IP in a blocked range on save only, a name is checked later", () => {
 	const check = rule("ipv4_services");
 	for (const host of ["127.0.0.1", "169.254.169.254", "0.0.0.0", "[::1]", "[fe80::1]", "224.0.0.1"]) {
-		assert.match(check.validateSave([`https://${host}/`]), SERVER_MAY_NOT_CALL, host);
+		assert.match(check.validateSave([`https://${host}/`, "https://api.ipify.org"]), SERVER_MAY_NOT_CALL, host);
 		assert.equal(check.validate([`https://${host}/`]), null, host);
 	}
 	assert.equal(
 		check.validateSave(["https://203.0.113.5/", "https://192.168.1.10/ip", "https://api.ipify.org"]),
 		null,
 	);
+});
+
+it("needs two services on a save, and keeps a stored list of one", () => {
+	const check = rule("ipv4_services");
+	assert.match(check.validateSave(["https://api.ipify.org"]), TOO_FEW);
+	assert.equal(check.validate(["https://api.ipify.org"]), null);
+	const stored = mergeRuntimeConfig("ddns", { ipv4_services: ["https://one.example"] }, ENV);
+	assert.deepEqual(stored.values.ipv4_services, ["https://one.example"]);
+	assert.deepEqual(stored.invalid, []);
+	// the engine reads the same list from the env in effect
+	const env = buildEffectiveEnv(ENV, { ddns: { values: stored.values } });
+	assert.deepEqual(ddnsSettingsOf(env).ipv4Services, ["https://one.example"]);
 });
 
 it("takes the resolver list like the nginx one: the shape only", () => {

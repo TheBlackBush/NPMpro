@@ -49,7 +49,7 @@
 								"maxLength": 200,
 								"pattern": "^https://"
 							},
-							"description": "The services asked for the instance's public IPv4 address, https:// URLs; a literal address the server may not call, or a name that resolves to one, is refused (env DDNS_IPV4_SERVICES)",
+							"description": "The services asked for the instance's public IPv4 address, https:// URLs; a new list needs at least 2, since a new address counts only when a second service confirms it (a stored list of one is kept while a save leaves it unchanged); a literal address the server may not call, or a name that resolves to one, is refused (env DDNS_IPV4_SERVICES)",
 							"example": [
 								"https://api.ipify.org",
 								"https://ipv4.icanhazip.com",
@@ -66,7 +66,7 @@
 								"maxLength": 200,
 								"pattern": "^https://"
 							},
-							"description": "The services asked for the instance's public IPv6 address, https:// URLs; a literal address the server may not call, or a name that resolves to one, is refused (env DDNS_IPV6_SERVICES)",
+							"description": "The services asked for the instance's public IPv6 address, https:// URLs; a new list needs at least 2, since a new address counts only when a second service confirms it (a stored list of one is kept while a save leaves it unchanged); a literal address the server may not call, or a name that resolves to one, is refused (env DDNS_IPV6_SERVICES)",
 							"example": [
 								"https://api6.ipify.org",
 								"https://ipv6.icanhazip.com",

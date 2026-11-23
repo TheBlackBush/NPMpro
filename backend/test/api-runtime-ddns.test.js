@@ -12,6 +12,8 @@ const NOT_HTTPS = /ipv4_services\/0 must match pattern/u;
 const TIME_RANGE = /period: must be a time from 1m to 24h/u;
 const IP_TEST_BLOCKED = /ip\.test resolves to an address/u;
 const BLOCKED_NAME6 = /ipv6_services: lan6\.test resolves to an address/u;
+const TWO = ["https://one.example/ip", "https://two.example/ip"];
+const TOO_FEW = /ipv4_services: needs at least 2 URLs/u;
 const KEYS = ["period", "cooldown", "ipv4_services", "ipv6_services", "resolver"];
 
 let api;
@@ -68,11 +70,11 @@ it("shows the defaults, what applies when and the lock of an env value", async (
 });
 
 it("saves the values, audits the save and stores only the changed keys", async () => {
-	const view = await saved({ period: "10m", cooldown: "1h", ipv4_services: ["https://one.example/ip"] });
+	const view = await saved({ period: "10m", cooldown: "1h", ipv4_services: TWO });
 	assert.equal(view.period, "10m");
 	assert.equal(view.cooldown, "1h");
-	assert.deepEqual(view.ipv4_services, ["https://one.example/ip"]);
-	assert.deepEqual(await storedMeta(), { period: "10m", cooldown: "1h", ipv4_services: ["https://one.example/ip"] });
+	assert.deepEqual(view.ipv4_services, TWO);
+	assert.deepEqual(await storedMeta(), { period: "10m", cooldown: "1h", ipv4_services: TWO });
 	assert.equal((await get()).period, "10m");
 	const audit = await api.db("audit_log").where({ object_type: "setting" }).orderBy("id", "desc").first();
 	assert.equal(audit.action, "updated");
@@ -99,13 +101,16 @@ it("refuses a time outside 1m to 24h, a non-https URL and a bad resolver with 40
 });
 
 it("refuses a service URL with a blocked address, and a name that resolves to one", async () => {
-	assert.match((await refused({ ipv4_services: ["https://127.0.0.1/"] })).message, BLOCKED_LITERAL);
+	assert.match(
+		(await refused({ ipv4_services: ["https://127.0.0.1/", "https://one.example/ip"] })).message,
+		BLOCKED_LITERAL,
+	);
 	const error = await refused({ ipv4_services: ["https://ip.test/", "https://lan.test/"] });
 	assert.match(error.message, BLOCKED_NAME);
 	assert.equal(error.message_i18n, "error.ddns-service-blocked");
 	assert.deepEqual(error.message_values, { key: "ipv4_services", url: "https://lan.test/" });
-	assert.deepEqual((await get()).ipv4_services, ["https://one.example/ip"]);
-	assert.deepEqual((await storedMeta()).ipv4_services, ["https://one.example/ip"]);
+	assert.deepEqual((await get()).ipv4_services, TWO);
+	assert.deepEqual((await storedMeta()).ipv4_services, TWO);
 	const view = await saved({ ipv4_services: ["https://ip.test/", "https://203.0.113.9/ip"] });
 	assert.deepEqual(view.ipv4_services, ["https://ip.test/", "https://203.0.113.9/ip"]);
 });
@@ -115,8 +120,27 @@ it("keeps a stored list when a save keeps it, even when its name now resolves to
 	const view = await saved({ ipv4_services: ["https://ip.test/", "https://203.0.113.9/ip"], cooldown: "20m" });
 	assert.equal(view.cooldown, "20m");
 	assert.deepEqual(view.ipv4_services, ["https://ip.test/", "https://203.0.113.9/ip"]);
-	assert.match((await refused({ ipv4_services: ["https://ip.test/"] })).message, IP_TEST_BLOCKED);
+	assert.match(
+		(await refused({ ipv4_services: ["https://ip.test/", "https://two.example/ip"] })).message,
+		IP_TEST_BLOCKED,
+	);
 	api.outside.dns.set("ip.test", "198.51.100.50");
+});
+
+it("refuses a new list of one service, and keeps a stored one while a save leaves it", async () => {
+	assert.match((await refused({ ipv4_services: ["https://one.example/ip"] })).message, TOO_FEW);
+	const stored = await storedMeta();
+	await api
+		.db("setting")
+		.where({ id: "ddns" })
+		.update({ meta: JSON.stringify({ ...stored, ipv4_services: ["https://one.example/ip"] }) });
+	const view = await saved({ ipv4_services: ["https://one.example/ip"], cooldown: "25m" });
+	assert.deepEqual(view.ipv4_services, ["https://one.example/ip"]);
+	assert.equal(view.cooldown, "25m");
+	await api
+		.db("setting")
+		.where({ id: "ddns" })
+		.update({ meta: JSON.stringify(stored) });
 });
 
 it("needs an administrator", async () => {
@@ -128,7 +152,7 @@ it("needs an administrator", async () => {
 
 it("refuses a name that resolves to a blocked address on ipv6_services too", async () => {
 	api.outside.dns.set("lan6.test", "127.0.0.1");
-	const error = await refused({ ipv6_services: ["https://lan6.test/"] });
+	const error = await refused({ ipv6_services: ["https://lan6.test/", "https://two.example/ip"] });
 	assert.match(error.message, BLOCKED_NAME6);
 	assert.equal(error.message_i18n, "error.ddns-service-blocked");
 	assert.deepEqual(error.message_values, { key: "ipv6_services", url: "https://lan6.test/" });

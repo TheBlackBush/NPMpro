@@ -14,7 +14,8 @@ const ddnsSettingsOf = (env) => {
 	const values = {};
 	for (const rule of rulesOf("ddns")) {
 		const raw = env[rule.env];
-		const parsed = isSet(raw) && raw.trim() !== "" ? rule.parseEnv(raw) : undefined;
+		const parse = rule.parseEffective ?? rule.parseEnv;
+		const parsed = isSet(raw) && raw.trim() !== "" ? parse(raw) : undefined;
 		values[rule.key] = parsed ?? (typeof rule.default === "function" ? rule.default() : rule.default);
 	}
 	return {

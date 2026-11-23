@@ -104,6 +104,8 @@ const ddnsTimeRule = (key, env) => ({
 // a public IP service: an https URL without credentials (envs.sh has no check)
 const DDNS_SERVICE_URL = /^https:\/\/(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:.]+\])(?::[0-9]{1,5})?(?:\/[A-Za-z0-9._~/%-]*)?$/u;
 const DDNS_MAX_SERVICES = 10;
+// a new address counts only when a second service confirms it, so one service never writes a record
+const DDNS_MIN_SERVICES = 2;
 const DDNS_MAX_URL_LENGTH = 200;
 
 const isServiceUrl = (entry) =>
@@ -115,6 +117,12 @@ const validateServiceList = (value) => {
 	const bad = value.find((entry) => !isServiceUrl(entry));
 	return bad === undefined ? null : `"${bad}" is not an https:// URL (a host name or IP, an optional port and path)`;
 };
+
+// a stored list of one stays (validate takes it) and the status shows the address unconfirmed; a save or an env needs two
+const tooFewServices = (value) =>
+	value.length < DDNS_MIN_SERVICES
+		? `needs at least ${DDNS_MIN_SERVICES} URLs: a new address counts only when a second service confirms it`
+		: null;
 
 // the literal IP of a service URL the outbound guard refuses (a name is checked when it resolves, at save and at every call)
 const refusedServiceHost = (value) => {
@@ -132,11 +140,18 @@ const ddnsServiceRule = (key, env, defaults) => ({
 	type: "list",
 	validate: validateServiceList,
 	validateSave: (value) => {
+		const few = tooFewServices(value);
+		if (few !== null) return few;
 		const host = refusedServiceHost(value);
 		return host === null ? null : `${host} is an address the server may not call`;
 	},
-	// one bad word drops the whole env value and logs a warning
+	// one bad word, or a single URL, drops the whole env value and logs a warning
 	parseEnv: (raw) => {
+		const list = raw.trim().split(WHITESPACE).filter(Boolean);
+		return validateServiceList(list) === null && tooFewServices(list) === null ? list : undefined;
+	},
+	// the env in effect (a cycle reads it) may carry a stored list of one: the shape is enough there
+	parseEffective: (raw) => {
 		const list = raw.trim().split(WHITESPACE).filter(Boolean);
 		return validateServiceList(list) === null ? list : undefined;
 	},

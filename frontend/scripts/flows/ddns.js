@@ -1,6 +1,6 @@
 // Dynamic DNS: the tab (status card, Add record, Check now, Update now, History, Disable, Delete) and Settings, Dynamic
 // DNS. The updater never calls a provider or an address service: the flow runs only where the IPv4 services are the
-// env value DDNS_IPV4_SERVICES (the smoke container sets https://127.0.0.1/, which the guard refuses). The flows
+// env value DDNS_IPV4_SERVICES (the smoke container sets https://127.0.0.1/ and https://127.0.0.2/, which the guard refuses). The flows
 // create their data as flow-... and remove it.
 import { cleanUp, rowAction, rowGone, rowShows, windowClosed, windowTitled, withToast } from "./lib.js";
 
