@@ -365,3 +365,23 @@ it("stop clears the timer and start runs it again", async () => {
 	await clock.advance(MIN);
 	assert.equal(runs, 2);
 });
+
+it("writes a debug line on a pause and on a resume", async () => {
+	const lines = [];
+	const timer = createDdnsTimer({
+		run: () => undefined,
+		periodMs: MIN,
+		clock: fakeClock(),
+		log: { debug: (message) => lines.push(message) },
+	});
+	timer.pause();
+	await timer.pauseAndWait();
+	timer.resume();
+	timer.resume();
+	assert.deepEqual(lines, [
+		"Dynamic DNS paused",
+		"Dynamic DNS paused, waiting for a running cycle",
+		"Dynamic DNS still paused by another task",
+		"Dynamic DNS resumed",
+	]);
+});

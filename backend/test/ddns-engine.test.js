@@ -147,7 +147,7 @@ const writes = (h) => h.calls.filter((call) => call.op === "write");
 describe("ddns engine: cycle", () => {
 	it("does nothing and asks no service when no record is enabled", async () => {
 		const h = harness({ records: [recordRow({ enabled: false })] });
-		assert.deepEqual(await h.engine.cycle(), { ran: false });
+		assert.deepEqual(await h.engine.cycle(), { ran: false, changed: 0, failed: 0, stopped: false });
 		assert.deepEqual(h.detects, []);
 		assert.equal(h.calls.length, 0);
 	});
@@ -174,6 +174,42 @@ describe("ddns engine: cycle", () => {
 		assert.equal(h.row().state, "ok");
 	});
 
+	it("stops between records once a pause began; the others stay due", async () => {
+		const h = harness({
+			records: [recordRow(), recordRow({ id: 2, name: "two.example.com" })],
+			zone: { A: [IP4_NEW] },
+		});
+		let checks = 0;
+		// false before the first record, true before the second
+		const result = await h.engine.cycle({ stopped: () => checks++ > 0 });
+		assert.deepEqual(result, { ran: true, changed: 1, failed: 0, stopped: true });
+		assert.equal(h.row(1).state, "ok");
+		assert.equal(h.row(2).state, "pending");
+		assert.equal(h.row(2).next_try_on, null);
+	});
+
+	it("logs one line per cycle that changed or failed something, counts only", async () => {
+		const logged = [];
+		const h = harness({
+			records: [recordRow(), recordRow({ id: 2, name: "two.example.com", provider: "gone" })],
+			zone: { A: [IP4_NEW] },
+		});
+		const engine = createDdnsEngine({
+			store: h.store,
+			publicIp: h.publicIp,
+			providers: h.providers,
+			resolveName: () => Promise.resolve(null),
+			settings: () => ({ periodMs: 5 * MIN, cooldownMs: 5 * MIN }),
+			clock: h.clock,
+			log: { error: () => {}, info: (message) => logged.push(message) },
+			makeFetch: () => () => Promise.resolve({}),
+		});
+		await engine.cycle();
+		assert.deepEqual(logged, ["Dynamic DNS: 1 record(s) changed, 1 failed"]);
+		await engine.cycle({ force: true, ids: [1] });
+		assert.equal(logged.length, 1);
+	});
+
 	it("skips a record that is not due and runs it with force", async () => {
 		const later = new Date(START + HOUR);
 		const h = harness({ records: [recordRow({ next_try_on: later })], zone: { A: [IP4] } });
@@ -187,7 +223,7 @@ describe("ddns engine: cycle", () => {
 
 describe("ddns engine: address records", () => {
 	it("counts an answer equal to the public address as up to date, with no API call and no history", async () => {
-		const h = harness({ resolver: () => [IP4] });
+		const h = harness({ resolver: () => [IP4], records: [recordRow({ last_ipv4: IP4_NEW })] });
 		await h.engine.cycle();
 		assert.equal(h.calls.length, 0);
 		assert.equal(h.row().state, "ok");
@@ -196,6 +232,22 @@ describe("ddns engine: address records", () => {
 		assert.equal(h.row().last_ipv4, IP4);
 		assert.equal(h.historyRows.length, 0);
 		assert.deepEqual(h.resolves[0].servers, ["9.9.9.9"]);
+	});
+
+	it("reads through the provider while the record was never seen there, so a wildcard answer cannot hide it", async () => {
+		const h = harness({ resolver: () => [IP4] });
+		await h.engine.cycle();
+		assert.equal(h.resolves.length, 0);
+		assert.deepEqual(
+			h.calls.map((call) => call.op),
+			["read", "read", "write"],
+		);
+		assert.equal(writes(h)[0].existing, null);
+		assert.equal(h.row().last_ipv4, IP4);
+		// a one-type record with a stored provider record id is known too
+		const known = harness({ resolver: () => [IP4], records: [recordRow({ meta: { record_id: "r-A" } })] });
+		await known.engine.cycle();
+		assert.equal(known.calls.length, 0);
 	});
 
 	it("never uses the resolver for a proxied record", async () => {
@@ -208,7 +260,7 @@ describe("ddns engine: address records", () => {
 		assert.equal(h.resolves.length, 0);
 		assert.equal(h.calls[0].op, "read");
 		assert.equal(h.row().state, "ok");
-		assert.equal(h.row().meta.proxied, true);
+		assert.equal(h.row().meta.proxied_a, true);
 		assert.equal(writes(h).length, 0);
 	});
 
@@ -216,7 +268,8 @@ describe("ddns engine: address records", () => {
 		const h = harness({ resolver: () => null, zone: { A: [IP4], meta: { proxied: false } } });
 		await h.engine.cycle();
 		assert.equal(h.calls[0].op, "read");
-		assert.equal(h.row().meta.proxied, false);
+		assert.equal(h.row().meta.proxied_a, false);
+		assert.equal(h.row().meta.proxied, undefined);
 		assert.equal(h.historyRows.length, 0);
 	});
 
@@ -260,7 +313,7 @@ describe("ddns engine: address records", () => {
 			h.historyRows.map(({ kind, old_ip, new_ip }) => ({ kind, old_ip, new_ip })),
 			[{ kind: "changed", old_ip: IP4_NEW, new_ip: IP4 }],
 		);
-		assert.equal(h.row().meta.proxied, true);
+		assert.equal(h.row().meta.proxied_a, true);
 	});
 
 	it("keeps the write waiting inside the cooldown and writes after it", async () => {
@@ -327,12 +380,38 @@ describe("ddns engine: address records", () => {
 
 	it("compares IPv6 spellings by value", async () => {
 		const h = harness({
-			records: [recordRow({ ip_version: "ipv6", ipv6_suffix: "::1" })],
+			records: [recordRow({ ip_version: "ipv6", ipv6_suffix: "::1", last_ipv6: "2a00:1450:4001:80b::1" })],
 			resolver: () => ["2A00:1450:4001:080B:0:0:0:1"],
 		});
 		await h.engine.cycle();
 		assert.equal(h.calls.length, 0);
 		assert.equal(h.row().state, "ok");
+	});
+
+	it("keeps the proxied flag of A and AAAA apart, and a proxied AAAA never hides an A from DNS", async () => {
+		const h = harness({
+			records: [
+				recordRow({
+					ip_version: "both",
+					last_ipv4: IP4,
+					last_ipv6: IP6,
+					meta: { proxied_a: false, proxied_aaaa: true },
+				}),
+			],
+			resolver: (name, type) => (type === "A" ? [IP4] : null),
+			zone: { A: [IP4], AAAA: [IP6], meta: { proxied: true } },
+		});
+		await h.engine.cycle();
+		assert.deepEqual(
+			h.resolves.map((call) => call.type),
+			["A"],
+		);
+		assert.deepEqual(
+			h.calls.map((call) => [call.op, call.type]),
+			[["read", "AAAA"]],
+		);
+		assert.equal(h.row().meta.proxied_a, false);
+		assert.equal(h.row().meta.proxied_aaaa, true);
 	});
 
 	it("keeps both families of a both-record apart", async () => {

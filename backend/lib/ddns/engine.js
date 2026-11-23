@@ -53,6 +53,15 @@ const lookupMeta = (meta) => {
 	return rest;
 };
 
+// the proxied flag is kept per record type (proxied_a, proxied_aaaa, proxied_cname): the A and AAAA of one name may differ
+const proxiedKey = (type) => `proxied_${type.toLowerCase()}`;
+
+// what is stored: the provider's generic proxied is the last read's, kept per type instead
+const storedMeta = (meta) => {
+	const { proxied: _last, ...rest } = lookupMeta(meta);
+	return rest;
+};
+
 /**
  * The dynamic DNS engine: one cycle over the due records, one record at a time under its lock.
  *
@@ -175,6 +184,16 @@ const createDdnsEngine = ({
 		}
 	};
 
+	/**
+	 * Whether a run read or wrote this record type at the provider before: its last address is stored (set only by a
+	 * run that got that far), or the provider's record id of a one-type record
+	 */
+	const knownAtProvider = (record, unit) => {
+		const last = unit.family === 6 ? record.last_ipv6 : record.last_ipv4;
+		if (last !== null && last !== undefined) return true;
+		return familyOf(record).length === 1 && Boolean(record.meta?.record_id);
+	};
+
 	/** Brings one record type in line. Returns { outcome, change?, waitUntil? } or throws */
 	const runUnit = async (ctx, unit) => {
 		const { record } = ctx;
@@ -185,8 +204,10 @@ const createDdnsEngine = ({
 			fields: ctx.cred.fields,
 			fetch: ctx.fetch,
 		};
-		// a proxied record resolves to the proxy, so only the provider's answer tells its value
-		if (unit.type !== "CNAME" && ctx.meta.proxied !== true) {
+		// a proxied record resolves to the proxy, so only the provider's answer tells its value; and only a record the
+		// provider showed before may be trusted from DNS (a wildcard or a CNAME may answer for one that does not exist)
+		const proxied = ctx.meta[proxiedKey(unit.type)] ?? record.meta?.proxied;
+		if (unit.type !== "CNAME" && proxied !== true && knownAtProvider(record, unit)) {
 			const answer = await resolveName(record.name, unit.type, settings().resolvers ?? []);
 			if (Array.isArray(answer) && answer.length === 1 && same(unit.type, answer[0], unit.wanted)) {
 				return { outcome: "current" };
@@ -214,6 +235,8 @@ const createDdnsEngine = ({
 			);
 		}
 		ctx.meta = { ...ctx.meta, ...existing.meta };
+		const readProxied = existing.proxied ?? existing.meta?.proxied;
+		if (typeof readProxied === "boolean") ctx.meta[proxiedKey(unit.type)] = readProxied;
 		if (same(unit.type, existing.values?.[0], unit.wanted)) return { outcome: "current" };
 		const lastWrite = toMs(record.last_changed_on);
 		const { cooldownMs } = settings();
@@ -304,7 +327,7 @@ const createDdnsEngine = ({
 			}
 
 			const patch = { last_checked_on: new Date(now()) };
-			patch.meta = lookupMeta(ctx.meta);
+			patch.meta = storedMeta(ctx.meta);
 			const rows = changesOf(done, patch);
 			if (waitUntil === null) {
 				Object.assign(patch, { state: "ok", failures: 0, next_try_on: null, error: null });
@@ -318,7 +341,7 @@ const createDdnsEngine = ({
 			}
 			await store.saveRecord(id, patch);
 			await writeHistory(id, rows);
-			return { ok: true };
+			return { ok: true, changed: done.some(({ result }) => Boolean(result.change)) };
 		});
 
 	/** The history rows of the changes made, and the addresses now known and the change time, into the patch */
@@ -341,30 +364,50 @@ const createDdnsEngine = ({
 
 	const safeProcess = async (id, found, options) => {
 		try {
-			await processRecord(id, found, options);
+			return await processRecord(id, found, options);
 		} catch (err) {
 			log?.error(`Dynamic DNS: record ${id} failed: ${err?.message}`);
+			return { failed: true };
 		}
 	};
 
 	return {
 		/**
-		 * One cycle over the enabled records that are due (all of them with force)
+		 * One cycle over the enabled records that are due (all of them with force). It stops between records once
+		 * stopped() is true (a pause began): the records not reached stay due for the next cycle.
 		 *
-		 * @param   {{ force?: boolean, ids?: number[] }} [options]  ids: only these records (Check now of a user)
-		 * @returns {Promise<{ ran: boolean }>}
+		 * @param   {{ force?: boolean, ids?: number[], stopped?: () => boolean }} [options]  ids: only these records
+		 *          (Check now of a user)
+		 * @returns {Promise<{ ran: boolean, changed: number, failed: number, stopped: boolean }>}
 		 */
-		cycle: async ({ force = false, ids } = {}) => {
+		cycle: async ({ force = false, ids, stopped = () => false } = {}) => {
 			const enabled = (await store.enabledRecords()).filter(
 				(record) => ids === undefined || ids.includes(record.id),
 			);
-			if (enabled.length === 0) return { ran: false };
+			if (enabled.length === 0) return { ran: false, changed: 0, failed: 0, stopped: false };
 			const due = force ? enabled : enabled.filter(isDue);
 			const found = await detectFamilies(due);
+			let changed = 0;
+			let failed = 0;
+			let halted = false;
 			for (const record of due) {
-				await safeProcess(record.id, found, { ignoreDue: force, strictCooldown: false, countTry: true });
+				if (stopped()) {
+					halted = true;
+					break;
+				}
+				const result = await safeProcess(record.id, found, {
+					ignoreDue: force,
+					strictCooldown: false,
+					countTry: true,
+				});
+				if (result?.changed) changed += 1;
+				if (result?.failed) failed += 1;
 			}
-			return { ran: true };
+			// counts only: names and provider answers stay in the history
+			if (changed > 0 || failed > 0) {
+				log?.info?.(`Dynamic DNS: ${changed} record(s) changed, ${failed} failed`);
+			}
+			return { ran: true, changed, failed, stopped: halted };
 		},
 
 		/**

@@ -36,7 +36,8 @@ const build = () => {
 	});
 	let engine = null;
 	const timer = createDdnsTimer({
-		run: () => engine.cycle(),
+		// a pause that begins during a cycle stops it between records
+		run: () => engine.cycle({ stopped: () => timer.paused() }),
 		periodMs: settings().periodMs,
 		// a pause looks at the running cycle every second; the tests look every 20 ms
 		pollMs: process.env.NPMPRO_TEST_ROOT ? 20 : undefined,
@@ -111,7 +112,7 @@ const checkNow = async (access) => {
 	access.can("certificates:manage");
 	const { engine, timer } = service();
 	const ids = await internalDdnsRecord.enabledIds(access);
-	await timer.runNow(() => engine.cycle({ force: true, ids }));
+	await timer.runNow(() => engine.cycle({ force: true, ids, stopped: () => timer.paused() }));
 	return await ddnsStatus(access);
 };
 

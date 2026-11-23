@@ -117,11 +117,13 @@ const createDdnsTimer = ({
 		/** Skips the cycles until resume() */
 		pause: () => {
 			pauses += 1;
+			log?.debug?.("Dynamic DNS paused");
 		},
 
 		/** Ends a pause; a cycle missed meanwhile is not made up */
 		resume: () => {
 			if (pauses > 0) pauses -= 1;
+			log?.debug?.(pauses > 0 ? "Dynamic DNS still paused by another task" : "Dynamic DNS resumed");
 		},
 
 		/**
@@ -132,6 +134,7 @@ const createDdnsTimer = ({
 		 */
 		pauseAndWait: async ({ timeoutMs } = {}) => {
 			pauses += 1;
+			log?.debug?.("Dynamic DNS paused, waiting for a running cycle");
 			const wait = { over: false };
 			try {
 				await waitWithin(notBusy(wait), { name: "Dynamic DNS", timeoutMs, clock });

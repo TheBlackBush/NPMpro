@@ -75,6 +75,14 @@ const visibleRecords = (access, trx) => {
 
 const iso = (value) => fromDbTime(value)?.toISOString() ?? null;
 
+// the engine keeps the flag per record type (proxied_a, proxied_aaaa, proxied_cname): true when any is proxied
+const proxiedOf = (meta) => {
+	const flags = ["proxied_a", "proxied_aaaa", "proxied_cname", "proxied"]
+		.map((key) => meta?.[key])
+		.filter((value) => typeof value === "boolean");
+	return flags.length === 0 ? null : flags.includes(true);
+};
+
 /** The API form of a row: no meta or secret, ISO times, the engine's translatable error and the proxied flag */
 const toPublic = (row) => {
 	const { meta, ...json } = row.toJSON();
@@ -85,7 +93,7 @@ const toPublic = (row) => {
 		...json,
 		error_i18n: meta?.error_i18n ?? null,
 		error_values: meta?.error_values ?? null,
-		proxied: typeof meta?.proxied === "boolean" ? meta.proxied : null,
+		proxied: proxiedOf(meta),
 	};
 };
 
