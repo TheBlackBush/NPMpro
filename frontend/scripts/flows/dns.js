@@ -453,19 +453,16 @@ async function fetchDomains({ admin }) {
 		if (request.method() === "POST" && new URL(request.url()).pathname === "/api/nginx/dns-domains")
 			posts.push(request.postDataJSON());
 	});
-	const cancel = async () => {
-		await addWindow(page).getByRole("button", { name: "Cancel", exact: true }).click();
-		// a window with a typed name or a changed credential asks first
+	// Cancel: the "Unsaved changes" question must appear exactly when the user did something that would be lost
+	const cancel = async (expectQuestion = false) => {
 		const ask = page.getByRole("alertdialog");
-		const question = await ask
-			.getByRole("heading", { name: "Unsaved changes" })
-			.waitFor({ timeout: 1500 })
-			.then(
-				() => true,
-				() => false,
-			);
-		if (question) await ask.getByRole("button", { name: "Discard changes", exact: true }).click();
+		await addWindow(page).getByRole("button", { name: "Cancel", exact: true }).click();
+		if (expectQuestion) {
+			await ask.getByRole("heading", { name: "Unsaved changes" }).waitFor({ timeout: 5000 });
+			await ask.getByRole("button", { name: "Discard changes", exact: true }).click();
+		}
 		await addWindow(page).waitFor({ state: "detached" });
+		if ((await ask.count()) !== 0) throw new Error("an unsaved-changes question stayed open");
 	};
 	const zone = (name) => addWindow(page).locator(`[id="fetch-zone-${name}"]`);
 	const save = () => addWindow(page).getByRole("button", { name: "Save", exact: true });
@@ -490,6 +487,20 @@ async function fetchDomains({ admin }) {
 		if ((await page.locator("[data-fetch-domains]").count()) !== 0)
 			throw new Error("a provider without a zone list shows the zone section");
 		await cancel();
+
+		// 1b. the unsaved-changes question: none for the preset credential and the auto-ticked zone, one for a tick
+		// the user changed by hand
+		await rowAction(page, "flow-fetch-cf", "Add domains");
+		await addWindow(page).waitFor();
+		await zonesState(page, "list").waitFor();
+		if ((await zone("flow-f1.example").getAttribute("aria-checked")) !== "true")
+			throw new Error("the new zone is not auto-ticked");
+		await cancel(false);
+		await rowAction(page, "flow-fetch-cf", "Add domains");
+		await addWindow(page).waitFor();
+		await zonesState(page, "list").waitFor();
+		await zone("flow-f1.example").click();
+		await cancel(true);
 
 		// 2. loading: Cancel aborts the request in flight
 		let release = () => undefined;
