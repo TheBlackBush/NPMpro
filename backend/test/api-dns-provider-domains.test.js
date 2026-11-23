@@ -147,3 +147,96 @@ it("shows lists_domains in the providers list", async () => {
 	}
 	assert.equal(flag("acmedns"), false);
 });
+
+it("computes the states against the credential's owner when an administrator fetches it", async () => {
+	const own = await api.limited({ visibility: "user", certificates: "manage" });
+	await credential(admin, ["owners.example", "adminonly.example"]);
+	const first = await credential(own, ["owners.example"]);
+	const second = await credential(own, ["second.example"]);
+	reply(["owners.example", "second.example", "adminonly.example"]);
+	const res = await admin.get(url(first.id));
+	assert.equal(res.status, 200, res.text);
+	assert.deepEqual(res.body.zones, [
+		{ name: "adminonly.example", state: "new" },
+		{ name: "owners.example", state: "here" },
+		{ name: "second.example", state: "other", credential_name: second.name },
+	]);
+});
+
+it("carries the needed permission of a refused credential and no secret in it", async () => {
+	const mine = await credential(admin);
+	reply([], 403, { success: false, errors: [{ code: 9109, message: "Invalid token" }] });
+	const res = await admin.get(url(mine.id));
+	assert.equal(res.status, 400);
+	assert.equal(typeof res.body.error.message_values.needs, "string");
+	assert.ok(res.body.error.message_values.needs.length > 0);
+	assert.ok(!res.body.error.message_values.needs.includes(TOKEN));
+	assert.ok(!res.text.includes(TOKEN));
+});
+
+it("marks a list of more than 1000 zones as truncated", async () => {
+	const mine = await credential(admin);
+	const pages = 21;
+	for (let page = 1; page <= pages; page++) {
+		const names = Array.from({ length: 50 }, (_, n) => `zone-${page}-${n}.example`);
+		api.outside.http
+			.get(HOST)
+			.intercept({ path: `/client/v4/zones?page=${page}&per_page=50`, method: "GET" })
+			.reply(
+				200,
+				{
+					success: true,
+					result: names.map((name) => ({ name })),
+					result_info: { page, total_pages: pages },
+				},
+				json,
+			);
+	}
+	const res = await admin.get(url(mine.id));
+	assert.equal(res.status, 200, res.text);
+	assert.equal(res.body.truncated, true);
+	assert.equal(res.body.zones.length, 1000);
+});
+
+it("answers the decrypt error for a credential that cannot be decrypted, without any request", async () => {
+	const mine = await credential(admin);
+	await api.db("npmpro_dns_credential").where({ id: mine.id }).update({ values: "v1:bad:bad:bad" });
+	reply(["x.example"]);
+	const res = await admin.get(url(mine.id));
+	assert.equal(res.status, 400, res.text);
+	assert.ok(res.body.error.message.includes("cannot be decrypted"));
+	assert.ok(await untouched(), "no request was made");
+});
+
+it("matches a stored name in another case and a zone with a trailing dot as here", async () => {
+	const mine = await credential(admin);
+	await api.db("npmpro_dns_domain").insert({
+		dns_credential_id: mine.id,
+		name: "Example.COM",
+		source: "typed",
+		created_on: "2026-01-01 00:00:00",
+		modified_on: "2026-01-01 00:00:00",
+	});
+	reply(["example.com."]);
+	const res = await admin.get(url(mine.id));
+	assert.equal(res.status, 200, res.text);
+	assert.deepEqual(res.body.zones, [{ name: "example.com", state: "here" }]);
+});
+
+it("answers 500 without the message for an error that is not a provider error", async () => {
+	const { providerForCredential } = await import("../lib/ddns/providers/index.js");
+	const provider = providerForCredential("cloudflare");
+	const original = provider.listZones;
+	provider.listZones = () => {
+		throw new Error(`broken inside with ${TOKEN}`);
+	};
+	try {
+		const mine = await credential(admin);
+		const res = await admin.get(url(mine.id));
+		assert.equal(res.status, 500);
+		assert.ok(!res.text.includes("broken inside"));
+		assert.ok(!res.text.includes(TOKEN));
+	} finally {
+		provider.listZones = original;
+	}
+});

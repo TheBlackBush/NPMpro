@@ -184,18 +184,22 @@ const internalDnsCredential = {
 	getIni: async (id) => {
 		const row = await dnsCredentialModel.query().findById(id);
 		if (!row) throw new errs.ValidationError("The certificate has no DNS credential, select one");
-		try {
-			return toIni(defaultSecretBox.decrypt(row.values));
-		} catch (err) {
-			if (err instanceof SecretBoxError) {
-				throw new errs.ValidationError(
-					`DNS credential '${row.name}' cannot be decrypted, enter its values again`,
-					undefined,
-					{ cause: err },
-				);
-			}
-			throw err;
+		return toIni(internalDnsCredential.openValues(row));
+	},
+
+	/**
+	 * The decrypted values of a credential row, no access check
+	 *
+	 * @param   {Object}  row
+	 * @returns {Object}  { fields } or { ini }
+	 * @throws  {errs.ValidationError}  the values cannot be decrypted (another key or a corrupt value)
+	 */
+	openValues: (row) => {
+		const values = decryptOrNull(row);
+		if (values === null) {
+			throw new errs.ValidationError(`DNS credential '${row.name}' cannot be decrypted, enter its values again`);
 		}
+		return values;
 	},
 
 	writeCertificateFile: async (certificate) => {

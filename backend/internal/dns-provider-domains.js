@@ -3,33 +3,18 @@ import { providerForCredential } from "../lib/ddns/providers/index.js";
 import { credentialFields, secretValuesOf } from "../lib/dns-credential-values.js";
 import { normalizeDomainName } from "../lib/dns-domain-name.js";
 import errs from "../lib/error.js";
-import { defaultSecretBox, SecretBoxError } from "../lib/secret-box.js";
 import dnsDomainModel from "../models/dns_domain.js";
 import internalDnsCredential from "./dns-credential.js";
 
 // The zones a provider lists for a DNS credential, each marked against the owner's stored domains. Nothing is
 // written here: the Fetch domains window adds the chosen names through the domains API.
 
-const openValues = (row) => {
-	try {
-		return defaultSecretBox.decrypt(row.values);
-	} catch (err) {
-		if (err instanceof SecretBoxError) {
-			throw new errs.ValidationError(
-				`DNS credential '${row.name}' cannot be decrypted, enter its values again`,
-				undefined,
-				{ cause: err },
-			);
-		}
-		throw err;
-	}
-};
-
-// a provider failure as a public 400 the UI translates; the message is already scrubbed of the secrets
+// a provider failure as a public 400 the UI translates (the permission hint is `needs`: the JSON replacer drops
+// every string key named hint); the message is already scrubbed of the secrets
 const refused = (error, provider) => {
 	if (error.code === "forbidden") {
 		return new errs.ValidationError(error.message, "error.dns-zones-forbidden", {
-			values: { message: error.message, provider: provider.label, ...(error.hint ? { hint: error.hint } : {}) },
+			values: { message: error.message, provider: provider.label, ...(error.hint ? { needs: error.hint } : {}) },
 			cause: error,
 		});
 	}
@@ -50,7 +35,8 @@ const markZones = async (row, names) => {
 		.joinRelated("credential")
 		.where("credential.owner_user_id", row.owner_user_id)
 		.select("npmpro_dns_domain.name", "npmpro_dns_domain.dns_credential_id", "credential.name as credential_name");
-	const byName = new Map(stored.map((domain) => [domain.name, domain]));
+	// a stored name keeps the case it was saved with (a restore may bring one): compare the normalized forms
+	const byName = new Map(stored.map((domain) => [normalizeDomainName(domain.name).name ?? domain.name, domain]));
 	return names.map((name) => {
 		const normalized = normalizeDomainName(name);
 		const found = "name" in normalized ? byName.get(normalized.name) : undefined;
@@ -71,7 +57,7 @@ const internalDnsProviderDomains = {
 		const row = await internalDnsCredential.get(access, { id });
 		const provider = providerForCredential(row.provider);
 		if (provider === null) return { supported: false, truncated: false, zones: [] };
-		const fields = credentialFields(openValues(row));
+		const fields = credentialFields(internalDnsCredential.openValues(row));
 		const secrets = secretValuesOf(row.provider, fields);
 		let names;
 		try {
