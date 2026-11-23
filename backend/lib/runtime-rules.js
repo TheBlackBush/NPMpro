@@ -186,7 +186,7 @@ const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 
 /**
  * process.env with the runtime settings of the given groups in env form, for every runtime env var the user did not
- * set. Groups missing from configs keep the env as it is.
+ * set (a ddns value its rule rejects counts as not set). Groups missing from configs keep the env as it is.
  *
  * @param   {Object}  env      process.env or a test object
  * @param   {Object}  configs  { [group]: { values } }
@@ -198,7 +198,10 @@ const buildEffectiveEnv = (env, configs) => {
 	for (const rule of RUNTIME_RULES) {
 		const config = configs?.[rule.group];
 		// a restart setting keeps the value the container started with
-		if (!config || userSet.has(rule.env) || isRestartRule(rule)) continue;
+		if (!config || isRestartRule(rule)) continue;
+		// the ddns group: an env value the rule rejects is not set (the merge dropped it, the stored value applies)
+		const envUsable = rule.group !== "ddns" || (isSet(env[rule.env]) && rule.parseEnv(env[rule.env]) !== undefined);
+		if (userSet.has(rule.env) && envUsable) continue;
 		const value = rule.toEnv(config.values[rule.key]);
 		if (value === undefined) {
 			delete out[rule.env];

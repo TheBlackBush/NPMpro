@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
 import { DEFAULT_IPV4_SERVICES, DEFAULT_IPV6_SERVICES } from "../lib/ddns/public-ip.js";
+import { ddnsSettingsOf } from "../lib/ddns/settings.js";
 import {
 	ACME_ENV_KEYS,
 	ENVIRONMENT_GROUPS,
@@ -544,4 +545,22 @@ it("drops an invalid DDNS_ env value, falls back to the default and logs one war
 	);
 	await config.getRuntimeConfig("ddns");
 	assert.equal(warnings.length, 5);
+});
+
+it("gives the updater the stored value an invalid DDNS_ env value leaves in place, like the view", async () => {
+	const env = { DDNS_COOLDOWN: "30s", NPMPRO_USER_ENV: "DDNS_COOLDOWN" };
+	const warnings = [];
+	const config = createRuntimeConfig({
+		readStored: async () => ({ cooldown: "20m" }),
+		env,
+		log: { warn: (line) => warnings.push(line) },
+	});
+	const view = await config.getRuntimeConfig("ddns");
+	assert.equal(view.values.cooldown, "20m");
+	assert.deepEqual(view.locked, []);
+	assert.equal(ddnsSettingsOf(config.effectiveEnv()).cooldownMs, 20 * 60_000);
+	await config.getRuntimeConfig("ddns");
+	assert.deepEqual(warnings, [
+		"Runtime setting ddns.cooldown: the env value cannot be used, the stored value or the default applies",
+	]);
 });
