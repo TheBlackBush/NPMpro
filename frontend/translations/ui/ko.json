@@ -597,6 +597,7 @@
 	"error.dns-zones-blocked": "제공업체의 주소는 아웃바운드 요청이 허용되지 않습니다.",
 	"error.dns-zones-failed": "영역 목록을 가져오지 못했습니다: {message}",
 	"error.dns-zones-forbidden": "제공업체가 영역 나열을 거부했습니다: {message}",
+	"error.dns-zones-not-https": "제공업체의 주소는 https를 사용해야 합니다. http는 로컬 네트워크 주소의 PowerDNS API에만 허용됩니다.",
 	"error.forward-host-variable-admin-only": "전달 호스트에 요청 변수($)를 사용할 수 있는 사람은 관리자뿐입니다.",
 	"error.invalid-auth": "이메일 또는 비밀번호가 잘못되었습니다.",
 	"error.invalid-code": "잘못된 인증 코드입니다",

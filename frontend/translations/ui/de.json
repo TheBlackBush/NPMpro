@@ -597,6 +597,7 @@
 	"error.dns-zones-blocked": "Die Adresse des Anbieters ist für ausgehende Anfragen nicht erlaubt.",
 	"error.dns-zones-failed": "Die Zonenliste ist fehlgeschlagen: {message}",
 	"error.dns-zones-forbidden": "Der Anbieter hat das Auflisten der Zonen verweigert: {message}",
+	"error.dns-zones-not-https": "Die Adresse des Anbieters muss https verwenden; http ist nur für eine PowerDNS-API unter einer Adresse im lokalen Netzwerk erlaubt.",
 	"error.forward-host-variable-admin-only": "Nur Administratoren können eine Anfragevariable ($) im Weiterleitungshost verwenden.",
 	"error.invalid-auth": "Ungültige E-Mail-Adresse oder Passwort",
 	"error.invalid-code": "Ungültiger Verifizierungscode",

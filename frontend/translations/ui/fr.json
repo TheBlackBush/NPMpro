@@ -597,6 +597,7 @@
 	"error.dns-zones-blocked": "L'adresse du fournisseur n'est pas autorisée pour les requêtes sortantes.",
 	"error.dns-zones-failed": "La liste des zones a échoué : {message}",
 	"error.dns-zones-forbidden": "Le fournisseur a refusé de lister les zones : {message}",
+	"error.dns-zones-not-https": "L'adresse du fournisseur doit utiliser https ; http n'est autorisé que pour une API PowerDNS sur une adresse du réseau local.",
 	"error.forward-host-variable-admin-only": "Seuls les administrateurs peuvent utiliser une variable de requête ($) dans l'hôte de transfert.",
 	"error.invalid-auth": "Adresse e-mail ou mot de passe invalide",
 	"error.invalid-code": "Code de vérification invalide",

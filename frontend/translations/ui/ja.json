@@ -597,6 +597,7 @@
 	"error.dns-zones-blocked": "プロバイダーのアドレスへの外部リクエストは許可されていません。",
 	"error.dns-zones-failed": "ゾーン一覧の取得に失敗しました: {message}",
 	"error.dns-zones-forbidden": "プロバイダーがゾーンの一覧表示を拒否しました: {message}",
+	"error.dns-zones-not-https": "プロバイダーのアドレスには https を使用してください。http はローカルネットワークのアドレス上の PowerDNS API にのみ使用できます。",
 	"error.forward-host-variable-admin-only": "転送先ホストにリクエスト変数 ($) を使用できるのは管理者のみです。",
 	"error.invalid-auth": "無効なemailまたはパスワード",
 	"error.invalid-code": "確認コードが無効です",

@@ -597,6 +597,7 @@
 	"error.dns-zones-blocked": "Адреса провайдера не дозволена для вихідних запитів.",
 	"error.dns-zones-failed": "Не вдалося отримати список зон: {message}",
 	"error.dns-zones-forbidden": "Провайдер відмовив у показі списку зон: {message}",
+	"error.dns-zones-not-https": "Адреса провайдера має використовувати https; http дозволено лише для API PowerDNS за адресою в локальній мережі.",
 	"error.forward-host-variable-admin-only": "Лише адміністратори можуть використовувати змінну запиту ($) у хості пересилання.",
 	"error.invalid-auth": "Невірна адреса ел. пошти або пароль",
 	"error.invalid-code": "Неправильний код перевірки",

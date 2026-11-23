@@ -597,6 +597,7 @@
 	"error.dns-zones-blocked": "L'indirizzo del provider non è consentito per le richieste in uscita.",
 	"error.dns-zones-failed": "L'elenco delle zone non è riuscito: {message}",
 	"error.dns-zones-forbidden": "Il provider ha rifiutato di elencare le zone: {message}",
+	"error.dns-zones-not-https": "L'indirizzo del provider deve usare https; http è consentito solo per un'API PowerDNS su un indirizzo della rete locale.",
 	"error.forward-host-variable-admin-only": "Solo gli amministratori possono usare una variabile di richiesta ($) nell'host di inoltro.",
 	"error.invalid-auth": "Email o password non validi",
 	"error.invalid-code": "Codice di verifica non valido",

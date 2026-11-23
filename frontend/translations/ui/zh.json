@@ -597,6 +597,7 @@
 	"error.dns-zones-blocked": "不允许向该提供商的地址发出出站请求。",
 	"error.dns-zones-failed": "区域列表获取失败：{message}",
 	"error.dns-zones-forbidden": "提供商拒绝列出区域：{message}",
+	"error.dns-zones-not-https": "提供商的地址必须使用 https；仅当 PowerDNS API 位于本地网络地址时才允许使用 http。",
 	"error.forward-host-variable-admin-only": "只有管理员才能在转发主机中使用请求变量 ($)。",
 	"error.invalid-auth": "无效的邮箱或密码",
 	"error.invalid-code": "验证码无效",

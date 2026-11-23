@@ -597,6 +597,7 @@
 	"error.dns-zones-blocked": "The provider's address is not allowed for outbound requests.",
 	"error.dns-zones-failed": "The zone list failed: {message}",
 	"error.dns-zones-forbidden": "The provider refused to list the zones: {message}",
+	"error.dns-zones-not-https": "The provider's address must use https; http is allowed only for a PowerDNS API on a local network address.",
 	"error.forward-host-variable-admin-only": "Only administrators can use a request variable ($) in the forward host.",
 	"error.invalid-auth": "Invalid email or password",
 	"error.invalid-code": "Invalid verification code",

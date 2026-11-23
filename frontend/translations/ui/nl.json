@@ -597,6 +597,7 @@
 	"error.dns-zones-blocked": "Het adres van de provider is niet toegestaan voor uitgaande verzoeken.",
 	"error.dns-zones-failed": "De zonelijst is mislukt: {message}",
 	"error.dns-zones-forbidden": "De provider weigerde de zones weer te geven: {message}",
+	"error.dns-zones-not-https": "Het adres van de provider moet https gebruiken; http is alleen toegestaan voor een PowerDNS-API op een adres in het lokale netwerk.",
 	"error.forward-host-variable-admin-only": "Alleen beheerders kunnen een aanvraagvariabele ($) gebruiken in de doorstuurhost.",
 	"error.invalid-auth": "Ongeldig e-mail of wachtwoord",
 	"error.invalid-code": "Ongeldige verificatiecode",
