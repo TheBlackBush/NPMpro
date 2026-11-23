@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import { it } from "node:test";
 import en from "../../translations/ui/en.json" with { type: "json" };
 import {
@@ -27,6 +28,8 @@ const ZONES = [
 const CONTEXT = { providers: PROVIDERS, credentials: CREDENTIALS, zones: ZONES, stored: null };
 const NEW = { name: "home.example.com", credentialId: 1, kind: "address", ipVersion: "ipv4" };
 const check = (values, context = {}) => ddnsRecordValidate({ ...NEW, ...values }, { ...CONTEXT, ...context });
+// an alias form sends no IP version
+const alias = (values, context = {}) => check({ kind: "alias", ipVersion: undefined, ...values }, context);
 const STORED = {
 	id: 5,
 	name: "home.example.com",
@@ -135,27 +138,24 @@ it("does not ask for a zone again on a save that keeps the name and credential",
 });
 
 it("needs a target for an alias that is valid and not its own name", () => {
-	assert.equal(check({ kind: "alias" }).target.id, "error.ddns-alias-target-required");
-	assert.equal(check({ kind: "alias", target: "bad target" }).target.id, "error.ddns-target-invalid");
-	assert.deepEqual(check({ kind: "alias", target: "Home.Example.com." }).target, {
+	assert.equal(alias({}).target.id, "error.ddns-alias-target-required");
+	assert.equal(alias({ target: "bad target" }).target.id, "error.ddns-target-invalid");
+	assert.deepEqual(alias({ target: "Home.Example.com." }).target, {
 		id: "error.ddns-alias-self",
 		values: { name: "home.example.com" },
 	});
-	assert.deepEqual(check({ kind: "alias", target: "lb.example.net" }), {});
+	assert.deepEqual(alias({ target: "lb.example.net" }), {});
 });
 
 it("refuses the suffix on an alias, and a target on an address record", () => {
-	assert.equal(
-		check({ kind: "alias", target: "lb.example.net", ipv6Suffix: "::1" }).ipv6Suffix.id,
-		"error.ddns-alias-no-ip",
-	);
+	assert.equal(alias({ target: "lb.example.net", ipv6Suffix: "::1" }).ipv6Suffix.id, "error.ddns-alias-no-ip");
 	assert.equal(check({ target: "lb.example.net" }).target.id, "error.ddns-address-no-target");
 });
 
 it("keeps a stored alias target and suffix state on a save that keeps them", () => {
 	const stored = { ...STORED, kind: "alias", target: "lb.example.net", ipVersion: "ipv4" };
-	assert.deepEqual(check({ kind: "alias", target: "lb.example.net", ttl: 300 }, { stored }), {});
-	assert.equal(check({ kind: "alias", target: "home.example.com" }, { stored }).target.id, "error.ddns-alias-self");
+	assert.deepEqual(alias({ target: "lb.example.net", ttl: 300 }, { stored }), {});
+	assert.equal(alias({ target: "home.example.com" }, { stored }).target.id, "error.ddns-alias-self");
 });
 
 it("checks the IPv6 suffix: only with IPv6 or both, valid, not zero", () => {
@@ -244,14 +244,82 @@ it("every error id the rules return has a text in en.json", () => {
 	collect(check({ name: "*.example.org", credentialId: 2 }));
 	collect(check({ name: "home.example.net" }));
 	collect(check({ name: "home.example.net", zone: "example.org" }));
-	collect(check({ kind: "alias" }));
-	collect(check({ kind: "alias", target: "bad target" }));
-	collect(check({ kind: "alias", target: "home.example.com", ipv6Suffix: "::1" }));
+	collect(alias({}));
+	collect(alias({ target: "bad target" }));
+	collect(alias({ target: "home.example.com", ipv6Suffix: "::1" }));
 	collect(check({ target: "lb.example.net", ipv6Suffix: "::1", ttl: 1 }));
 	collect(check({ ipVersion: "ipv6", ipv6Suffix: "1::1" }));
 	assert.ok(ids.size >= 10);
 	assert.deepEqual(
 		[...ids].filter((id) => !(id in en)),
+		[],
+	);
+});
+
+it("refuses an IP version on an alias unless a stored alias keeps it", () => {
+	assert.equal(
+		check({ kind: "alias", target: "lb.example.net", ipVersion: "ipv4" }).ipVersion.id,
+		"error.ddns-alias-no-ip",
+	);
+	const stored = { ...STORED, kind: "alias", target: "lb.example.net", ipVersion: "ipv4" };
+	assert.deepEqual(alias({ target: "lb.example.net", ipVersion: "ipv4" }, { stored }), {});
+	assert.equal(
+		alias({ target: "lb.example.net", ipVersion: "ipv6" }, { stored }).ipVersion.id,
+		"error.ddns-alias-no-ip",
+	);
+	// switching an address record to an alias runs the rule again
+	assert.equal(
+		check({ kind: "alias", target: "lb.example.net", ipVersion: "ipv4" }, { stored: STORED }).ipVersion.id,
+		"error.ddns-alias-no-ip",
+	);
+});
+
+it("switches a stored record between alias and address", () => {
+	const storedAlias = { ...STORED, kind: "alias", target: "lb.example.net" };
+	assert.deepEqual(check({ kind: "address", ipVersion: "ipv4", target: "" }, { stored: storedAlias }), {});
+	// the alias had no suffix: a suffix on the new address record needs IPv6
+	assert.equal(
+		check({ kind: "address", ipVersion: "ipv4", ipv6Suffix: "::1" }, { stored: storedAlias }).ipv6Suffix.id,
+		"error.ddns-suffix-needs-ipv6",
+	);
+	assert.deepEqual(check({ kind: "address", ipVersion: "ipv6", ipv6Suffix: "::1" }, { stored: storedAlias }), {});
+	const storedAddress = { ...STORED, ipVersion: "ipv6", ipv6Suffix: "::1" };
+	assert.equal(
+		alias({ target: "lb.example.net", ipv6Suffix: "::1" }, { stored: storedAddress }).ipv6Suffix.id,
+		"error.ddns-alias-no-ip",
+	);
+	assert.equal(alias({ target: "" }, { stored: storedAddress }).target.id, "error.ddns-alias-target-required");
+	assert.deepEqual(alias({ target: "lb.example.net" }, { stored: storedAddress }), {});
+});
+
+it("handles a stored alias with a stored suffix and a rename onto its target", () => {
+	const stored = { ...STORED, kind: "alias", target: "lb.example.com", ipv6Suffix: "::1" };
+	assert.deepEqual(alias({ target: "lb.example.com", ipv6Suffix: "::1" }, { stored }), {});
+	assert.equal(
+		alias({ target: "lb.example.com", ipv6Suffix: "::2" }, { stored }).ipv6Suffix.id,
+		"error.ddns-alias-no-ip",
+	);
+	const renamed = alias({ name: "lb.example.com", target: "lb.example.com" }, { stored });
+	assert.deepEqual(renamed.target, { id: "error.ddns-alias-self", values: { name: "lb.example.com" } });
+});
+
+it("every error key the backend raises has an English text in en.json", () => {
+	const root = new URL("../../../backend/", import.meta.url);
+	const KEY = /error\.(?:ddns-[a-z0-9-]+|dns-credential-in-use-ddns)/gu;
+	const keys = new Set();
+	const walk = (dir) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const path = new URL(entry.name + (entry.isDirectory() ? "/" : ""), dir);
+			if (entry.isDirectory()) walk(path);
+			else if (entry.name.endsWith(".js"))
+				for (const key of readFileSync(path, "utf8").match(KEY) ?? []) keys.add(key);
+		}
+	};
+	for (const folder of ["internal/", "lib/", "routes/"]) walk(new URL(folder, root));
+	assert.ok(keys.size >= 26, `found ${keys.size} keys`);
+	assert.ok(keys.has("error.ddns-suffix-needs-ipv6"));
+	assert.deepEqual(
+		[...keys].filter((key) => !(key in en)),
 		[],
 	);
 });

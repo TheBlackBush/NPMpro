@@ -177,6 +177,8 @@ const ddnsRecordValidate = (values, { providers, credentials, zones, stored = nu
 		} else if (renamed && target === name) {
 			errors.target = problem("error.ddns-alias-self", { name });
 		}
+		const keepsIp = stored !== null && !kindChanged && stored.ipVersion === values.ipVersion;
+		if (values.ipVersion !== undefined && !keepsIp) errors.ipVersion = problem("error.ddns-alias-no-ip");
 		if (suffix !== "" && (kindChanged || suffix !== trimmed(stored?.ipv6Suffix))) {
 			errors.ipv6Suffix = problem("error.ddns-alias-no-ip");
 		}
