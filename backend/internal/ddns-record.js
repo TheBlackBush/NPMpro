@@ -79,6 +79,8 @@ const iso = (value) => fromDbTime(value)?.toISOString() ?? null;
 const toPublic = (row) => {
 	const { meta, ...json } = row.toJSON();
 	for (const key of TIME_KEYS) json[key] = iso(row[key]);
+	// an alias follows no address: the column keeps its NOT NULL default, the answer says none
+	if (json.kind === "alias") Object.assign(json, { ip_version: null, ipv6_suffix: null });
 	return {
 		...json,
 		error_i18n: meta?.error_i18n ?? null,
@@ -181,13 +183,22 @@ const resolveSave = async (access, data, row) => {
 
 	const kind = data.kind ?? row?.kind ?? "address";
 	const kindChanged = row === null || kind !== row.kind;
+	const ttl = data.ttl !== undefined ? data.ttl : (row?.ttl ?? null);
+	if (ttl !== null && ttl < updater.minTtl && (row === null || ttl !== row.ttl || credentialChanged)) {
+		throw refusal(`${updater.label} takes a TTL of at least ${updater.minTtl} seconds`, "error.ddns-ttl-min", {
+			min: updater.minTtl,
+			provider: updater.label,
+		});
+	}
+	// the record belongs to its credential's owner (visibility follows the credential), whoever saves it
 	const values = {
+		owner_user_id: credential.owner_user_id,
 		dns_credential_id: credential.id,
 		provider: updater.id,
 		name,
 		zone,
 		kind,
-		ttl: data.ttl !== undefined ? data.ttl : (row?.ttl ?? null),
+		ttl,
 		enabled: data.enabled ?? row?.enabled ?? true,
 	};
 
@@ -211,9 +222,13 @@ const resolveSave = async (access, data, row) => {
 		if ((targetChanged || renamed) && target === name) {
 			throw refusal("An alias cannot point to its own name", "error.ddns-alias-self", { name });
 		}
+		// a CNAME cannot sit at the zone apex beside the zone's SOA and NS records
+		if ((kindChanged || renamed || zone !== row.zone) && name === zone) {
+			throw refusal(`An alias cannot be the zone apex ${zone}`, "error.ddns-alias-apex", { name });
+		}
 		const keepsIp = row !== null && !kindChanged && row.ip_version === data.ip_version;
 		if (
-			(data.ip_version !== undefined && !keepsIp) ||
+			(data.ip_version !== undefined && data.ip_version !== null && !keepsIp) ||
 			(suffix !== null && (kindChanged || suffix !== row?.ipv6_suffix))
 		) {
 			throw refusal(
@@ -295,7 +310,6 @@ const internalDdnsRecord = {
 				await internalDdnsRecord.assertNameFree(values.name);
 				return await ddnsRecordModel.query().insertAndFetch({
 					...values,
-					owner_user_id: access.token.getUserId(1),
 					state: values.enabled ? "pending" : "disabled",
 					failures: 0,
 				});
@@ -312,33 +326,41 @@ const internalDdnsRecord = {
 
 	update: async (access, data) => {
 		access.can("certificates:manage");
-		await internalDdnsRecord.rowOf(access, data.id);
-		const { saved, credential, toggled } = await recordLock(data.id, () =>
-			nameLock("names", async () => {
-				// the record may have been changed or deleted while this waited for the locks
-				const row = await internalDdnsRecord.rowOf(access, data.id);
-				const { values, credential: next, identityChanged } = await resolveSave(access, data, row);
-				if (values.name !== row.name) await internalDdnsRecord.assertNameFree(values.name, row.id);
-				const configChanged = ["kind", "target", "ip_version", "ipv6_suffix", "ttl"].some(
-					(key) => values[key] !== row[key],
-				);
-				const patch = { ...values };
-				const turnedOn = values.enabled && !row.enabled;
-				if (!values.enabled) patch.state = "disabled";
-				else if (identityChanged || configChanged || turnedOn) patch.state = "pending";
-				if (identityChanged) Object.assign(patch, { meta: null });
-				// the addresses and the check time belong to the old name or kind
-				if (identityChanged || values.kind !== row.kind) {
-					Object.assign(patch, { last_ipv4: null, last_ipv6: null, last_checked_on: null });
-				}
-				if (patch.state === "pending") {
-					const { error_i18n: _key, error_values: _values, ...rest } = row.meta ?? {};
-					Object.assign(patch, { failures: 0, next_try_on: null, error: null });
-					if (!identityChanged) patch.meta = rest;
-				}
-				const done = await ddnsRecordModel.query().patchAndFetchById(row.id, patch);
-				return { saved: done, credential: next, toggled: row.enabled !== done.enabled };
-			}),
+		const current = await internalDdnsRecord.rowOf(access, data.id);
+		// a move to another credential runs under its owner's lock (owner, then record), as a credential delete does
+		const movesTo =
+			data.dns_credential_id !== undefined && data.dns_credential_id !== current.dns_credential_id
+				? await internalDnsCredential.get(access, { id: data.dns_credential_id })
+				: null;
+		const underOwner = (fn) => (movesTo === null ? fn() : ownerLock(movesTo.owner_user_id, fn));
+		const { saved, credential, toggled } = await underOwner(() =>
+			recordLock(data.id, () =>
+				nameLock("names", async () => {
+					// the record may have been changed or deleted while this waited for the locks
+					const row = await internalDdnsRecord.rowOf(access, data.id);
+					const { values, credential: next, identityChanged } = await resolveSave(access, data, row);
+					if (values.name !== row.name) await internalDdnsRecord.assertNameFree(values.name, row.id);
+					const configChanged = ["kind", "target", "ip_version", "ipv6_suffix", "ttl"].some(
+						(key) => values[key] !== row[key],
+					);
+					const patch = { ...values };
+					const turnedOn = values.enabled && !row.enabled;
+					if (!values.enabled) patch.state = "disabled";
+					else if (identityChanged || configChanged || turnedOn) patch.state = "pending";
+					if (identityChanged) Object.assign(patch, { meta: null });
+					// the addresses and the check time belong to the old name or kind
+					if (identityChanged || values.kind !== row.kind) {
+						Object.assign(patch, { last_ipv4: null, last_ipv6: null, last_checked_on: null });
+					}
+					if (patch.state === "pending") {
+						const { error_i18n: _key, error_values: _values, ...rest } = row.meta ?? {};
+						Object.assign(patch, { failures: 0, next_try_on: null, error: null });
+						if (!identityChanged) patch.meta = rest;
+					}
+					const done = await ddnsRecordModel.query().patchAndFetchById(row.id, patch);
+					return { saved: done, credential: next, toggled: row.enabled !== done.enabled };
+				}),
+			),
 		);
 		const meta = auditMeta(saved, credential);
 		let action = "updated";

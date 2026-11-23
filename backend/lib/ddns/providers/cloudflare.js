@@ -70,6 +70,8 @@ export default {
 	ipv6: true,
 	adminOnly: false,
 	wildcards: true,
+	// the lowest TTL of a record that is not proxied on the plans below Enterprise (Cloudflare docs, TTL)
+	minTtl: 60,
 	/** The record's values (more than one: the engine marks it Failed), its ttl and proxied flag; null when missing */
 	read(args) {
 		return withZone(args, async ({ name, type, fields, fetch, meta }, zoneId) => {

@@ -27,6 +27,8 @@ export default {
 	ipv6: true,
 	adminOnly: false,
 	wildcards: false,
+	// rrset_ttl from 300 (Gandi LiveDNS API)
+	minTtl: 300,
 	async read({ zone, name, type, fields, fetch, meta }) {
 		refuseWildcard(name);
 		const res = await fetch(rrsetUrl(zone, name, type), { headers: bearer(fields.dns_gandi_token) });

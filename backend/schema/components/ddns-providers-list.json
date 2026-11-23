@@ -11,7 +11,8 @@
 			"proxied",
 			"ipv6",
 			"admin_only",
-			"wildcards"
+			"wildcards",
+			"min_ttl"
 		],
 		"additionalProperties": false,
 		"properties": {
@@ -61,6 +62,11 @@
 				"type": "boolean",
 				"example": true,
 				"description": "Whether a wildcard record name (`*.example.com`) is allowed"
+			},
+			"min_ttl": {
+				"type": "integer",
+				"example": 60,
+				"description": "The lowest TTL in seconds the provider takes; a record's TTL below it is refused"
 			}
 		}
 	}

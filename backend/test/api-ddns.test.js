@@ -205,6 +205,19 @@ it("keeps the rules of the two kinds: an alias needs a target and no IP settings
 	assert.equal(alias.kind, "alias");
 	assert.equal(alias.target, "lb.example.net");
 	assert.equal(alias.ipv6_suffix, null);
+	// an alias follows no address: it answers no IP version and takes null or none on a new save
+	assert.equal(alias.ip_version, null);
+	const copied = await add({
+		name: "copy.example.com",
+		dns_credential_id: made.id,
+		kind: "alias",
+		target: "lb.example.net",
+		ip_version: null,
+		ipv6_suffix: null,
+	});
+	assert.equal(copied.status, 201, copied.text);
+	assert.equal(copied.body.ip_version, null);
+	assert.equal((await admin.put(`${RECORDS}/${copied.body.id}`, { ip_version: null, ttl: 120 })).status, 200);
 	const refuse = async (body, key) => {
 		const done = await add({ dns_credential_id: made.id, ...body });
 		assert.equal(done.status, 400, `${done.text} ${JSON.stringify(body)}`);
@@ -219,6 +232,12 @@ it("keeps the rules of the two kinds: an alias needs a target and no IP settings
 	);
 	await refuse({ name: "a5.example.com", kind: "alias", target: "x.example.net", ipv6_suffix: "::1" }, undefined);
 	await refuse({ name: "a6.example.com", target: "x.example.net" }, "error.ddns-address-no-target");
+	// a CNAME cannot sit at the zone apex
+	await refuse({ name: "example.com", kind: "alias", target: "x.example.net" }, "error.ddns-alias-apex");
+	const apex = await addOk({ name: "example.com", dns_credential_id: made.id });
+	const toApexAlias = await admin.put(`${RECORDS}/${apex.id}`, { kind: "alias", target: "x.example.net" });
+	assert.equal(toApexAlias.status, 400, toApexAlias.text);
+	assert.equal(toApexAlias.body.error.message_i18n, "error.ddns-alias-apex");
 	// a stored alias passes a save that keeps its values
 	const kept = await admin.put(`${RECORDS}/${alias.id}`, {
 		kind: "alias",
@@ -238,7 +257,7 @@ it("checks the IP version, the IPv6 suffix, the TTL and the kind at the schema a
 	for (const body of [
 		{ ip_version: "ipv5" },
 		{ kind: "cname" },
-		{ ttl: 30 },
+		{ ttl: 29 },
 		{ ttl: 90_000 },
 		{ enabled: "maybe" },
 		{ extra: 1 },
@@ -246,6 +265,10 @@ it("checks the IP version, the IPv6 suffix, the TTL and the kind at the schema a
 		await refuse(body);
 	}
 	assert.equal(await refuse({ ipv6_suffix: "::1" }), "error.ddns-suffix-needs-ipv6");
+	// each provider has its own lowest TTL (Cloudflare 60)
+	const low = await add({ name: "v.example.com", dns_credential_id: made.id, ttl: 30 });
+	assert.equal(low.body.error.message_i18n, "error.ddns-ttl-min");
+	assert.deepEqual(low.body.error.message_values, { min: 60, provider: "Cloudflare" });
 	assert.equal(await refuse({ ip_version: "ipv6", ipv6_suffix: "not-a-suffix" }), "error.ddns-suffix-invalid");
 	assert.equal(await refuse({ ip_version: "both", ipv6_suffix: "::" }), "error.ddns-suffix-invalid");
 	const good = await addOk({
@@ -507,6 +530,23 @@ it("hides another owner's records and credentials, and answers 404 on a direct r
 	assert.equal((await own.get("/nginx/ddns/status")).body.records, 1);
 	// the administrator sees both
 	assert.equal((await admin.get(`${RECORDS}/${myRecord.id}`)).status, 200);
+});
+
+it("gives a record its credential's owner, also when an administrator saves it or moves it", async () => {
+	const own = await api.limited({ visibility: "user", certificates: "manage" });
+	const theirs = await withDomain(own, "theirs.example");
+	const record = await addOk({ name: "by-admin.theirs.example", dns_credential_id: theirs.id });
+	assert.equal(record.owner_user_id, theirs.owner_user_id);
+	assert.notEqual(record.owner_user_id, (await admin.get("/users/me")).body.id);
+	assert.deepEqual(
+		(await own.get(RECORDS)).body.map((row) => row.name),
+		["by-admin.theirs.example"],
+	);
+	const mine = await withDomain(admin, "theirs.example");
+	const moved = await admin.put(`${RECORDS}/${record.id}`, { dns_credential_id: mine.id });
+	assert.equal(moved.status, 200, moved.text);
+	assert.equal(moved.body.owner_user_id, mine.owner_user_id);
+	assert.equal((await own.get(RECORDS)).body.length, 0);
 });
 
 it("follows the certificates permission: view reads, manage writes, hidden refuses, a view token reads only", async () => {

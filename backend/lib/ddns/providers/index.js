@@ -34,6 +34,7 @@ const PROVIDER_LIST = Object.freeze(
 		ipv6: provider.ipv6,
 		admin_only: provider.adminOnly,
 		wildcards: provider.wildcards,
+		min_ttl: provider.minTtl,
 	})),
 );
 

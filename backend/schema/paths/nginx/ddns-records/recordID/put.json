@@ -125,14 +125,18 @@
 							"description": "The CNAME target of an alias (required for one); an address record takes none (null is the same as none). It cannot be the record's own name"
 						},
 						"ip_version": {
-							"type": "string",
+							"type": [
+								"string",
+								"null"
+							],
 							"enum": [
 								"ipv4",
 								"ipv6",
-								"both"
+								"both",
+								null
 							],
 							"example": "ipv4",
-							"description": "For an address record: `ipv4` (the default), `ipv6` or `both`; an alias takes none"
+							"description": "For an address record: `ipv4` (the default), `ipv6` or `both`; an alias takes none (null or left out)"
 						},
 						"ipv6_suffix": {
 							"type": [
@@ -148,10 +152,10 @@
 								"integer",
 								"null"
 							],
-							"minimum": 60,
+							"minimum": 30,
 							"maximum": 86400,
 							"example": null,
-							"description": "The TTL in seconds; null keeps the provider's default or the record's current TTL"
+							"description": "The TTL in seconds, at least the provider's `min_ttl`; null keeps the provider's default or the record's current TTL"
 						},
 						"enabled": {
 							"type": "boolean",

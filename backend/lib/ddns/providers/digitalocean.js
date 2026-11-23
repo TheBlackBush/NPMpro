@@ -27,6 +27,8 @@ export default {
 	ipv6: true,
 	adminOnly: false,
 	wildcards: true,
+	// "All DNS records require a minimum TTL value of 30 seconds" (DigitalOcean DNS limits)
+	minTtl: 30,
 	/** The list filter takes the full name, also for a wildcard (`*.<zone>`) */
 	async read({ zone, name, type, fields, fetch, meta }) {
 		const res = await fetch(`${recordsUrl(zone)}?type=${type}&name=${encodeURIComponent(name)}`, {

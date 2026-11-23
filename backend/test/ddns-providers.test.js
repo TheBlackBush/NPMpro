@@ -56,7 +56,12 @@ describe("registry", () => {
 			ipv6: true,
 			admin_only: false,
 			wildcards: true,
+			min_ttl: 60,
 		});
+		assert.deepEqual(
+			PROVIDER_LIST.map((p) => p.min_ttl),
+			[60, 30, 60, 300],
+		);
 		assert.equal(PROVIDER_LIST.filter((p) => p.proxied).length, 1);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.wildcards),

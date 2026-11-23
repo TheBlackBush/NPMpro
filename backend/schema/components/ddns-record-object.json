@@ -75,14 +75,18 @@
 			"description": "The CNAME target of an alias; null for an address record"
 		},
 		"ip_version": {
-			"type": "string",
+			"type": [
+				"string",
+				"null"
+			],
 			"enum": [
 				"ipv4",
 				"ipv6",
-				"both"
+				"both",
+				null
 			],
 			"example": "ipv4",
-			"description": "Which address records an address record keeps: `ipv4` (A), `ipv6` (AAAA) or `both`; an alias always shows `ipv4` and ignores it"
+			"description": "Which address records an address record keeps: `ipv4` (A), `ipv6` (AAAA) or `both`; null for an alias"
 		},
 		"ipv6_suffix": {
 			"type": [
@@ -91,17 +95,17 @@
 			],
 			"maxLength": 64,
 			"example": null,
-			"description": "An IPv6 interface id such as `::1` that replaces the last 64 bits of the detected address; null for the detected address as it is"
+			"description": "An IPv6 interface id such as `::1` that replaces the last 64 bits of the detected address; null for the detected address as it is, and for an alias"
 		},
 		"ttl": {
 			"type": [
 				"integer",
 				"null"
 			],
-			"minimum": 60,
+			"minimum": 30,
 			"maximum": 86400,
 			"example": null,
-			"description": "The TTL in seconds the record is written with; null keeps the provider's default or the record's current TTL"
+			"description": "The TTL in seconds the record is written with, at least the provider's `min_ttl`; null keeps the provider's default or the record's current TTL"
 		},
 		"enabled": {
 			"type": "boolean",
