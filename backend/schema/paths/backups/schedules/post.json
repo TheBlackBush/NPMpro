@@ -84,6 +84,7 @@
 									"certificates",
 									"access_lists",
 									"dns_credentials",
+									"ddns",
 									"users",
 									"settings_runtime",
 									"settings_default_site",

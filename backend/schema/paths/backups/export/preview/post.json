@@ -33,7 +33,8 @@
 								"streams",
 								"certificates",
 								"access_lists",
-								"dns_credentials"
+								"dns_credentials",
+								"ddns"
 							],
 							"description": "The page kind to export; dead_hosts are the 404 hosts."
 						},

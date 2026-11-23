@@ -10,6 +10,8 @@ import { CATEGORIES, LEGACY_CROWDSEC_CONF, RESTORE_ORDER, TYPES } from "./types.
 const DOMAIN_HOST_TYPES = ["proxy_hosts", "redirection_hosts", "dead_hosts"];
 const HOST_TYPES = [...DOMAIN_HOST_TYPES, "streams"];
 const LINK_TYPES = ["certificates", "access_lists", "dns_credentials"];
+// the types whose clash can be replaced: the hosts and the DDNS records
+const REPLACEABLE_TYPES = [...HOST_TYPES, "ddns"];
 const SETTINGS_TYPES = CATEGORIES.find(({ id }) => id === "settings").types.filter(
 	(typeId) => typeId !== SCHEDULE_TYPE,
 );
@@ -22,6 +24,7 @@ const MATCH_CHOICES = {
 	redirection_hosts: ["skip", "replace"],
 	dead_hosts: ["skip", "replace"],
 	streams: ["skip", "replace"],
+	ddns: ["skip", "replace"],
 	certificates: ["existing", "add"],
 	access_lists: ["existing", "add"],
 	dns_credentials: ["existing", "add"],
@@ -33,6 +36,7 @@ const INSTANCE_TABLES = [
 	"certificate",
 	"access_list",
 	"npmpro_dns_credential",
+	"npmpro_ddns_record",
 	"proxy_host",
 	"redirection_host",
 	"dead_host",
@@ -136,6 +140,8 @@ const candidatesFor = (typeId, { instance, scope }) => {
 const findTargets = (typeId, row, ctx) => {
 	if (DOMAIN_HOST_TYPES.includes(typeId)) return hostClashes(row, ctx.instance);
 	if (typeId === "streams") return streamClashes(row, ctx.instance);
+	if (typeId === "ddns")
+		return nameMatch(row, instanceRows(ctx.instance, typeId)).map((other) => ({ type: typeId, row: other }));
 	if (typeId === "users")
 		return userMatch(row, instanceRows(ctx.instance, "users")).map((other) => ({ type: typeId, row: other }));
 	const candidates = candidatesFor(typeId, ctx);
@@ -170,7 +176,7 @@ const matchItem = (typeId, row, ctx) => {
 	const [first] = targets;
 	let choices = [...MATCH_CHOICES[typeId]];
 	// a replace keeps the target's id, so it needs a single target of the same type
-	if (HOST_TYPES.includes(typeId) && (targets.length > 1 || first.type !== typeId)) choices = ["skip"];
+	if (REPLACEABLE_TYPES.includes(typeId) && (targets.length > 1 || first.type !== typeId)) choices = ["skip"];
 	if (typeId === "users" && same(first.row.id, ctx.scope.adminUserId)) choices = ["existing"];
 	const target = { type: first.type, id: first.row.id, label: targetLabel(first, ctx.scope) };
 	const item = { ...base, action: choices[0], reason: reasonOf(typeId, targets.length), target, choices };
@@ -180,7 +186,7 @@ const matchItem = (typeId, row, ctx) => {
 // page imports: no replace of a host the user may not edit; a type the user cannot manage is only matched
 const limitByScope = ({ item, targetRow }, scope) => {
 	if (!scope.page) return item;
-	if (HOST_TYPES.includes(item.type) && item.target) {
+	if (REPLACEABLE_TYPES.includes(item.type) && item.target) {
 		return scope.canEdit(ITEM_TYPES[item.target.type].table, targetRow) ? item : { ...item, choices: ["skip"] };
 	}
 	if (LINK_TYPES.includes(item.type) && !scope.canManage(item.type)) {
@@ -192,6 +198,18 @@ const limitByScope = ({ item, targetRow }, scope) => {
 };
 
 // the user's choice when it is one the item offers; an unticked linked item uses its match or is left out
+// a DDNS record is written through its credential: one whose credential is neither added nor matched here is skipped
+const settleRecords = (items, data) => {
+	const byKey = new Map(items.map((item) => [item.key, item]));
+	return items.map((item) => {
+		if (!(item.type === "ddns" && ACTIVE.has(item.action))) return item;
+		const credentialId = rowOf(data, item)?.dns_credential_id;
+		if (credentialId === null || credentialId === undefined) return item;
+		if (KEPT_TARGETS.has(byKey.get(`dns_credentials:${credentialId}`)?.action)) return item;
+		return { ...item, action: "skip", reason: "credential-missing", choices: ["skip"], default: "skip" };
+	});
+};
+
 const applyChoice = (item, choice) => {
 	if (item.linked && choice === "unticked")
 		return { ...item, unticked: true, action: item.target ? "existing" : "skip" };
@@ -459,9 +477,11 @@ const planMerge = ({ data, instance, stageFiles, types, items, choices, scope, s
 	};
 	const planned = HOST_TYPES.flatMap((typeId) => planRows(typeId, selectedRows(typeId, ctx), ctx));
 	const hostLinks = linkedOf(activeData(planned, ctx.data));
+	planned.push(...planRows("ddns", selectedRows("ddns", ctx), ctx));
 	planned.push(...planLinked("certificates", hostLinks.certificates, ctx));
 	planned.push(...planLinked("access_lists", hostLinks.access_lists, ctx));
 	planned.push(...planLinked("dns_credentials", linkedOf(activeData(planned, ctx.data)).dns_credentials, ctx));
+	planned.splice(0, planned.length, ...settleRecords(planned, ctx.data));
 	planned.push(...planRows("users", selectedRows("users", ctx), ctx));
 	planned.push(
 		...[...settingDiffs(ctx), ...scheduleDiffs(ctx), ...fileDiffs(ctx)].map((item) =>

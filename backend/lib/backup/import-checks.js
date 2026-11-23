@@ -1,6 +1,7 @@
 import common from "../../schema/common.json" with { type: "json" };
 import accessListSchema from "../../schema/components/access-list-object.json" with { type: "json" };
 import certificateSchema from "../../schema/components/certificate-object.json" with { type: "json" };
+import ddnsRecordSchema from "../../schema/components/ddns-record-object.json" with { type: "json" };
 import deadHostSchema from "../../schema/components/dead-host-object.json" with { type: "json" };
 import dnsCredentialSchema from "../../schema/components/dns-credential-object.json" with { type: "json" };
 import proxyHostSchema from "../../schema/components/proxy-host-object.json" with { type: "json" };
@@ -38,6 +39,7 @@ const LINKED = {
 	certificates: certificateSchema,
 	access_lists: accessListSchema,
 	dns_credentials: dnsCredentialSchema,
+	ddns: ddnsRecordSchema,
 };
 const LOCATION_SCHEMA = proxyHostSchema.properties.locations.items;
 const ACCESS_CHILDREN = {
@@ -200,6 +202,18 @@ const checkStreamPort = (row) => {
 	if (enabled && reservedPortClash(row, effectiveEnv())) throw new FieldError("incoming_port");
 };
 
+// the rules of a DDNS record save: a name as the API stores it (wildcards allowed), an alias with a target of its
+// own, an address record without one
+const checkDdnsRecord = (row) => {
+	const stored = (text) => normalizeDomainName(text).name === text && !normalizeDomainName(text).error;
+	const name = typeof row.name === "string" ? row.name : "";
+	if (!stored(name.startsWith("*.") ? name.slice(2) : name)) throw new FieldError("name");
+	const hasTarget = row.target !== null && row.target !== undefined && row.target !== "";
+	if (row.kind === "alias") {
+		if (!(hasTarget && stored(String(row.target))) || row.target === name) throw new FieldError("target");
+	} else if (hasTarget) throw new FieldError("target");
+};
+
 // the values of one row as the API schemas take them from anyone, administrators too
 const checkRowValues = ({ typeId, row, data }) => {
 	if (Object.hasOwn(HOSTS, typeId)) {
@@ -231,6 +245,7 @@ const checkRowValues = ({ typeId, row, data }) => {
 		return;
 	}
 	checkSchema(LINKED[typeId], row);
+	if (typeId === "ddns") checkDdnsRecord(row);
 	if (typeId === "dns_credentials") {
 		const domains = (data.dns_credentials?.npmpro_dns_domain ?? []).filter(
 			(child) => String(child.dns_credential_id) === String(row.id),

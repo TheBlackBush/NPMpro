@@ -47,6 +47,7 @@ const REASON_LOOKS = {
 	"domain-in-use": { variant: "outline", className: TINT.warning },
 	"domain-in-use-several": { variant: "outline", className: TINT.warning },
 	"port-in-use": { variant: "outline", className: TINT.warning },
+	"credential-missing": { variant: "outline", className: TINT.warning },
 	"same-certificate": { variant: "secondary" },
 	"same-name": { variant: "secondary" },
 	"same-email": { variant: "secondary" },

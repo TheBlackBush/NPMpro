@@ -23,6 +23,7 @@ const ITEM_TYPES = {
 		table: "npmpro_dns_credential",
 		children: [["npmpro_dns_domain", "dns_credential_id"]],
 	},
+	ddns: { table: "npmpro_ddns_record", children: [] },
 	users: {
 		table: "user",
 		children: [
@@ -63,7 +64,7 @@ const itemLabel = (typeId, row) => {
 	if (HOST_TYPES.includes(typeId) && typeId !== "streams") label = domainsOf(row).join(", ");
 	else if (typeId === "certificates") label = domainsOf(row).join(", ") || row.nice_name || "";
 	else if (typeId === "streams") label = row.incoming_port ? streamLabel(row) : "";
-	else if (typeId === "access_lists" || typeId === "dns_credentials") label = row.name || "";
+	else if (typeId === "access_lists" || typeId === "dns_credentials" || typeId === "ddns") label = row.name || "";
 	else if (typeId === "users") label = row.name && row.email ? `${row.name} (${row.email})` : "";
 	return label || `#${row.id}`;
 };
@@ -125,6 +126,11 @@ const linkedOf = (data) => {
 	for (const row of data.certificates?.certificate ?? []) {
 		if (row.npmpro_dns_credential_id !== null && row.npmpro_dns_credential_id !== undefined) {
 			add(linked.dns_credentials, row.npmpro_dns_credential_id, `certificates:${row.id}`);
+		}
+	}
+	for (const row of data.ddns?.npmpro_ddns_record ?? []) {
+		if (row.dns_credential_id !== null && row.dns_credential_id !== undefined) {
+			add(linked.dns_credentials, row.dns_credential_id, `ddns:${row.id}`);
 		}
 	}
 	return linked;

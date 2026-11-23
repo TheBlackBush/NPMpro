@@ -12,6 +12,7 @@ const CATEGORIES = [
 	{ id: "certificates", types: ["certificates"] },
 	{ id: "access_lists", types: ["access_lists"] },
 	{ id: "dns_credentials", types: ["dns_credentials"] },
+	{ id: "ddns", types: ["ddns"] },
 	{ id: "users", types: ["users"] },
 	{
 		id: "settings",
@@ -31,6 +32,7 @@ const CATEGORIES = [
 const RESTORE_ORDER = [
 	"users",
 	"dns_credentials",
+	"ddns",
 	"certificates",
 	"access_lists",
 	"proxy_hosts",
@@ -166,6 +168,31 @@ const withoutRunState = (rowsByTable) =>
 
 const hasText = (value) => typeof value === "string" && value !== "";
 
+// the engine's last error is kept in the meta next to the provider ids and the proxied flag: only that goes
+const restartedMeta = (meta) => {
+	let value = meta;
+	if (typeof meta === "string") {
+		try {
+			value = JSON.parse(meta);
+		} catch {
+			return null;
+		}
+	}
+	if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+	const { error_i18n: _key, error_values: _values, ...rest } = value;
+	return typeof meta === "string" ? JSON.stringify(rest) : rest;
+};
+
+// a restored DDNS record is checked again by the next cycle (a disabled one stays disabled)
+const restartedRecord = (row) => ({
+	...row,
+	state: Number(row.enabled) ? "pending" : "disabled",
+	failures: 0,
+	next_try_on: null,
+	error: null,
+	meta: restartedMeta(row.meta),
+});
+
 const scheduleSecrets = {
 	export: (rowsByTable, box) =>
 		mapRows(withoutRunState(rowsByTable), SCHEDULE_TABLE, (row) =>
@@ -255,6 +282,14 @@ const TYPES = {
 					isSealed(row.values) ? row : { ...row, values: box.encrypt(row.values ?? {}) },
 				),
 		},
+	},
+	// the records hold no secret yet (the custom provider's sealed URL comes with PR 6); the update history is not
+	// backed up. A restored record starts over: the next cycle checks it
+	ddns: {
+		tables: [{ table: "npmpro_ddns_record" }],
+		files: NO_FILES,
+		secrets: NO_SECRETS,
+		restoreRows: (rowsByTable) => mapRows(rowsByTable, "npmpro_ddns_record", restartedRecord),
 	},
 	users: {
 		tables: [{ table: "user" }, { table: "auth" }, { table: "user_permission" }],

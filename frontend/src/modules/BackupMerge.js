@@ -40,6 +40,7 @@ const ITEM_TYPES = [
 	"certificates",
 	"access_lists",
 	"dns_credentials",
+	"ddns",
 	"users",
 ];
 

@@ -28,7 +28,8 @@
 					"streams",
 					"certificates",
 					"access_lists",
-					"dns_credentials"
+					"dns_credentials",
+					"ddns"
 				],
 				"description": "Page kind"
 			}
