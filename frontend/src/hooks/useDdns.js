@@ -15,7 +15,8 @@ import {
 // every change of a record (and Update now, Check now) can change the list, the record, the status and the audit log
 const DDNS_KEYS = [["ddns-records"], ["ddns-record"], ["ddns-status"], ["ddns-history"], ["audit-logs"]];
 
-// the updater works in the background: a mounted list and status page ask again every 30 seconds
+// the updater works in the background: a mounted list and status page ask again every 30 seconds (the tab strip's
+// count passes refetchInterval: false, so only the open Dynamic DNS tab polls)
 const POLL_MS = 30_000;
 
 const useDdnsRecords = (expand, options = {}) =>
@@ -63,11 +64,12 @@ const useDdnsProviders = (options = {}) =>
 		...options,
 	});
 
+// also after a failure: a refused Update now (cooldown, pause) still stored when the record was last checked
 const useDdnsMutation = (mutationFn) => {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn,
-		onSuccess: () => Promise.all(DDNS_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+		onSettled: () => Promise.all(DDNS_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
 	});
 };
 

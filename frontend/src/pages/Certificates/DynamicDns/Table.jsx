@@ -114,6 +114,13 @@ function RecordState({ record, updating }) {
 
 const columnHelper = createColumnHelper();
 
+// the Address cell on a phone's summary line: the alias target or the written addresses
+const addressSummary = (row) => {
+	const shown = recordAddressOf(row);
+	if (shown.alias !== undefined) return shown.alias ? `→ ${shown.alias}` : null;
+	return shown.addresses.length > 0 ? shown.addresses.join(", ") : null;
+};
+
 // Shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar.
 // The row handlers reach the cells through the table meta (`meta.actions`, `meta.updatingId`), see hostColumns.jsx.
 export function useColumns() {
@@ -131,7 +138,7 @@ export function useColumns() {
 			}),
 			columnHelper.accessor((row) => providerLabel(row.provider), {
 				id: "provider",
-				meta: { mobile: "summary" },
+				meta: { mobile: "summary", summaryText: (row) => providerLabel(row.provider) },
 				header: intl.formatMessage({ id: "ddns.column.provider" }),
 				cell: (info) => (
 					<>
@@ -158,7 +165,7 @@ export function useColumns() {
 			columnHelper.accessor((row) => row.target ?? row.lastIpv4 ?? row.lastIpv6 ?? "", {
 				id: "address",
 				enableSorting: false,
-				meta: { mobile: "summary" },
+				meta: { mobile: "summary", summaryText: addressSummary },
 				header: intl.formatMessage({ id: "ddns.column.address" }),
 				cell: (info) => {
 					const shown = recordAddressOf(info.row.original);
@@ -180,7 +187,8 @@ export function useColumns() {
 			columnHelper.accessor((row) => row.state, {
 				id: "state",
 				enableSorting: false,
-				meta: { mobile: "summary" },
+				// on a phone the state shows under the name, as the host lists show their status
+				meta: { mobile: "title-below" },
 				header: intl.formatMessage({ id: "ddns.column.state" }),
 				cell: (info) => (
 					<RecordState

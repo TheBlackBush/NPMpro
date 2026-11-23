@@ -28,7 +28,8 @@ export function CertificateTabs() {
 	const certificates = useCertificates(CERTIFICATE_LIST_EXPAND);
 	const dnsCredentials = useDnsCredentials(DNS_CREDENTIAL_LIST_EXPAND);
 	const dnsDomains = useDnsDomains(DNS_DOMAIN_LIST_EXPAND);
-	const ddnsRecords = useDdnsRecords(DDNS_RECORD_LIST_EXPAND);
+	// the count reads the cache and asks once; only the open Dynamic DNS tab polls
+	const ddnsRecords = useDdnsRecords(DDNS_RECORD_LIST_EXPAND, { refetchInterval: false });
 	const counts = {
 		certificates: certificates.data?.length,
 		"dns-credentials": dnsCredentials.data?.length,
