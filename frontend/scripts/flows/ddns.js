@@ -41,9 +41,10 @@ const closeAsking = async (page, expectQuestion) => {
 		throw new Error(`an unsaved-changes question stayed open (expected ${expectQuestion})`);
 };
 
-// types into a name picker (a button that opens a list with a search box); Enter adds the name, else the list is
-// dismissed with the text still typed, which Save must keep
-const typeName = async (page, field, text, enter) => {
+// types into a name picker (a button that opens a list with a search box) and leaves it with a key: Enter adds the
+// name, Tab commits the typed text the same way, Escape dismisses the list with the text still typed, which Save
+// must keep
+const typeName = async (page, field, text, key) => {
 	const search = page.locator("[cmdk-input]");
 	const open = async () => {
 		await recordWindow(page).locator(field).click();
@@ -55,9 +56,9 @@ const typeName = async (page, field, text, enter) => {
 	// the blur of the field before can add its error line and move this field under the click: click again
 	if (!((await open()) || (await open()))) await open();
 	await search.fill(text);
-	await search.press(enter ? "Enter" : "Escape");
+	await search.press(key);
 	await search.waitFor({ state: "detached" });
-	if (enter) await recordWindow(page).locator(field).getByText(text, { exact: true }).waitFor();
+	if (key !== "Escape") await recordWindow(page).locator(field).getByText(text, { exact: true }).waitFor();
 };
 
 const addRecord = async (page) => {
@@ -105,7 +106,7 @@ async function dynamicDns({ admin }) {
 		await closeAsking(page, false);
 		await addRecord(page);
 		const win = recordWindow(page);
-		await typeName(page, "#ddnsName", RECORD, true);
+		await typeName(page, "#ddnsName", RECORD, "Enter");
 		await win.locator("#dnsCredential").getByText(NAME, { exact: false }).waitFor();
 		await win.locator("#ddnsZone").waitFor();
 		if ((await win.locator("#ddnsZone").inputValue()) !== ZONE)
@@ -134,21 +135,25 @@ async function dynamicDns({ admin }) {
 		await page.keyboard.press("Escape");
 		await windowClosed(page);
 
-		// 5. an alias on a provider without wildcards: typed names are kept on Save (no Enter), a wildcard is refused
+		// 5. an alias on a provider without wildcards: Tab commits a typed target, a name left with Escape is kept on
+		// Save, a wildcard is refused. The alias is saved disabled: an enabled alias needs no address, so a background
+		// check could read it at the provider
 		await addRecord(page);
 		await chooseCredential(page, NAME_GANDI);
 		await win.getByRole("radio", { name: "Alias (CNAME)", exact: true }).click();
-		await typeName(page, "#ddnsTarget", RECORD, false);
-		await typeName(page, "#ddnsName", `*.${ALIAS}`, false);
+		await typeName(page, "#ddnsTarget", RECORD, "Tab");
+		await typeName(page, "#ddnsName", `*.${ALIAS}`, "Escape");
 		await win.getByRole("button", { name: "Save", exact: true }).click();
 		await win.getByText("does not allow wildcard records").first().waitFor();
 		if (!(await win.isVisible())) throw new Error("the window closed on a refused wildcard");
-		await typeName(page, "#ddnsName", ALIAS, true);
+		await typeName(page, "#ddnsName", ALIAS, "Enter");
+		await win.locator("#ddnsEnabled").click();
+		if (await win.locator("#ddnsEnabled").isChecked()) throw new Error("the Enabled switch did not turn off");
 		await withToast(page, "saved", () => win.getByRole("button", { name: "Save", exact: true }).click());
 		await windowClosed(page);
-		await rowShows(page, ALIAS, "Pending");
+		await rowShows(page, ALIAS, "Disabled");
 		const stored = (await api("GET", "/nginx/ddns-records")).find((row) => row.name === ALIAS);
-		if (stored?.kind !== "alias" || stored.target !== RECORD)
+		if (stored?.kind !== "alias" || stored.target !== RECORD || stored.enabled !== false)
 			throw new Error(`the alias is stored as ${JSON.stringify(stored)}`);
 
 		// 6. the unsaved-changes question: none for a window opened and closed, one for typed text
@@ -158,14 +163,14 @@ async function dynamicDns({ admin }) {
 		await closeAsking(page, false);
 		await rowAction(page, ALIAS, "Edit");
 		await recordWindow(page).waitFor();
-		await typeName(page, "#ddnsTarget", `typed.${ZONE}`, false);
+		await typeName(page, "#ddnsTarget", `typed.${ZONE}`, "Escape");
 		await closeAsking(page, true);
 		if ((await api("GET", "/nginx/ddns-records")).find((row) => row.name === ALIAS).target !== RECORD)
 			throw new Error("the discarded target was stored");
 
-		// 7. Disable, then Delete (the question names the record)
-		await rowAction(page, ALIAS, "Disable");
-		await rowShows(page, ALIAS, "Disabled");
+		// 7. Disable the address record, then Delete the alias (the question names the record)
+		await rowAction(page, RECORD, "Disable");
+		await rowShows(page, RECORD, "Disabled");
 		await rowAction(page, ALIAS, "Delete");
 		const ask = page.getByRole("alertdialog");
 		await ask.getByText(ALIAS, { exact: false }).first().waitFor();
