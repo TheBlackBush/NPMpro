@@ -43,6 +43,24 @@
 	},
 	{
 		"type": "index",
+		"name": "npmpro_ddns_history_record",
+		"table": "npmpro_ddns_history",
+		"sql": "CREATE INDEX `npmpro_ddns_history_record` on `npmpro_ddns_history` (`ddns_record_id`, `id`)"
+	},
+	{
+		"type": "index",
+		"name": "npmpro_ddns_record_credential",
+		"table": "npmpro_ddns_record",
+		"sql": "CREATE INDEX `npmpro_ddns_record_credential` on `npmpro_ddns_record` (`dns_credential_id`)"
+	},
+	{
+		"type": "index",
+		"name": "npmpro_ddns_record_name",
+		"table": "npmpro_ddns_record",
+		"sql": "CREATE UNIQUE INDEX `npmpro_ddns_record_name` on `npmpro_ddns_record` (`name`)"
+	},
+	{
+		"type": "index",
 		"name": "npmpro_dns_credential_owner_user_id_name_unique",
 		"table": "npmpro_dns_credential",
 		"sql": "CREATE UNIQUE INDEX `npmpro_dns_credential_owner_user_id_name_unique` on \"npmpro_dns_credential\" (`owner_user_id`, `name`)"
@@ -220,6 +238,18 @@
 		"name": "npmpro_backup_schedule",
 		"table": "npmpro_backup_schedule",
 		"sql": "CREATE TABLE `npmpro_backup_schedule` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `owner_user_id` integer not null, `name` varchar(60) not null, `enabled` boolean not null default '1', `frequency` varchar(10) not null, `every_hours` integer null, `time` varchar(5) null, `weekday` integer null, `month_day` integer null, `types` text not null, `protection` varchar(12) not null, `passphrase` text null, `keep` integer not null, `next_run_at` datetime null, `last_run_at` datetime null, `last_status` varchar(10) null, `last_error` text null, `last_file` varchar(255) null, `last_size` bigint null, `last_duration_ms` integer null)"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_ddns_history",
+		"table": "npmpro_ddns_history",
+		"sql": "CREATE TABLE `npmpro_ddns_history` (`id` integer not null primary key autoincrement, `ddns_record_id` integer not null, `created_on` datetime not null, `kind` varchar(16) not null, `ip_version` varchar(8) null, `old_ip` varchar(45) null, `new_ip` varchar(45) null, `message` text null, constraint `npmpro_ddns_history_record_fk` foreign key(`ddns_record_id`) references `npmpro_ddns_record`(`id`) on delete CASCADE)"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_ddns_record",
+		"table": "npmpro_ddns_record",
+		"sql": "CREATE TABLE `npmpro_ddns_record` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `owner_user_id` integer not null, `dns_credential_id` integer null, `provider` varchar(64) not null, `name` varchar(253) not null, `zone` varchar(253) not null, `kind` varchar(16) not null default 'address', `target` varchar(253) null, `ip_version` varchar(8) not null default 'ipv4', `ipv6_suffix` varchar(64) null, `ttl` integer null, `enabled` boolean not null default '1', `state` varchar(16) not null default 'pending', `last_ipv4` varchar(45) null, `last_ipv6` varchar(45) null, `last_checked_on` datetime null, `last_changed_on` datetime null, `next_try_on` datetime null, `failures` integer not null default '0', `error` text null, `meta` text null, `secret` text null, constraint `npmpro_ddns_record_credential_fk` foreign key(`dns_credential_id`) references `npmpro_dns_credential`(`id`))"
 	},
 	{
 		"type": "table",

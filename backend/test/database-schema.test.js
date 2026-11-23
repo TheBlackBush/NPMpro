@@ -22,6 +22,8 @@ const KNOWN = [
 	"auth",
 	"certificate",
 	"npmpro_backup_schedule",
+	"npmpro_ddns_history",
+	"npmpro_ddns_record",
 	"npmpro_dns_credential",
 	"npmpro_dns_domain",
 	"npmpro_location",
