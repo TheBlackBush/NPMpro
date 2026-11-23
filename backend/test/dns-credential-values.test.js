@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import dnsFields from "../certbot/dns-fields.json" with { type: "json" };
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
-import { buildValues, getFieldDefinition, publicView, toIni } from "../lib/dns-credential-values.js";
+import {
+	buildValues,
+	credentialFields,
+	getFieldDefinition,
+	publicView,
+	secretValuesOf,
+	toIni,
+} from "../lib/dns-credential-values.js";
 
 const apiKeyRequired = /API key/u;
 const unknownKeyDns = /dns_other/u;
@@ -233,4 +240,40 @@ it("text fields marked endpoint count as endpoints too", () => {
 	assert.throws(() => buildValues("ovh", { fields: ovhMoved }, ovh), endpointChangeError);
 	// a new credential has nothing saved to carry over
 	assert.throws(() => buildValues("rfc2136", { fields: moved }, null), /required/u);
+});
+
+it("credentialFields reads a fields credential as is and an ini credential line by line", () => {
+	assert.deepEqual(credentialFields({ fields: { a: "1" } }), { a: "1" });
+	assert.deepEqual(credentialFields({ ini: "dns_cloudflare_api_token = T\n# c\n; d\n\nbad line\nk=v=w\n" }), {
+		dns_cloudflare_api_token: "T",
+		k: "v=w",
+	});
+	assert.deepEqual(credentialFields(null), {});
+});
+
+it("secretValuesOf returns the secret field values, or every value without a field list", () => {
+	assert.deepEqual(secretValuesOf("cloudflare", { dns_cloudflare_email: "a@b.c", dns_cloudflare_api_key: "K" }), [
+		"K",
+	]);
+	assert.deepEqual(secretValuesOf("google", { a: "x", b: "", c: "y" }), ["x", "y"]);
+});
+
+it("credentialFields and toIni are inverses for quoted values and drop inline comments", () => {
+	const fields = {
+		a: "plain",
+		b: "has#hash",
+		c: "com,ma",
+		d: 'say "hi"',
+		e: "it's",
+		f: " lead",
+		g: "trail ",
+		h: `both "x" and 'y'`,
+		i: "# starts",
+	};
+	assert.deepEqual(credentialFields({ ini: toIni({ fields }) }), fields);
+	assert.deepEqual(credentialFields({ ini: "k = v # note\nq = \"a#b\" # note\nr = 'x'\n" }), {
+		k: "v",
+		q: "a#b",
+		r: "x",
+	});
 });

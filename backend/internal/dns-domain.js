@@ -83,10 +83,17 @@ const planNames = async (credential, inputs, stored, trx) => {
 	return { fresh, kept };
 };
 
-const insertNames = async (credentialId, names, source, trx) => {
+// the most names one request carries, typed and fetched together
+const MAX_NAMES = 100;
+
+const insertNames = async (credentialId, names, sourceOf, trx) => {
 	const rows = [];
 	for (const name of names) {
-		rows.push(await dnsDomainModel.query(trx).insertAndFetch({ dns_credential_id: credentialId, name, source }));
+		rows.push(
+			await dnsDomainModel
+				.query(trx)
+				.insertAndFetch({ dns_credential_id: credentialId, name, source: sourceOf(name) }),
+		);
 	}
 	return rows;
 };
@@ -208,16 +215,32 @@ const internalDnsDomain = {
 		return row;
 	},
 
-	create: async (access, { dns_credential_id: credentialId, names, source = "typed" }) => {
+	create: async (
+		access,
+		{ dns_credential_id: credentialId, names = [], fetched_names: fetchedNames = [], source = "typed" },
+	) => {
 		access.can("certificates:manage");
+		if (names.length + fetchedNames.length === 0) {
+			throw new errs.ValidationError("At least one domain name is needed", "error.dns-domain-none");
+		}
+		if (names.length + fetchedNames.length > MAX_NAMES) {
+			throw new errs.ValidationError(
+				`At most ${MAX_NAMES} domains can be added at once`,
+				"error.dns-domain-too-many",
+				{ values: { count: MAX_NAMES } },
+			);
+		}
 		const credential = await visibleCredential(access, credentialId);
 		const rows = await ownerLock(credential.owner_user_id, () =>
 			dnsDomainModel.transaction(async (trx) => {
 				// the credential may have gone while this waited for the lock
 				await visibleCredential(access, credential.id, trx);
 				const stored = new Set(await internalDnsDomain.namesOf(credential.id, trx));
-				const { fresh } = await planNames(credential, names, stored, trx);
-				return await insertNames(credential.id, fresh, source, trx);
+				// one plan over both lists: a name in both is planned once, from the typed list
+				const { fresh } = await planNames(credential, [...names, ...fetchedNames], stored, trx);
+				const typed = new Set(names.map((input) => normalizeDomainName(input).name ?? input));
+				const sourceOf = (name) => (typed.has(name) ? source : "fetched");
+				return await insertNames(credential.id, fresh, sourceOf, trx);
 			}),
 		);
 		if (rows.length > 0) {
@@ -225,7 +248,12 @@ const internalDnsDomain = {
 				action: "created",
 				object_type: "dns-domain",
 				object_id: rows[0].id,
-				meta: { names: rows.map((row) => row.name), source, ...credentialMeta(credential) },
+				meta: {
+					names: rows.map((row) => row.name),
+					source,
+					sources: Object.fromEntries(rows.map((row) => [row.name, row.source])),
+					...credentialMeta(credential),
+				},
 			});
 		}
 		return rows;
@@ -319,7 +347,7 @@ const internalDnsDomain = {
 				)
 				.delete();
 		}
-		await insertNames(credential.id, fresh, "typed", trx);
+		await insertNames(credential.id, fresh, () => "typed", trx);
 		return { added: fresh, removed: removed.map((row) => row.name) };
 	},
 

@@ -18,6 +18,10 @@ When you request a certificate with the DNS challenge, NPMpro picks the provider
 
 A user limited to their own items sees only the domains of their own credentials.
 
+## Domains from the provider
+
+For Cloudflare, DigitalOcean, Hetzner Cloud, Gandi, OVH and PowerDNS credentials, the Add domains window (from the Domains tab, or from the credential's row menu with that credential chosen) lists the zones the provider has as soon as you choose the credential, below the field for typed names. Tick the ones to add, type others if you like, and Save adds both in one step (all or none). The token needs the right to list zones: Cloudflare Zone Read, DigitalOcean `domain:read`, Hetzner Cloud a project API token with read access to its DNS zones, Gandi a personal access token that can see your domains (only the domains of your own organization are listed), OVH a right on `GET /domain/zone`, PowerDNS the API key (an `http://` endpoint is accepted only for a LAN address, any other needs `https://`). A fetch never removes a domain, and a failed list never blocks typing and saving domains. At most 1000 zones are listed. A domain already on this credential shows as already here, one on another of your credentials shows which one, and new domains are ticked.
+
 ## DNS resolver
 
 The resolver is the DNS server nginx uses for upstream names (a proxy host's forward host, for example). Set it in Settings, nginx, DNS resolver, or with the `NGINX_RESOLVER`, `NGINX_RESOLVER_HOSTS`, `NGINX_RESOLVER_IPV6` and `NGINX_RESOLVER_VALID` variables (see [Configuration](Configuration)). Empty servers mean the container's own `/etc/resolv.conf`. `NGINX_RESOLVER_VALID` takes a time in seconds or longer: seconds, or parts with units such as `30s`, `5m` or `1h30m` (never `ms`, not a bare `0`); empty uses each record's TTL, and `0s` or another zero such as `0m` means the same as empty.

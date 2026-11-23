@@ -9,7 +9,9 @@
 // is skipped, and logged, when that control is disabled, e.g. by an env var), skipIfMissing (a selector:
 // the same when it is not on the page within 5 s, e.g. the map without GeoIP databases), seedAccessLists
 // (a number: that many access lists named flow-csp-NN are created through the API, so a list has a paging
-// bar; they are removed when the action ends) or reload (the page is reloaded).
+// bar; they are removed when the action ends), seedDnsCredential (true: a Cloudflare credential named
+// flow-csp-dns is created through the API and removed when the action ends), emptyProviderDomains (true: the zone
+// list a provider answers is stubbed as empty, so no provider is called) or reload (the page is reloaded).
 // Usage: node scripts/csp-check.js <base URL> [chromium|webkit]
 // The browser flows (scripts/flows/run.js) run after it on the same instance.
 // A fresh instance gets its first user through the setup page (a random password); for an instance that is already
@@ -31,6 +33,8 @@ const visited = new Set();
 
 // the access lists an action made with seedAccessLists, removed when it ends
 const seeded = [];
+// the credentials an action made with seedDnsCredential
+const seededCredentials = [];
 // FLOWS_WEBKIT_WS (a remote Playwright WebKit server's WebSocket URL, local runs only) connects instead of launching
 // biome-ignore lint/style/noProcessEnv: the same switch as in flows/run.js
 const webkitWs = process.env.FLOWS_WEBKIT_WS;
@@ -88,7 +92,21 @@ async function seedAccessLists(count) {
 	}
 }
 
+async function seedDnsCredential() {
+	const answer = await apiOf("POST", "/nginx/dns-credentials", {
+		name: "flow-csp-dns",
+		provider: "cloudflare",
+		ini: "dns_cloudflare_api_token=flow-token",
+	});
+	if (!answer.ok()) throw new Error(`seeding a DNS credential failed: ${answer.status()}`);
+	seededCredentials.push((await answer.json()).id);
+}
+
 async function removeSeeded() {
+	for (const id of seededCredentials.splice(0)) {
+		// biome-ignore lint/performance/noAwaitInLoops: one request after another
+		await apiOf("DELETE", `/nginx/dns-credentials/${id}`).catch(() => undefined);
+	}
 	for (const id of seeded.splice(0)) {
 		// biome-ignore lint/performance/noAwaitInLoops: one request after another
 		await apiOf("DELETE", `/nginx/access-lists/${id}`).catch(() => undefined);
@@ -195,6 +213,15 @@ try {
 					break;
 				}
 				if (step.seedAccessLists) await seedAccessLists(step.seedAccessLists);
+				if (step.seedDnsCredential) await seedDnsCredential();
+				if (step.emptyProviderDomains)
+					await page.route("**/api/nginx/dns-credentials/*/provider-domains", (route) =>
+						route.fulfill({
+							status: 200,
+							contentType: "application/json",
+							body: JSON.stringify({ supported: true, truncated: false, zones: [] }),
+						}),
+					);
 				if (step.reload) await page.reload();
 				if (step.viewport) await page.setViewportSize({ width: step.viewport[0], height: step.viewport[1] });
 				if (step.colorScheme) await page.emulateMedia({ colorScheme: step.colorScheme });

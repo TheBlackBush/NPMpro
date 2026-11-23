@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Eye, KeyRound, SquarePen, Trash2 } from "lucide-react";
+import { Eye, KeyRound, Plus, SquarePen, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
@@ -8,6 +8,7 @@ import { Badge } from "src/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
 import { useCanManage, useDnsProviders } from "src/hooks";
 import { intl, T } from "src/locale";
+import { showDnsDomainsModal } from "src/modals";
 import { displayDomain } from "src/modules/DnsDomainForms";
 import { CERTIFICATES } from "src/modules/Permissions";
 
@@ -90,6 +91,18 @@ function DnsCredentialActions({ credential, onDelete, onEdit }) {
 						? intl.formatMessage({ id: "list.row-edit" }, { name: credential.name || `#${credential.id}` })
 						: intl.formatMessage({ id: "list.row-view" }, { name: credential.name || `#${credential.id}` }),
 					onSelect: () => onEdit?.(credential.id),
+				},
+				{
+					key: "add-domains",
+					label: <T id="dns-domains.add" />,
+					icon: Plus,
+					onSelect: () => showDnsDomainsModal({ credentialId: credential.id }),
+					// a credential that cannot be decrypted cannot list its zones
+					disabled: Boolean(credential.decryptError),
+					note: credential.decryptError
+						? intl.formatMessage({ id: "dns-credentials.decrypt-error-short" })
+						: undefined,
+					hidden: !canManage,
 				},
 				{
 					key: "delete",

@@ -21,8 +21,7 @@
 					"type": "object",
 					"additionalProperties": false,
 					"required": [
-						"dns_credential_id",
-						"names"
+						"dns_credential_id"
 					],
 					"properties": {
 						"dns_credential_id": {
@@ -43,6 +42,18 @@
 								"example": "example.com"
 							}
 						},
+						"fetched_names": {
+							"type": "array",
+							"minItems": 1,
+							"maxItems": 100,
+							"description": "Domains fetched from the DNS provider, saved with the source fetched. Checked like names, in the same request and transaction; a name in both lists is saved once, as typed. At least one name is needed in names or fetched_names, and together they carry at most 100",
+							"items": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 253,
+								"example": "example.net"
+							}
+						},
 						"source": {
 							"type": "string",
 							"enum": [
@@ -50,7 +61,7 @@
 								"fetched"
 							],
 							"default": "typed",
-							"description": "How the domains were found: typed in (the default) or fetched from the DNS provider"
+							"description": "How the domains in names were found: typed in (the default) or fetched from the DNS provider"
 						}
 					}
 				},

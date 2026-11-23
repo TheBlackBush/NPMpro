@@ -16,12 +16,13 @@ import { FormField } from "./FormField";
  * @param {string} [props.provider]     only this provider's credentials; without it every credential is listed as
  *                                      "name (provider)" and "+" opens the window without a preset provider
  * @param {number} [props.ownerUserId]  only this owner's credentials
+ * @param {(credential: object) => boolean} [props.canUse]  only the credentials it accepts, and the chosen one
  * @param {*}      [props.hint]
  * @param {string} [props.describedBy]  ids of text outside the field that describes the select (a hint placed
  *                                      elsewhere)
  * @param {Function} [props.onUserChange]  called when the user picks a credential (or saves a new one here)
  */
-export function DnsCredentialSelect({ name, provider, ownerUserId, hint, describedBy, onUserChange }) {
+export function DnsCredentialSelect({ name, provider, ownerUserId, canUse, hint, describedBy, onUserChange }) {
 	const { field, fieldState } = useController({ name });
 	const error = fieldState.error?.message ?? null;
 	const { data, isPending } = useDnsCredentials();
@@ -31,6 +32,8 @@ export function DnsCredentialSelect({ name, provider, ownerUserId, hint, describ
 	const options = (data ?? [])
 		.filter((c) => (provider ? c.provider === provider : true))
 		.filter((c) => ownerUserId === undefined || c.ownerUserId === ownerUserId)
+		// the chosen credential stays listed (one saved with "+" may not pass canUse), so the select shows it
+		.filter((c) => !canUse || canUse(c) || c.id === field.value)
 		.map((c) => ({
 			value: c.id,
 			label: provider ? c.name : `${c.name} (${providerName(c.provider)})`,

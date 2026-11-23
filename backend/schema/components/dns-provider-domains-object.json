@@ -1,0 +1,51 @@
+{
+	"type": "object",
+	"description": "The zones a DNS provider lists for a credential",
+	"required": [
+		"supported",
+		"truncated",
+		"zones"
+	],
+	"additionalProperties": false,
+	"properties": {
+		"supported": {
+			"type": "boolean",
+			"description": "False when the provider of the credential has no zone list; nothing was asked of any outside service then"
+		},
+		"truncated": {
+			"type": "boolean",
+			"description": "True when the provider has more than 1000 zones and only the first 1000 are listed"
+		},
+		"zones": {
+			"type": "array",
+			"description": "The zones, sorted by name",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"name",
+					"state"
+				],
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "The zone name"
+					},
+					"state": {
+						"type": "string",
+						"description": "`here`: already a domain of this credential. `other`: a domain of another credential of the same owner. `new`: not stored yet",
+						"enum": [
+							"new",
+							"here",
+							"other"
+						]
+					},
+					"credential_name": {
+						"type": "string",
+						"description": "The name of the other credential that has the domain, only with state `other`"
+					}
+				}
+			}
+		}
+	}
+}

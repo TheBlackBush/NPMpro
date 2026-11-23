@@ -1,5 +1,6 @@
 import express from "express";
 import internalDnsCredential from "../../internal/dns-credential.js";
+import internalDnsProviderDomains from "../../internal/dns-provider-domains.js";
 import jwtdecode from "../../lib/express/jwt-decode.js";
 import pathId from "../../lib/express/path-id.js";
 import apiValidator from "../../lib/validator/api.js";
@@ -73,6 +74,20 @@ router
 	.delete(async (req, res) => {
 		res.status(200).send(
 			await internalDnsCredential.delete(res.locals.access, {
+				id: Number.parseInt(req.params.credential_id, 10),
+			}),
+		);
+	});
+
+/**
+ * /api/nginx/dns-credentials/123/provider-domains
+ */
+router
+	.route("/:credential_id/provider-domains")
+	.all(jwtdecode())
+	.get(async (req, res) => {
+		res.status(200).send(
+			await internalDnsProviderDomains.get(res.locals.access, {
 				id: Number.parseInt(req.params.credential_id, 10),
 			}),
 		);

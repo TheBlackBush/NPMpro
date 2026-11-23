@@ -326,6 +326,19 @@
 			]
 		},
 		{
+			"name": "add domains window with zones",
+			"route": "/certificates/dns-credentials",
+			"steps": [
+				{ "seedDnsCredential": true },
+				{ "emptyProviderDomains": true },
+				{ "reload": true },
+				{ "click": "role=button[name='Actions for flow-csp-dns'] >> visible=true" },
+				{ "click": "role=menuitem[name='Add domains']" },
+				{ "waitFor": "[data-fetch-domains][data-fetch-state=empty]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "access list window",
 			"route": "/access",
 			"steps": [
