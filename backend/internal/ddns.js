@@ -53,6 +53,8 @@ const build = () => {
 	const timer = createDdnsTimer({
 		run: () => engine.cycle(),
 		periodMs: settings().periodMs,
+		// a pause looks at the running cycle every second; the tests look every 20 ms
+		pollMs: process.env.NPMPRO_TEST_ROOT ? 20 : undefined,
 		log: logger,
 	});
 	engine = createDdnsEngine({

@@ -58,9 +58,9 @@ const manifestView = ({ files: _files, ...rest }) => rest;
 
 /**
  * Everything it touches is in deps: knex, box (secret box), dataDir, store (createBackupStore), dbVersion,
- * dbMigrations, npmproVersion, instanceKey, audit, nginx { test, reload }, renewals { pause, resume }, ddns { pause, resume }, regenerate,
- * runtime, hostname, and the optional reloadSettings, dnsCredentials { write, remove }, exclusive (the runtime
- * settings queue), maxUpload, maxImport, clock { now } and log.
+ * dbMigrations, npmproVersion, instanceKey, audit, nginx { test, reload }, renewals { pause, resume },
+ * ddns { pause, resume }, regenerate, runtime, hostname, and the optional reloadSettings,
+ * dnsCredentials { write, remove }, exclusive (the runtime settings queue), maxUpload, maxImport, clock { now } and log.
  */
 const createBackupService = ({
 	knex,
@@ -74,7 +74,7 @@ const createBackupService = ({
 	audit,
 	nginx,
 	renewals,
-	ddns = { pause: async () => {}, resume: () => {} },
+	ddns,
 	regenerate,
 	runtime,
 	reloadSettings = {},

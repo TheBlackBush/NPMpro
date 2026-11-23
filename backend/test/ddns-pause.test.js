@@ -8,7 +8,7 @@ const ZONE_LOOKUP = /^\/client\/v4\/zones\?name=/u;
 const RECORD_LOOKUP = /^\/client\/v4\/zones\/zone1\/dns_records\?/u;
 const json = { headers: { "content-type": "application/json" } };
 // every echo answer takes this long, so a cycle is running for a while
-const SLOW_MS = 300;
+const SLOW_MS = 150;
 
 let api;
 let admin;
@@ -68,13 +68,9 @@ after(() => api?.stop());
 it("a pause waits for the running cycle, then Check now and Update now answer 409 until the resume", async () => {
 	const check = settle(admin.post("/nginx/ddns/check"));
 	await until(async () => (await admin.get("/nginx/ddns/status")).body.running);
-	let checkEnded = false;
-	void check.then(() => {
-		checkEnded = true;
-	});
 	await pauseDdns({ timeoutMs: 5000 });
-	assert.equal(checkEnded, true);
 	const status = await admin.get("/nginx/ddns/status");
+	assert.equal(status.body.running, false);
 	assert.equal(status.body.paused, true);
 	const blocked = await admin.post("/nginx/ddns/check");
 	assert.equal(blocked.status, 409);
@@ -84,6 +80,7 @@ it("a pause waits for the running cycle, then Check now and Update now answer 40
 	assert.equal(refused.status, 409);
 	assert.equal(refused.body.error.message_i18n, "error.ddns-paused");
 	resumeDdns();
+	await check;
 	assert.equal((await admin.get("/nginx/ddns/status")).body.paused, false);
 	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);
 });
@@ -91,7 +88,7 @@ it("a pause waits for the running cycle, then Check now and Update now answer 40
 it("a pause with a time limit fails with writer-running when the cycle takes longer, and is not left paused", async () => {
 	const check = settle(admin.post("/nginx/ddns/check"));
 	await until(async () => (await admin.get("/nginx/ddns/status")).body.running);
-	await assert.rejects(pauseDdns({ timeoutMs: 50 }), (error) => error.code === "writer-running");
+	await assert.rejects(pauseDdns({ timeoutMs: 30 }), (error) => error.code === "writer-running");
 	assert.equal((await admin.get("/nginx/ddns/status")).body.paused, false);
 	await check;
 	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);
