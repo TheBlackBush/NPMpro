@@ -15,7 +15,7 @@ import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
 import { TapTooltip } from "src/components/TapTooltip";
 import { useCanManage, useDnsProviders, useUser } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
-import { showDnsDomainsModal, showFetchDomainsModal } from "src/modals";
+import { showDnsDomainsModal } from "src/modals";
 import { displayDomain } from "src/modules/DnsDomainForms";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 
@@ -194,14 +194,9 @@ export default function Table({
 						subtitle={<T id="dns-domains.empty-text" />}
 						customAddBtn={
 							<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
-								<div className="flex flex-wrap items-center justify-center gap-2">
-									<Button onClick={() => showFetchDomainsModal()}>
-										<T id="dns-domains.fetch" />
-									</Button>
-									<Button color="primary" onClick={() => showDnsDomainsModal()}>
-										<T id="dns-domains.add" />
-									</Button>
-								</div>
+								<Button color="primary" onClick={() => showDnsDomainsModal()}>
+									<T id="dns-domains.add" />
+								</Button>
 							</HasPermission>
 						}
 					/>

@@ -1,5 +1,5 @@
-// The state of the Fetch domains window: what an answer of GET /nginx/dns-credentials/{id}/provider-domains (or its
-// error) shows, and which zones start ticked. Pure.
+// The zone section of the Add domains window: what an answer of GET /nginx/dns-credentials/{id}/provider-domains (or its
+// error) shows, which zones start ticked and the body of the save. Pure.
 
 import { displayDomain } from "./DnsDomainForms.js";
 
@@ -44,4 +44,35 @@ export function fetchState(answer, error, provider) {
  */
 export function initialSelection(zones) {
 	return new Set((zones ?? []).filter((zone) => zone.state === "new").map((zone) => zone.name));
+}
+
+const TRAILING_DOT = /\.$/u;
+const nameKey = (name) => name.trim().toLowerCase().replace(TRAILING_DOT, "");
+
+/**
+ * The body of the one create request of the window: the typed names and the ticked zones, each name once. A name
+ * both typed and ticked goes with the typed ones (the user typed it). An empty list is left out (the API needs at
+ * least one name in total).
+ *
+ * @param   {number} dnsCredentialId
+ * @param   {string[]} typed   the typed names
+ * @param   {Iterable<string>} ticked  the ticked zone names
+ * @returns {{ dnsCredentialId: number, names?: string[], fetchedNames?: string[] }}
+ */
+export function saveBody(dnsCredentialId, typed, ticked) {
+	const seen = new Set();
+	const once = (list) =>
+		list.filter((name) => {
+			const key = nameKey(name);
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+	const names = once(typed ?? []);
+	const fetchedNames = once([...ticked]);
+	return {
+		dnsCredentialId,
+		...(names.length > 0 && { names }),
+		...(fetchedNames.length > 0 && { fetchedNames }),
+	};
 }

@@ -37,6 +37,7 @@ const chooseCredential = async (page, dialog, name) => {
 
 async function dnsDomains({ admin, browser, base, viewerPassword }) {
 	const { page, api } = admin;
+	await stubZones(page);
 	// answers of the create request of domains: a refused batch must never answer 201
 	const created = [];
 	page.on("response", (response) => {
@@ -397,10 +398,10 @@ async function dnsChallengeSuggestion({ admin }) {
 	}
 }
 
-// Fetch domains: the provider's answer is made by page.route (CI never calls a provider); Add is a real POST.
-const FETCH_ITEM = /^Fetch domains/u;
-const FETCH_ROUTE = "**/api/nginx/dns-credentials/*/provider-domains";
-const FETCH_ZONES = {
+// The provider's zones in the Add domains window: the answer is made by page.route (CI never calls a provider);
+// Save is a real POST.
+const ZONES_ROUTE = "**/api/nginx/dns-credentials/*/provider-domains";
+const ZONES = {
 	supported: true,
 	truncated: false,
 	zones: [
@@ -409,7 +410,7 @@ const FETCH_ZONES = {
 		{ name: "flow-f3.example", state: "other", credential_name: "flow-elsewhere" },
 	],
 };
-const FETCH_FORBIDDEN = {
+const ZONES_FORBIDDEN = {
 	error: {
 		code: 400,
 		message: "The provider refused to list the zones: Authentication error",
@@ -417,8 +418,7 @@ const FETCH_FORBIDDEN = {
 		message_values: { message: "Authentication error", provider: "Cloudflare", needs: "Zone:Zone:Read" },
 	},
 };
-
-const FETCH_FAILED = {
+const ZONES_FAILED = {
 	error: {
 		code: 400,
 		message: "Unexpected answer (500): boom",
@@ -426,32 +426,52 @@ const FETCH_FAILED = {
 		message_values: { message: "Unexpected answer (500): boom" },
 	},
 };
+const ZONES_EMPTY = { supported: true, truncated: false, zones: [] };
 
-const fetchWindow = (page) => page.locator("[data-fetch-domains-window]");
-const fetchState = (page, state) => page.locator(`[data-fetch-domains][data-fetch-state=${state}]`);
+// the other flows open Add domains with a Cloudflare credential: no zone list is wanted, and none may reach a provider
+const stubZones = (page) =>
+	page.route(ZONES_ROUTE, (route) =>
+		route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(ZONES_EMPTY) }),
+	);
+
+const addWindow = (page) => page.locator("[data-dns-domains-window]");
+const zonesState = (page, state) => page.locator(`[data-fetch-domains][data-fetch-state=${state}]`);
 
 async function fetchDomains({ admin }) {
 	const { page, api, errors } = admin;
 	// the next answer of the provider route; a promise in "gate" holds it back
-	let answer = { status: 200, body: FETCH_ZONES };
+	let answer = { status: 200, body: ZONES };
 	let gate = null;
-	await page.route(FETCH_ROUTE, async (route) => {
+	await page.route(ZONES_ROUTE, async (route) => {
 		if (gate) await gate;
 		// a request the window aborted (Cancel) cannot be answered any more
 		await route
-			.fulfill({
-				status: answer.status,
-				contentType: "application/json",
-				body: JSON.stringify(answer.body),
-			})
+			.fulfill({ status: answer.status, contentType: "application/json", body: JSON.stringify(answer.body) })
 			.catch(() => undefined);
 	});
+	const posts = [];
+	page.on("request", (request) => {
+		if (request.method() === "POST" && new URL(request.url()).pathname === "/api/nginx/dns-domains")
+			posts.push(request.postDataJSON());
+	});
 	const cancel = async () => {
-		await fetchWindow(page).getByRole("button", { name: "Cancel", exact: true }).click();
-		await fetchWindow(page).waitFor({ state: "detached" });
+		await addWindow(page).getByRole("button", { name: "Cancel", exact: true }).click();
+		// a window with a typed name or a changed credential asks first
+		const ask = page.getByRole("alertdialog");
+		const question = await ask
+			.getByRole("heading", { name: "Unsaved changes" })
+			.waitFor({ timeout: 1500 })
+			.then(
+				() => true,
+				() => false,
+			);
+		if (question) await ask.getByRole("button", { name: "Discard changes", exact: true }).click();
+		await addWindow(page).waitFor({ state: "detached" });
 	};
+	const zone = (name) => addWindow(page).locator(`[id="fetch-zone-${name}"]`);
+	const save = () => addWindow(page).getByRole("button", { name: "Save", exact: true });
 	try {
-		const ini = await api("POST", "/nginx/dns-credentials", {
+		await api("POST", "/nginx/dns-credentials", {
 			name: "flow-fetch-ini",
 			provider: "acmedns",
 			ini: "dns_acmedns_api_url=http://acmedns.example/",
@@ -462,33 +482,24 @@ async function fetchDomains({ admin }) {
 			ini: "dns_cloudflare_api_token=flow-token",
 		});
 
-		// 1. a provider without a zone list: the menu item is disabled and says why
+		// 1. a provider without a zone list: the row menu opens the window with the credential chosen, no zone section,
+		// and the typed names work
 		await page.goto("/certificates/dns-credentials");
-		await revealRow(page, "flow-fetch-ini");
-		await page
-			.getByRole("button", { name: "Actions for flow-fetch-ini", exact: true })
-			.filter({ visible: true })
-			.click();
-		const item = page.getByRole("menuitem", { name: FETCH_ITEM });
-		await item.waitFor();
-		if (
-			(await item.getAttribute("aria-disabled")) !== "true" &&
-			(await item.getAttribute("data-disabled")) === null
-		)
-			throw new Error("the Fetch domains item of a provider without a list is not disabled");
-		await item.getByText("This provider has no zone list", { exact: false }).waitFor();
-		await page.keyboard.press("Escape");
-		await item.waitFor({ state: "detached" });
+		await rowAction(page, "flow-fetch-ini", "Add domains");
+		await addWindow(page).waitFor();
+		await addWindow(page).locator("#dnsCredential").getByText("flow-fetch-ini", { exact: false }).waitFor();
+		if ((await page.locator("[data-fetch-domains]").count()) !== 0)
+			throw new Error("a provider without a zone list shows the zone section");
+		await cancel();
 
-		// 2. loading: Cancel closes the window while the provider has not answered
+		// 2. loading: Cancel aborts the request in flight
 		let release = () => undefined;
 		gate = new Promise((resolve) => {
 			release = resolve;
 		});
-		await rowAction(page, "flow-fetch-cf", "Fetch domains");
-		await fetchWindow(page).waitFor();
-		await fetchState(page, "loading").waitFor();
-		// Cancel aborts the request in flight
+		await rowAction(page, "flow-fetch-cf", "Add domains");
+		await addWindow(page).waitFor();
+		await zonesState(page, "loading").waitFor();
 		const aborted = page.waitForEvent("requestfailed", {
 			predicate: (request) => request.url().includes("/provider-domains"),
 			timeout: 5000,
@@ -501,79 +512,88 @@ async function fetchDomains({ admin }) {
 		release();
 
 		// 3. the forbidden answer: the Cloudflare hint (it names the right, so the provider's own wording is not
-		// repeated), Cancel closes, a failed fetch never blocks typing the domains
-		answer = { status: 400, body: FETCH_FORBIDDEN };
-		await rowAction(page, "flow-fetch-cf", "Fetch domains");
-		await fetchState(page, "error").waitFor();
-		await fetchWindow(page).getByText("This token cannot list zones", { exact: false }).waitFor();
-		if ((await fetchWindow(page).getByText("Zone:Zone:Read", { exact: false }).count()) > 0)
+		// repeated); the typed names can still be saved
+		answer = { status: 400, body: ZONES_FORBIDDEN };
+		await rowAction(page, "flow-fetch-cf", "Add domains");
+		await zonesState(page, "error").waitFor();
+		await addWindow(page).getByText("This token cannot list zones", { exact: false }).waitFor();
+		if ((await addWindow(page).getByText("Zone:Zone:Read", { exact: false }).count()) > 0)
 			throw new Error("the Cloudflare hint repeats what the token needs");
-		await cancel();
+		if (!(await save().isDisabled())) throw new Error("Save is enabled with nothing typed or ticked");
+		await addChip(addWindow(page), "flow-typed.example");
+		await save().click();
+		await addWindow(page).waitFor({ state: "detached" });
+		await page.goto("/certificates/domains");
+		await rowShows(page, "flow-typed.example", "flow-fetch-cf");
+		const last = posts.at(-1);
+		if (JSON.stringify(last.names) !== '["flow-typed.example"]' || "fetched_names" in last)
+			throw new Error(`the typed save body: ${JSON.stringify(last)}`);
 
 		// a failed list shows its message without the permission hint
-		answer = { status: 400, body: FETCH_FAILED };
-		await rowAction(page, "flow-fetch-cf", "Fetch domains");
-		await fetchState(page, "error").waitFor();
-		await fetchWindow(page).getByText("boom", { exact: false }).first().waitFor();
-		if ((await fetchWindow(page).getByText("This token cannot list zones", { exact: false }).count()) > 0)
+		answer = { status: 400, body: ZONES_FAILED };
+		await page.getByRole("button", { name: "Add domains", exact: true }).first().click();
+		await addWindow(page).waitFor();
+		await chooseCredential(page, addWindow(page), "flow-fetch-cf");
+		await zonesState(page, "error").waitFor();
+		await page.locator("[data-fetch-domains]").getByText("boom", { exact: false }).first().waitFor();
+		if ((await addWindow(page).getByText("This token cannot list zones", { exact: false }).count()) > 0)
 			throw new Error("a failed list shows the permission hint");
 		await cancel();
-		await page.goto("/certificates/domains");
-		await page.getByRole("button", { name: "Add domains", exact: true }).first().click();
-		const add = page.locator("[data-dns-domains-window]");
-		await add.waitFor();
-		await chooseCredential(page, add, "flow-fetch-cf");
-		await addChip(add, "flow-typed.example");
-		await add.getByRole("button", { name: "Save", exact: true }).click();
-		await add.waitFor({ state: "detached" });
-		await rowShows(page, "flow-typed.example", "flow-fetch-cf");
 
-		// 4. a list from the Domains tab: the new zone is ticked, a name on another credential cannot be ticked, the
-		// button counts and is disabled at 0
-		answer = { status: 200, body: FETCH_ZONES };
-		await page
-			.getByRole("button", { name: "Fetch domains", exact: true })
-			.filter({ visible: true })
-			.first()
-			.click();
-		await fetchWindow(page).waitFor();
-		await fetchState(page, "idle").waitFor();
-		await chooseCredential(page, fetchWindow(page), "flow-fetch-cf");
-		await fetchState(page, "list").waitFor();
-		const zone = (name) => fetchWindow(page).locator(`[id="fetch-zone-${name}"]`);
-		await fetchWindow(page).getByText("on flow-elsewhere", { exact: true }).waitFor();
+		// 4. a list: the new zone is ticked, a name on another credential cannot be ticked, a zone already here has
+		// no box; typed and ticked names are saved in ONE request
+		answer = { status: 200, body: ZONES };
+		await page.getByRole("button", { name: "Add domains", exact: true }).first().click();
+		await addWindow(page).waitFor();
+		if ((await page.locator("[data-fetch-domains]").count()) !== 0)
+			throw new Error("the zone section shows before a credential is chosen");
+		await chooseCredential(page, addWindow(page), "flow-fetch-cf");
+		await zonesState(page, "list").waitFor();
+		await addWindow(page).getByText("on flow-elsewhere", { exact: true }).waitFor();
 		if (!(await zone("flow-f3.example").isDisabled()))
 			throw new Error("a zone on another credential can be ticked");
 		if ((await zone("flow-f2.example").count()) !== 0)
 			throw new Error("a zone that is already here has a checkbox");
 		if ((await zone("flow-f1.example").getAttribute("aria-checked")) !== "true")
 			throw new Error("the new zone is not ticked");
-		const addButton = (text) => fetchWindow(page).getByRole("button", { name: text, exact: true });
-		await addButton("Add 1 domain").waitFor();
+		// no ticked zone and nothing typed: Save is off
 		await zone("flow-f1.example").click();
-		await addButton("Add 0 domains").waitFor();
-		if (!(await addButton("Add 0 domains").isDisabled())) throw new Error("Add is enabled at 0 domains");
+		if (!(await save().isDisabled())) throw new Error("Save is enabled with nothing typed or ticked");
 		await zone("flow-f1.example").click();
-		await addButton("Add 1 domain").waitFor();
-
-		// 5. Add posts the ticked name as fetched
-		await addButton("Add 1 domain").click();
-		await fetchWindow(page).waitFor({ state: "detached" });
+		if (await save().isDisabled()) throw new Error("Save is off with a ticked zone");
+		// changing the credential drops the list and the ticks, choosing it again loads a fresh list
+		await chooseCredential(page, addWindow(page), "flow-fetch-ini");
+		await page.locator("[data-fetch-domains]").waitFor({ state: "detached" });
+		await chooseCredential(page, addWindow(page), "flow-fetch-cf");
+		await zonesState(page, "list").waitFor();
+		await addChip(addWindow(page), "flow-t1.example");
+		const before = posts.length;
+		await save().click();
+		await addWindow(page).waitFor({ state: "detached" });
 		await rowShows(page, "flow-f1.example", "Fetched");
-		const stored = (await api("GET", "/nginx/dns-domains")).find((row) => row.name === "flow-f1.example");
-		if (stored?.dns_credential_id !== cf.id || stored.source !== "fetched")
-			throw new Error(`the stored row: ${JSON.stringify(stored)}`);
+		if (posts.length !== before + 1) throw new Error(`the save made ${posts.length - before} requests`);
+		const body = posts.at(-1);
+		if (
+			JSON.stringify(body.names) !== '["flow-t1.example"]' ||
+			JSON.stringify(body.fetched_names) !== '["flow-f1.example"]'
+		)
+			throw new Error(`the save body: ${JSON.stringify(body)}`);
+		const rows = await api("GET", "/nginx/dns-domains");
+		const stored = (name) => rows.find((row) => row.name === name);
+		if (stored("flow-f1.example")?.dns_credential_id !== cf.id || stored("flow-f1.example").source !== "fetched")
+			throw new Error(`the stored zone: ${JSON.stringify(stored("flow-f1.example"))}`);
+		if (stored("flow-t1.example")?.source !== "typed")
+			throw new Error(`the stored typed name: ${JSON.stringify(stored("flow-t1.example"))}`);
 
-		// 6. an empty list
-		answer = { status: 200, body: { supported: true, truncated: false, zones: [] } };
+		// 5. an empty list
+		answer = { status: 200, body: ZONES_EMPTY };
 		await page.goto("/certificates/dns-credentials");
-		await rowAction(page, "flow-fetch-cf", "Fetch domains");
-		await fetchState(page, "empty").waitFor();
+		await rowAction(page, "flow-fetch-cf", "Add domains");
+		await zonesState(page, "empty").waitFor();
 		await cancel();
-		if (ini.id === cf.id) throw new Error("the two credentials are one");
 		if (errors.length > 0) throw new Error(`page error: ${errors[0]}`);
 	} finally {
-		await page.unroute(FETCH_ROUTE);
+		await page.unroute(ZONES_ROUTE);
 		await cleanUp(api);
 	}
 }

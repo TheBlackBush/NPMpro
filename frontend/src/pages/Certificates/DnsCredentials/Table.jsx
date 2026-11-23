@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { CloudDownload, Eye, KeyRound, SquarePen, Trash2 } from "lucide-react";
+import { Eye, KeyRound, Plus, SquarePen, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
@@ -8,7 +8,7 @@ import { Badge } from "src/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
 import { useCanManage, useDnsProviders } from "src/hooks";
 import { intl, T } from "src/locale";
-import { showFetchDomainsModal } from "src/modals";
+import { showDnsDomainsModal } from "src/modals";
 import { displayDomain } from "src/modules/DnsDomainForms";
 import { CERTIFICATES } from "src/modules/Permissions";
 
@@ -71,22 +71,7 @@ function Domains({ domains }) {
 	);
 }
 
-/**
- * The reason under a disabled Fetch domains item, if any
- *
- * @param   {{ decryptError?: boolean }} credential
- * @param   {boolean|undefined} lists  whether the provider lists zones (undefined: not known yet)
- * @returns {string|undefined}
- */
-const fetchNote = (credential, lists) => {
-	if (credential.decryptError) return intl.formatMessage({ id: "dns-credentials.decrypt-error-short" });
-	if (lists === false) return intl.formatMessage({ id: "dns-domains.fetch.not-supported" });
-};
-
 function DnsCredentialActions({ credential, onDelete, onEdit }) {
-	const { data: providers } = useDnsProviders();
-	// undefined while the providers list is loading or failed: the window then answers for the provider
-	const lists = providers ? providers.find((p) => p.id === credential.provider)?.listsDomains === true : undefined;
 	const canManage = useCanManage(CERTIFICATES);
 	const inUse = (credential.certificates?.length ?? 0) > 0;
 	return (
@@ -108,13 +93,15 @@ function DnsCredentialActions({ credential, onDelete, onEdit }) {
 					onSelect: () => onEdit?.(credential.id),
 				},
 				{
-					key: "fetch-domains",
-					label: <T id="dns-domains.fetch" />,
-					icon: CloudDownload,
-					onSelect: () => showFetchDomainsModal({ credentialId: credential.id }),
-					// a credential that cannot be decrypted cannot ask, and a provider without a zone list says so
-					disabled: lists === false || Boolean(credential.decryptError),
-					note: fetchNote(credential, lists),
+					key: "add-domains",
+					label: <T id="dns-domains.add" />,
+					icon: Plus,
+					onSelect: () => showDnsDomainsModal({ credentialId: credential.id }),
+					// a credential that cannot be decrypted cannot list its zones
+					disabled: Boolean(credential.decryptError),
+					note: credential.decryptError
+						? intl.formatMessage({ id: "dns-credentials.decrypt-error-short" })
+						: undefined,
 					hidden: !canManage,
 				},
 				{

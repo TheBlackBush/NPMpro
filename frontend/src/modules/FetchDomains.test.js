@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { fetchState, hintIdOf, initialSelection } from "./FetchDomains.js";
+import { fetchState, hintIdOf, initialSelection, saveBody } from "./FetchDomains.js";
 
 const ZONES = [
 	{ name: "b.example", state: "new" },
@@ -98,4 +98,18 @@ it("selects every new zone and no other", () => {
 		["a2.example", "b.example"],
 	);
 	assert.equal(initialSelection(undefined).size, 0);
+});
+
+it("builds one body from the typed names and the ticked zones, each name once", () => {
+	assert.deepEqual(saveBody(3, ["a.example", "B.example."], new Set(["b.example", "c.example", "c.example"])), {
+		dnsCredentialId: 3,
+		names: ["a.example", "B.example."],
+		fetchedNames: ["c.example"],
+	});
+});
+
+it("leaves out an empty list", () => {
+	assert.deepEqual(saveBody(3, [], new Set(["c.example"])), { dnsCredentialId: 3, fetchedNames: ["c.example"] });
+	assert.deepEqual(saveBody(3, ["a.example", "a.example"], new Set()), { dnsCredentialId: 3, names: ["a.example"] });
+	assert.deepEqual(saveBody(3, undefined, new Set()), { dnsCredentialId: 3 });
 });

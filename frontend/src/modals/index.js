@@ -14,7 +14,6 @@ export * from "./DnsDomainsModal";
 export * from "./EditCertificateDomainsModal";
 export * from "./EventDetailsModal";
 export * from "./ExportItemsModal";
-export * from "./FetchDomainsModal";
 export * from "./HelpModal";
 export * from "./HTTPCertificateModal";
 export * from "./PermissionsModal";
