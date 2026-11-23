@@ -43,8 +43,12 @@ it("accepts https service URLs only", () => {
 });
 
 it("names the first problem of a service list", () => {
-	assert.equal(serviceListProblem(["https://a.example"]), null);
+	assert.equal(serviceListProblem(["https://a.example", "https://b.example"]), null);
+	// a new address needs a second service to confirm it
+	assert.deepEqual(serviceListProblem(["https://a.example"]), { error: "count" });
 	assert.deepEqual(serviceListProblem([]), { error: "count" });
+	assert.deepEqual(serviceListProblem("https://a.example"), { error: "count" });
+	assert.deepEqual(serviceListProblem(["http://b.example"]), { error: "invalid", url: "http://b.example" });
 	assert.deepEqual(serviceListProblem(Array.from({ length: 11 }, () => "https://a.example")), { error: "count" });
 	assert.deepEqual(serviceListProblem(["https://a.example", "http://b.example"]), {
 		error: "invalid",
@@ -65,7 +69,7 @@ it("validates the form and lets a stored value pass", () => {
 	);
 	assert.ok(errors.ipv6Services.includes("http://x.example"));
 	// a stored value that the rules would refuse is kept without a message
-	const odd = { ...data, period: "30s", resolver: ["dns.example"] };
+	const odd = { ...data, period: "30s", resolver: ["dns.example"], ipv4Services: ["https://a.example"] };
 	assert.deepEqual(ddnsSettingsValidate(rules, ddnsToForm(odd), odd), {});
 });
 

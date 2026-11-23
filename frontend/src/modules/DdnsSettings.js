@@ -11,6 +11,9 @@ const MIN_MS = 60_000;
 const MAX_MS = 86_400_000;
 const MAX_TIME_LENGTH = 32;
 const SERVICE_URL = /^https:\/\/(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:.]+\])(?::[0-9]{1,5})?(?:\/[A-Za-z0-9._~/%-]*)?$/u;
+// a new address counts only when a second service confirms it, so a list needs two (a stored list of one passes a
+// save that keeps it, as the backend's validateSave)
+const MIN_SERVICES = 2;
 const MAX_SERVICES = 10;
 const MAX_URL_LENGTH = 200;
 
@@ -43,15 +46,16 @@ const ddnsTimeMs = (value) => {
 const isServiceUrl = (entry) => typeof entry === "string" && entry.length <= MAX_URL_LENGTH && SERVICE_URL.test(entry);
 
 /**
- * The first problem of a service list, or null
+ * The first problem of a service list (a URL that is not one first, then the count of 2 to 10), or null
  *
  * @param   {unknown}  list
  * @returns {{ error: "count" } | { error: "invalid", url: string } | null}
  */
 const serviceListProblem = (list) => {
-	if (!Array.isArray(list) || list.length === 0 || list.length > MAX_SERVICES) return { error: "count" };
+	if (!Array.isArray(list)) return { error: "count" };
 	const bad = list.find((entry) => !isServiceUrl(entry));
-	return bad === undefined ? null : { error: "invalid", url: bad };
+	if (bad !== undefined) return { error: "invalid", url: bad };
+	return list.length < MIN_SERVICES || list.length > MAX_SERVICES ? { error: "count" } : null;
 };
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
