@@ -5,6 +5,7 @@ import {
 	addDomain,
 	cleanUp,
 	openTab,
+	revealRow,
 	rowAction,
 	rowGone,
 	rowShows,
@@ -396,8 +397,160 @@ async function dnsChallengeSuggestion({ admin }) {
 	}
 }
 
+// Fetch domains: the provider's answer is made by page.route (CI never calls a provider); Add is a real POST.
+const FETCH_ITEM = /^Fetch domains/u;
+const FETCH_ROUTE = "**/api/nginx/dns-credentials/*/provider-domains";
+const FETCH_ZONES = {
+	supported: true,
+	truncated: false,
+	zones: [
+		{ name: "flow-f1.example", state: "new" },
+		{ name: "flow-f2.example", state: "here" },
+		{ name: "flow-f3.example", state: "other", credential_name: "flow-elsewhere" },
+	],
+};
+const FETCH_FORBIDDEN = {
+	error: {
+		code: 400,
+		message: "The provider refused to list the zones: Authentication error",
+		message_i18n: "error.dns-zones-forbidden",
+		message_values: { message: "Authentication error", provider: "Cloudflare", needs: "Zone:Zone:Read" },
+	},
+};
+
+const fetchWindow = (page) => page.locator("[data-fetch-domains-window]");
+const fetchState = (page, state) => page.locator(`[data-fetch-domains][data-fetch-state=${state}]`);
+
+async function fetchDomains({ admin }) {
+	const { page, api, errors } = admin;
+	// the next answer of the provider route; a promise in "gate" holds it back
+	let answer = { status: 200, body: FETCH_ZONES };
+	let gate = null;
+	await page.route(FETCH_ROUTE, async (route) => {
+		if (gate) await gate;
+		await route.fulfill({
+			status: answer.status,
+			contentType: "application/json",
+			body: JSON.stringify(answer.body),
+		});
+	});
+	const cancel = async () => {
+		await fetchWindow(page).getByRole("button", { name: "Cancel", exact: true }).click();
+		await fetchWindow(page).waitFor({ state: "detached" });
+	};
+	try {
+		const ini = await api("POST", "/nginx/dns-credentials", {
+			name: "flow-fetch-ini",
+			provider: "acmedns",
+			ini: "dns_acmedns_api_url=http://acmedns.example/",
+		});
+		const cf = await api("POST", "/nginx/dns-credentials", {
+			name: "flow-fetch-cf",
+			provider: "cloudflare",
+			ini: "dns_cloudflare_api_token=flow-token",
+		});
+
+		// 1. a provider without a zone list: the menu item is disabled and says why
+		await page.goto("/certificates/dns-credentials");
+		await revealRow(page, "flow-fetch-ini");
+		await page
+			.getByRole("button", { name: "Actions for flow-fetch-ini", exact: true })
+			.filter({ visible: true })
+			.click();
+		const item = page.getByRole("menuitem", { name: FETCH_ITEM });
+		await item.waitFor();
+		if (
+			(await item.getAttribute("aria-disabled")) !== "true" &&
+			(await item.getAttribute("data-disabled")) === null
+		)
+			throw new Error("the Fetch domains item of a provider without a list is not disabled");
+		await item.getByText("This provider has no zone list", { exact: false }).waitFor();
+		await page.keyboard.press("Escape");
+		await item.waitFor({ state: "detached" });
+
+		// 2. loading: Cancel closes the window while the provider has not answered
+		let release = () => undefined;
+		gate = new Promise((resolve) => {
+			release = resolve;
+		});
+		await rowAction(page, "flow-fetch-cf", "Fetch domains");
+		await fetchWindow(page).waitFor();
+		await fetchState(page, "loading").waitFor();
+		await cancel();
+		gate = null;
+		release();
+
+		// 3. the forbidden answer: the Cloudflare hint and what the token needs, Cancel closes, a failed fetch never
+		// blocks typing the domains
+		answer = { status: 400, body: FETCH_FORBIDDEN };
+		await rowAction(page, "flow-fetch-cf", "Fetch domains");
+		await fetchState(page, "error").waitFor();
+		await fetchWindow(page).getByText("This token cannot list zones", { exact: false }).waitFor();
+		await fetchWindow(page).getByText("Zone:Zone:Read", { exact: false }).waitFor();
+		await cancel();
+		await page.goto("/certificates/domains");
+		await page.getByRole("button", { name: "Add domains", exact: true }).first().click();
+		const add = page.locator("[data-dns-domains-window]");
+		await add.waitFor();
+		await chooseCredential(page, add, "flow-fetch-cf");
+		await addChip(add, "flow-typed.example");
+		await add.getByRole("button", { name: "Save", exact: true }).click();
+		await add.waitFor({ state: "detached" });
+		await rowShows(page, "flow-typed.example", "flow-fetch-cf");
+
+		// 4. a list from the Domains tab: the new zone is ticked, a name on another credential cannot be ticked, the
+		// button counts and is disabled at 0
+		answer = { status: 200, body: FETCH_ZONES };
+		await page
+			.getByRole("button", { name: "Fetch domains", exact: true })
+			.filter({ visible: true })
+			.first()
+			.click();
+		await fetchWindow(page).waitFor();
+		await fetchState(page, "idle").waitFor();
+		await chooseCredential(page, fetchWindow(page), "flow-fetch-cf");
+		await fetchState(page, "list").waitFor();
+		const zone = (name) => fetchWindow(page).locator(`[id="fetch-zone-${name}"]`);
+		await fetchWindow(page).getByText("on flow-elsewhere", { exact: true }).waitFor();
+		if (!(await zone("flow-f3.example").isDisabled()))
+			throw new Error("a zone on another credential can be ticked");
+		if ((await zone("flow-f2.example").count()) !== 0)
+			throw new Error("a zone that is already here has a checkbox");
+		if ((await zone("flow-f1.example").getAttribute("aria-checked")) !== "true")
+			throw new Error("the new zone is not ticked");
+		const addButton = (text) => fetchWindow(page).getByRole("button", { name: text, exact: true });
+		await addButton("Add 1 domain").waitFor();
+		await zone("flow-f1.example").click();
+		await addButton("Add 0 domains").waitFor();
+		if (!(await addButton("Add 0 domains").isDisabled())) throw new Error("Add is enabled at 0 domains");
+		await zone("flow-f1.example").click();
+		await addButton("Add 1 domain").waitFor();
+
+		// 5. Add posts the ticked name as fetched
+		await addButton("Add 1 domain").click();
+		await fetchWindow(page).waitFor({ state: "detached" });
+		await rowShows(page, "flow-f1.example", "Fetched");
+		const stored = (await api("GET", "/nginx/dns-domains")).find((row) => row.name === "flow-f1.example");
+		if (stored?.dns_credential_id !== cf.id || stored.source !== "fetched")
+			throw new Error(`the stored row: ${JSON.stringify(stored)}`);
+
+		// 6. an empty list
+		answer = { status: 200, body: { supported: true, truncated: false, zones: [] } };
+		await page.goto("/certificates/dns-credentials");
+		await rowAction(page, "flow-fetch-cf", "Fetch domains");
+		await fetchState(page, "empty").waitFor();
+		await cancel();
+		if (ini.id === cf.id) throw new Error("the two credentials are one");
+		if (errors.length > 0) throw new Error(`page error: ${errors[0]}`);
+	} finally {
+		await page.unroute(FETCH_ROUTE);
+		await cleanUp(api);
+	}
+}
+
 export const dnsFlows = [
 	{ name: "dns domains", run: dnsDomains },
 	{ name: "domain picker", run: domainPicker },
 	{ name: "dns challenge suggestion", run: dnsChallengeSuggestion },
+	{ name: "fetch domains", run: fetchDomains },
 ];
