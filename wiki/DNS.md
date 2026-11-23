@@ -1,5 +1,7 @@
 # DNS
 
+Which providers support which feature: [DNS providers](DNS-providers).
+
 Certificates & DNS holds the DNS credentials, the domains each credential manages and, from later updates, the dynamic DNS records. Everything here uses the Certificates permission: view to read, manage to change.
 
 ## Domains
