@@ -62,19 +62,31 @@ const recordAddressOf = (record) => {
 };
 
 /**
- * What one address line of the status card shows: "address" (known), "failed" (checked and failed), "unchecked" (the
- * other family was checked and this one was not: no enabled record needs it), else "unknown" (needed or not yet
- * checked, no address found).
+ * The families the records need: one is needed when an enabled address record follows it (aliases need none).
+ *
+ * @param   {Array<{ enabled?: boolean, kind?: string, ipVersion?: string }> | undefined}  records  camelCase records
+ * @returns {{ ipv4: boolean, ipv6: boolean }}
+ */
+const familiesNeeded = (records) => {
+	const live = (records ?? []).filter((record) => record.enabled && record.kind !== "alias");
+	return {
+		ipv4: live.some((record) => record.ipVersion === "ipv4" || record.ipVersion === "both"),
+		ipv6: live.some((record) => record.ipVersion === "ipv6" || record.ipVersion === "both"),
+	};
+};
+
+/**
+ * What one address line of the status card shows: "address" (known), "failed" (checked and failed), "unchecked"
+ * (no enabled address record needs the family), else "unknown" (needed, no address found yet).
  *
  * @param   {Object | undefined}  family  status.ipv4 or status.ipv6
- * @param   {Object | undefined}  other   the other family
+ * @param   {boolean}  needed  whether an enabled address record follows this family
  * @returns {"address" | "failed" | "unchecked" | "unknown"}
  */
-const familyLineOf = (family, other) => {
+const familyLineOf = (family, needed) => {
 	if (family?.address) return "address";
 	if (family?.error || family?.errorI18n) return "failed";
-	if (!family?.checkedOn && other?.checkedOn) return "unchecked";
-	return "unknown";
+	return needed ? "unknown" : "unchecked";
 };
 
 /**
@@ -94,4 +106,4 @@ const ageOf = (iso, now) => {
 	return { value: -Math.floor(past / DAY_MS) || 0, unit: "day" };
 };
 
-export { ageOf, ddnsStatusOf, familyLineOf, nextCheckIn, recordAddressOf, statusErrorItem };
+export { ageOf, ddnsStatusOf, familiesNeeded, familyLineOf, nextCheckIn, recordAddressOf, statusErrorItem };

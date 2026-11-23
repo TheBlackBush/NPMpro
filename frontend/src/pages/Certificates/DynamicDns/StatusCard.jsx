@@ -2,9 +2,10 @@ import { CircleAlert, CircleCheck, CircleDashed, CirclePause, Clock, RefreshCw, 
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Button, HasPermission, StatusBadge } from "src/components";
-import { useCheckDdnsNow, useDdnsStatus, useIsAdmin } from "src/hooks";
+import { useCheckDdnsNow, useDdnsRecords, useDdnsStatus, useIsAdmin } from "src/hooks";
 import { intl, T } from "src/locale";
-import { ddnsStatusOf, familyLineOf, nextCheckIn, statusErrorItem } from "src/modules/DdnsStatus";
+import { DDNS_RECORD_LIST_EXPAND } from "src/modules/CertificateTabs";
+import { ddnsStatusOf, familiesNeeded, familyLineOf, nextCheckIn, statusErrorItem } from "src/modules/DdnsStatus";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { showApiError } from "src/notifications";
 import { ddnsErrorText } from "./errorText";
@@ -17,8 +18,8 @@ const BADGES = {
 	none: { tone: "muted", icon: CircleDashed },
 };
 
-function AddressLine({ label, family, other }) {
-	const line = familyLineOf(family, other);
+function AddressLine({ label, family, needed }) {
+	const line = familyLineOf(family, needed);
 	const texts = {
 		failed: ddnsErrorText(family),
 		unchecked: intl.formatMessage({ id: "ddns.status.family-unchecked" }, { family: label }),
@@ -39,12 +40,14 @@ function AddressLine({ label, family, other }) {
 /** The Public IP card of the Dynamic DNS tab: the state, both addresses, the next check and its buttons */
 export function StatusCard() {
 	const { data: status } = useDdnsStatus();
+	const { data: records } = useDdnsRecords(DDNS_RECORD_LIST_EXPAND);
 	const isAdmin = useIsAdmin();
 	const navigate = useNavigate();
 	const check = useCheckDdnsNow();
 	const [showDetails, setShowDetails] = useState(false);
 	if (!status) return null;
 
+	const needed = familiesNeeded(records);
 	const state = ddnsStatusOf(status);
 	const { tone, icon: Icon } = BADGES[state];
 	const errorText = ddnsErrorText(statusErrorItem(status));
@@ -82,8 +85,8 @@ export function StatusCard() {
 				</div>
 			</div>
 			<div className="flex flex-col gap-1 text-sm">
-				<AddressLine label="IPv4" family={status.ipv4} other={status.ipv6} />
-				<AddressLine label="IPv6" family={status.ipv6} other={status.ipv4} />
+				<AddressLine label="IPv4" family={status.ipv4} needed={needed.ipv4} />
+				<AddressLine label="IPv6" family={status.ipv6} needed={needed.ipv6} />
 				{state === "paused" ? (
 					<p className="m-0 text-muted-foreground">
 						<T id="ddns.status.paused-text" />

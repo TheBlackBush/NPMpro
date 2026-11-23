@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { ageOf, ddnsStatusOf, familyLineOf, nextCheckIn, recordAddressOf, statusErrorItem } from "./DdnsStatus.js";
+import {
+	ageOf,
+	ddnsStatusOf,
+	familiesNeeded,
+	familyLineOf,
+	nextCheckIn,
+	recordAddressOf,
+	statusErrorItem,
+} from "./DdnsStatus.js";
 
 const NOW = Date.parse("2026-11-23T10:00:00Z");
 
@@ -49,14 +57,32 @@ it("shows the target of an alias and the written addresses of an address record"
 });
 
 it("picks the line of an address family", () => {
-	const checked = { address: null, checkedOn: "2026-11-23T10:00:00Z" };
-	assert.equal(familyLineOf({ address: "203.0.113.5" }, checked), "address");
-	assert.equal(familyLineOf({ error: "no" }, checked), "failed");
-	assert.equal(familyLineOf({ errorI18n: "error.ddns-ip-failed" }, undefined), "failed");
-	assert.equal(familyLineOf({ address: null, checkedOn: null }, checked), "unchecked");
-	assert.equal(familyLineOf({ address: null, checkedOn: null }, { checkedOn: null }), "unknown");
-	assert.equal(familyLineOf(checked, checked), "unknown");
-	assert.equal(familyLineOf(undefined, undefined), "unknown");
+	assert.equal(familyLineOf({ address: "203.0.113.5" }, false), "address");
+	assert.equal(familyLineOf({ error: "no" }, true), "failed");
+	assert.equal(familyLineOf({ errorI18n: "error.ddns-ip-failed" }, false), "failed");
+	assert.equal(familyLineOf({ address: null }, false), "unchecked");
+	assert.equal(familyLineOf({ address: null }, true), "unknown");
+	assert.equal(familyLineOf(undefined, true), "unknown");
+	assert.equal(familyLineOf(undefined, false), "unchecked");
+});
+
+it("needs a family only for an enabled address record that follows it", () => {
+	const none = { ipv4: false, ipv6: false };
+	assert.deepEqual(familiesNeeded(undefined), none);
+	assert.deepEqual(familiesNeeded([{ enabled: true, kind: "alias", ipVersion: "ipv4" }]), none);
+	assert.deepEqual(familiesNeeded([{ enabled: false, kind: "address", ipVersion: "ipv6" }]), none);
+	assert.deepEqual(familiesNeeded([{ enabled: true, kind: "address", ipVersion: "ipv4" }]), {
+		ipv4: true,
+		ipv6: false,
+	});
+	assert.deepEqual(familiesNeeded([{ enabled: true, kind: "address", ipVersion: "ipv6" }]), {
+		ipv4: false,
+		ipv6: true,
+	});
+	assert.deepEqual(familiesNeeded([{ enabled: true, kind: "address", ipVersion: "both" }]), {
+		ipv4: true,
+		ipv6: true,
+	});
 });
 
 it("gives the age of a time", () => {
