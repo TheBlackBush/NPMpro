@@ -11,7 +11,7 @@ let api;
 let admin;
 let credentials = 0;
 
-const credential = async (session, domains = [], provider = "cloudflare", body = {}) => {
+const credential = async (session, domains = [], { provider = "cloudflare", ...body } = {}) => {
 	credentials += 1;
 	const fields = provider === "cloudflare" ? [{ key: "dns_cloudflare_api_token", value: TOKEN }] : undefined;
 	const done = await session.post("/nginx/dns-credentials", {
@@ -27,12 +27,12 @@ const credential = async (session, domains = [], provider = "cloudflare", body =
 	}
 	return done.body;
 };
-const reply = (names, status = 200, body) =>
+const reply = (names, status, body) =>
 	api.outside.http
 		.get(HOST)
 		.intercept({ path: ZONES, method: "GET" })
 		.reply(
-			status,
+			status ?? 200,
 			body ?? {
 				success: true,
 				result: names.map((name) => ({ name })),
@@ -83,7 +83,10 @@ it("does not count the domains of another owner", async () => {
 });
 
 it("answers supported false for an INI credential without any outside request", async () => {
-	const ini = await credential(admin, [], "acmedns", { ini: "dns_acmedns_api_url = https://auth.acme-dns.io\n" });
+	const ini = await credential(admin, [], {
+		provider: "acmedns",
+		ini: "dns_acmedns_api_url = https://auth.acme-dns.io\n",
+	});
 	reply([]);
 	const res = await admin.get(url(ini.id));
 	assert.equal(res.status, 200, res.text);
