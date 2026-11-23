@@ -85,6 +85,7 @@ const sqlite = async () => {
 		t.integer("owner_user_id").notNull();
 		t.string("name").notNull();
 		t.text("values").notNull();
+		t.string("provider").notNull().defaultTo("cloudflare");
 		t.unique(["owner_user_id", "name"]);
 	});
 	await createDnsDomainTable(knex);

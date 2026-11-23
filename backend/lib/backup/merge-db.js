@@ -387,20 +387,36 @@ const mergeTypes = async ({
 			const hasCredential = isLink(source.dns_credential_id);
 			const credentialId = hasCredential ? maps.npmpro_dns_credential.get(key(source.dns_credential_id)) : null;
 			if (credentialId === undefined) {
-				skippedRecords.push(source.name);
+				skippedRecords.push({ name: source.name, why: "its DNS credential is not here" });
+				return;
+			}
+			// a replaced record stays with its owner
+			const target =
+				item.action === "replace"
+					? await trx(table).where({ id: item.target.id }).first("owner_user_id")
+					: null;
+			const recordOwner = target ? target.owner_user_id : ownerOf(source.owner_user_id);
+			// a record only joins a credential of its own provider and owner
+			const credential =
+				credentialId === null
+					? null
+					: await trx("npmpro_dns_credential").where({ id: credentialId }).first("provider", "owner_user_id");
+			if (credential && credential.provider !== source.provider) {
+				skippedRecords.push({ name: source.name, why: "its DNS credential is of another provider" });
+				return;
+			}
+			if (credential && key(credential.owner_user_id) !== key(recordOwner)) {
+				skippedRecords.push({ name: source.name, why: "its DNS credential belongs to another owner" });
 				return;
 			}
 			const [row] = TYPES.ddns.restoreRows({
-				[table]: [{ ...source, dns_credential_id: credentialId, owner_user_id: ownerOf(source.owner_user_id) }],
+				[table]: [{ ...source, dns_credential_id: credentialId, owner_user_id: recordOwner }],
 			})[table];
 			let recordId;
 			if (item.action === "add") {
 				recordId = await inserter.insertWithNewId(table, row);
 			} else {
 				recordId = item.target.id;
-				// a replaced record stays with its owner
-				const target = await trx(table).where({ id: recordId }).first("owner_user_id");
-				if (target) row.owner_user_id = target.owner_user_id;
 				await updateRow(table, recordId, row);
 			}
 			maps[table].set(key(item.id), recordId);
@@ -484,7 +500,7 @@ const mergeTypes = async ({
 			logger.info(`Merge: ${skippedDomains.length} DNS domain(s) skipped, their owner keeps the name already`);
 		}
 		if (skippedRecords.length > 0) {
-			logger.info(`Merge: ${skippedRecords.length} DDNS record(s) skipped, their DNS credential is not here`);
+			logger.info(`Merge: ${skippedRecords.length} DDNS record(s) skipped, their DNS credential does not fit`);
 		}
 		return {
 			counts,
@@ -494,6 +510,7 @@ const mergeTypes = async ({
 			avatarMoves,
 			cleared: cleared.size,
 			skipped_domains: skippedDomains,
+			skipped_records: skippedRecords,
 		};
 	});
 };

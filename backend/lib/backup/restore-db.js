@@ -4,7 +4,13 @@ import { global as logger } from "../../logger.js";
 import { normalizeDomainName } from "../dns-domain-name.js";
 import { withValidPages } from "../landing-pages/backup-rows.js";
 import { BackupError } from "./format.js";
-import { applyReferences, planReferences, splitOrphanDomains, splitOrphanRecords } from "./references.js";
+import {
+	applyReferences,
+	ownerResolver,
+	planReferences,
+	splitOrphanDomains,
+	splitOrphanRecords,
+} from "./references.js";
 import { coerceRow } from "./rows.js";
 import { ITEM_TYPES } from "./select.js";
 import { RESTORE_ORDER, TYPES } from "./types.js";
@@ -37,6 +43,7 @@ const REFERENCE_COLUMNS = [
 	"npmpro_mtls_certificate_id",
 	"npmpro_dns_credential_id",
 	"dns_credential_id",
+	"provider",
 	"proxy_host_id",
 	"location_id",
 	"access_list_id",
@@ -315,15 +322,18 @@ const detachRecords = async (trx, replaced) => {
 		await trx(RECORD_TABLE).del();
 		return [];
 	}
-	const linked = await trx(RECORD_TABLE).whereNotNull("dns_credential_id").select("id", "name", "dns_credential_id");
+	const linked = await trx(RECORD_TABLE)
+		.whereNotNull("dns_credential_id")
+		.select("id", "name", "dns_credential_id", "provider", "owner_user_id");
 	if (linked.length > 0)
 		await trx(RECORD_TABLE).whereNotNull("dns_credential_id").update({ dns_credential_id: null });
 	return linked;
 };
 
-const reattachRecords = async (trx, detached) => {
-	const credentials = await trx("npmpro_dns_credential").select("id");
-	const { kept, orphans } = splitOrphanRecords(detached, credentials);
+const reattachRecords = async (trx, detached, adminUserId) => {
+	const credentials = await trx("npmpro_dns_credential").select("id", "provider", "owner_user_id");
+	const owner = ownerResolver(new Set((await trx("user").pluck("id")).map(key)), adminUserId);
+	const { kept, orphans } = splitOrphanRecords(detached, credentials, owner);
 	for (const row of kept)
 		await trx(RECORD_TABLE).where({ id: row.id }).update({ dns_credential_id: row.dns_credential_id });
 	const gone = orphans.map((change) => change.id);
@@ -484,7 +494,8 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 			if (typeId === "ddns") {
 				const { kept: records, orphans } = splitOrphanRecords(
 					rowsByTable[RECORD_TABLE],
-					await trx("npmpro_dns_credential").select("id"),
+					await trx("npmpro_dns_credential").select("id", "provider", "owner_user_id"),
+					ownerResolver(new Set((await trx("user").pluck("id")).map(key)), adminUserId),
 				);
 				rowsByTable[RECORD_TABLE] = records;
 				droppedRecords.push(...orphans);
@@ -494,7 +505,8 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 				await inserter.insert(table, rowsByTable[table]);
 				if (where) await checkTypeRows(trx, table, where, rowsByTable[table]);
 			}
-			if (typeId === "dns_credentials") droppedRecords.push(...(await reattachRecords(trx, detachedRecords)));
+			if (typeId === "dns_credentials")
+				droppedRecords.push(...(await reattachRecords(trx, detachedRecords, adminUserId)));
 			counts[typeId] = rowsByTable[type.tables[0].table].length;
 		}
 		for (const table of inserter.touched) await inserter.resetSequence(table);

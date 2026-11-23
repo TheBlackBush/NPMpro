@@ -116,6 +116,7 @@ export const createSchema = async (knex) => {
 		t.increments("id");
 		t.integer("owner_user_id").notNull().defaultTo(1);
 		t.string("name").notNull();
+		t.string("provider").notNull().defaultTo("cloudflare");
 		t.text("values").notNull();
 	});
 	await createDnsDomainTable(knex);

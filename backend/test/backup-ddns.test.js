@@ -34,7 +34,13 @@ const open = async () => {
 	return knex;
 };
 
-const credential = (id, owner, name) => ({ id, owner_user_id: owner, name, values: {} });
+const credential = (id, owner, name, provider = "cloudflare") => ({
+	id,
+	owner_user_id: owner,
+	name,
+	provider,
+	values: {},
+});
 const record = (id, credentialId, name, extra = {}) => ({
 	id,
 	owner_user_id: 1,
@@ -85,8 +91,15 @@ const merge = async (knex, { data, types = ["ddns"], choices, items, scope = SCO
 	return { plan, result };
 };
 
-const seedCredential = (knex, id = 1, name = "Cloudflare") =>
-	knex("npmpro_dns_credential").insert({ id, owner_user_id: 1, name, values: "v1:{}" });
+const seedCredential = (knex, id = 1, name = "Cloudflare", extra = {}) =>
+	knex("npmpro_dns_credential").insert({
+		id,
+		owner_user_id: 1,
+		name,
+		provider: "cloudflare",
+		values: "v1:{}",
+		...extra,
+	});
 
 it("the ddns type has its own category after DNS credentials, restores after them and holds no history", () => {
 	const ids = CATEGORIES.map((category) => category.id);
@@ -272,7 +285,7 @@ it("a merge adds a record onto the credential the plan matches, reset, and skips
 it("a merge replaces a record of the same name, keeping its id and owner", async () => {
 	const knex = await open();
 	try {
-		await seedCredential(knex);
+		await seedCredential(knex, 1, "Cloudflare", { owner_user_id: 8 });
 		await knex("npmpro_ddns_record").insert(record(4, 1, "a.example.com", { owner_user_id: 8, ttl: 300 }));
 		const data = bothData([credential(3, 1, "Cloudflare")], [record(5, 3, "a.example.com", { ttl: 600 })]);
 		await merge(knex, {
@@ -344,6 +357,132 @@ it("the import check refuses a record with a name or a target in the wrong form"
 				field,
 			);
 		}
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a replace of credentials alone removes a record whose credential changed provider or owner, with a note", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex, 1, "Same");
+		await seedCredential(knex, 2, "Provider");
+		await seedCredential(knex, 3, "Owner");
+		await knex("npmpro_ddns_record").insert([
+			record(1, 1, "same.example.com"),
+			record(2, 2, "provider.example.com"),
+			record(3, 3, "owner.example.com"),
+		]);
+		const data = {
+			dns_credentials: {
+				npmpro_dns_credential: [
+					credential(1, 1, "Same"),
+					credential(2, 1, "Provider", "hetzner-cloud"),
+					credential(3, 5, "Owner"),
+				],
+				npmpro_dns_domain: [],
+			},
+		};
+		await knex("user").insert({ id: 5, email: "five@example.com", name: "Five", roles: "[]" });
+		const notes = [
+			"DDNS record provider.example.com: DNS credential #2 is of another provider",
+			"DDNS record owner.example.com: DNS credential #3 belongs to another owner",
+		];
+		const preview = await previewReplace({ knex, data, types: ["dns_credentials"], adminUserId: 1 });
+		const result = await replaceTypes({ knex, data, types: ["dns_credentials"], adminUserId: 1, box, now: NOW });
+		for (const references of [preview.references, result.references]) {
+			assert.deepEqual(
+				references.filter((change) => change.remove).map((change) => change.label),
+				notes,
+			);
+		}
+		assert.deepEqual(await knex("npmpro_ddns_record").pluck("name"), ["same.example.com"]);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a full replace drops a record whose credential in the backup is of another provider", async () => {
+	const knex = await open();
+	try {
+		const data = bothData(
+			[credential(4, 1, "New", "hetzner-cloud")],
+			[record(1, 4, "a.example.com"), record(2, 4, "b.example.com", { provider: "hetzner-cloud" })],
+		);
+		const result = await replaceTypes({
+			knex,
+			data,
+			types: ["dns_credentials", "ddns"],
+			adminUserId: 1,
+			box,
+			now: NOW,
+		});
+		assert.deepEqual(
+			result.references.map((change) => change.label),
+			["DDNS record a.example.com: DNS credential #4 is of another provider"],
+		);
+		assert.deepEqual(await knex("npmpro_ddns_record").pluck("name"), ["b.example.com"]);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("an alias record survives a replace restore and a merge with its kind and target", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex);
+		const alias = record(1, 1, "www.example.com", { kind: "alias", target: "target.example.net" });
+		await replaceTypes({ knex, data: ddnsData([alias]), types: ["ddns"], adminUserId: 1, box, now: NOW });
+		const [restored] = await knex("npmpro_ddns_record");
+		assert.deepEqual([restored.kind, restored.target, restored.state], ["alias", "target.example.net", "pending"]);
+		await knex("npmpro_ddns_record").del();
+		const data = bothData([credential(3, 1, "Cloudflare")], [{ ...alias, dns_credential_id: 3 }]);
+		await merge(knex, { data, types: ["dns_credentials", "ddns"], choices: { "dns_credentials:3": "existing" } });
+		const [merged] = await knex("npmpro_ddns_record");
+		assert.deepEqual([merged.kind, merged.target, merged.dns_credential_id], ["alias", "target.example.net", 1]);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a merge that adds the credential under a renamed name still joins the record to it", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex, 1, "Cloudflare");
+		const data = bothData([credential(3, 1, "Cloudflare")], [record(5, 3, "a.example.com")]);
+		const { result } = await merge(knex, {
+			data,
+			types: ["dns_credentials", "ddns"],
+			choices: { "dns_credentials:3": "add" },
+		});
+		const added = result.maps.npmpro_dns_credential.get("3");
+		assert.notEqual(added, 1);
+		assert.equal((await knex("npmpro_dns_credential").where({ id: added }).first()).name, "Cloudflare (2)");
+		assert.deepEqual(await knex("npmpro_ddns_record").pluck("dns_credential_id"), [added]);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a merge skips a record whose matched credential is of another provider or owner, with a note", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex, 1, "Cloudflare", { provider: "hetzner-cloud" });
+		await seedCredential(knex, 2, "Other owner", { owner_user_id: 7 });
+		const data = bothData(
+			[credential(3, 1, "Cloudflare"), credential(4, 1, "Other owner")],
+			[record(5, 3, "a.example.com"), record(6, 4, "b.example.com")],
+		);
+		const { result } = await merge(knex, {
+			data,
+			types: ["dns_credentials", "ddns"],
+			choices: { "dns_credentials:3": "existing", "dns_credentials:4": "existing" },
+		});
+		assert.deepEqual(result.skipped_records, [
+			{ name: "a.example.com", why: "its DNS credential is of another provider" },
+			{ name: "b.example.com", why: "its DNS credential belongs to another owner" },
+		]);
+		assert.equal((await knex("npmpro_ddns_record")).length, 0);
 	} finally {
 		await knex.destroy();
 	}

@@ -197,7 +197,6 @@ const limitByScope = ({ item, targetRow }, scope) => {
 	return item;
 };
 
-// the user's choice when it is one the item offers; an unticked linked item uses its match or is left out
 // a DDNS record is written through its credential: one whose credential is neither added nor matched here is skipped
 const settleRecords = (items, data) => {
 	const byKey = new Map(items.map((item) => [item.key, item]));
@@ -210,6 +209,7 @@ const settleRecords = (items, data) => {
 	});
 };
 
+// the user's choice when it is one the item offers; an unticked linked item uses its match or is left out
 const applyChoice = (item, choice) => {
 	if (item.linked && choice === "unticked")
 		return { ...item, unticked: true, action: item.target ? "existing" : "skip" };

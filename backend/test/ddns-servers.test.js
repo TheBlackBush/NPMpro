@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import knexFactory from "knex";
+import { replaceTypes } from "../lib/backup/restore-db.js";
+import { createSchema } from "./support/backup-schema.js";
 import { ENGINES, resetEngine } from "./support/servers.js";
 
 const NOW = "2026-11-24 10:00:00";
@@ -87,6 +89,80 @@ for (const [name, label] of [
 			await assert.rejects(ctx.knex("npmpro_dns_credential").where({ id: credentialId }).del());
 			await ctx.knex("npmpro_ddns_record").where({ id: recordId }).del();
 			assert.equal(Number((await ctx.knex("npmpro_ddns_history").count({ count: "*" }))[0].count), 0);
+		});
+	});
+}
+
+// a replace restore of the credentials alone, under records that point to them by a foreign key without cascade
+for (const [name, label] of [
+	["postgres", "Postgres"],
+	["mysql", "MySQL"],
+]) {
+	const engine = ENGINES[name];
+	const ctx = {};
+	describe(`DDNS records in a credentials restore on ${label}`, { skip: engine.skip, timeout: 120_000 }, () => {
+		before(async () => {
+			await resetEngine(name);
+			ctx.knex = knexFactory({ client: engine.client, connection: engine.connection() });
+			await createSchema(ctx.knex);
+		});
+		after(() => ctx.knex?.destroy());
+
+		it("keeps the records whose credential, provider and owner stay and removes the others with their history", async () => {
+			const { knex } = ctx;
+			const box = {
+				encrypt: (value) => `v1:${JSON.stringify(value)}`,
+				decrypt: (value) => JSON.parse(value.slice(3)),
+			};
+			const credential = (id, extra = {}) => ({
+				id,
+				owner_user_id: 1,
+				name: `c${id}`,
+				provider: "cloudflare",
+				values: {},
+				...extra,
+			});
+			await knex("npmpro_dns_credential").insert(
+				[1, 2, 3, 4].map((id) => ({ ...credential(id), values: "v1:{}" })),
+			);
+			const record = (id, credentialId) => ({
+				id,
+				created_on: NOW,
+				modified_on: NOW,
+				owner_user_id: 1,
+				dns_credential_id: credentialId,
+				provider: "cloudflare",
+				name: `r${id}.example.com`,
+				zone: "example.com",
+			});
+			await knex("npmpro_ddns_record").insert([record(1, 1), record(2, 2), record(3, 3), record(4, null)]);
+			await knex("npmpro_ddns_history").insert(
+				[1, 2, 3].map((id) => ({ ddns_record_id: id, created_on: NOW, kind: "changed" })),
+			);
+			// 1 stays, 2 is gone, 3 changes provider, 4 does not exist in the backup; 5 is new
+			const data = {
+				dns_credentials: {
+					npmpro_dns_credential: [credential(1), credential(3, { provider: "hetzner-cloud" }), credential(5)],
+					npmpro_dns_domain: [],
+				},
+			};
+			const result = await replaceTypes({
+				knex,
+				data,
+				types: ["dns_credentials"],
+				adminUserId: 1,
+				box,
+				now: 1_800_000_000,
+			});
+			assert.equal(result.references.filter((change) => change.remove).length, 2);
+			assert.deepEqual(
+				(await knex("npmpro_ddns_record").orderBy("id")).map((row) => [Number(row.id), row.dns_credential_id]),
+				[
+					[1, 1],
+					[4, null],
+				],
+			);
+			assert.deepEqual((await knex("npmpro_ddns_history").pluck("ddns_record_id")).map(Number), [1]);
 		});
 	});
 }
