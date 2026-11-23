@@ -328,3 +328,54 @@ it("refuses a bearer token without Allow delete on DELETE", async () => {
 	assert.equal((await api.client().delete(`${BASE}/${domain.id}`, { headers })).status, 403);
 	assert.ok(await api.db("npmpro_dns_domain").where({ id: domain.id }).first());
 });
+
+it("saves names and fetched_names in one call, each with its source", async () => {
+	const c = await credential();
+	const done = await add(c.id, ["typed.example"], admin, { fetched_names: ["Zone.example", "other.example"] });
+	assert.equal(done.status, 201, done.text);
+	const sources = Object.fromEntries(done.body.map((row) => [row.name, row.source]));
+	assert.deepEqual(sources, { "typed.example": "typed", "zone.example": "fetched", "other.example": "fetched" });
+	const [entry] = await auditRows("created");
+	const meta = JSON.parse(entry.meta);
+	assert.deepEqual(meta.sources, sources);
+	const only = await admin.post(BASE, { dns_credential_id: c.id, fetched_names: ["solo.example"] });
+	assert.equal(only.status, 201, only.text);
+	assert.equal(only.body[0].source, "fetched");
+});
+
+it("refuses the whole request when a name in fetched_names is on another credential", async () => {
+	const a = await credential();
+	const b = await credential();
+	assert.equal((await add(a.id, ["held.example"])).status, 201);
+	const rows = await countRows(api, "npmpro_dns_domain");
+	const refused = await add(b.id, ["fine.example"], admin, { fetched_names: ["held.example"] });
+	assert.equal(refused.status, 400);
+	assert.equal(refused.body.error.message_i18n, "error.dns-domain-taken");
+	assert.equal(await countRows(api, "npmpro_dns_domain"), rows);
+});
+
+it("saves a name in both lists once, as typed", async () => {
+	const c = await credential();
+	const done = await add(c.id, ["both.example"], admin, { fetched_names: ["BOTH.example", "z.example"] });
+	assert.equal(done.status, 201, done.text);
+	assert.deepEqual(
+		done.body.map((row) => [row.name, row.source]),
+		[
+			["both.example", "typed"],
+			["z.example", "fetched"],
+		],
+	);
+});
+
+it("counts names and fetched_names together against the limit of 100, and needs one name", async () => {
+	const c = await credential();
+	const list = (prefix, n) => Array.from({ length: n }, (_, i) => `${prefix}${i}.example`);
+	const rows = await countRows(api, "npmpro_dns_domain");
+	const over = await add(c.id, list("a", 60), admin, { fetched_names: list("b", 41) });
+	assert.equal(over.status, 400);
+	assert.equal(await countRows(api, "npmpro_dns_domain"), rows);
+	const exact = await add(c.id, list("a", 60), admin, { fetched_names: list("b", 40) });
+	assert.equal(exact.status, 201, exact.text);
+	const none = await admin.post(BASE, { dns_credential_id: c.id });
+	assert.equal(none.status, 400);
+});
