@@ -7,6 +7,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
 
+// a record name holding a flow-... label (home.flow-ddns.example)
+const FLOW_RECORD = /(?:^|\.)flow-/u;
 export const ADMIN_EMAIL = "admin@example.com";
 export const VIEWER_EMAIL = "flow-viewer@example.com";
 
@@ -314,19 +316,22 @@ export async function cleanUp(api) {
 /** Removes what the flows create (not the viewer when withViewer is false, for a flow that is not the last): hosts and streams named flow-..., access lists, API tokens named flow-... and the viewer */
 export async function removeFlowData(api, withViewer = true) {
 	const isFlow = (text) => String(text ?? "").startsWith("flow-");
-	const [proxy, redirection, dead, streams, lists, users, certificates, tokens, credentials] = await Promise.all(
-		[
-			"/nginx/proxy-hosts",
-			"/nginx/redirection-hosts",
-			"/nginx/dead-hosts",
-			"/nginx/streams",
-			"/nginx/access-lists",
-			"/users",
-			"/nginx/certificates",
-			"/api-tokens",
-			"/nginx/dns-credentials",
-		].map((path) => api("GET", path)),
-	);
+	const isFlowRecord = (text) => FLOW_RECORD.test(String(text ?? ""));
+	const [proxy, redirection, dead, streams, lists, users, certificates, tokens, credentials, records] =
+		await Promise.all(
+			[
+				"/nginx/proxy-hosts",
+				"/nginx/redirection-hosts",
+				"/nginx/dead-hosts",
+				"/nginx/streams",
+				"/nginx/access-lists",
+				"/users",
+				"/nginx/certificates",
+				"/api-tokens",
+				"/nginx/dns-credentials",
+				"/nginx/ddns-records",
+			].map((path) => api("GET", path)),
+		);
 	const paths = [
 		...proxy.filter((row) => row.domain_names.some(isFlow)).map((row) => `/nginx/proxy-hosts/${row.id}`),
 		...redirection
@@ -338,6 +343,8 @@ export async function removeFlowData(api, withViewer = true) {
 		...users.filter((row) => withViewer && row.email === VIEWER_EMAIL).map((row) => `/users/${row.id}`),
 		...certificates.filter((row) => isFlow(row.nice_name)).map((row) => `/nginx/certificates/${row.id}`),
 		...tokens.filter((row) => isFlow(row.name)).map((row) => `/api-tokens/${row.id}`),
+		// before the credentials they use
+		...records.filter((row) => isFlowRecord(row.name)).map((row) => `/nginx/ddns-records/${row.id}`),
 		// after the certificates that may use them; a credential takes its domains with it
 		...credentials.filter((row) => isFlow(row.name)).map((row) => `/nginx/dns-credentials/${row.id}`),
 	];

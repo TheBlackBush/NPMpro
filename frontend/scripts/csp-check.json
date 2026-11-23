@@ -8,6 +8,7 @@
 		"/certificates",
 		"/certificates/dns-credentials",
 		"/certificates/domains",
+		"/certificates/dynamic-dns",
 		"/access",
 		"/audit-log",
 		"/users",
@@ -324,6 +325,16 @@
 				{ "click": "role=button[name='Add domains']" },
 				{ "waitFor": "[data-dns-domains-window]" },
 				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "add record window",
+			"route": "/certificates/dynamic-dns",
+			"steps": [
+				{ "click": "role=button[name='Add record'] >> visible=true" },
+				{ "waitFor": "[data-ddns-record-window]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-ddns-record-window]" }
 			]
 		},
 		{
