@@ -18,7 +18,7 @@ const useDnsDomains = (expand, options = {}) =>
 		...options,
 	});
 
-// the zones a credential's provider lists, asked on each open of the Fetch domains window and never kept
+// the zones a credential's provider lists, asked on each open of the Add domains window and never kept
 const useProviderDomains = (id) =>
 	useQuery({
 		queryKey: ["dns-provider-domains", id],

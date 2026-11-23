@@ -6,7 +6,7 @@ import dnsDomainModel from "../models/dns_domain.js";
 import internalDnsCredential from "./dns-credential.js";
 
 // The zones a provider lists for a DNS credential, each marked against the owner's stored domains. Nothing is
-// written here: the Fetch domains window adds the chosen names through the domains API.
+// written here: the Add domains window adds the chosen names through the domains API.
 
 // a provider failure as a public 400 the UI translates (the permission hint is `needs`: the JSON replacer drops
 // every string key named hint); the message is already scrubbed of the secrets
