@@ -1,11 +1,13 @@
+// The rule table imports only node: modules and leaf files of lib/ (no package): the frontend tests load it without
+// the backend packages installed.
 import { statSync } from "node:fs";
 import { isIP } from "node:net";
 import { availableParallelism } from "node:os";
 import { LETSENCRYPT_SERVER, resolveAcmeServer, STAPLING_SERVERS } from "./acme-server.js";
+import { isBlockedAddress } from "./blocked-address.js";
 import { DEFAULT_IPV4_SERVICES, DEFAULT_IPV6_SERVICES } from "./ddns/public-ip.js";
 import { LOG_FORMATS } from "./log-format.js";
 import { parseCpuList, readCpusAllowed } from "./nginx-core.js";
-import { isBlockedAddress } from "./outbound-guard.js";
 import { rooted } from "./paths.js";
 import { resolverAddressList } from "./resolver-address.js";
 import { isTimeZone } from "./time-zones.js";
