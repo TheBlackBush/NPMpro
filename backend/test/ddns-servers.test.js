@@ -109,7 +109,7 @@ for (const [name, label] of [
 		});
 		after(() => ctx.knex?.destroy());
 
-		it("keeps the records whose credential, provider and owner stay and removes the others with their history", async () => {
+		it("keeps the records whose credential and provider stay and removes the others with their history", async () => {
 			const { knex } = ctx;
 			const box = {
 				encrypt: (value) => `v1:${JSON.stringify(value)}`,

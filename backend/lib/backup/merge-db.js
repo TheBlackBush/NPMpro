@@ -390,13 +390,7 @@ const mergeTypes = async ({
 				skippedRecords.push({ name: source.name, why: "its DNS credential is not here" });
 				return;
 			}
-			// a replaced record stays with its owner
-			const target =
-				item.action === "replace"
-					? await trx(table).where({ id: item.target.id }).first("owner_user_id")
-					: null;
-			const recordOwner = target ? target.owner_user_id : ownerOf(source.owner_user_id);
-			// a record only joins a credential of its own provider and owner
+			// a record only joins a credential of its own provider, and belongs to the credential's owner
 			const credential =
 				credentialId === null
 					? null
@@ -405,9 +399,14 @@ const mergeTypes = async ({
 				skippedRecords.push({ name: source.name, why: "its DNS credential is of another provider" });
 				return;
 			}
-			if (credential && key(credential.owner_user_id) !== key(recordOwner)) {
-				skippedRecords.push({ name: source.name, why: "its DNS credential belongs to another owner" });
-				return;
+			// a record without a credential (the custom provider): a replaced one stays with its owner
+			let recordOwner = credential?.owner_user_id;
+			if (!credential) {
+				const target =
+					item.action === "replace"
+						? await trx(table).where({ id: item.target.id }).first("owner_user_id")
+						: null;
+				recordOwner = target ? target.owner_user_id : ownerOf(source.owner_user_id);
 			}
 			const [row] = TYPES.ddns.restoreRows({
 				[table]: [{ ...source, dns_credential_id: credentialId, owner_user_id: recordOwner }],

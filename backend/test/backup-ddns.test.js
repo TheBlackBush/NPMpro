@@ -253,6 +253,38 @@ it("a record of an owner the backup does not hold goes to the restoring admin", 
 	}
 });
 
+it("a replace restore of the records gives each its credential's owner", async () => {
+	const knex = await open();
+	try {
+		await knex("user").insert({ id: 5, email: "five@example.com", name: "Five", roles: "[]" });
+		await seedCredential(knex, 1, "Five's", { owner_user_id: 5 });
+		const data = ddnsData([record(1, 1, "a.example.com", { owner_user_id: 1 })]);
+		await replaceTypes({ knex, data, types: ["ddns"], adminUserId: 1, box, now: NOW });
+		assert.deepEqual(await knex("npmpro_ddns_record").pluck("owner_user_id"), [5]);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a replace restore of an unrelated type keeps a record whose owner is not its credential's owner", async () => {
+	const knex = await open();
+	try {
+		await knex("user").insert({ id: 2, email: "two@example.com", name: "Two", roles: "[]" });
+		await seedCredential(knex, 1, "Two's", { owner_user_id: 2 });
+		// saved by an administrator before a record took its credential's owner
+		await knex("npmpro_ddns_record").insert(record(1, 1, "kept.example.com", { owner_user_id: 1 }));
+		const data = { access_lists: { access_list: [], access_list_auth: [], access_list_client: [] } };
+		const result = await replaceTypes({ knex, data, types: ["access_lists"], adminUserId: 1, box, now: NOW });
+		assert.deepEqual(
+			result.references.filter((change) => change.table === "npmpro_ddns_record"),
+			[],
+		);
+		assert.deepEqual(await knex("npmpro_ddns_record").pluck("name"), ["kept.example.com"]);
+	} finally {
+		await knex.destroy();
+	}
+});
+
 it("a merge adds a record onto the credential the plan matches, reset, and skips a name that exists", async () => {
 	const knex = await open();
 	try {
@@ -362,7 +394,7 @@ it("the import check refuses a record with a name or a target in the wrong form"
 	}
 });
 
-it("a replace of credentials alone removes a record whose credential changed provider or owner, with a note", async () => {
+it("a replace of credentials alone removes a record whose credential changed provider, and moves one to a new owner", async () => {
 	const knex = await open();
 	try {
 		await seedCredential(knex, 1, "Same");
@@ -384,10 +416,7 @@ it("a replace of credentials alone removes a record whose credential changed pro
 			},
 		};
 		await knex("user").insert({ id: 5, email: "five@example.com", name: "Five", roles: "[]" });
-		const notes = [
-			"DDNS record provider.example.com: DNS credential #2 is of another provider",
-			"DDNS record owner.example.com: DNS credential #3 belongs to another owner",
-		];
+		const notes = ["DDNS record provider.example.com: DNS credential #2 is of another provider"];
 		const preview = await previewReplace({ knex, data, types: ["dns_credentials"], adminUserId: 1 });
 		const result = await replaceTypes({ knex, data, types: ["dns_credentials"], adminUserId: 1, box, now: NOW });
 		for (const references of [preview.references, result.references]) {
@@ -396,7 +425,13 @@ it("a replace of credentials alone removes a record whose credential changed pro
 				notes,
 			);
 		}
-		assert.deepEqual(await knex("npmpro_ddns_record").pluck("name"), ["same.example.com"]);
+		assert.deepEqual(
+			(await knex("npmpro_ddns_record").orderBy("id")).map((row) => [row.name, row.owner_user_id]),
+			[
+				["same.example.com", 1],
+				["owner.example.com", 5],
+			],
+		);
 	} finally {
 		await knex.destroy();
 	}
@@ -464,7 +499,7 @@ it("a merge that adds the credential under a renamed name still joins the record
 	}
 });
 
-it("a merge skips a record whose matched credential is of another provider or owner, with a note", async () => {
+it("a merge skips a record whose matched credential is of another provider, and gives the others its owner", async () => {
 	const knex = await open();
 	try {
 		await seedCredential(knex, 1, "Cloudflare", { provider: "hetzner-cloud" });
@@ -480,9 +515,11 @@ it("a merge skips a record whose matched credential is of another provider or ow
 		});
 		assert.deepEqual(result.skipped_records, [
 			{ name: "a.example.com", why: "its DNS credential is of another provider" },
-			{ name: "b.example.com", why: "its DNS credential belongs to another owner" },
 		]);
-		assert.equal((await knex("npmpro_ddns_record")).length, 0);
+		assert.deepEqual(
+			(await knex("npmpro_ddns_record")).map((row) => [row.name, row.dns_credential_id, row.owner_user_id]),
+			[["b.example.com", 2, 7]],
+		);
 	} finally {
 		await knex.destroy();
 	}

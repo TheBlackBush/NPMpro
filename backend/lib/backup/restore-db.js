@@ -4,13 +4,7 @@ import { global as logger } from "../../logger.js";
 import { normalizeDomainName } from "../dns-domain-name.js";
 import { withValidPages } from "../landing-pages/backup-rows.js";
 import { BackupError } from "./format.js";
-import {
-	applyReferences,
-	ownerResolver,
-	planReferences,
-	splitOrphanDomains,
-	splitOrphanRecords,
-} from "./references.js";
+import { applyReferences, planReferences, splitOrphanDomains, splitOrphanRecords } from "./references.js";
 import { coerceRow } from "./rows.js";
 import { ITEM_TYPES } from "./select.js";
 import { RESTORE_ORDER, TYPES } from "./types.js";
@@ -330,12 +324,19 @@ const detachRecords = async (trx, replaced) => {
 	return linked;
 };
 
-const reattachRecords = async (trx, detached, adminUserId) => {
+const reattachRecords = async (trx, detached) => {
 	const credentials = await trx("npmpro_dns_credential").select("id", "provider", "owner_user_id");
-	const owner = ownerResolver(new Set((await trx("user").pluck("id")).map(key)), adminUserId);
-	const { kept, orphans } = splitOrphanRecords(detached, credentials, owner);
-	for (const row of kept)
-		await trx(RECORD_TABLE).where({ id: row.id }).update({ dns_credential_id: row.dns_credential_id });
+	const ownerOf = new Map(credentials.map((row) => [key(row.id), row.owner_user_id]));
+	const { kept, orphans } = splitOrphanRecords(detached, credentials);
+	// a record belongs to its credential's owner, also when the restored credential has another one
+	for (const row of kept) {
+		await trx(RECORD_TABLE)
+			.where({ id: row.id })
+			.update({
+				dns_credential_id: row.dns_credential_id,
+				owner_user_id: ownerOf.get(key(row.dns_credential_id)),
+			});
+	}
 	const gone = orphans.map((change) => change.id);
 	if (gone.length > 0) {
 		await trx("npmpro_ddns_history").whereIn("ddns_record_id", gone).del();
@@ -492,12 +493,15 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 				droppedDomains.push(...orphans);
 			}
 			if (typeId === "ddns") {
-				const { kept: records, orphans } = splitOrphanRecords(
-					rowsByTable[RECORD_TABLE],
-					await trx("npmpro_dns_credential").select("id", "provider", "owner_user_id"),
-					ownerResolver(new Set((await trx("user").pluck("id")).map(key)), adminUserId),
+				const credentials = await trx("npmpro_dns_credential").select("id", "provider", "owner_user_id");
+				const { kept: records, orphans } = splitOrphanRecords(rowsByTable[RECORD_TABLE], credentials);
+				// a record belongs to its credential's owner
+				const ownerOf = new Map(credentials.map((row) => [key(row.id), row.owner_user_id]));
+				rowsByTable[RECORD_TABLE] = records.map((row) =>
+					ownerOf.has(key(row.dns_credential_id))
+						? { ...row, owner_user_id: ownerOf.get(key(row.dns_credential_id)) }
+						: row,
 				);
-				rowsByTable[RECORD_TABLE] = records;
 				droppedRecords.push(...orphans);
 			}
 			for (const { table, where } of type.tables) {
@@ -505,8 +509,7 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 				await inserter.insert(table, rowsByTable[table]);
 				if (where) await checkTypeRows(trx, table, where, rowsByTable[table]);
 			}
-			if (typeId === "dns_credentials")
-				droppedRecords.push(...(await reattachRecords(trx, detachedRecords, adminUserId)));
+			if (typeId === "dns_credentials") droppedRecords.push(...(await reattachRecords(trx, detachedRecords)));
 			counts[typeId] = rowsByTable[type.tables[0].table].length;
 		}
 		for (const table of inserter.touched) await inserter.resetSequence(table);
