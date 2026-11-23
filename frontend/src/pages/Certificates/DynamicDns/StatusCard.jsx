@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import { Button, HasPermission, StatusBadge } from "src/components";
 import { useCheckDdnsNow, useDdnsStatus, useIsAdmin } from "src/hooks";
 import { intl, T } from "src/locale";
-import { ddnsStatusOf, nextCheckIn, statusErrorItem } from "src/modules/DdnsStatus";
+import { ddnsStatusOf, familyLineOf, nextCheckIn, statusErrorItem } from "src/modules/DdnsStatus";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { showApiError } from "src/notifications";
 import { ddnsErrorText } from "./errorText";
@@ -17,14 +17,20 @@ const BADGES = {
 	none: { tone: "muted", icon: CircleDashed },
 };
 
-function AddressLine({ label, family, checkedText }) {
+function AddressLine({ label, family, other }) {
+	const line = familyLineOf(family, other);
+	const texts = {
+		failed: ddnsErrorText(family),
+		unchecked: intl.formatMessage({ id: "ddns.status.family-unchecked" }, { family: label }),
+		unknown: intl.formatMessage({ id: "ddns.status.ipv4-unknown" }),
+	};
 	return (
 		<div className="flex flex-wrap items-baseline gap-x-2">
 			<span className="text-muted-foreground">{label}</span>
-			{family?.address ? (
+			{line === "address" ? (
 				<span className="font-mono">{family.address}</span>
 			) : (
-				<span className="text-muted-foreground">{checkedText}</span>
+				<span className={line === "failed" ? "text-destructive" : "text-muted-foreground"}>{texts[line]}</span>
 			)}
 		</div>
 	);
@@ -43,13 +49,6 @@ export function StatusCard() {
 	const { tone, icon: Icon } = BADGES[state];
 	const errorText = ddnsErrorText(statusErrorItem(status));
 	const next = nextCheckIn(status.nextRunOn, Date.now());
-	const ipv6Text = status.ipv6?.address
-		? null
-		: intl.formatMessage({ id: state === "none" ? "ddns.status.not-checked" : "ddns.status.ipv6-not-checked" });
-	const ipv4Text = intl.formatMessage({
-		id: state === "none" ? "ddns.status.not-checked" : "ddns.status.ipv4-unknown",
-	});
-
 	return (
 		<div className="flex flex-col gap-3 rounded-lg border bg-card p-4" data-ddns-status={state}>
 			<div className="flex flex-wrap items-center justify-between gap-3">
@@ -83,8 +82,8 @@ export function StatusCard() {
 				</div>
 			</div>
 			<div className="flex flex-col gap-1 text-sm">
-				<AddressLine label="IPv4" family={status.ipv4} checkedText={ipv4Text} />
-				<AddressLine label="IPv6" family={status.ipv6} checkedText={ipv6Text} />
+				<AddressLine label="IPv4" family={status.ipv4} other={status.ipv6} />
+				<AddressLine label="IPv6" family={status.ipv6} other={status.ipv4} />
 				{state === "paused" ? (
 					<p className="m-0 text-muted-foreground">
 						<T id="ddns.status.paused-text" />

@@ -9,7 +9,7 @@ import { useCanManage, useDdnsProviders } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDdnsRecordModal } from "src/modals";
 import { recordStateOf } from "src/modules/DdnsForms";
-import { recordAddressOf } from "src/modules/DdnsStatus";
+import { ageOf, recordAddressOf } from "src/modules/DdnsStatus";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { ddnsErrorText } from "./errorText";
 
@@ -80,11 +80,16 @@ function RecordState({ record, updating }) {
 	}
 	const state = recordStateOf(record, Date.now());
 	const message = state.kind === "failed" ? ddnsErrorText(record) : null;
+	const age = state.kind === "ok" ? ageOf(state.at, Date.now()) : null;
 	const labels = {
-		ok: <T id="ddns.state.ok" />,
+		ok: age ? (
+			<T id="ddns.state.ok-age" data={{ age: intl.formatRelativeTime(age.value, age.unit) }} />
+		) : (
+			<T id="ddns.state.ok" />
+		),
 		updated: <T id="ddns.state.updated" data={{ time: state.at ? formatDateTime(state.at) : "" }} />,
 		pending: <T id="ddns.state.pending" />,
-		failed: <T id="ddns.state.failed" data={{ message: message ?? "" }} />,
+		failed: message ? <T id="ddns.state.failed" data={{ message }} /> : <T id="ddns.state.failed-plain" />,
 		disabled: <T id="ddns.state.disabled" />,
 	};
 	const tones = { ok: "success", updated: "success", pending: "info", failed: "destructive", disabled: "muted" };

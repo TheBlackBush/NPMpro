@@ -61,4 +61,37 @@ const recordAddressOf = (record) => {
 	return { addresses: (wanted ?? own).filter(Boolean) };
 };
 
-export { ddnsStatusOf, nextCheckIn, recordAddressOf, statusErrorItem };
+/**
+ * What one address line of the status card shows: "address" (known), "failed" (checked and failed), "unchecked" (the
+ * other family was checked and this one was not: no enabled record needs it), else "unknown" (needed or not yet
+ * checked, no address found).
+ *
+ * @param   {Object | undefined}  family  status.ipv4 or status.ipv6
+ * @param   {Object | undefined}  other   the other family
+ * @returns {"address" | "failed" | "unchecked" | "unknown"}
+ */
+const familyLineOf = (family, other) => {
+	if (family?.address) return "address";
+	if (family?.error || family?.errorI18n) return "failed";
+	if (!family?.checkedOn && other?.checkedOn) return "unchecked";
+	return "unknown";
+};
+
+/**
+ * How long ago a time was, as a negative number and a unit for Intl.RelativeTimeFormat (rounded down; under a
+ * minute counts as 0 minutes), or null for no valid time.
+ *
+ * @param   {string | null | undefined}  iso
+ * @param   {number}  now  milliseconds
+ * @returns {{ value: number, unit: "minute" | "hour" | "day" } | null}
+ */
+const ageOf = (iso, now) => {
+	const time = typeof iso === "string" ? Date.parse(iso) : Number.NaN;
+	if (Number.isNaN(time)) return null;
+	const past = Math.max(0, now - time);
+	if (past < HOUR_MS) return { value: -Math.floor(past / MINUTE_MS) || 0, unit: "minute" };
+	if (past < DAY_MS) return { value: -Math.floor(past / HOUR_MS) || 0, unit: "hour" };
+	return { value: -Math.floor(past / DAY_MS) || 0, unit: "day" };
+};
+
+export { ageOf, ddnsStatusOf, familyLineOf, nextCheckIn, recordAddressOf, statusErrorItem };

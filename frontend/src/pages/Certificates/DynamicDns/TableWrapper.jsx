@@ -56,15 +56,12 @@ export default function TableWrapper() {
 			onSuccess: (record) => {
 				const state = recordStateOf(record, Date.now());
 				if (state.kind === "failed") {
-					showError(ddnsErrorText(record) ?? record.name);
-				} else {
-					showSuccess(
-						intl.formatMessage(
-							{ id: state.kind === "updated" ? "ddns.toast.updated" : "ddns.toast.up-to-date" },
-							{ name: record.name },
-						),
+					showError(
+						ddnsErrorText(record) ?? intl.formatMessage({ id: "ddns.toast.failed" }, { name: record.name }),
 					);
+					return;
 				}
+				showSuccess(intl.formatMessage({ id: `ddns.toast.${state.kind}` }, { name: record.name }));
 			},
 			// a paused updater answers 409 with error.ddns-paused, shown translated
 			onError: showApiError,

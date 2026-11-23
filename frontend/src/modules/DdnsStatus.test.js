@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { ddnsStatusOf, nextCheckIn, recordAddressOf, statusErrorItem } from "./DdnsStatus.js";
+import { ageOf, ddnsStatusOf, familyLineOf, nextCheckIn, recordAddressOf, statusErrorItem } from "./DdnsStatus.js";
 
 const NOW = Date.parse("2026-11-23T10:00:00Z");
 
@@ -46,4 +46,24 @@ it("shows the target of an alias and the written addresses of an address record"
 	assert.deepEqual(recordAddressOf({ ...base, ipVersion: "ipv6" }), { addresses: ["2001:db8::1"] });
 	assert.deepEqual(recordAddressOf({ ...base, ipVersion: "both" }), { addresses: ["203.0.113.5", "2001:db8::1"] });
 	assert.deepEqual(recordAddressOf({ kind: "address", ipVersion: "both" }), { addresses: [] });
+});
+
+it("picks the line of an address family", () => {
+	const checked = { address: null, checkedOn: "2026-11-23T10:00:00Z" };
+	assert.equal(familyLineOf({ address: "203.0.113.5" }, checked), "address");
+	assert.equal(familyLineOf({ error: "no" }, checked), "failed");
+	assert.equal(familyLineOf({ errorI18n: "error.ddns-ip-failed" }, undefined), "failed");
+	assert.equal(familyLineOf({ address: null, checkedOn: null }, checked), "unchecked");
+	assert.equal(familyLineOf({ address: null, checkedOn: null }, { checkedOn: null }), "unknown");
+	assert.equal(familyLineOf(checked, checked), "unknown");
+	assert.equal(familyLineOf(undefined, undefined), "unknown");
+});
+
+it("gives the age of a time", () => {
+	assert.equal(ageOf(null, NOW), null);
+	assert.deepEqual(ageOf("2026-11-23T09:58:00Z", NOW), { value: -2, unit: "minute" });
+	assert.deepEqual(ageOf("2026-11-23T09:59:50Z", NOW), { value: 0, unit: "minute" });
+	assert.deepEqual(ageOf("2026-11-23T10:30:00Z", NOW), { value: 0, unit: "minute" });
+	assert.deepEqual(ageOf("2026-11-23T07:10:00Z", NOW), { value: -2, unit: "hour" });
+	assert.deepEqual(ageOf("2026-11-20T10:00:00Z", NOW), { value: -3, unit: "day" });
 });
