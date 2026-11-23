@@ -1,0 +1,49 @@
+import assert from "node:assert/strict";
+import { it } from "node:test";
+import { ddnsStatusOf, nextCheckIn, recordAddressOf, statusErrorItem } from "./DdnsStatus.js";
+
+const NOW = Date.parse("2026-11-23T10:00:00Z");
+
+it("says none without records or status", () => {
+	assert.equal(ddnsStatusOf(undefined), "none");
+	assert.equal(ddnsStatusOf({ records: 0, ipv4: { address: "203.0.113.5" } }), "none");
+});
+
+it("says paused first, then failed, waiting and ok", () => {
+	const ok = { records: 1, paused: false, ipv4: { address: "203.0.113.5" }, ipv6: { address: null } };
+	assert.equal(ddnsStatusOf(ok), "ok");
+	assert.equal(ddnsStatusOf({ ...ok, paused: true, ipv4: { error: "x" } }), "paused");
+	assert.equal(ddnsStatusOf({ ...ok, ipv4: { address: null, error: "no" } }), "failed");
+	assert.equal(ddnsStatusOf({ ...ok, ipv6: { errorI18n: "error.ddns-ip-failed" } }), "failed");
+	assert.equal(ddnsStatusOf({ ...ok, ipv4: { address: null } }), "waiting");
+	assert.equal(ddnsStatusOf({ records: 1, paused: false }), "waiting");
+	assert.equal(ddnsStatusOf({ records: 1, ipv4: { address: null }, ipv6: { address: "2001:db8::1" } }), "ok");
+});
+
+it("picks the first family that holds an error", () => {
+	const v4 = { error: "four" };
+	const v6 = { errorI18n: "six" };
+	assert.equal(statusErrorItem({ ipv4: v4, ipv6: v6 }), v4);
+	assert.equal(statusErrorItem({ ipv4: {}, ipv6: v6 }), v6);
+	assert.equal(statusErrorItem({ ipv4: {}, ipv6: {} }), null);
+	assert.equal(statusErrorItem(undefined), null);
+});
+
+it("counts the time to the next check in minutes, hours or days", () => {
+	assert.equal(nextCheckIn(null, NOW), null);
+	assert.equal(nextCheckIn("junk", NOW), null);
+	assert.deepEqual(nextCheckIn("2026-11-23T09:00:00Z", NOW), { value: 1, unit: "minute" });
+	assert.deepEqual(nextCheckIn("2026-11-23T10:04:10Z", NOW), { value: 5, unit: "minute" });
+	assert.deepEqual(nextCheckIn("2026-11-23T12:30:00Z", NOW), { value: 3, unit: "hour" });
+	assert.deepEqual(nextCheckIn("2026-11-25T10:00:00Z", NOW), { value: 2, unit: "day" });
+});
+
+it("shows the target of an alias and the written addresses of an address record", () => {
+	assert.deepEqual(recordAddressOf({ kind: "alias", target: "home.example.com" }), { alias: "home.example.com" });
+	assert.deepEqual(recordAddressOf({ kind: "alias" }), { alias: "" });
+	const base = { kind: "address", lastIpv4: "203.0.113.5", lastIpv6: "2001:db8::1" };
+	assert.deepEqual(recordAddressOf({ ...base, ipVersion: "ipv4" }), { addresses: ["203.0.113.5"] });
+	assert.deepEqual(recordAddressOf({ ...base, ipVersion: "ipv6" }), { addresses: ["2001:db8::1"] });
+	assert.deepEqual(recordAddressOf({ ...base, ipVersion: "both" }), { addresses: ["203.0.113.5", "2001:db8::1"] });
+	assert.deepEqual(recordAddressOf({ kind: "address", ipVersion: "both" }), { addresses: [] });
+});

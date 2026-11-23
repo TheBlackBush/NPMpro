@@ -5,6 +5,8 @@ export * from "./BackupScheduleModal";
 export * from "./ChangeDnsCredentialModal";
 export * from "./CustomCertificateModal";
 export * from "./DatabaseMoveModal";
+export * from "./DdnsHistoryModal";
+export * from "./DdnsRecordModal";
 export * from "./DeadHostModal";
 export * from "./DeleteConfirmModal";
 export * from "./DNSCertificateModal";

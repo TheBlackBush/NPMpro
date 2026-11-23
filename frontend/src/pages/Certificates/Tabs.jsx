@@ -1,13 +1,14 @@
 import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router";
 import { CountBadge } from "src/components/CountBadge";
-import { useCertificates, useDnsCredentials, useDnsDomains } from "src/hooks";
+import { useCertificates, useDdnsRecords, useDnsCredentials, useDnsDomains } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import {
 	CERTIFICATE_LIST_EXPAND,
 	CERTIFICATE_TABS,
 	certificateTab,
+	DDNS_RECORD_LIST_EXPAND,
 	DNS_CREDENTIAL_LIST_EXPAND,
 	DNS_DOMAIN_LIST_EXPAND,
 } from "src/modules/CertificateTabs";
@@ -27,10 +28,12 @@ export function CertificateTabs() {
 	const certificates = useCertificates(CERTIFICATE_LIST_EXPAND);
 	const dnsCredentials = useDnsCredentials(DNS_CREDENTIAL_LIST_EXPAND);
 	const dnsDomains = useDnsDomains(DNS_DOMAIN_LIST_EXPAND);
+	const ddnsRecords = useDdnsRecords(DDNS_RECORD_LIST_EXPAND);
 	const counts = {
 		certificates: certificates.data?.length,
 		"dns-credentials": dnsCredentials.data?.length,
 		domains: dnsDomains.data?.length,
+		"dynamic-dns": ddnsRecords.data?.length,
 	};
 	const strip = useRef(null);
 	// on a phone the strip scrolls sideways: bring the open tab, with its badge, into view when the tab changes or a
