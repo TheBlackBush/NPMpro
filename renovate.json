@@ -104,6 +104,12 @@
 			"matchFileNames": [".github/workflows/test.yml"],
 			"matchDepNames": ["mysql"],
 			"allowedVersions": "/^8\\.4(\\.|$)/"
+		},
+		{
+			"description": "certbot-dns-directadmin 1.0.16 and later declare Requires-Python <3.12, older than the image's Python, so pip refuses them; 1.0.15 installs",
+			"matchFileNames": ["backend/certbot/dns-plugins.json"],
+			"matchDepNames": ["certbot-dns-directadmin"],
+			"allowedVersions": "<1.0.16"
 		}
 	]
 }
