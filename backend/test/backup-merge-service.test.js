@@ -147,6 +147,7 @@ it("merges a full backup of another instance: its hosts are added, the instance'
 		assert.equal(b.calls.reload, 1);
 		assert.equal((await autoFiles(b)).length, 1);
 		assert.deepEqual([b.calls.pause, b.calls.resume, b.isPaused()], [1, 1, false]);
+		assert.deepEqual([b.calls.ddnsPause, b.calls.ddnsResume, b.isDdnsPaused()], [1, 1, false]);
 		const merged = b.calls.audit.find((entry) => entry.action === "merged");
 		assert.equal(merged.object_type, "backup");
 		assert.equal(merged.meta.name, COPIED_NAME);
@@ -233,6 +234,7 @@ it("rolls a merge back when nginx rejects the merged configuration", TIMEOUT, as
 		);
 		assert.ok(existsSync(path.join(b.dataDir, "tls/certbot/live/npm-1/cert.pem")));
 		assert.deepEqual([b.calls.pause, b.calls.resume, b.isPaused()], [1, 1, false]);
+		assert.deepEqual([b.calls.ddnsPause, b.calls.ddnsResume, b.isDdnsPaused()], [1, 1, false]);
 		assert.equal(
 			b.calls.audit.some((entry) => entry.action === "merged"),
 			false,
@@ -1051,6 +1053,7 @@ it("rolls a merge back when a taken custom nginx file takes hosts offline", TIME
 			false,
 		);
 		assert.deepEqual([b.calls.pause, b.calls.resume, b.isPaused()], [1, 1, false]);
+		assert.deepEqual([b.calls.ddnsPause, b.calls.ddnsResume, b.isDdnsPaused()], [1, 1, false]);
 	} finally {
 		await cleanup();
 	}
