@@ -40,7 +40,7 @@ import { SingleCombobox } from "./ComboboxSingle";
  * @param {Function} [props.normalize]       multiple: (entry) => the form two entries are compared in
  * @param {Object}   [props.separators]      multiple: WORD_ENTRIES (default, spaces and commas separate) or
  *                                           LINE_ENTRIES (only commas and line breaks: entries may hold spaces)
- * @param {Object}   [props.commitRef]       multiple and creatable: its current is set to () => refused parts, which
+ * @param {Object}   [props.commitRef]       creatable: its current is set to () => refused parts, which
  *                                           adds the typed text as values (as Enter does) for a save
  * @param {Function} [props.onQueryChange]   (text) after the typed text changed (single: the search box, "" when it closes)
  * @param {boolean}  [props.invalid]
@@ -151,6 +151,7 @@ export function Combobox({
 					clearable={clearable}
 					searchable={searchable}
 					onQueryChange={onQueryChange}
+					commitRef={commitRef}
 				/>
 			)}
 			{name ? <input type="hidden" name={name} value={hidden} /> : null}

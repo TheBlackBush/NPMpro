@@ -103,6 +103,7 @@ it("refuses a service URL with a blocked address, and a name that resolves to on
 	const error = await refused({ ipv4_services: ["https://ip.test/", "https://lan.test/"] });
 	assert.match(error.message, BLOCKED_NAME);
 	assert.equal(error.message_i18n, "error.ddns-service-blocked");
+	assert.deepEqual(error.message_values, { key: "ipv4_services", url: "https://lan.test/" });
 	assert.deepEqual((await get()).ipv4_services, ["https://one.example/ip"]);
 	assert.deepEqual((await storedMeta()).ipv4_services, ["https://one.example/ip"]);
 	const view = await saved({ ipv4_services: ["https://ip.test/", "https://203.0.113.9/ip"] });
@@ -130,5 +131,6 @@ it("refuses a name that resolves to a blocked address on ipv6_services too", asy
 	const error = await refused({ ipv6_services: ["https://lan6.test/"] });
 	assert.match(error.message, BLOCKED_NAME6);
 	assert.equal(error.message_i18n, "error.ddns-service-blocked");
+	assert.deepEqual(error.message_values, { key: "ipv6_services", url: "https://lan6.test/" });
 	assert.equal((await get()).ipv6_services.length, 3);
 });

@@ -1,7 +1,7 @@
 import { AppModal, Button, ErrorAlert, Loading } from "src/components";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "src/components/ui/table";
 import { useDdnsHistory, useDdnsRecord } from "src/hooks";
-import { formatDateTime, T } from "src/locale";
+import { formatDateTime, intl, T } from "src/locale";
 import { IP_VERSIONS } from "src/modules/DdnsForms";
 import EasyModal from "src/modules/easyModal";
 
@@ -49,7 +49,10 @@ const DdnsHistoryModal = EasyModal.create(({ id, visible, remove }) => {
 					</p>
 				) : null}
 				{entries && entries.length > 0 ? (
-					<Table data-ddns-history>
+					<Table
+						data-ddns-history
+						aria-label={intl.formatMessage({ id: "ddns.history.title" }, { name: record?.name ?? "" })}
+					>
 						<TableHeader>
 							<TableRow>
 								<TableHead className={HEAD}>

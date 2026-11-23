@@ -212,3 +212,20 @@ export function createFirstActive({ keys, createKey, items, query, getLabel, get
 	const key = exact ? keyOf(getValue(exact)) : "";
 	return keys.includes(key) ? key : "";
 }
+
+/**
+ * What a save does with the text typed in a single-value field's search box (its commitRef): nothing for no text, a
+ * field that is not creatable or is locked; the value when isValidNew takes it; else the text is refused.
+ *
+ * @param   {Object}   input
+ * @param   {string}   input.text
+ * @param   {boolean}  input.creatable
+ * @param   {boolean}  input.locked
+ * @param   {Function} [input.isValidNew]  (text, values) => whether a typed value may be added
+ * @returns {{ value: string } | { refused: string[] } | null}
+ */
+export function commitTyped({ text, creatable, locked, isValidNew }) {
+	const typed = String(text ?? "").trim();
+	if (!creatable || locked || typed === "") return null;
+	return !isValidNew || isValidNew(typed, []) ? { value: typed } : { refused: [typed] };
+}

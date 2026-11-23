@@ -107,7 +107,10 @@ const checkDdnsServices = async (group, changed) => {
 				await assertAllowedHost(url);
 			} catch (err) {
 				if (err.code !== "EBLOCKED") throw err;
-				throw new errs.ValidationError(`${key}: ${err.message}`, "error.ddns-service-blocked");
+				// the answer names the field and the refused URL, so the UI shows the message under that field
+				throw new errs.ValidationError(`${key}: ${err.message}`, "error.ddns-service-blocked", {
+					values: { key, url },
+				});
 			}
 		}
 	}

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
 	appendEntries,
 	canCreate,
+	commitTyped,
 	createFirstActive,
 	exactFirst,
 	filterOptions,
@@ -202,4 +203,18 @@ describe("createFirstActive", () => {
 		assert.equal(createFirstActive({ ...base, keys: [], query: "" }), "");
 		assert.equal(createFirstActive({ ...base, keys: [], query: "a.example.com" }), "");
 	});
+});
+
+it("commitTyped takes valid typed text, refuses the rest and ignores a field that cannot take it", () => {
+	const valid = (text) => text.endsWith(".test");
+	assert.deepEqual(commitTyped({ text: " a.test ", creatable: true, locked: false, isValidNew: valid }), {
+		value: "a.test",
+	});
+	assert.deepEqual(commitTyped({ text: "nope", creatable: true, locked: false, isValidNew: valid }), {
+		refused: ["nope"],
+	});
+	assert.deepEqual(commitTyped({ text: "x", creatable: true, locked: false }), { value: "x" });
+	assert.equal(commitTyped({ text: "  ", creatable: true, locked: false }), null);
+	assert.equal(commitTyped({ text: "a.test", creatable: false, locked: false }), null);
+	assert.equal(commitTyped({ text: "a.test", creatable: true, locked: true }), null);
 });

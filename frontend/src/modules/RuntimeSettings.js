@@ -271,6 +271,23 @@ const fieldOfError = (group, text) => {
 };
 
 /**
+ * The form field of a save error: the prefixed key of fieldOfError, else the key an error names in its message_values
+ * (error.ddns-service-blocked: the translated text has no prefix). Returns { key (camelCase), message } or null.
+ *
+ * @param   {string}  group
+ * @param   {Object}  [apiError]  the error object of the answer (message_values)
+ * @param   {string}  text        the message shown
+ * @returns {{ key: string, message: string } | null}
+ */
+const fieldOfApiError = (group, apiError, text) => {
+	const found = fieldOfError(group, text);
+	if (found) return found;
+	const named = apiError?.message_values?.key;
+	const key = typeof named === "string" ? camel(named) : "";
+	return (GROUP_KEYS[group] ?? []).includes(key) ? { key, message: String(text ?? "") } : null;
+};
+
+/**
  * Whether a certificate can be the default certificate, as the backend checks on save (lib/default-cert.js): not an
  * mTLS CA (no key to serve) and with certificate files. A custom certificate gets its domain names with its upload,
  * so one without domain names has no files yet; certbot certificates always have domain names.
@@ -298,6 +315,7 @@ const warningTexts = (answer, hasMessage, formatMessage) =>
 export {
 	appliesMessageId,
 	defaultKeySize,
+	fieldOfApiError,
 	fieldOfError,
 	formFieldOf,
 	GROUP_KEYS,

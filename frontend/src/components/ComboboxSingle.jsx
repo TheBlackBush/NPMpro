@@ -1,16 +1,17 @@
 import { ChevronsUpDownIcon, XIcon } from "lucide-react";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import { Command, CommandInput } from "src/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
 import { cn } from "src/lib/utils";
 import { intl } from "src/locale";
-import { isEmptyValue } from "src/modules/Combobox";
+import { commitTyped, isEmptyValue } from "src/modules/Combobox";
 import { ComboboxItems, keepScroll, listFor, optionKey, popoverClass, useElementId } from "./ComboboxParts";
 
 /**
- * One value from a list: a button that opens the list, with a search box (unless searchable is false)
+ * One value from a list: a button that opens the list, with a search box (unless searchable is false). With a
+ * commitRef text typed in the search box and left by closing the list stays pending until a save commits it
  */
 export function SingleCombobox({
 	id,
@@ -34,6 +35,7 @@ export function SingleCombobox({
 	isValidNew,
 	filter,
 	onQueryChange,
+	commitRef,
 	onBlur,
 	aria,
 	className,
@@ -70,6 +72,18 @@ export function SingleCombobox({
 		changeQuery(next ? seed : "");
 		setOpen(next);
 	};
+	// the form commits typed text before a save (HookForm's usePendingEntry): the refused parts, none without text
+	useLayoutEffect(() => {
+		if (!commitRef) return;
+		commitRef.current = () => {
+			const done = commitTyped({ text: query, creatable, locked, isValidNew });
+			if (done === null) return [];
+			if (done.refused) return done.refused;
+			onChange(done.value, null);
+			changeQuery("");
+			return [];
+		};
+	});
 	const pick = (option) => {
 		onChange(getOptionValue(option), option);
 		changeOpen(false);
@@ -113,7 +127,11 @@ export function SingleCombobox({
 	};
 
 	return (
-		<Popover open={open} onOpenChange={(next) => changeOpen(next)}>
+		<Popover
+			open={open}
+			// with a commitRef a dismissed list keeps the typed text for the save to commit
+			onOpenChange={(next) => (next || !commitRef ? changeOpen(next) : setOpen(false))}
+		>
 			<div className={cn("relative w-full", className)}>
 				<PopoverTrigger asChild>
 					<Button

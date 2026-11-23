@@ -18,6 +18,7 @@ import {
 	TextField,
 	useAppForm,
 	useFieldError,
+	usePendingEntry,
 	useReadOnly,
 } from "src/components";
 import { Input } from "src/components/ui/input";
@@ -121,12 +122,14 @@ const toPayload = (values, stored, zoneTyped) => {
 };
 
 const isRecordName = (text) => normalizeRecordName(text).error === undefined;
+const refusedName = (refused) => intl.formatMessage({ id: "error.ddns-name-invalid" }, { name: refused.join(", ") });
 
 // the name: the domain picker, one name; a wildcard is offered only where the provider writes one
 function NameField({ wildcards, zones, names }) {
 	const { field } = useController({ name: "name" });
 	const error = useFieldError("name");
 	const readOnly = useReadOnly();
+	const pending = usePendingEntry("name", refusedName);
 	const [query, setQuery] = useState("");
 	const options = useMemo(
 		() =>
@@ -158,7 +161,11 @@ function NameField({ wildcards, zones, names }) {
 					value={field.value || null}
 					placeholder={intl.formatMessage({ id: "ddns.name.placeholder" })}
 					onBlur={field.onBlur}
-					onQueryChange={setQuery}
+					commitRef={pending.ref}
+					onQueryChange={(text) => {
+						setQuery(text);
+						pending.setPending(text.trim() !== "");
+					}}
 					onChange={(value) => field.onChange(value ?? "")}
 				/>
 			)}
@@ -194,8 +201,8 @@ function CredentialField({ ownerUserId, canUse, zones, credentials, userId, isNe
 			handPicked,
 		});
 		applied.current = step.applied;
-		if (step.set) setValue("credentialId", step.set.credentialId, { shouldDirty: true });
-		else if (step.clear) setValue("credentialId", undefined, { shouldDirty: true });
+		if (step.set) setValue("credentialId", step.set.credentialId, { shouldDirty: false });
+		else if (step.clear) setValue("credentialId", undefined, { shouldDirty: false });
 	}, [name, credentialId, handPicked, zones, credentials, canUse, userId, setValue]);
 	return (
 		<DnsCredentialSelect
@@ -308,6 +315,7 @@ function TargetField({ zones, names }) {
 	const { field } = useController({ name: "target" });
 	const error = useFieldError("target");
 	const readOnly = useReadOnly();
+	const pending = usePendingEntry("target", refusedName);
 	const [query, setQuery] = useState("");
 	const options = useMemo(
 		() =>
@@ -339,7 +347,11 @@ function TargetField({ zones, names }) {
 					value={field.value || null}
 					placeholder={intl.formatMessage({ id: "ddns.name.placeholder" })}
 					onBlur={field.onBlur}
-					onQueryChange={setQuery}
+					commitRef={pending.ref}
+					onQueryChange={(text) => {
+						setQuery(text);
+						pending.setPending(text.trim() !== "");
+					}}
 					onChange={(value) => field.onChange(value ?? "")}
 				/>
 			)}

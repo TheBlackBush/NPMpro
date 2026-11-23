@@ -674,7 +674,7 @@
 	"error.ddns-paused": "Paused during a restore or database move",
 	"error.ddns-provider-mismatch": "The credential does not belong to the provider {provider}",
 	"error.ddns-record-disabled": "The record is off. Turn it on first",
-	"error.ddns-service-blocked": "This address service is not allowed",
+	"error.ddns-service-blocked": "{url} points to an address outbound requests may not reach",
 	"error.ddns-suffix-invalid": "{suffix} is not an IPv6 suffix of at most 64 bits",
 	"error.ddns-suffix-needs-ipv6": "An IPv6 suffix needs IPv6 or both",
 	"error.ddns-target-invalid": "{target} is not a valid target name",
