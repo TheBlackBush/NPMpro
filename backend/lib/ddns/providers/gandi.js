@@ -1,5 +1,13 @@
 import { DdnsProviderError } from "../errors.js";
-import { dotted, jsonHeaders, pathName, plainTarget, refuseMultiple, refuseWildcard } from "./record-common.js";
+import {
+	dotted,
+	jsonHeaders,
+	pathName,
+	plainTarget,
+	refuseMultiple,
+	refuseWildcard,
+	zoneNotFound,
+} from "./record-common.js";
 import { bearer, collectZones, failAnswer, malformed } from "./zone-common.js";
 
 const PER_PAGE = 100;
@@ -32,8 +40,9 @@ export default {
 	async write({ zone, name, type, ip, ttl, existing, fields, fetch, meta }) {
 		refuseWildcard(name);
 		refuseMultiple(existing);
-		const rrsetTtl = ttl ?? Math.max(existing?.ttl ?? MIN_TTL, MIN_TTL);
-		if (!Number.isInteger(rrsetTtl) || rrsetTtl < MIN_TTL || rrsetTtl > MAX_TTL) {
+		// a ttl the user set is checked; the existing one is kept as the provider has it
+		const rrsetTtl = ttl ?? existing?.ttl ?? MIN_TTL;
+		if (ttl !== undefined && ttl !== null && (!Number.isInteger(ttl) || ttl < MIN_TTL || ttl > MAX_TTL)) {
 			throw new DdnsProviderError({
 				code: "failed",
 				message: `Gandi needs a TTL between ${MIN_TTL} and ${MAX_TTL} seconds`,
@@ -45,6 +54,7 @@ export default {
 			headers: jsonHeaders(bearer(fields.dns_gandi_token)),
 			body: JSON.stringify({ rrset_values: [type === "CNAME" ? dotted(ip) : ip], rrset_ttl: rrsetTtl }),
 		});
+		if (res.status === 404) throw zoneNotFound(res, secretsOf(fields));
 		if (![200, 201].includes(res.status)) failAnswer(res, { hint: HINT, secrets: secretsOf(fields) });
 		return { meta: { ...meta }, created: !existing };
 	},

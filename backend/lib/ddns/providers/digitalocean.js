@@ -1,3 +1,4 @@
+import { DdnsProviderError } from "../errors.js";
 import { dotted, jsonHeaders, plainTarget, refuseMultiple, relativeName, zoneNotFound } from "./record-common.js";
 import { bearer, collectZones, failAnswer, malformed } from "./zone-common.js";
 
@@ -10,11 +11,11 @@ const check = (res, fields, okStatuses = [200]) => {
 	if (!okStatuses.includes(res.status)) failAnswer(res, { hint: HINT, secrets: secretsOf(fields) });
 };
 
-/** A CNAME data value: `@` is the zone, a name without a trailing dot is relative to the zone */
+/** A CNAME data value: `@` is the zone, a value with a dot is absolute (no trailing dot), one label is relative */
 const cnameValue = (zone, data) => {
-	const text = String(data ?? "").toLowerCase();
+	const text = plainTarget(data);
 	if (text === "@") return zone.toLowerCase();
-	return text.endsWith(".") ? plainTarget(text) : `${text}.${zone.toLowerCase()}`;
+	return text.includes(".") ? text : `${text}.${zone.toLowerCase()}`;
 };
 
 export default {
@@ -54,6 +55,14 @@ export default {
 				headers,
 				body: JSON.stringify(ttl ? { data, ttl } : { data }),
 			});
+			if (res.status === 404) {
+				throw new DdnsProviderError({
+					providerStatus: 404,
+					code: "failed",
+					message: "The record was removed at the provider; it is created again on the next check",
+					secrets: secretsOf(fields),
+				});
+			}
 			check(res, fields);
 			return { meta: { ...meta, record_id: recordId }, created: false };
 		}

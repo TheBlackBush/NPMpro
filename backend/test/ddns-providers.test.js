@@ -37,7 +37,8 @@ const api = (host) => mock.get(`https://${host}`);
 const bodyIs = (expected) => (text) => text === JSON.stringify(expected);
 const MORE_THAN_ONE = /more than one/u;
 const BETWEEN = /between 300/u;
-const cfRecords = (type, name) => `/client/v4/zones/zid/dns_records?type=${type}&name.exact=${name}`;
+const cfRecords = (type, name, zoneId = "zid") =>
+	`/client/v4/zones/${zoneId}/dns_records?type=${type}&name.exact=${name}`;
 const bearerOf = { authorization: `Bearer ${TOKEN}` };
 
 describe("registry", () => {
@@ -87,7 +88,7 @@ describe("cloudflare", () => {
 			values: ["1.2.3.4"],
 			ttl: 1,
 			proxied: true,
-			meta: { zone_id: "zid", record_id: "r1" },
+			meta: { zone_id: "zid", record_id: "r1", proxied: true },
 		});
 		// the cached zone id: no zone lookup now
 		api("api.cloudflare.com")
@@ -148,8 +149,67 @@ describe("cloudflare", () => {
 			meta: { zone_id: "zid", record_id: "r1" },
 			created: false,
 		});
-		await call("cloudflare", "write", { ...args, ttl: 120 });
+		const plain = { ...existing, proxied: false, meta: { zone_id: "zid", record_id: "r1" } };
+		await call("cloudflare", "write", { ...args, ttl: 120, existing: plain, meta: plain.meta });
 		mock.assertNoPendingInterceptors();
+	});
+
+	it("never PATCHes without a record id", async () => {
+		await assert.rejects(
+			call("cloudflare", "write", {
+				...base,
+				ip: "5.6.7.8",
+				existing: { values: ["1.2.3.4"], ttl: 1, meta: {} },
+				meta: { zone_id: "zid" },
+			}),
+			(err) => err.code === "failed" && err.retry === true && err.message.includes("record id"),
+		);
+	});
+
+	it("does not send ttl for a proxied record", async () => {
+		api("api.cloudflare.com")
+			.intercept({
+				path: "/client/v4/zones/zid/dns_records/r1",
+				method: "PATCH",
+				body: bodyIs({ content: "5.6.7.8" }),
+			})
+			.reply(200, { success: true, result: { id: "r1" } }, json);
+		const meta = { zone_id: "zid", record_id: "r1", proxied: true };
+		const done = await call("cloudflare", "write", {
+			...base,
+			ip: "5.6.7.8",
+			ttl: 120,
+			existing: { values: ["1.2.3.4"], ttl: 1, proxied: true, meta },
+			meta,
+		});
+		assert.equal(done.created, false);
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("drops a cached zone id that answers 404 and looks the zone up again", async () => {
+		api("api.cloudflare.com")
+			.intercept({ path: cfRecords("A", "home.example.com", "old"), method: "GET" })
+			.reply(404, { success: false, errors: [{ message: "zone gone" }] }, json);
+		api("api.cloudflare.com")
+			.intercept({ path: "/client/v4/zones?name=example.com", method: "GET" })
+			.reply(200, { success: true, result: [{ id: "fresh" }] }, json);
+		api("api.cloudflare.com")
+			.intercept({ path: cfRecords("A", "home.example.com", "fresh"), method: "GET" })
+			.reply(200, { success: true, result: [{ id: "r2", content: "9.9.9.9", ttl: 1 }] }, json);
+		const found = await call("cloudflare", "read", { ...base, meta: { zone_id: "old", record_id: "x" } });
+		assert.equal(found.meta.zone_id, "fresh");
+		assert.equal(found.meta.record_id, "r2");
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("a 404 for a freshly looked up zone id is a missing zone, not retried", async () => {
+		api("api.cloudflare.com")
+			.intercept({ path: "/client/v4/zones?name=example.com", method: "GET" })
+			.reply(200, { success: true, result: [{ id: "zid" }] }, json);
+		api("api.cloudflare.com")
+			.intercept({ path: cfRecords("A", "home.example.com"), method: "GET" })
+			.reply(404, { success: false }, json);
+		await assert.rejects(call("cloudflare", "read", base), (err) => err.retry === false);
 	});
 
 	it("creates with proxied false and ttl 1, using the global key headers", async () => {
@@ -253,6 +313,14 @@ describe("digitalocean", () => {
 			json,
 		);
 		assert.deepEqual((await call("digitalocean", "read", { ...base, type: "CNAME" })).values, ["www.example.com"]);
+		records("home.example.com", "CNAME").reply(
+			200,
+			{ domain_records: [{ id: 1, type: "CNAME", data: "target.example.net" }] },
+			json,
+		);
+		assert.deepEqual((await call("digitalocean", "read", { ...base, type: "CNAME" })).values, [
+			"target.example.net",
+		]);
 	});
 
 	it("PATCH sends data, and ttl when set; a CNAME target gets a trailing dot", async () => {
@@ -308,6 +376,17 @@ describe("digitalocean", () => {
 		});
 		records("home.example.com").reply(500, "boom");
 		await assert.rejects(call("digitalocean", "read", base), (err) => err.retry === true);
+	});
+
+	it("a 404 on the PATCH is a record removed at the provider, retried", async () => {
+		api("api.digitalocean.com")
+			.intercept({ path: "/v2/domains/example.com/records/7", method: "PATCH" })
+			.reply(404, { message: "gone" }, json);
+		const existing = { values: ["1.2.3.4"], ttl: 300, meta: { record_id: 7 } };
+		await assert.rejects(
+			call("digitalocean", "write", { ...base, ip: "5.6.7.8", existing, meta: existing.meta }),
+			(err) => err.code === "failed" && err.retry === true && err.message.includes("removed at the provider"),
+		);
 	});
 
 	it("returns both values of a two-value set and refuses to write it", async () => {
@@ -373,6 +452,17 @@ describe("hetzner-cloud", () => {
 		const done = await call("hetzner-cloud", "write", { ...base, ip: "5.6.7.8", existing });
 		assert.deepEqual(done, { meta: {}, created: false });
 		mock.assertNoPendingInterceptors();
+	});
+
+	it("a 404 on set_records is the zone-not-found path", async () => {
+		host()
+			.intercept({ path: `${rrset("home")}/actions/set_records`, method: "POST" })
+			.reply(404, { error: { code: "not_found" } }, json);
+		const existing = { values: ["1.2.3.4"], ttl: 600, meta: {} };
+		await assert.rejects(
+			call("hetzner-cloud", "write", { ...base, ip: "5.6.7.8", existing }),
+			(err) => err.retry === false && err.message.includes("check the credential"),
+		);
 	});
 
 	it("keeps no change_ttl call when the ttl survived; a set ttl is applied", async () => {
@@ -494,6 +584,33 @@ describe("gandi", () => {
 			true,
 		);
 		await call("gandi", "write", { ...base, type: "CNAME", ip: "Target.Example.net", existing: null });
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("a 404 on the PUT is the zone-not-found path", async () => {
+		host()
+			.intercept({ path: rrset("home"), method: "PUT" })
+			.reply(404, { message: "no zone" }, json);
+		await assert.rejects(
+			call("gandi", "write", { ...base, ip: "5.6.7.8", existing: null }),
+			(err) => err.retry === false && err.message.includes("check the credential"),
+		);
+	});
+
+	it("keeps the existing ttl even out of range, and checks only a ttl the user set", async () => {
+		host()
+			.intercept({
+				path: rrset("home"),
+				method: "PUT",
+				body: bodyIs({ rrset_values: ["5.6.7.8"], rrset_ttl: 60 }),
+			})
+			.reply(200, { message: "ok" }, json);
+		const done = await call("gandi", "write", {
+			...base,
+			ip: "5.6.7.8",
+			existing: { values: ["1.2.3.4"], ttl: 60, meta: {} },
+		});
+		assert.equal(done.created, false);
 		mock.assertNoPendingInterceptors();
 	});
 

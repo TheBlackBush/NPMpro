@@ -72,6 +72,7 @@ export default {
 			headers,
 			body: JSON.stringify({ records: [{ value }] }),
 		});
+		if (res.status === 404) throw zoneNotFound(res, secretsOf(fields));
 		check(res, fields, [200, 201]);
 		const wanted = ttl ?? existing.ttl ?? null;
 		if (wanted !== null) {
