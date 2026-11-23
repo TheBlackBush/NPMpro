@@ -1,12 +1,12 @@
-## Dynamic DNS
+## 동적 DNS
 
-How NPMpro keeps the records of the Dynamic DNS tab (Certificates) pointed at its public address. Nothing is checked until a record is enabled.
+NPMpro가 동적 DNS 탭(인증서)의 레코드가 공용 주소를 가리키도록 유지하는 방법입니다. 레코드를 활성화하기 전에는 아무것도 확인하지 않습니다.
 
-A variable set on the container wins over the UI and locks the field (the field shows a lock badge such as "Set by DDNS_PERIOD"). Use the UI for anything not set in the container.
+컨테이너에 설정한 변수는 UI보다 우선하며 필드를 잠급니다(필드에 "DDNS_PERIOD로 설정됨" 같은 잠금 배지가 표시됩니다). 컨테이너에 설정하지 않은 항목은 UI에서 설정하세요.
 
-- **Check every**: how often the records are checked, from `1m` to `24h` (for example `5m` or `1h30m`). Default: `5m`. Variable: `DDNS_PERIOD`. A change restarts the timer.
-- **Cooldown**: the shortest time between two writes of one record, in the same format. Default: `5m`. Variable: `DDNS_COOLDOWN`.
-- **IPv4 address services** and **IPv6 address services**: `https://` URLs that answer with the public address. A new address is written only when two services agree. The IPv6 services are asked only while an enabled record needs IPv6. Variables: `DDNS_IPV4_SERVICES`, `DDNS_IPV6_SERVICES` (space separated). A service whose address the server may not call (a private or local address) is refused.
-- **DNS servers**: the servers used to resolve the address services and the providers. Empty uses the container's resolvers. An IPv4 address, or an IPv6 address in brackets, with an optional port. Variable: `DDNS_RESOLVER` (space separated).
+- **확인 주기**: 레코드를 확인하는 주기로, `1m`에서 `24h`까지입니다(예: `5m`, `1h30m`). 기본값: `5m`. 변수: `DDNS_PERIOD`. 변경하면 타이머가 다시 시작됩니다.
+- **대기 시간**: 한 레코드를 두 번 쓰는 사이의 최소 시간으로, 형식은 같습니다. 기본값: `5m`. 변수: `DDNS_COOLDOWN`.
+- **IPv4 주소 서비스**와 **IPv6 주소 서비스**: 공용 주소로 응답하는 `https://` URL입니다. 새 주소는 두 서비스가 일치할 때만 기록됩니다. IPv6 서비스는 활성화된 레코드가 IPv6를 필요로 하는 동안에만 조회합니다. 변수: `DDNS_IPV4_SERVICES`, `DDNS_IPV6_SERVICES`(공백으로 구분). 서버가 호출할 수 없는 주소(사설 또는 로컬 주소)를 가진 서비스는 거부됩니다.
+- **DNS 서버**: 주소 서비스와 공급자의 이름을 확인하는 데 쓰는 서버입니다. 비어 있으면 컨테이너의 리졸버를 사용합니다. IPv4 주소 또는 대괄호로 묶은 IPv6 주소이며, 포트는 선택 사항입니다. 변수: `DDNS_RESOLVER`(공백으로 구분).
 
-Records are added on the Dynamic DNS tab with a DNS credential of a provider that can update records.
+레코드는 동적 DNS 탭에서 레코드를 업데이트할 수 있는 공급자의 DNS 자격 증명으로 추가합니다.

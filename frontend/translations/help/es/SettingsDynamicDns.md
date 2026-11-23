@@ -1,12 +1,12 @@
-## Dynamic DNS
+## DNS dinámico
 
-How NPMpro keeps the records of the Dynamic DNS tab (Certificates) pointed at its public address. Nothing is checked until a record is enabled.
+Cómo NPMpro mantiene los registros de la pestaña DNS dinámico (Certificados) apuntando a su dirección pública. No se comprueba nada hasta que se activa un registro.
 
-A variable set on the container wins over the UI and locks the field (the field shows a lock badge such as "Set by DDNS_PERIOD"). Use the UI for anything not set in the container.
+Una variable definida en el contenedor prevalece sobre la interfaz y bloquea el campo (el campo muestra una insignia de candado como "Definido por DDNS_PERIOD"). Usa la interfaz para todo lo que no esté definido en el contenedor.
 
-- **Check every**: how often the records are checked, from `1m` to `24h` (for example `5m` or `1h30m`). Default: `5m`. Variable: `DDNS_PERIOD`. A change restarts the timer.
-- **Cooldown**: the shortest time between two writes of one record, in the same format. Default: `5m`. Variable: `DDNS_COOLDOWN`.
-- **IPv4 address services** and **IPv6 address services**: `https://` URLs that answer with the public address. A new address is written only when two services agree. The IPv6 services are asked only while an enabled record needs IPv6. Variables: `DDNS_IPV4_SERVICES`, `DDNS_IPV6_SERVICES` (space separated). A service whose address the server may not call (a private or local address) is refused.
-- **DNS servers**: the servers used to resolve the address services and the providers. Empty uses the container's resolvers. An IPv4 address, or an IPv6 address in brackets, with an optional port. Variable: `DDNS_RESOLVER` (space separated).
+- **Comprobar cada**: con qué frecuencia se comprueban los registros, de `1m` a `24h` (por ejemplo `5m` o `1h30m`). Por defecto: `5m`. Variable: `DDNS_PERIOD`. Un cambio reinicia el temporizador.
+- **Tiempo de espera**: el tiempo mínimo entre dos escrituras de un registro, en el mismo formato. Por defecto: `5m`. Variable: `DDNS_COOLDOWN`.
+- **Servicios de dirección IPv4** y **Servicios de dirección IPv6**: URL `https://` que responden con la dirección pública. Una dirección nueva solo se escribe cuando dos servicios coinciden. Los servicios IPv6 solo se consultan mientras un registro activado necesite IPv6. Variables: `DDNS_IPV4_SERVICES`, `DDNS_IPV6_SERVICES` (separadas por espacios). Se rechaza un servicio cuya dirección el servidor no puede llamar (una dirección privada o local).
+- **Servidores DNS**: los servidores usados para resolver los servicios de dirección y los proveedores. Vacío usa los resolutores del contenedor. Una dirección IPv4, o una dirección IPv6 entre corchetes, con un puerto opcional. Variable: `DDNS_RESOLVER` (separados por espacios).
 
-Records are added on the Dynamic DNS tab with a DNS credential of a provider that can update records.
+Los registros se añaden en la pestaña DNS dinámico con una credencial DNS de un proveedor que pueda actualizar registros.

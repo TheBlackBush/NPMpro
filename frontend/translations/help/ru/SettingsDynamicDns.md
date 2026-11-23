@@ -1,12 +1,12 @@
-## Dynamic DNS
+## Динамический DNS
 
-How NPMpro keeps the records of the Dynamic DNS tab (Certificates) pointed at its public address. Nothing is checked until a record is enabled.
+Как NPMpro удерживает записи вкладки «Динамический DNS» (Сертификаты) направленными на свой публичный адрес. Ничего не проверяется, пока не включена хотя бы одна запись.
 
-A variable set on the container wins over the UI and locks the field (the field shows a lock badge such as "Set by DDNS_PERIOD"). Use the UI for anything not set in the container.
+Переменная, заданная в контейнере, имеет приоритет над интерфейсом и блокирует поле (в поле показывается значок замка, например «Задано DDNS_PERIOD»). Всё, что не задано в контейнере, настраивайте в интерфейсе.
 
-- **Check every**: how often the records are checked, from `1m` to `24h` (for example `5m` or `1h30m`). Default: `5m`. Variable: `DDNS_PERIOD`. A change restarts the timer.
-- **Cooldown**: the shortest time between two writes of one record, in the same format. Default: `5m`. Variable: `DDNS_COOLDOWN`.
-- **IPv4 address services** and **IPv6 address services**: `https://` URLs that answer with the public address. A new address is written only when two services agree. The IPv6 services are asked only while an enabled record needs IPv6. Variables: `DDNS_IPV4_SERVICES`, `DDNS_IPV6_SERVICES` (space separated). A service whose address the server may not call (a private or local address) is refused.
-- **DNS servers**: the servers used to resolve the address services and the providers. Empty uses the container's resolvers. An IPv4 address, or an IPv6 address in brackets, with an optional port. Variable: `DDNS_RESOLVER` (space separated).
+- **Проверять каждые**: как часто проверяются записи, от `1m` до `24h` (например, `5m` или `1h30m`). По умолчанию: `5m`. Переменная: `DDNS_PERIOD`. Изменение перезапускает таймер.
+- **Пауза между записями**: минимальный интервал между двумя изменениями одной записи, в том же формате. По умолчанию: `5m`. Переменная: `DDNS_COOLDOWN`.
+- **Сервисы адреса IPv4** и **Сервисы адреса IPv6**: URL `https://`, которые отвечают публичным адресом. Новый адрес записывается, только если два сервиса согласны. Сервисы IPv6 опрашиваются, только пока включённой записи нужен IPv6. Переменные: `DDNS_IPV4_SERVICES`, `DDNS_IPV6_SERVICES` (через пробел). Сервис, адрес которого серверу нельзя вызывать (частный или локальный адрес), отклоняется.
+- **DNS-серверы**: серверы для разрешения имён сервисов адреса и провайдеров. Пусто: используются резолверы контейнера. Адрес IPv4 или адрес IPv6 в квадратных скобках, с необязательным портом. Переменная: `DDNS_RESOLVER` (через пробел).
 
-Records are added on the Dynamic DNS tab with a DNS credential of a provider that can update records.
+Записи добавляются на вкладке «Динамический DNS» с учётными данными DNS провайдера, который умеет обновлять записи.

@@ -1,12 +1,12 @@
 ## Dynamic DNS
 
-How NPMpro keeps the records of the Dynamic DNS tab (Certificates) pointed at its public address. Nothing is checked until a record is enabled.
+Hoe NPMpro de records van het tabblad Dynamic DNS (Certificaten) gericht houdt op zijn openbare adres. Er wordt niets gecontroleerd totdat een record is ingeschakeld.
 
-A variable set on the container wins over the UI and locks the field (the field shows a lock badge such as "Set by DDNS_PERIOD"). Use the UI for anything not set in the container.
+Een variabele die op de container is gezet gaat voor op de interface en vergrendelt het veld (het veld toont een slotbadge zoals "Ingesteld door DDNS_PERIOD"). Gebruik de interface voor alles wat niet in de container is ingesteld.
 
-- **Check every**: how often the records are checked, from `1m` to `24h` (for example `5m` or `1h30m`). Default: `5m`. Variable: `DDNS_PERIOD`. A change restarts the timer.
-- **Cooldown**: the shortest time between two writes of one record, in the same format. Default: `5m`. Variable: `DDNS_COOLDOWN`.
-- **IPv4 address services** and **IPv6 address services**: `https://` URLs that answer with the public address. A new address is written only when two services agree. The IPv6 services are asked only while an enabled record needs IPv6. Variables: `DDNS_IPV4_SERVICES`, `DDNS_IPV6_SERVICES` (space separated). A service whose address the server may not call (a private or local address) is refused.
-- **DNS servers**: the servers used to resolve the address services and the providers. Empty uses the container's resolvers. An IPv4 address, or an IPv6 address in brackets, with an optional port. Variable: `DDNS_RESOLVER` (space separated).
+- **Controleer elke**: hoe vaak de records worden gecontroleerd, van `1m` tot `24h` (bijvoorbeeld `5m` of `1h30m`). Standaard: `5m`. Variabele: `DDNS_PERIOD`. Een wijziging herstart de timer.
+- **Afkoeltijd**: de kortste tijd tussen twee schrijfacties van één record, in hetzelfde formaat. Standaard: `5m`. Variabele: `DDNS_COOLDOWN`.
+- **IPv4-adresdiensten** en **IPv6-adresdiensten**: `https://`-URL's die met het openbare adres antwoorden. Een nieuw adres wordt alleen geschreven als twee diensten het eens zijn. De IPv6-diensten worden alleen gevraagd zolang een ingeschakeld record IPv6 nodig heeft. Variabelen: `DDNS_IPV4_SERVICES`, `DDNS_IPV6_SERVICES` (gescheiden door spaties). Een dienst waarvan het adres de server niet mag aanroepen (een privé- of lokaal adres) wordt geweigerd.
+- **DNS-servers**: de servers waarmee de adresdiensten en de providers worden opgelost. Leeg gebruikt de resolvers van de container. Een IPv4-adres, of een IPv6-adres tussen haakjes, met een optionele poort. Variabele: `DDNS_RESOLVER` (gescheiden door spaties).
 
-Records are added on the Dynamic DNS tab with a DNS credential of a provider that can update records.
+Records worden toegevoegd op het tabblad Dynamic DNS met DNS-inloggegevens van een provider die records kan bijwerken.

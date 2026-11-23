@@ -1,12 +1,12 @@
-## Dynamic DNS
+## 动态 DNS
 
-How NPMpro keeps the records of the Dynamic DNS tab (Certificates) pointed at its public address. Nothing is checked until a record is enabled.
+NPMpro 如何让“动态 DNS”选项卡（证书）中的记录持续指向其公网地址。在启用记录之前不会检查任何内容。
 
-A variable set on the container wins over the UI and locks the field (the field shows a lock badge such as "Set by DDNS_PERIOD"). Use the UI for anything not set in the container.
+在容器上设置的变量优先于界面，并会锁定该字段（字段显示锁形徽章，例如“由 DDNS_PERIOD 设置”）。未在容器中设置的内容请在界面中配置。
 
-- **Check every**: how often the records are checked, from `1m` to `24h` (for example `5m` or `1h30m`). Default: `5m`. Variable: `DDNS_PERIOD`. A change restarts the timer.
-- **Cooldown**: the shortest time between two writes of one record, in the same format. Default: `5m`. Variable: `DDNS_COOLDOWN`.
-- **IPv4 address services** and **IPv6 address services**: `https://` URLs that answer with the public address. A new address is written only when two services agree. The IPv6 services are asked only while an enabled record needs IPv6. Variables: `DDNS_IPV4_SERVICES`, `DDNS_IPV6_SERVICES` (space separated). A service whose address the server may not call (a private or local address) is refused.
-- **DNS servers**: the servers used to resolve the address services and the providers. Empty uses the container's resolvers. An IPv4 address, or an IPv6 address in brackets, with an optional port. Variable: `DDNS_RESOLVER` (space separated).
+- **检查间隔**：记录的检查频率，从 `1m` 到 `24h`（例如 `5m` 或 `1h30m`）。默认值：`5m`。变量：`DDNS_PERIOD`。更改会重启计时器。
+- **冷却时间**：同一记录两次写入之间的最短时间，格式相同。默认值：`5m`。变量：`DDNS_COOLDOWN`。
+- **IPv4 地址服务**和 **IPv6 地址服务**：返回公网地址的 `https://` URL。只有两个服务一致时才会写入新地址。仅当有已启用的记录需要 IPv6 时才会询问 IPv6 服务。变量：`DDNS_IPV4_SERVICES`、`DDNS_IPV6_SERVICES`（以空格分隔）。服务器不得访问其地址的服务（私有或本地地址）会被拒绝。
+- **DNS 服务器**：用于解析地址服务和提供商的服务器。留空则使用容器的解析器。IPv4 地址，或用方括号括起的 IPv6 地址，可带端口。变量：`DDNS_RESOLVER`（以空格分隔）。
 
-Records are added on the Dynamic DNS tab with a DNS credential of a provider that can update records.
+在“动态 DNS”选项卡中，使用可更新记录的提供商的 DNS 凭据来添加记录。

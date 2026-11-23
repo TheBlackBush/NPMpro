@@ -1,12 +1,12 @@
-## Dynamic DNS
+## ダイナミック DNS
 
-How NPMpro keeps the records of the Dynamic DNS tab (Certificates) pointed at its public address. Nothing is checked until a record is enabled.
+NPMpro が「ダイナミック DNS」タブ（証明書）のレコードをパブリックアドレスに向け続ける仕組みです。レコードを有効にするまで何も確認されません。
 
-A variable set on the container wins over the UI and locks the field (the field shows a lock badge such as "Set by DDNS_PERIOD"). Use the UI for anything not set in the container.
+コンテナに設定した変数は UI より優先され、フィールドをロックします（フィールドには「DDNS_PERIOD で設定済み」のような鍵アイコンのバッジが表示されます）。コンテナで設定していない項目は UI で設定してください。
 
-- **Check every**: how often the records are checked, from `1m` to `24h` (for example `5m` or `1h30m`). Default: `5m`. Variable: `DDNS_PERIOD`. A change restarts the timer.
-- **Cooldown**: the shortest time between two writes of one record, in the same format. Default: `5m`. Variable: `DDNS_COOLDOWN`.
-- **IPv4 address services** and **IPv6 address services**: `https://` URLs that answer with the public address. A new address is written only when two services agree. The IPv6 services are asked only while an enabled record needs IPv6. Variables: `DDNS_IPV4_SERVICES`, `DDNS_IPV6_SERVICES` (space separated). A service whose address the server may not call (a private or local address) is refused.
-- **DNS servers**: the servers used to resolve the address services and the providers. Empty uses the container's resolvers. An IPv4 address, or an IPv6 address in brackets, with an optional port. Variable: `DDNS_RESOLVER` (space separated).
+- **確認間隔**: レコードを確認する頻度。`1m` から `24h` まで（例: `5m`、`1h30m`）。既定値: `5m`。変数: `DDNS_PERIOD`。変更するとタイマーが再起動します。
+- **クールダウン**: 1 つのレコードの 2 回の書き込みの最短間隔。形式は同じです。既定値: `5m`。変数: `DDNS_COOLDOWN`。
+- **IPv4 アドレスサービス**と **IPv6 アドレスサービス**: パブリックアドレスを返す `https://` URL。新しいアドレスは 2 つのサービスが一致した場合のみ書き込まれます。IPv6 サービスは、有効なレコードが IPv6 を必要とする間だけ問い合わせます。変数: `DDNS_IPV4_SERVICES`、`DDNS_IPV6_SERVICES`（スペース区切り）。サーバーが呼び出してはならないアドレス（プライベートまたはローカルのアドレス）のサービスは拒否されます。
+- **DNS サーバー**: アドレスサービスとプロバイダーの名前解決に使うサーバー。空の場合はコンテナのリゾルバーを使います。IPv4 アドレス、または角括弧で囲んだ IPv6 アドレス（ポートは任意）。変数: `DDNS_RESOLVER`（スペース区切り）。
 
-Records are added on the Dynamic DNS tab with a DNS credential of a provider that can update records.
+レコードは「ダイナミック DNS」タブで、レコードを更新できるプロバイダーの DNS 認証情報を使って追加します。
