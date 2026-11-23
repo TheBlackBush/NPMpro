@@ -146,7 +146,7 @@ it("GROUP_KEYS match the backend response schemas", () => {
 		);
 		assert.deepEqual([...GROUP_KEYS[group]].sort(), props.map(camel).sort(), group);
 	}
-	assert.equal(Object.keys(GROUP_KEYS).length, 6);
+	assert.equal(Object.keys(GROUP_KEYS).length, 7);
 });
 
 it("appliesMessageId maps the applies values to their translation ids", () => {

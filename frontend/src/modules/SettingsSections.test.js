@@ -51,7 +51,7 @@ it("gives every section in sections.js one of the categories, in the menu's orde
 	assert.deepEqual(
 		groupSections(entries).map(({ id, sections }) => [id, sections.map((section) => section.id)]),
 		[
-			["sites", ["landing-pages", "network", "nginx"]],
+			["sites", ["landing-pages", "network", "nginx", "dynamic-dns"]],
 			["security", ["authentication", "forward-auth", "crowdsec", "certificates"]],
 			["monitoring", ["monitoring", "geoip"]],
 			["data", ["backup", "database"]],

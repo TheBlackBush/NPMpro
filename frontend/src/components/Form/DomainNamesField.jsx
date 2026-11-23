@@ -16,7 +16,7 @@ const detailText = (detail) => {
 	return detail?.credentialName ?? "";
 };
 
-function SuggestionRow({ option }) {
+export function SuggestionRow({ option }) {
 	return (
 		<span className="flex min-w-0 items-baseline justify-between gap-3">
 			<span className="min-w-0 break-all">{option.label}</span>

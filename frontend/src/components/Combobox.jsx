@@ -42,7 +42,7 @@ import { SingleCombobox } from "./ComboboxSingle";
  *                                           LINE_ENTRIES (only commas and line breaks: entries may hold spaces)
  * @param {Object}   [props.commitRef]       multiple and creatable: its current is set to () => refused parts, which
  *                                           adds the typed text as values (as Enter does) for a save
- * @param {Function} [props.onQueryChange]   multiple: (text) after the typed text changed
+ * @param {Function} [props.onQueryChange]   (text) after the typed text changed (single: the search box, "" when it closes)
  * @param {boolean}  [props.invalid]
  * @param {string}   [props.describedBy]
  * @param {Function} [props.onBlur]
@@ -145,7 +145,13 @@ export function Combobox({
 					chipLabel={chipLabel}
 				/>
 			) : (
-				<SingleCombobox {...shared} value={value} clearable={clearable} searchable={searchable} />
+				<SingleCombobox
+					{...shared}
+					value={value}
+					clearable={clearable}
+					searchable={searchable}
+					onQueryChange={onQueryChange}
+				/>
 			)}
 			{name ? <input type="hidden" name={name} value={hidden} /> : null}
 		</>

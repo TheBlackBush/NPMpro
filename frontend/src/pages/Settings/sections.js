@@ -3,6 +3,7 @@ import {
 	ChartColumn,
 	DatabaseBackup,
 	Database as DatabaseIcon,
+	Globe,
 	KeyRound,
 	LayoutList,
 	Lock,
@@ -25,6 +26,7 @@ import Backup from "./Backup";
 import Certificates from "./Certificates";
 import Crowdsec from "./Crowdsec";
 import Database from "./Database";
+import DynamicDns from "./DynamicDns";
 import Environment from "./Environment";
 import ForwardAuth from "./ForwardAuth";
 import Geoip from "./Geoip";
@@ -45,6 +47,13 @@ export const SECTIONS = [
 	},
 	{ id: "network", category: "sites", labelKey: "settings.network", icon: NetworkIcon, element: Network },
 	{ id: "nginx", category: "sites", labelKey: "settings.nginx", icon: ServerCog, element: Nginx },
+	{
+		id: "dynamic-dns",
+		category: "sites",
+		labelKey: "settings.dynamic-dns",
+		icon: Globe,
+		element: DynamicDns,
+	},
 	{
 		id: "authentication",
 		category: "security",

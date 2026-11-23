@@ -54,6 +54,7 @@ const GROUP_KEYS = {
 		"goaccessResolveHosts",
 	],
 	advanced: ["configBeautifier", "gravatar", "timeZone"],
+	ddns: ["period", "cooldown", "ipv4Services", "ipv6Services", "resolver"],
 };
 
 // applies values with a hint line; "restart" fields get the Restart required badge instead (isRestartField)

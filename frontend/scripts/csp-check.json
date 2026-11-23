@@ -15,6 +15,7 @@
 		"/settings/landing-pages",
 		"/settings/network",
 		"/settings/nginx",
+		"/settings/dynamic-dns",
 		"/settings/authentication",
 		"/settings/forward-auth",
 		"/settings/crowdsec",

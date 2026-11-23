@@ -15,6 +15,8 @@ const MAX_TTL = 86_400;
 const WILDCARD_PREFIX = "*.";
 const TRAILING_DOT = /\.$/u;
 const WILDCARD_LEAD = /^\*\./u;
+// the names of the IP versions, as the record list shows them (not translated: they are protocol names)
+const IP_VERSIONS = { ipv4: "IPv4", ipv6: "IPv6", both: "IPv4 + IPv6" };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WHOLE_NUMBER = /^\d+$/u;
 
@@ -248,6 +250,7 @@ const ddnsErrorOf = (item) => {
 export {
 	ddnsErrorOf,
 	ddnsRecordValidate,
+	IP_VERSIONS,
 	isIpv6Suffix,
 	normalizeRecordName,
 	providerOf,

@@ -33,6 +33,7 @@ export function SingleCombobox({
 	createText,
 	isValidNew,
 	filter,
+	onQueryChange,
 	onBlur,
 	aria,
 	className,
@@ -60,9 +61,13 @@ export function SingleCombobox({
 		filter,
 	});
 
+	const changeQuery = (text) => {
+		setQuery(text);
+		onQueryChange?.(text);
+	};
 	const changeOpen = (next, seed = "") => {
 		if (next && locked) return;
-		setQuery(next ? seed : "");
+		changeQuery(next ? seed : "");
 		setOpen(next);
 	};
 	const pick = (option) => {
@@ -170,7 +175,7 @@ export function SingleCombobox({
 						<CommandInput
 							ref={searchRef}
 							value={query}
-							onValueChange={setQuery}
+							onValueChange={changeQuery}
 							placeholder={intl.formatMessage({ id: "search" })}
 						/>
 					) : null}

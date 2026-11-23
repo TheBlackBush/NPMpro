@@ -8,12 +8,10 @@ import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
 import { useCanManage, useDdnsProviders } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDdnsRecordModal } from "src/modals";
-import { recordStateOf } from "src/modules/DdnsForms";
+import { IP_VERSIONS, recordStateOf } from "src/modules/DdnsForms";
 import { ageOf, recordAddressOf } from "src/modules/DdnsStatus";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { ddnsErrorText } from "./errorText";
-
-const IP_VERSIONS = { ipv4: "IPv4", ipv6: "IPv6", both: "IPv4 + IPv6" };
 
 function RecordActions({ record, updating, onEdit, onUpdateNow, onHistory, onToggle, onDelete }) {
 	const canManage = useCanManage(CERTIFICATES);
