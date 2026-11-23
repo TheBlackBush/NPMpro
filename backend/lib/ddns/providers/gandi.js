@@ -1,13 +1,5 @@
 import { DdnsProviderError } from "../errors.js";
-import {
-	dotted,
-	jsonHeaders,
-	pathName,
-	plainTarget,
-	refuseMultiple,
-	refuseWildcard,
-	relativeName,
-} from "./record-common.js";
+import { dotted, jsonHeaders, pathName, plainTarget, refuseMultiple, refuseWildcard } from "./record-common.js";
 import { bearer, collectZones, failAnswer, malformed } from "./zone-common.js";
 
 const PER_PAGE = 100;

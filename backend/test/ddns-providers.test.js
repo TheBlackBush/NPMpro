@@ -37,6 +37,7 @@ const api = (host) => mock.get(`https://${host}`);
 const bodyIs = (expected) => (text) => text === JSON.stringify(expected);
 const MORE_THAN_ONE = /more than one/u;
 const BETWEEN = /between 300/u;
+const cfRecords = (type, name) => `/client/v4/zones/zid/dns_records?type=${type}&name.exact=${name}`;
 const bearerOf = { authorization: `Bearer ${TOKEN}` };
 
 describe("registry", () => {
@@ -76,7 +77,7 @@ describe("cloudflare", () => {
 			.reply(200, { success: true, result: [{ id: "zid" }] }, json);
 		api("api.cloudflare.com")
 			.intercept({
-				path: "/client/v4/zones/zid/dns_records?type=A&name.exact=home.example.com",
+				path: cfRecords("A", "home.example.com"),
 				method: "GET",
 				headers: bearerOf,
 			})
@@ -90,7 +91,7 @@ describe("cloudflare", () => {
 		});
 		// the cached zone id: no zone lookup now
 		api("api.cloudflare.com")
-			.intercept({ path: "/client/v4/zones/zid/dns_records?type=A&name.exact=home.example.com", method: "GET" })
+			.intercept({ path: cfRecords("A", "home.example.com"), method: "GET" })
 			.reply(200, { success: true, result: [] }, json);
 		assert.equal(await call("cloudflare", "read", { ...base, meta: found.meta }), null);
 		mock.assertNoPendingInterceptors();
@@ -99,7 +100,7 @@ describe("cloudflare", () => {
 	it("reads a wildcard with the full name, a CNAME without its trailing dot, and two values", async () => {
 		api("api.cloudflare.com")
 			.intercept({
-				path: "/client/v4/zones/zid/dns_records?type=CNAME&name.exact=*.example.com",
+				path: cfRecords("CNAME", "*.example.com"),
 				method: "GET",
 			})
 			.reply(200, { success: true, result: [{ id: "c1", content: "Target.Example.net.", ttl: 300 }] }, json);
@@ -112,7 +113,7 @@ describe("cloudflare", () => {
 		assert.deepEqual(alias.values, ["target.example.net"]);
 		assert.equal(alias.proxied, false);
 		api("api.cloudflare.com")
-			.intercept({ path: "/client/v4/zones/zid/dns_records?type=A&name.exact=home.example.com", method: "GET" })
+			.intercept({ path: cfRecords("A", "home.example.com"), method: "GET" })
 			.reply(
 				200,
 				{
@@ -384,7 +385,8 @@ describe("hetzner-cloud", () => {
 			.intercept({ path: rrset("home"), method: "GET" })
 			.reply(200, { rrset: { records: [{ value: "5.6.7.8" }], ttl: 600 } }, json);
 		const existing = { values: ["1.2.3.4"], ttl: 600, meta: {} };
-		await call("hetzner-cloud", "write", { ...base, ip: "5.6.7.8", existing });
+		const kept = await call("hetzner-cloud", "write", { ...base, ip: "5.6.7.8", existing });
+		assert.equal(kept.created, false);
 		set();
 		host()
 			.intercept({ path: rrset("home"), method: "GET" })
