@@ -2,6 +2,7 @@ import dnsFields from "../certbot/dns-fields.json" with { type: "json" };
 import errs from "./error.js";
 
 const controlCharPattern = /[\p{Cc}\u2028\u2029]/u;
+const lineBreakPattern = /\r?\n/u;
 const needsQuotePattern = /[#,"']|^\s|\s$/u;
 
 /**
@@ -160,4 +161,40 @@ const publicView = (provider, values) => {
 	return { fields, ini_set: typeof values?.ini === "string" && values.ini !== "" };
 };
 
-export { buildValues, getFieldDefinition, publicView, toIni };
+/**
+ * The field values of a stored credential: a fields credential as is; an ini credential parsed line by line
+ * (key = value, # and ; comments skipped)
+ *
+ * @param   {Object}  values  { fields } or { ini }
+ * @returns {Object}          { key: value }
+ */
+const credentialFields = (values) => {
+	if (values?.fields) return { ...values.fields };
+	const out = {};
+	for (const line of String(values?.ini ?? "").split(lineBreakPattern)) {
+		const text = line.trim();
+		if (text === "" || text.startsWith("#") || text.startsWith(";")) continue;
+		const at = text.indexOf("=");
+		if (at < 1) continue;
+		out[text.slice(0, at).trim()] = text.slice(at + 1).trim();
+	}
+	return out;
+};
+
+/**
+ * The values to scrub from provider text: the provider's secret fields, or every value for a provider without a
+ * field list
+ *
+ * @param   {String}  provider
+ * @param   {Object}  fields    { key: value }
+ * @returns {String[]}
+ */
+const secretValuesOf = (provider, fields) => {
+	const def = getFieldDefinition(provider);
+	const keys = def
+		? def.fields.filter((field) => field.type === "secret").map((field) => field.key)
+		: Object.keys(fields);
+	return keys.map((key) => fields[key]).filter((value) => typeof value === "string" && value !== "");
+};
+
+export { buildValues, credentialFields, getFieldDefinition, publicView, secretValuesOf, toIni };

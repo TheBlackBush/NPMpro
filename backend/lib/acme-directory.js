@@ -1,8 +1,6 @@
-import dns from "node:dns";
-import { isIP } from "node:net";
 import { Agent, fetch } from "undici";
 import errs from "./error.js";
-import { blockedError, createGuardedAgent, isBlockedAddress } from "./outbound-guard.js";
+import { createGuardedAgent, assertAllowedHost as guardAssertAllowedHost } from "./outbound-guard.js";
 
 // fetch comes from the npm undici package like the dispatchers: Node's built-in fetch rejects an Agent of another
 // undici version (UND_ERR_INVALID_ARG).
@@ -12,7 +10,6 @@ import { blockedError, createGuardedAgent, isBlockedAddress } from "./outbound-g
 
 const DIRECTORY_TIMEOUT = 10_000;
 const CACHE_MS = 5 * 60_000;
-const BRACKETS = /^\[|\]$/gu;
 const PROFILE_NAME = /^[A-Za-z0-9._-]{1,64}$/u;
 const MAX_DESCRIPTION = 500;
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -45,33 +42,8 @@ const dispatcherFor = ({ guarded, verify }) => {
 	return agents.get(key);
 };
 
-const lookupAll = (host) =>
-	new Promise((resolve, reject) => {
-		// node:dns at call time, so a test's dns.lookup is the one used
-		dns.lookup(host, { all: true }, (err, addresses) => (err ? reject(err) : resolve(addresses)));
-	});
-
-/**
- * Refuses a URL whose host is, or resolves to, an address the outbound guard blocks; a name that does not resolve
- * passes (the read then reports the CA as not reachable)
- *
- * @param   {string}  url
- * @returns {Promise<void>}  rejects with the guard's EBLOCKED error
- */
-const assertAllowedHost = async (url) => {
-	const host = new URL(url).hostname.replace(BRACKETS, "");
-	if (isIP(host) !== 0) {
-		if (isBlockedAddress(host)) throw blockedError(host);
-		return;
-	}
-	let addresses;
-	try {
-		addresses = await lookupAll(host);
-	} catch {
-		return;
-	}
-	if (addresses.length === 0 || addresses.some(({ address }) => isBlockedAddress(address))) throw blockedError(host);
-};
+// the guard's host check, also the one the ACME reads use
+const assertAllowedHost = guardAssertAllowedHost;
 
 const isBlocked = (err) => {
 	for (let cause = err; cause; cause = cause.cause) if (cause.code === "EBLOCKED") return true;
