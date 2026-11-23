@@ -1,0 +1,74 @@
+{
+	"operationId": "getDnsCredentialProviderDomains",
+	"summary": "Fetch the domains of a DNS credential from its provider",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "credentialID",
+			"description": "ID of the DNS credential, as the list shows it",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"required": true,
+			"example": 1
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The zones of the provider, marked against the stored domains",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"supported": true,
+								"truncated": false,
+								"zones": [
+									{
+										"name": "example.com",
+										"state": "here"
+									},
+									{
+										"name": "example.org",
+										"state": "other",
+										"credential_name": "Cloudflare second"
+									},
+									{
+										"name": "example.net",
+										"state": "new"
+									}
+								]
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../../components/dns-provider-domains-object.json"
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "The provider refused the credential (`error.dns-zones-forbidden`), the address is blocked (`error.dns-zones-blocked`) or the request failed (`error.dns-zones-failed`)",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/error.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Asks the provider's API for the zones the credential can read, with the saved secret opened for this one call. Nothing is stored: add the chosen names with `POST /nginx/dns-domains`. For a provider without a zone list (`lists_domains` false in the providers list) the answer is `supported: false` and no outside request is made. At most 1000 zones are listed (`truncated`). Each zone is marked `here` (already on this credential), `other` (on another credential of the same owner) or `new`.\n\nNeeds: Certificates manage"
+}

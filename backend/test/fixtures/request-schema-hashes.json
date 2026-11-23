@@ -25,6 +25,7 @@
 	"get /nginx/dns-credentials/{credentialID}": "3a1099c6c48f34b342e538439fbc6fe06fd2a508bde57f049e93eabdbd1bf8db",
 	"put /nginx/dns-credentials/{credentialID}": "ce130426f42289ac3fdb76943c9998553a673591541bd64d500f77e05c8b2e7e",
 	"delete /nginx/dns-credentials/{credentialID}": "69923eab1aa9a6cfc098c400fc244871ccae3e005ede1db1d05380bacf5e25bb",
+	"get /nginx/dns-credentials/{credentialID}/provider-domains": "69923eab1aa9a6cfc098c400fc244871ccae3e005ede1db1d05380bacf5e25bb",
 	"get /nginx/dns-domains": "a3362c665e668fbedd47fda080dab95d8497819704a0a65a8d46deef52ecd026",
 	"post /nginx/dns-domains": "36697d524d6a49356cec0e45e25350d18b51056346e90108f1f8ea6434078c3e",
 	"get /nginx/dns-domains/{domainID}": "b8766f166ea0c11bec4cc200d7e028443f3975d87c9b99901e3e0bfd7dbd3f7c",

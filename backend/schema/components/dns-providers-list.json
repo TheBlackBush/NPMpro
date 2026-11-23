@@ -45,6 +45,10 @@
 				"items": {
 					"type": "string"
 				}
+			},
+			"lists_domains": {
+				"type": "boolean",
+				"description": "Whether the provider's API can list the DNS domains (zones) of a credential, for the Fetch domains window"
 			}
 		}
 	}
