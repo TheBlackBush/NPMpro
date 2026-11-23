@@ -32,7 +32,8 @@
 									"proxied": true,
 									"ipv6": true,
 									"admin_only": false,
-									"wildcards": true
+									"wildcards": true,
+									"min_ttl": 60
 								}
 							]
 						}
