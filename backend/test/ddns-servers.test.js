@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import knexFactory from "knex";
 import { replaceTypes } from "../lib/backup/restore-db.js";
-import { createSchema } from "./support/backup-schema.js";
+import { runMigrations } from "../lib/database/schema.js";
 import { ENGINES, resetEngine } from "./support/servers.js";
 
 const NOW = "2026-11-24 10:00:00";
@@ -93,7 +93,8 @@ for (const [name, label] of [
 	});
 }
 
-// a replace restore of the credentials alone, under records that point to them by a foreign key without cascade
+// a replace restore of the credentials alone, under records that point to them by a foreign key without cascade; the
+// tables come from the real migrations on both servers (the SQLite test schema has JSON defaults MySQL refuses)
 for (const [name, label] of [
 	["postgres", "Postgres"],
 	["mysql", "MySQL"],
@@ -104,7 +105,7 @@ for (const [name, label] of [
 		before(async () => {
 			await resetEngine(name);
 			ctx.knex = knexFactory({ client: engine.client, connection: engine.connection() });
-			await createSchema(ctx.knex);
+			await runMigrations(ctx.knex);
 		});
 		after(() => ctx.knex?.destroy());
 
@@ -116,6 +117,8 @@ for (const [name, label] of [
 			};
 			const credential = (id, extra = {}) => ({
 				id,
+				created_on: NOW,
+				modified_on: NOW,
 				owner_user_id: 1,
 				name: `c${id}`,
 				provider: "cloudflare",
