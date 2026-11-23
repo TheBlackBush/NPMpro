@@ -16,7 +16,7 @@ import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import { displayDomain } from "src/modules/DnsDomainForms";
 import EasyModal from "src/modules/easyModal";
-import { fetchState, initialSelection } from "src/modules/FetchDomains";
+import { fetchState, hintIdOf, initialSelection } from "src/modules/FetchDomains";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { sectionAccent } from "src/modules/SectionAccents";
 import { showObjectSuccess } from "src/notifications";
@@ -149,7 +149,8 @@ const FetchDomainsModal = EasyModal.create(({ credentialId, visible, remove }) =
 						<ErrorAlert error={error} />
 						<p className="mt-2 mb-0 text-sm text-muted-foreground">
 							<T id={state.hintId} />
-							{needs ? ` ${needs}` : ""}
+							{/* the provider's own wording only where the hint is the general one (it repeats a named hint) */}
+							{needs && state.hintId === hintIdOf() ? ` ${needs}` : ""}
 						</p>
 					</div>
 				) : null}

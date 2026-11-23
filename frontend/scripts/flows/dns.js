@@ -480,13 +480,14 @@ async function fetchDomains({ admin }) {
 		gate = null;
 		release();
 
-		// 3. the forbidden answer: the Cloudflare hint and what the token needs, Cancel closes, a failed fetch never
-		// blocks typing the domains
+		// 3. the forbidden answer: the Cloudflare hint (it names the right, so the provider's own wording is not
+		// repeated), Cancel closes, a failed fetch never blocks typing the domains
 		answer = { status: 400, body: FETCH_FORBIDDEN };
 		await rowAction(page, "flow-fetch-cf", "Fetch domains");
 		await fetchState(page, "error").waitFor();
 		await fetchWindow(page).getByText("This token cannot list zones", { exact: false }).waitFor();
-		await fetchWindow(page).getByText("Zone:Zone:Read", { exact: false }).waitFor();
+		if ((await fetchWindow(page).getByText("Zone:Zone:Read", { exact: false }).count()) > 0)
+			throw new Error("the Cloudflare hint repeats what the token needs");
 		await cancel();
 		await page.goto("/certificates/domains");
 		await page.getByRole("button", { name: "Add domains", exact: true }).first().click();
