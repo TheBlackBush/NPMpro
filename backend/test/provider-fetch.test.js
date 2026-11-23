@@ -8,7 +8,7 @@ process.env.NPMPRO_TEST_ROOT = "/nonexistent-provider-fetch-test";
 process.env.NPMPRO_TEST_OUTBOUND = "mock";
 const { providerFetch } = await import("../lib/ddns/provider-fetch.js");
 const { DdnsProviderError, scrubSecrets } = await import("../lib/ddns/errors.js");
-const { isPrivateLanAddress } = await import("../lib/outbound-guard.js");
+const { isPrivateLanAddress } = await import("../lib/blocked-address.js");
 
 const names = new Map([
 	["api.test", ["93.184.216.34"]],

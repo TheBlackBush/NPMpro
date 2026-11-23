@@ -84,13 +84,4 @@ const createGuardedAgent = ({ rejectUnauthorized = true, family, privateOnly = f
 // for undici fetch: every connection, also after a redirect, goes through the guarded lookup
 const guardedAgent = createGuardedAgent();
 
-export {
-	assertAllowedHost,
-	blockedError,
-	createGuardedAgent,
-	guardedAgent,
-	isBlockedAddress,
-	isPrivateLanAddress,
-	isTestOutbound,
-	lookupAll,
-};
+export { assertAllowedHost, blockedError, createGuardedAgent, guardedAgent, isTestOutbound, lookupAll };

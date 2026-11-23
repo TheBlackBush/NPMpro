@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { after, before, it } from "node:test";
+import { isBlockedAddress } from "../lib/blocked-address.js";
 import { checkIcon, detectIconType, downloadIcon, ICON_MAX_BYTES, ICON_MIME, svgIsSafe } from "../lib/oidc-icon.js";
-import { isBlockedAddress } from "../lib/outbound-guard.js";
 
 // the test server listens on 127.0.0.1, which the address check refuses
 const LOCAL = { allowLocal: true };

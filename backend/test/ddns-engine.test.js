@@ -398,7 +398,7 @@ describe("ddns engine: address records", () => {
 					meta: { proxied_a: false, proxied_aaaa: true },
 				}),
 			],
-			resolver: (name, type) => (type === "A" ? [IP4] : null),
+			resolver: (_name, type) => (type === "A" ? [IP4] : null),
 			zone: { A: [IP4], AAAA: [IP6], meta: { proxied: true } },
 		});
 		await h.engine.cycle();

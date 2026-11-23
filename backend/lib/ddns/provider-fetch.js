@@ -1,13 +1,7 @@
 import { isIP } from "node:net";
 import { fetch } from "undici";
-import {
-	assertAllowedHost,
-	createGuardedAgent,
-	guardedAgent,
-	isPrivateLanAddress,
-	isTestOutbound,
-	lookupAll,
-} from "../outbound-guard.js";
+import { isPrivateLanAddress } from "../blocked-address.js";
+import { assertAllowedHost, createGuardedAgent, guardedAgent, isTestOutbound, lookupAll } from "../outbound-guard.js";
 import { DdnsProviderError } from "./errors.js";
 
 // The one door for DNS provider API calls (zone lists, record reads and writes, IP echo): https only, the outbound
