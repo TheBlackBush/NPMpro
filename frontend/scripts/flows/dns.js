@@ -446,12 +446,6 @@ async function fetchDomains({ admin }) {
 			})
 			.catch(() => undefined);
 	});
-	// the provider requests the page gave up on (Cancel aborts the one in flight)
-	const aborted = [];
-	const onFailed = (request) => {
-		if (request.url().includes("/provider-domains")) aborted.push(request.url());
-	};
-	page.on("requestfailed", onFailed);
 	const cancel = async () => {
 		await fetchWindow(page).getByRole("button", { name: "Cancel", exact: true }).click();
 		await fetchWindow(page).waitFor({ state: "detached" });
@@ -494,9 +488,15 @@ async function fetchDomains({ admin }) {
 		await rowAction(page, "flow-fetch-cf", "Fetch domains");
 		await fetchWindow(page).waitFor();
 		await fetchState(page, "loading").waitFor();
+		// Cancel aborts the request in flight
+		const aborted = page.waitForEvent("requestfailed", {
+			predicate: (request) => request.url().includes("/provider-domains"),
+			timeout: 5000,
+		});
 		await cancel();
-		for (let tries = 0; aborted.length === 0 && tries < 50; tries++) await page.waitForTimeout(100);
-		if (aborted.length === 0) throw new Error("Cancel did not abort the provider request");
+		await aborted.catch(() => {
+			throw new Error("Cancel did not abort the provider request");
+		});
 		gate = null;
 		release();
 
@@ -573,7 +573,6 @@ async function fetchDomains({ admin }) {
 		if (ini.id === cf.id) throw new Error("the two credentials are one");
 		if (errors.length > 0) throw new Error(`page error: ${errors[0]}`);
 	} finally {
-		page.off("requestfailed", onFailed);
 		await page.unroute(FETCH_ROUTE);
 		await cleanUp(api);
 	}
