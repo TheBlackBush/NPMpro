@@ -155,16 +155,55 @@ it("cloudflare: the global key group sends X-Auth-Email and X-Auth-Key", async (
 	assert.deepEqual(await run("cloudflare", fields, ["globalkey-9999"]), ["g.example.org"]);
 });
 
-it("cloudflare: success false with status 200 is forbidden", async () => {
+for (const code of [9109, 10000, 9103, 9106, 6003, 6111]) {
+	it(`cloudflare: success false with auth code ${code} is forbidden`, async () => {
+		intercept("api.cloudflare.com", CASES.cloudflare.path(1), bearerOf(TOKEN)).reply(
+			200,
+			{ success: false, errors: [{ code, message: "Authentication error" }] },
+			json,
+		);
+		await assert.rejects(
+			run("cloudflare", CASES.cloudflare.fields),
+			(err) => err.code === "forbidden" && err.hint === "Zone Read",
+		);
+	});
+}
+
+it("cloudflare: success false with another code is failed and scrubbed", async () => {
 	intercept("api.cloudflare.com", CASES.cloudflare.path(1), bearerOf(TOKEN)).reply(
 		200,
-		{ success: false, errors: [{ message: "Authentication error" }] },
+		{ success: false, errors: [{ code: 1000, message: `broken ${TOKEN}` }] },
 		json,
 	);
 	await assert.rejects(
 		run("cloudflare", CASES.cloudflare.fields),
-		(err) => err.code === "forbidden" && err.hint === "Zone Read",
+		(err) => err.code === "failed" && !err.hint && !err.message.includes(TOKEN),
 	);
+});
+
+it("cloudflare: a 401 is forbidden", async () => {
+	intercept("api.cloudflare.com", CASES.cloudflare.path(1), bearerOf(TOKEN)).reply(401, { success: false }, json);
+	await assert.rejects(run("cloudflare", CASES.cloudflare.fields), (err) => err.code === "forbidden");
+});
+
+it("a provider that always says there is a next page stops after 25 requests with truncated", async () => {
+	const c = CASES.digitalocean;
+	for (let page = 1; page <= 25; page++) {
+		intercept(c.host, c.path(page), c.headers).reply(200, c.body([`p${page}.example.org`], 1, 99), json);
+	}
+	const zones = await run("digitalocean", c.fields);
+	assert.equal(zones.length, 25);
+	assert.equal(zones.truncated, true);
+	mock.assertNoPendingInterceptors();
+});
+
+it("a page that repeats the previous one stops paging with truncated", async () => {
+	const h = CASES["hetzner-cloud"];
+	intercept(h.host, h.path(1), h.headers).reply(200, h.body(["a.example.org"], 1, 9), json);
+	intercept(h.host, h.path(2), h.headers).reply(200, h.body(["a.example.org"], 2, 9), json);
+	const zones = await run("hetzner-cloud", h.fields);
+	assert.deepEqual([...zones], ["a.example.org"]);
+	assert.equal(zones.truncated, true);
 });
 
 it("a 4.1 error (network) passes through", async () => {

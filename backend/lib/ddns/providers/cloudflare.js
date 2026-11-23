@@ -11,6 +11,10 @@ const authHeaders = (fields) =>
 				Accept: "application/json",
 			};
 
+// Cloudflare error codes that mean the credential is refused (authentication or permission)
+const AUTH_CODES = new Set([9109, 10_000, 9103, 9106, 6003, 6111]);
+const isAuthRefusal = (body) => body?.errors?.some?.((error) => AUTH_CODES.has(error?.code)) === true;
+
 const secretsOf = (fields) =>
 	[fields.dns_cloudflare_api_token, fields.dns_cloudflare_api_key].filter((value) => typeof value === "string");
 
@@ -29,7 +33,7 @@ export default {
 					failAnswer(res, {
 						hint: HINT,
 						secrets: secretsOf(fields),
-						refused: body?.success === false && res.status === 200,
+						refused: isAuthRefusal(body),
 					});
 				}
 				if (!Array.isArray(body?.result) || typeof body?.result_info?.page !== "number") {

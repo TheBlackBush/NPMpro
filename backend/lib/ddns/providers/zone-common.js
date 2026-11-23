@@ -2,7 +2,8 @@ import { normalizeDomainName } from "../../dns-domain-name.js";
 import { DdnsProviderError } from "../errors.js";
 
 const MAX_ZONES = 1000;
-const MAX_PAGES = 100;
+// 1000 zones at the smallest page size of the providers is 20 pages of 50; 25 leaves room for short pages
+const MAX_PAGES = 25;
 
 /**
  * The message of a failed provider answer: errors[0].message, message, or the first 300 characters of the text.
@@ -46,17 +47,23 @@ const failAnswer = (res, { hint, secrets, refused = false }) => {
 const collectZones = async ({ fetchPage }) => {
 	const found = new Set();
 	let truncated = false;
+	let previous = null;
 	for (let page = 1; page <= MAX_PAGES; page++) {
 		const { names, more } = await fetchPage(page);
+		const key = JSON.stringify(names);
+		const repeated = key === previous;
+		previous = key;
 		for (const raw of names) {
 			const result = normalizeDomainName(raw);
 			if (result.name) found.add(result.name);
 		}
-		if (found.size > MAX_ZONES) {
+		if (found.size > MAX_ZONES || (more && repeated)) {
 			truncated = true;
 			break;
 		}
 		if (!more) break;
+		// the cap stops paging while the provider still has more
+		if (page === MAX_PAGES) truncated = true;
 	}
 	const sorted = [...found].sort((a, b) => a.localeCompare(b));
 	const zones = sorted.slice(0, MAX_ZONES);
