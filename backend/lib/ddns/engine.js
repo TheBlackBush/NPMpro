@@ -87,9 +87,16 @@ const createDdnsEngine = ({
 		return next === null || next <= now();
 	};
 
-	const history = async (id, row) => {
-		await store.addHistory(id, row);
-		await store.trimHistory(id, HISTORY_LIMIT);
+	// written after the record patch is saved: a history error is logged and never loses the patch
+	const writeHistory = async (id, rows) => {
+		for (const row of rows) {
+			try {
+				await store.addHistory(id, row);
+				await store.trimHistory(id, HISTORY_LIMIT);
+			} catch (err) {
+				log?.error(`Dynamic DNS: the history of record ${id} was not written: ${err?.message}`);
+			}
+		}
 	};
 
 	/** A public address the records may be written from: confirmed, with no error of the last detection */
@@ -120,8 +127,18 @@ const createDdnsEngine = ({
 		for (const family of familyOf(record)) {
 			const state = found.get(family);
 			if (!confirmed(state)) return null;
-			const wanted =
-				family === 6 && record.ipv6_suffix ? withSuffix(state.address, record.ipv6_suffix) : state.address;
+			let wanted = state.address;
+			if (family === 6 && record.ipv6_suffix) {
+				try {
+					wanted = withSuffix(state.address, record.ipv6_suffix);
+				} catch {
+					throw new EngineFailure(
+						`The IPv6 suffix ${record.ipv6_suffix} is not valid; edit the record`,
+						"error.ddns-bad-suffix",
+						{ suffix: record.ipv6_suffix },
+					);
+				}
+			}
 			units.push({ type: typeOf(family), family, wanted });
 		}
 		return units;
@@ -246,19 +263,20 @@ const createDdnsEngine = ({
 		return patch;
 	};
 
-	/** Runs one record (under its lock): { skipped } when its address is unknown, else the saved outcome */
+	/** Runs one record (under its lock): { skipped } when it is gone, disabled or has no address, else the outcome */
 	const processRecord = (id, found, { ignoreDue, strictCooldown, countTry }) =>
 		recordLock(id, async () => {
 			const record = await store.getRecord(id);
-			if (!record || (!ignoreDue && !isDue(record))) return { skipped: true };
-			const units = unitsOf(record, found);
-			if (units === null) return { skipped: true };
+			if (!record || record.enabled === false) return { skipped: "record" };
+			if (!ignoreDue && !isDue(record)) return { skipped: "due" };
 
 			let secrets = [];
 			const done = [];
 			let waitUntil = null;
 			const ctx = { record, meta: { ...record.meta }, strictCooldown };
 			try {
+				const units = unitsOf(record, found);
+				if (units === null) return { skipped: "address" };
 				ctx.cred = await store.openCredential(record);
 				secrets = ctx.cred.secrets ?? [];
 				ctx.provider = providers.providerById(record.provider);
@@ -272,47 +290,53 @@ const createDdnsEngine = ({
 			} catch (err) {
 				if (err?.cooldown) {
 					const partial = { last_checked_on: new Date(now()) };
-					await recordChanges(record, done, partial);
+					const rows = changesOf(done, partial);
 					await store.saveRecord(id, partial);
+					await writeHistory(id, rows);
 					throw err;
 				}
 				const patch = failurePatch(record, err, secrets, { countTry });
-				await recordChanges(record, done, patch);
-				const wasFailed = record.state === "failed";
+				const rows = changesOf(done, patch);
+				if (record.state !== "failed") rows.push({ kind: "failed", message: patch.error });
 				await store.saveRecord(id, patch);
-				if (!wasFailed) await history(id, { kind: "failed", message: patch.error });
+				await writeHistory(id, rows);
 				return { failed: true };
 			}
 
 			const patch = { last_checked_on: new Date(now()) };
-			const proxied = ctx.meta.proxied === true;
-			patch.meta = { ...lookupMeta(ctx.meta), ...(ctx.meta.proxied === undefined ? {} : { proxied }) };
-			await recordChanges(record, done, patch);
+			patch.meta = lookupMeta(ctx.meta);
+			const rows = changesOf(done, patch);
 			if (waitUntil === null) {
 				Object.assign(patch, { state: "ok", failures: 0, next_try_on: null, error: null });
-				await store.saveRecord(id, patch);
-				if (record.state === "failed") await history(id, { kind: "recovered" });
+				if (record.state === "failed") rows.push({ kind: "recovered" });
 			} else {
+				// the state and the error stay as they were, so the error's key stays with its text
+				const { error_i18n: key, error_values: values } = record.meta ?? {};
+				if (key !== undefined) patch.meta.error_i18n = key;
+				if (values !== undefined) patch.meta.error_values = values;
 				patch.next_try_on = new Date(waitUntil);
-				await store.saveRecord(id, patch);
 			}
+			await store.saveRecord(id, patch);
+			await writeHistory(id, rows);
 			return { ok: true };
 		});
 
-	/** History rows of the changes made and the addresses now known, into the patch */
-	const recordChanges = async (record, done, patch) => {
+	/** The history rows of the changes made, and the addresses now known and the change time, into the patch */
+	const changesOf = (done, patch) => {
+		const rows = [];
 		for (const { unit, result } of done) {
 			if (result.outcome === "waiting") continue;
 			if (unit.family !== null) patch[unit.family === 6 ? "last_ipv6" : "last_ipv4"] = unit.wanted;
 			if (!result.change) continue;
 			patch.last_changed_on = new Date(now());
-			await history(record.id, {
+			rows.push({
 				kind: result.change.kind,
 				ip_version: unit.family === null ? null : `ipv${unit.family}`,
 				old_ip: result.change.old,
 				new_ip: result.change.new,
 			});
 		}
+		return rows;
 	};
 
 	const safeProcess = async (id, found, options) => {
@@ -352,8 +376,26 @@ const createDdnsEngine = ({
 			runNow(async () => {
 				const record = await store.getRecord(id);
 				if (!record) throw new errs.ItemNotFoundError(id);
+				if (record.enabled === false) {
+					throw new errs.ValidationError(
+						"The record is disabled; enable it first",
+						"error.ddns-record-disabled",
+					);
+				}
 				const found = await detectFamilies([record]);
-				await processRecord(id, found, { ignoreDue: true, strictCooldown: true, countTry: false });
+				const result = await processRecord(id, found, {
+					ignoreDue: true,
+					strictCooldown: true,
+					countTry: false,
+				});
+				if (result.skipped === "address") {
+					const unknown = [...found.values()].filter((one) => !confirmed(one));
+					const state = unknown.find((one) => one.error_i18n) ?? unknown[0];
+					throw new errs.ValidationError(
+						state?.error ?? "The public address is not known yet; try again after the next check",
+						state?.error_i18n ?? "error.ddns-ip-failed",
+					);
+				}
 				return store.getRecord(id);
 			}),
 	};

@@ -14,7 +14,7 @@ describe("ddns ipv6 suffix", () => {
 	});
 
 	it("accepts interface ids of at most 64 bits", () => {
-		for (const text of ["::1", "::a:b:c:d", "0:0:0:0:1:2:3:4", "::ffff:ffff:ffff:ffff", "::"]) {
+		for (const text of ["::1", "::a:b:c:d", "0:0:0:0:1:2:3:4", "::ffff:ffff:ffff:ffff"]) {
 			assert.equal(isIpv6Suffix(text), true, text);
 		}
 	});

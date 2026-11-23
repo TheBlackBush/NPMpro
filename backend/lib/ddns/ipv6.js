@@ -33,14 +33,14 @@ const toText = (value) => {
 };
 
 /**
- * Whether text is an IPv6 interface id such as `::1` or `::a:b:c:d`: a valid IPv6 address with at most 64 bits set
+ * Whether text is an IPv6 interface id such as `::1` or `::a:b:c:d`: a valid IPv6 address (not zero) with at most 64 bits set
  *
  * @param   {String} text
  * @returns {boolean}
  */
 const isIpv6Suffix = (text) => {
 	const value = toNumber(text);
-	return value !== null && value < HALF;
+	return value !== null && value > 0n && value < HALF;
 };
 
 /**

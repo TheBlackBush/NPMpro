@@ -13,6 +13,7 @@ const TOKEN = "tok-secret-1234";
 const SINGLE = /2 addresses/u;
 const ADDRESS_AT_NAME = /address record/u;
 const CNAME_AT_NAME = /CNAME record/u;
+const SUFFIX = /suffix/u;
 const STARS = /\*\*\*/u;
 const TOKEN_FOUND = /tok-secret/u;
 
@@ -80,7 +81,7 @@ const harness = ({ records = [recordRow()], zone = {}, resolver = () => null, ip
 		},
 		write: ({ type, ip: value, existing, meta }) => {
 			calls.push({ op: "write", type, ip: value, existing, meta });
-			if (dns.writeError) throw dns.writeError;
+			if (dns.writeError && (!dns.writeErrorType || dns.writeErrorType === type)) throw dns.writeError;
 			dns[key(type)] = [value];
 			return { meta: { zone_id: "z1", record_id: `r-${type}`, ...meta }, created: existing === null };
 		},
@@ -92,6 +93,7 @@ const harness = ({ records = [recordRow()], zone = {}, resolver = () => null, ip
 			Object.assign(rows.get(id), patch);
 		},
 		addHistory: (id, row) => {
+			if (dns.historyError) throw new Error("history is down");
 			historyRows.push({ ddns_record_id: id, created_on: clock.now(), ...row });
 		},
 		trimHistory: (id, keep) => {
@@ -118,7 +120,26 @@ const harness = ({ records = [recordRow()], zone = {}, resolver = () => null, ip
 		clock,
 		makeFetch: () => () => Promise.resolve({}),
 	});
-	return { engine, rows, row: (id = 1) => rows.get(id), historyRows, detects, resolves, calls, dns, clock, states };
+	return {
+		engine,
+		store,
+		providers: { providerById: (id) => (id === "fake" ? provider : null) },
+		publicIp: {
+			detect: (family) => {
+				detects.push(family);
+				return Promise.resolve(states[family]);
+			},
+		},
+		rows,
+		row: (id = 1) => rows.get(id),
+		historyRows,
+		detects,
+		resolves,
+		calls,
+		dns,
+		clock,
+		states,
+	};
 };
 
 const writes = (h) => h.calls.filter((call) => call.op === "write");
@@ -466,23 +487,146 @@ describe("ddns engine: failure, backoff and recovery", () => {
 		);
 	});
 
-	it("runs Update now through the timer's lock", async () => {
-		let ran = 0;
+	it("runs Update now through the injected lock and returns the record", async () => {
 		const h = harness({ zone: { A: [IP4] } });
+		let held = 0;
 		const engine = createDdnsEngine({
-			store: { getRecord: async () => null },
-			publicIp: {},
-			providers: {},
-			resolveName: async () => null,
-			settings: () => ({}),
+			store: h.store,
+			publicIp: { detect: () => Promise.resolve(h.states[4]) },
+			providers: h.providers,
+			resolveName: () => Promise.resolve(null),
+			settings: () => ({ periodMs: 5 * MIN, cooldownMs: 5 * MIN }),
+			clock: h.clock,
+			makeFetch: () => () => Promise.resolve({}),
 			runNow: (fn) => {
-				ran += 1;
+				held += 1;
 				return Promise.resolve(fn());
 			},
 		});
-		await assert.rejects(engine.updateRecord(5, { now: true }));
-		assert.equal(ran, 1);
-		assert.ok(h);
+		const record = await engine.updateRecord(1, { now: true });
+		assert.equal(held, 1);
+		assert.equal(record.state, "ok");
+		await assert.rejects(engine.updateRecord(99, { now: true }));
+		assert.equal(held, 2);
+	});
+});
+
+describe("ddns engine: edge cases", () => {
+	it("fails a record with an invalid stored suffix, in the cycle and in Update now", async () => {
+		const h = harness({ records: [recordRow({ ip_version: "ipv6", ipv6_suffix: "1::1" })] });
+		await h.engine.cycle();
+		assert.equal(h.row().state, "failed");
+		assert.match(h.row().error, SUFFIX);
+		assert.equal(h.row().meta.error_i18n, "error.ddns-bad-suffix");
+		assert.equal(h.calls.length, 0);
+		const record = await h.engine.updateRecord(1, { now: true });
+		assert.equal(record.state, "failed");
+	});
+
+	it("recreates a record deleted at the provider on each due cycle, inside the cooldown too", async () => {
+		const h = harness({ records: [recordRow({ last_changed_on: new Date(START - MIN), state: "ok" })] });
+		await h.engine.cycle();
+		assert.equal(writes(h).length, 1);
+		assert.equal(h.historyRows.at(-1).kind, "created");
+		delete h.dns.A;
+		h.clock.advance(MIN);
+		await h.engine.cycle();
+		assert.equal(writes(h).length, 2);
+		assert.deepEqual(
+			h.historyRows.map((r) => r.kind),
+			["created", "created"],
+		);
+	});
+
+	it("skips a record disabled since the cycle began, and refuses Update now on it", async () => {
+		const h = harness({ zone: { A: [IP4_NEW] } });
+		const enabled = h.store.enabledRecords;
+		h.store.enabledRecords = async () => {
+			const list = await enabled();
+			h.rows.get(1).enabled = false;
+			return list;
+		};
+		await h.engine.cycle();
+		assert.equal(h.calls.length, 0);
+		await assert.rejects(h.engine.updateRecord(1, { now: true }), (err) => {
+			assert.equal(err.message_i18n, "error.ddns-record-disabled");
+			return true;
+		});
+		assert.equal(h.calls.length, 0);
+	});
+
+	it("answers Update now with the address error when no public address is known", async () => {
+		const h = harness({
+			ip: { 4: { address: null, error: "no service answered", error_i18n: "error.ddns-ip-failed" } },
+		});
+		await assert.rejects(h.engine.updateRecord(1, { now: true }), (err) => {
+			assert.equal(err.message_i18n, "error.ddns-ip-failed");
+			assert.equal(err.message, "no service answered");
+			return true;
+		});
+		assert.equal(h.calls.length, 0);
+	});
+
+	it("saves the record before the history, and a history error never loses the patch", async () => {
+		const logged = [];
+		const h = harness({ zone: { A: [IP4_NEW] } });
+		h.dns.historyError = true;
+		const engine = createDdnsEngine({
+			store: h.store,
+			publicIp: h.publicIp,
+			providers: h.providers,
+			resolveName: () => Promise.resolve(null),
+			settings: () => ({ periodMs: 5 * MIN, cooldownMs: 5 * MIN }),
+			clock: h.clock,
+			log: { error: (message) => logged.push(message) },
+			makeFetch: () => () => Promise.resolve({}),
+		});
+		await engine.cycle();
+		assert.equal(h.row().state, "ok");
+		assert.equal(h.row().last_ipv4, IP4);
+		assert.ok(h.row().last_changed_on);
+		assert.equal(logged.length, 1);
+		assert.equal(h.historyRows.length, 0);
+	});
+
+	it("keeps a failed record's error key while it waits out the cooldown", async () => {
+		const h = harness({
+			records: [
+				recordRow({
+					state: "failed",
+					error: "The record has 2 addresses",
+					last_changed_on: new Date(START - MIN),
+					meta: { error_i18n: "error.ddns-multi-value", error_values: { count: 2 } },
+				}),
+			],
+			zone: { A: [IP4_NEW] },
+		});
+		await h.engine.cycle();
+		assert.equal(writes(h).length, 0);
+		assert.equal(h.row().state, "failed");
+		assert.equal(h.row().meta.error_i18n, "error.ddns-multi-value");
+		assert.deepEqual(h.row().meta.error_values, { count: 2 });
+	});
+
+	it("saves the first family's change when the second family fails", async () => {
+		const h = harness({
+			records: [recordRow({ ip_version: "both" })],
+			zone: { A: [IP4_NEW], AAAA: ["2a00:1450:4001:80b::9"] },
+		});
+		h.dns.writeError = new DdnsProviderError({ code: "failed", message: "v6 refused" });
+		h.dns.writeErrorType = "AAAA";
+		await h.engine.cycle();
+		const row = h.row();
+		assert.equal(row.state, "failed");
+		assert.equal(row.last_ipv4, IP4);
+		assert.ok(row.last_changed_on);
+		assert.deepEqual(
+			h.historyRows.map((r) => [r.kind, r.ip_version]),
+			[
+				["changed", "ipv4"],
+				["failed", undefined],
+			],
+		);
 	});
 });
 
