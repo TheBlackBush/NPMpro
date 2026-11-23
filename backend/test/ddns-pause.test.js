@@ -4,6 +4,8 @@ import { startApi } from "./support/api.js";
 
 const CF = "https://api.cloudflare.com";
 const PUBLIC_IP = "81.2.69.160";
+const ZONE_LOOKUP = /^\/client\/v4\/zones\?name=/u;
+const RECORD_LOOKUP = /^\/client\/v4\/zones\/zone1\/dns_records\?/u;
 const json = { headers: { "content-type": "application/json" } };
 // every echo answer takes this long, so a cycle is running for a while
 const SLOW_MS = 300;
@@ -39,10 +41,10 @@ before(async () => {
 		.delay(SLOW_MS)
 		.persist();
 	const pool = api.outside.http.get(CF);
-	pool.intercept({ path: /^\/client\/v4\/zones\?name=/u, method: "GET" })
+	pool.intercept({ path: ZONE_LOOKUP, method: "GET" })
 		.reply(() => ({ statusCode: 200, data: { success: true, result: [{ id: "zone1" }] }, responseOptions: json }))
 		.persist();
-	pool.intercept({ path: /^\/client\/v4\/zones\/zone1\/dns_records\?/u, method: "GET" })
+	pool.intercept({ path: RECORD_LOOKUP, method: "GET" })
 		.reply(() => ({
 			statusCode: 200,
 			data: { success: true, result: [{ id: "rec1", content: PUBLIC_IP, ttl: 1, proxied: false }] },
@@ -59,7 +61,7 @@ before(async () => {
 		name: "home.example.com",
 		dns_credential_id: made.body.id,
 	});
-	assert.equal(record.status, 201, record.text);
+	if (record.status !== 201) throw new Error(`record create answered ${record.status}: ${record.text}`);
 });
 after(() => api?.stop());
 
