@@ -30,6 +30,9 @@ const IPV6_NOT_PUBLIC = [
 	["2001:db8::", 32],
 	["2001::", 32],
 	["2002::", 16],
+	["2001:2::", 48],
+	["2001:10::", 28],
+	["3fff::", 20],
 ];
 
 const ipv4Refused = new BlockList();
@@ -99,25 +102,42 @@ const createPublicIp = ({ fetchText, services, log = () => {}, now = () => new D
 		turn[family] += 1;
 
 		let lastError = "No service is set";
+		const failed = new Map();
 		for (let step = 0; step < list.length; step++) {
 			const index = (start + step) % list.length;
 			const first = await ask(list[index], family);
 			if (first.error) {
 				lastError = first.error;
+				failed.set(list[index], first.error);
 				continue;
 			}
 			if (first.address === known) return settle(family, { service: list[index], error: null, error_i18n: null });
 
-			const confirmUrl = list.length > 1 ? list[(index + 1) % list.length] : null;
-			const second = confirmUrl ? await ask(confirmUrl, family) : { error: "No second service" };
-			if (second.error) {
+			// the confirmer: the next services in order, skipping the one that answered and those that failed here
+			let second = null;
+			for (let next = 1; next < list.length; next++) {
+				const url = list[(index + next) % list.length];
+				if (url === list[index] || failed.has(url)) continue;
+				const answer = await ask(url, family);
+				if (!answer.error) {
+					second = { ...answer, url };
+					break;
+				}
+				failed.set(url, answer.error);
+			}
+			if (!second) {
+				const [lastUrl, lastReason] = [...failed].at(-1) ?? [];
+				const reason = lastUrl ? `${lastUrl}: ${lastReason}` : "no other service is set";
 				return settle(family, {
-					error: "The new address was not confirmed",
+					error: `The new address ${first.address} was not confirmed (${reason})`,
 					error_i18n: "error.ddns-ip-unconfirmed",
 				});
 			}
 			if (second.address !== first.address) {
-				return settle(family, { error: "The services disagree", error_i18n: "error.ddns-ip-disagree" });
+				return settle(family, {
+					error: `${list[index]} answered ${first.address}, ${second.url} answered ${second.address}`,
+					error_i18n: "error.ddns-ip-disagree",
+				});
 			}
 			return settle(family, { address: first.address, service: list[index], error: null, error_i18n: null });
 		}

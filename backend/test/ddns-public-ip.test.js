@@ -66,6 +66,9 @@ describe("isPublicAddress", () => {
 			"2001:db8::1",
 			"2001:0:1::1",
 			"2002::1",
+			"2001:2::1",
+			"2001:10::1",
+			"3fff::1",
 			"::ffff:81.2.69.160",
 		]) {
 			assert.equal(isPublicAddress(a, 6), false, a);
@@ -162,15 +165,40 @@ describe("detect", () => {
 		assert.equal(state.error_i18n, "error.ddns-ip-disagree");
 	});
 
-	it("keeps the old address when the confirming service fails", async () => {
+	it("keeps the old address when no service can confirm, and says why", async () => {
 		const answers = { [URLS[0]]: A, [URLS[1]]: A, [URLS[2]]: B };
-		const { ip } = make(answers);
+		const { ip, calls } = make(answers);
 		await ip.detect(4);
 		answers[URLS[1]] = B;
 		answers[URLS[2]] = new Error("down");
+		answers[URLS[0]] = new Error("gone");
+		calls.length = 0;
 		const state = await ip.detect(4);
 		assert.equal(state.address, A);
 		assert.equal(state.error_i18n, "error.ddns-ip-unconfirmed");
+		assert.equal(state.error, `The new address ${B} was not confirmed (${URLS[0]}: gone)`);
+		assert.deepEqual(
+			calls.map((c) => c[0]),
+			[URLS[1], URLS[2], URLS[0]],
+		);
+	});
+
+	it("confirms with the next service that answers when the first confirmer failed", async () => {
+		const answers = { [URLS[0]]: A, [URLS[1]]: new Error("down"), [URLS[2]]: A };
+		const { ip, calls } = make(answers);
+		const state = await ip.detect(4);
+		assert.equal(state.address, A);
+		assert.equal(state.service, URLS[0]);
+		assert.deepEqual(
+			calls.map((c) => c[0]),
+			[URLS[0], URLS[1], URLS[2]],
+		);
+	});
+
+	it("names both services and addresses on a disagreement", async () => {
+		const { ip } = make({ [URLS[0]]: A, [URLS[1]]: B });
+		const state = await ip.detect(4);
+		assert.equal(state.error, `${URLS[0]} answered ${A}, ${URLS[1]} answered ${B}`);
 	});
 
 	it("does not take a first address a second service does not confirm", async () => {
@@ -187,18 +215,23 @@ describe("detect", () => {
 		assert.equal(state.error_i18n, "error.ddns-ip-unconfirmed");
 	});
 
-	it("moves on from a failed or refused service within one call", async () => {
+	it("moves on from a failed or refused service, and does not ask a failed one to confirm", async () => {
 		const { ip, calls } = make({
 			[URLS[0]]: new Error("boom"),
 			[URLS[1]]: "<html>nope</html>",
 			[URLS[2]]: A,
 		});
 		const state = await ip.detect(4);
-		assert.equal(calls[0][0], URLS[0]);
-		assert.equal(calls[1][0], URLS[1]);
-		assert.equal(calls[2][0], URLS[2]);
+		assert.deepEqual(
+			calls.map((c) => c[0]),
+			[URLS[0], URLS[1], URLS[2]],
+		);
 		assert.equal(state.address, null);
 		assert.equal(state.error_i18n, "error.ddns-ip-unconfirmed");
+		assert.equal(
+			state.error,
+			`The new address ${A} was not confirmed (${URLS[1]}: The answer is not a public IPv4 address)`,
+		);
 	});
 
 	it("refuses private answers from every service and keeps the old address", async () => {
