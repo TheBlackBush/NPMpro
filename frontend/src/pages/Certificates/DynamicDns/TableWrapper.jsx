@@ -18,7 +18,7 @@ import { activeFilterCount } from "src/modules/ListFilters";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { showApiError, showError, showObjectSuccess, showSuccess } from "src/notifications";
 import { CertificateTabs } from "../Tabs";
-import { ddnsErrorText } from "./errorText";
+import { ddnsApiErrorText, ddnsErrorText } from "./errorText";
 import { StatusCard } from "./StatusCard";
 import Table, { useColumns } from "./Table";
 
@@ -63,8 +63,12 @@ export default function TableWrapper() {
 				}
 				showSuccess(intl.formatMessage({ id: `ddns.toast.${state.kind}` }, { name: record.name }));
 			},
-			// a paused updater answers 409 with error.ddns-paused, shown translated
-			onError: showApiError,
+			// inside the cooldown the answer names the next write time (shown local); a paused updater answers 409
+			onError: (err) => {
+				const text = ddnsApiErrorText(err);
+				if (text === null) showApiError(err);
+				else showError(text);
+			},
 			onSettled: () => setUpdatingId(null),
 		});
 	};

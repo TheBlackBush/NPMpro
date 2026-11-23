@@ -1,5 +1,5 @@
 import { formatDateTime, intl } from "src/locale";
-import { ddnsErrorOf } from "src/modules/DdnsForms";
+import { ddnsApiErrorOf, ddnsErrorOf, ddnsMessageValues } from "src/modules/DdnsForms";
 
 /**
  * The error of a record or of the public address as text: the translated message (the time of a cooldown shown as a
@@ -12,7 +12,17 @@ export function ddnsErrorText(item) {
 	const error = ddnsErrorOf(item);
 	if (error === null) return null;
 	if (error.text !== undefined) return error.text;
-	const values = { ...error.values };
-	if (typeof values.next_write_on === "string") values.next_write_on = formatDateTime(values.next_write_on);
-	return intl.formatMessage({ id: error.id }, values);
+	return intl.formatMessage({ id: error.id }, ddnsMessageValues(error.values, formatDateTime));
+}
+
+/**
+ * The ddns message of a failed request (Update now inside the cooldown, a paused updater) as text, the time of a
+ * cooldown as a local date and time; null for any other error, which showApiError shows
+ *
+ * @param   {unknown}  err
+ * @returns {string | null}
+ */
+export function ddnsApiErrorText(err) {
+	const error = ddnsApiErrorOf(err, formatDateTime);
+	return error === null ? null : intl.formatMessage({ id: error.id }, error.values);
 }

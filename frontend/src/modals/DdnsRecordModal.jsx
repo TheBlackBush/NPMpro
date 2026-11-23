@@ -36,8 +36,11 @@ import {
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import {
+	ddnsRecordPayload,
 	ddnsRecordValidate,
+	ddnsRulesInput,
 	IP_VERSIONS,
+	minTtlOf,
 	normalizeRecordName,
 	providerOf,
 	suggestedZone,
@@ -86,40 +89,6 @@ const toForm = (record) => ({
 });
 
 const textOf = (problem) => intl.formatMessage({ id: problem.id }, problem.values);
-
-// what the rules of DdnsForms see: a field the form hides never blocks a save (an address has no target, an alias no
-// IP version or suffix, IPv4 no suffix)
-const rulesInput = (values, stored) => {
-	if (values.kind === "alias") {
-		const keeps = stored?.kind === "alias";
-		return { ...values, ipVersion: keeps ? values.ipVersion : undefined, ipv6Suffix: "" };
-	}
-	return { ...values, target: "", ipv6Suffix: values.ipVersion === "ipv4" ? "" : values.ipv6Suffix };
-};
-
-// the request: an alias sends its target only, an address its IP version and suffix only
-const toPayload = (values, stored, zoneTyped) => {
-	const ttl = String(values.ttl ?? "").trim();
-	const payload = {
-		id: stored?.id,
-		name: values.name.trim(),
-		dnsCredentialId: values.credentialId,
-		kind: values.kind,
-		enabled: values.enabled,
-	};
-	if (ttl !== "") payload.ttl = Number(ttl);
-	else if (stored) payload.ttl = null;
-	if (zoneTyped && values.zone.trim() !== "") payload.zone = values.zone.trim();
-	if (values.kind === "alias") {
-		payload.target = values.target.trim();
-		return payload;
-	}
-	payload.ipVersion = values.ipVersion;
-	const suffix = String(values.ipv6Suffix ?? "").trim();
-	if (values.ipVersion !== "ipv4" && suffix !== "") payload.ipv6Suffix = suffix;
-	else if (stored) payload.ipv6Suffix = null;
-	return payload;
-};
 
 const isRecordName = (text) => normalizeRecordName(text).error === undefined;
 const refusedName = (refused) => intl.formatMessage({ id: "error.ddns-name-invalid" }, { name: refused.join(", ") });
@@ -215,8 +184,9 @@ function CredentialField({ ownerUserId, canUse, zones, credentials, userId, isNe
 	);
 }
 
-// the zone: read only from the match, typed when no domain of the credential covers the name
-function ZoneField({ zones, credentials }) {
+// the zone: read only from the match, typed when no domain of the credential covers the name; a save that keeps the
+// name and the credential keeps the stored zone, so that one shows
+function ZoneField({ zones, credentials, stored }) {
 	const name = useWatch({ name: "name" });
 	const credentialId = useWatch({ name: "credentialId" });
 	const { register } = useFormContext();
@@ -225,6 +195,7 @@ function ZoneField({ zones, credentials }) {
 	const normalized = normalizeRecordName(name ?? "");
 	const credential = (credentials ?? []).find((c) => c.id === credentialId);
 	if (normalized.error || !credential) return null;
+	const kept = stored && normalized.name === stored.name && credentialId === stored.dnsCredentialId;
 	const covering = zoneFor(normalized.name, credentialId, zones);
 	if (covering !== null) {
 		return (
@@ -233,7 +204,9 @@ function ZoneField({ zones, credentials }) {
 				label={<T id="ddns.zone" />}
 				hint={<T id="ddns.zone.matched" data={{ credential: credential.name }} />}
 			>
-				{(control) => <Input {...control} readOnly value={displayDomain(covering)} />}
+				{(control) => (
+					<Input {...control} readOnly value={displayDomain(kept && stored.zone ? stored.zone : covering)} />
+				)}
 			</FormField>
 		);
 	}
@@ -377,14 +350,20 @@ function RecordFields({ stored, providers, credentials, zones, names, ownerUserI
 				userId={userId}
 				isNew={!stored}
 			/>
-			<ZoneField zones={zones.match} credentials={credentials} />
+			<ZoneField zones={zones.match} credentials={credentials} stored={stored} />
 			<KindField />
 			{kind === "alias" ? <TargetField zones={zones.suggestion} names={names} /> : <AddressFields />}
 			<TextField
 				name="ttl"
 				id="ddnsTtl"
 				label={<T id="ddns.ttl" />}
-				hint={<T id="ddns.ttl.hint" />}
+				hint={
+					provider ? (
+						<T id="ddns.ttl.hint-min" data={{ min: minTtlOf(provider), provider: provider.label }} />
+					) : (
+						<T id="ddns.ttl.hint" />
+					)
+				}
 				inputMode="numeric"
 				autoComplete="off"
 				placeholder={intl.formatMessage({ id: "ddns.ttl.placeholder" })}
@@ -433,7 +412,7 @@ const DdnsRecordModal = EasyModal.create(({ id, visible, remove }) => {
 		defaultValues: emptyRecord,
 		values: ready ? (isNew ? emptyRecord : toForm(stored)) : undefined,
 		validate: (values) => {
-			const found = ddnsRecordValidate(rulesInput(values, stored), {
+			const found = ddnsRecordValidate(ddnsRulesInput(values), {
 				providers,
 				credentials,
 				zones: zones.match,
@@ -449,7 +428,7 @@ const DdnsRecordModal = EasyModal.create(({ id, visible, remove }) => {
 		const normalized = normalizeRecordName(values.name);
 		const covering = normalized.error ? null : zoneFor(normalized.name, values.credentialId, zones.match);
 		try {
-			await setRecord(toPayload(values, stored, covering === null));
+			await setRecord(ddnsRecordPayload(values, stored, covering === null));
 			showObjectSuccess("ddns-record", "saved");
 			remove();
 		} catch (err) {

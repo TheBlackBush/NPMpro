@@ -3,9 +3,14 @@ import { readdirSync, readFileSync } from "node:fs";
 import { it } from "node:test";
 import en from "../../translations/ui/en.json" with { type: "json" };
 import {
+	ddnsApiErrorOf,
 	ddnsErrorOf,
+	ddnsMessageValues,
+	ddnsRecordPayload,
 	ddnsRecordValidate,
+	ddnsRulesInput,
 	isIpv6Suffix,
+	minTtlOf,
 	normalizeRecordName,
 	recordStateOf,
 	suggestedZone,
@@ -13,8 +18,8 @@ import {
 } from "./DdnsForms.js";
 
 const PROVIDERS = [
-	{ id: "cloudflare", label: "Cloudflare", credentialProvider: "cloudflare", wildcards: true },
-	{ id: "gandi", label: "Gandi", credentialProvider: "gandi", wildcards: false },
+	{ id: "cloudflare", label: "Cloudflare", credentialProvider: "cloudflare", wildcards: true, minTtl: 60 },
+	{ id: "gandi", label: "Gandi", credentialProvider: "gandi", wildcards: false, minTtl: 300 },
 ];
 const CREDENTIALS = [
 	{ id: 1, name: "Cloudflare main", provider: "cloudflare", ownerUserId: 1 },
@@ -182,12 +187,126 @@ it("keeps a stored suffix that a newer check would refuse when the save keeps it
 	);
 });
 
-it("accepts an empty TTL or 60 to 86400 and refuses the rest", () => {
+it("accepts an empty TTL or the provider's minimum to 86400 and refuses the rest", () => {
 	for (const ok of [undefined, null, "", 60, 86400, "300"])
 		assert.equal(check({ ttl: ok }).ttl, undefined, String(ok));
-	for (const bad of [59, 86401, 0, -1, 1.5, "abc", "1e3", "60.5"]) {
+	for (const bad of [86401, -1, 1.5, "abc", "1e3", "60.5"]) {
 		assert.equal(check({ ttl: bad }).ttl?.id, "ddns.error.ttl-range", String(bad));
 	}
+	for (const low of [59, 0, 30]) {
+		assert.deepEqual(check({ ttl: low }).ttl, {
+			id: "error.ddns-ttl-min",
+			values: { min: 60, provider: "Cloudflare" },
+		});
+	}
+});
+
+it("follows each provider's min_ttl: Gandi takes 300, a stored TTL passes a save that keeps it", () => {
+	const gandi = { name: "home.example.org", credentialId: 2 };
+	assert.deepEqual(check({ ...gandi, ttl: "120" }).ttl, {
+		id: "error.ddns-ttl-min",
+		values: { min: 300, provider: "Gandi" },
+	});
+	assert.equal(check({ ...gandi, ttl: "300" }).ttl, undefined);
+	const stored = { ...STORED, name: "home.example.org", dnsCredentialId: 2, zone: "example.org", ttl: 120 };
+	assert.equal(check({ ...gandi, ttl: "120" }, { stored }).ttl, undefined);
+	assert.equal(check({ ...gandi, ttl: "180" }, { stored }).ttl.id, "error.ddns-ttl-min");
+	// a move to another credential checks the stored TTL again
+	const onCloudflare = { ...STORED, ttl: 30 };
+	assert.equal(check({ ttl: "30" }, { stored: onCloudflare }).ttl, undefined);
+	assert.equal(check({ ...gandi, ttl: "30" }, { stored: onCloudflare }).ttl.id, "error.ddns-ttl-min");
+	assert.equal(minTtlOf({ minTtl: 300 }), 300);
+	assert.equal(minTtlOf({ minTtl: 10 }), 30);
+	assert.equal(minTtlOf(null), 30);
+});
+
+it("an alias never carries the IP version the form shows, an IPv4 address no suffix", () => {
+	const values = {
+		name: "a.example.com",
+		kind: "alias",
+		target: "b.example.com",
+		ipVersion: "ipv4",
+		ipv6Suffix: "::1",
+	};
+	assert.deepEqual(ddnsRulesInput(values), { ...values, ipVersion: undefined, ipv6Suffix: "" });
+	assert.deepEqual(ddnsRulesInput({ ...values, kind: "address" }), {
+		...values,
+		kind: "address",
+		target: "",
+		ipv6Suffix: "",
+	});
+	assert.equal(ddnsRulesInput({ ...values, kind: "address", ipVersion: "ipv6" }).ipv6Suffix, "::1");
+	// a stored alias reads back ip_version null; the form shows IPv4 and the rules pass
+	const storedAlias = { ...STORED, kind: "alias", target: "b.example.com", ipVersion: null };
+	const form = { ...NEW, kind: "alias", target: "b.example.com", ipVersion: "ipv4", ipv6Suffix: "" };
+	assert.deepEqual(ddnsRecordValidate(ddnsRulesInput(form), { ...CONTEXT, stored: storedAlias }), {});
+});
+
+it("the request of an edit that turns an address with a suffix into an alias clears the suffix", () => {
+	const stored = { ...STORED, ipVersion: "ipv6", ipv6Suffix: "::1" };
+	const form = {
+		name: "home.example.com",
+		credentialId: 1,
+		zone: "example.com",
+		kind: "alias",
+		target: " lb.example.net ",
+		ipVersion: "ipv6",
+		ipv6Suffix: "::1",
+		ttl: "",
+		enabled: true,
+	};
+	assert.deepEqual(ddnsRulesInput(form).ipv6Suffix, "");
+	assert.deepEqual(ddnsRecordValidate(ddnsRulesInput(form), { ...CONTEXT, stored }), {});
+	assert.deepEqual(ddnsRecordPayload(form, stored, false), {
+		id: 5,
+		name: "home.example.com",
+		dnsCredentialId: 1,
+		kind: "alias",
+		enabled: true,
+		ttl: null,
+		target: "lb.example.net",
+		ipv6Suffix: null,
+	});
+	// a new alias sends neither, a new address its IP version and suffix, a typed zone only when asked
+	const added = ddnsRecordPayload({ ...form, ttl: "300" }, null, true);
+	assert.deepEqual(added, {
+		id: undefined,
+		name: "home.example.com",
+		dnsCredentialId: 1,
+		kind: "alias",
+		enabled: true,
+		ttl: 300,
+		zone: "example.com",
+		target: "lb.example.net",
+	});
+	const address = ddnsRecordPayload({ ...form, kind: "address" }, null, false);
+	assert.deepEqual([address.ipVersion, address.ipv6Suffix, address.target], ["ipv6", "::1", undefined]);
+	const ipv4 = ddnsRecordPayload({ ...form, kind: "address", ipVersion: "ipv4" }, stored, false);
+	assert.deepEqual([ipv4.ipVersion, ipv4.ipv6Suffix], ["ipv4", null]);
+});
+
+it("formats the time of a cooldown in the message of a failed request", () => {
+	const at = (iso) => `local ${iso.slice(11, 16)}`;
+	const err = {
+		payload: {
+			error: {
+				message: "x",
+				message_i18n: "error.ddns-cooldown",
+				message_values: { next_write_on: "2026-11-23T23:21:43.000Z" },
+			},
+		},
+	};
+	assert.deepEqual(ddnsApiErrorOf(err, at), {
+		id: "error.ddns-cooldown",
+		values: { next_write_on: "local 23:21" },
+	});
+	assert.deepEqual(ddnsApiErrorOf({ payload: { error: { message_i18n: "error.ddns-paused" } } }, at), {
+		id: "error.ddns-paused",
+		values: {},
+	});
+	assert.equal(ddnsApiErrorOf({ payload: { error: { message_i18n: "error.not-found" } } }, at), null);
+	assert.equal(ddnsApiErrorOf(new Error("HTTP 502"), at), null);
+	assert.deepEqual(ddnsMessageValues({ name: "a", next_write_on: 5 }, at), { name: "a", next_write_on: 5 });
 });
 
 it("shows the state of a record", () => {

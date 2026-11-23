@@ -10,7 +10,8 @@ const GROUPS = 8;
 const HEX_GROUP = /^[0-9a-f]{1,4}$/iu;
 const GROUP_SIZE = 65_536n;
 const HALF = 2n ** 64n;
-const MIN_TTL = 60;
+// the schema's floor (DigitalOcean's 30); each provider's own minimum comes with GET /nginx/ddns/providers (min_ttl)
+const MIN_TTL = 30;
 const MAX_TTL = 86_400;
 const WILDCARD_PREFIX = "*.";
 const TRAILING_DOT = /\.$/u;
@@ -200,9 +201,66 @@ const ddnsRecordValidate = (values, { providers, credentials, zones, stored = nu
 	if (!isBlank(values.ttl)) {
 		const text = String(values.ttl).trim();
 		const ttl = WHOLE_NUMBER.test(text) ? Number(text) : Number.NaN;
-		if (!(ttl >= MIN_TTL && ttl <= MAX_TTL)) errors.ttl = problem("ddns.error.ttl-range");
+		const min = minTtlOf(provider);
+		const ttlChanged = stored === null || ttl !== stored.ttl || credentialChanged;
+		if (!(ttl >= 0 && ttl <= MAX_TTL)) errors.ttl = problem("ddns.error.ttl-range");
+		else if (ttl < min && ttlChanged) errors.ttl = problem("error.ddns-ttl-min", { min, provider: provider.label });
 	}
 	return errors;
+};
+
+/**
+ * The least TTL a provider takes (its min_ttl, never under the schema's floor of 30)
+ *
+ * @param   {{ minTtl?: number } | null | undefined}  provider  an entry of GET /nginx/ddns/providers
+ * @returns {number}
+ */
+const minTtlOf = (provider) =>
+	Number.isInteger(provider?.minTtl) && provider.minTtl > MIN_TTL ? provider.minTtl : MIN_TTL;
+
+/**
+ * What the rules of ddnsRecordValidate see: a field the window hides never blocks a save (an address has no target,
+ * an alias no IP version or suffix, IPv4 no suffix)
+ *
+ * @param   {Object}  values  the form values
+ * @returns {Object}
+ */
+const ddnsRulesInput = (values) => {
+	if (values.kind === "alias") return { ...values, ipVersion: undefined, ipv6Suffix: "" };
+	return { ...values, target: "", ipv6Suffix: values.ipVersion === "ipv4" ? "" : values.ipv6Suffix };
+};
+
+/**
+ * The request of the record window: an alias sends its target only (on an edit with the suffix cleared, so an
+ * address with a suffix can become an alias), an address its IP version and suffix only
+ *
+ * @param   {Object}  values     the form values
+ * @param   {Object | null | undefined}  stored  the saved record on an edit
+ * @param   {boolean} zoneTyped  whether no domain of the credential covers the name (the typed zone is sent)
+ * @returns {Object}  camelCase body of POST or PUT /nginx/ddns-records
+ */
+const ddnsRecordPayload = (values, stored, zoneTyped) => {
+	const ttl = trimmed(values.ttl);
+	const payload = {
+		id: stored?.id,
+		name: trimmed(values.name),
+		dnsCredentialId: values.credentialId,
+		kind: values.kind,
+		enabled: values.enabled,
+	};
+	if (ttl !== "") payload.ttl = Number(ttl);
+	else if (stored) payload.ttl = null;
+	if (zoneTyped && trimmed(values.zone) !== "") payload.zone = trimmed(values.zone);
+	if (values.kind === "alias") {
+		payload.target = trimmed(values.target);
+		if (stored) payload.ipv6Suffix = null;
+		return payload;
+	}
+	payload.ipVersion = values.ipVersion;
+	const suffix = trimmed(values.ipv6Suffix);
+	if (values.ipVersion !== "ipv4" && suffix !== "") payload.ipv6Suffix = suffix;
+	else if (stored) payload.ipv6Suffix = null;
+	return payload;
 };
 
 const timeOf = (iso) => {
@@ -247,11 +305,44 @@ const ddnsErrorOf = (item) => {
 	return isBlank(item.error) ? null : { text: item.error };
 };
 
+/**
+ * The values of a ddns message ready to show: the time of a cooldown (next_write_on, ISO) as the formatter gives it
+ *
+ * @param   {Object | null | undefined}  values  the message values in the backend's names
+ * @param   {(iso: string) => string}  formatTime
+ * @returns {Object}
+ */
+const ddnsMessageValues = (values, formatTime) => {
+	const done = { ...values };
+	if (typeof done.next_write_on === "string") done.next_write_on = formatTime(done.next_write_on);
+	return done;
+};
+
+/**
+ * The ddns message of a failed request (an error.ddns-* key such as error.ddns-cooldown), its values ready to show;
+ * null for any other error, which the shared API error text shows
+ *
+ * @param   {unknown}  err  an error thrown by src/api/backend/base.js
+ * @param   {(iso: string) => string}  formatTime
+ * @returns {{ id: string, values: Object } | null}
+ */
+const ddnsApiErrorOf = (err, formatTime) => {
+	const apiError = err?.payload?.error;
+	const id = apiError?.message_i18n;
+	if (typeof id !== "string" || !id.startsWith("error.ddns-")) return null;
+	return { id, values: ddnsMessageValues(apiError.message_values, formatTime) };
+};
+
 export {
+	ddnsApiErrorOf,
 	ddnsErrorOf,
+	ddnsMessageValues,
+	ddnsRecordPayload,
 	ddnsRecordValidate,
+	ddnsRulesInput,
 	IP_VERSIONS,
 	isIpv6Suffix,
+	minTtlOf,
 	normalizeRecordName,
 	providerOf,
 	recordStateOf,
