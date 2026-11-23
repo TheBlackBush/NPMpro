@@ -149,6 +149,10 @@ if ($geoip2_country_rule = no) {
 
 An ACME directory URL entered in Settings must be `https://` and may not point at this host, link-local addresses (cloud metadata), multicast or reserved ranges; private LAN addresses are allowed, so a CA such as step-ca on your network works. The backend checks it on every read it makes of that directory (a Connect, the profile list, a registration), and the start does not read it: the start's profile check reads only an `ACME_SERVER` variable or the default CA. An `ACME_SERVER` variable is trusted as it is. Certbot's own connections to the CA are not checked; only administrators can choose a CA. Replace account (a button next to Change on the ACME account card) can deactivate the old account at the CA; after that it can no longer revoke, and NPMpro revokes with each certificate's own key. Replace account needs a signed-in administrator (API tokens are refused). Administrators add other CAs under Other CAs; anyone who may manage certificates chooses among the CAs set up, and the API refuses a certificate request or a re-issue at any other CA, for administrators too.
 
+## DNS provider APIs
+
+Calls to DNS provider APIs (zone lists, and dynamic DNS from a later update) go through the same outbound check as the other admin-supplied URLs: no request reaches this host, link-local or reserved addresses, and no redirect is followed. They must be `https://`; the one exception is a PowerDNS API on a private LAN address, which may use `http://` (the address is checked again when the connection opens, so a name cannot switch to another address in between). Error messages from providers are cut and every secret of the credential is replaced by `***`.
+
 ## Notes on Cloudflare
 - Using cloudflare proxy/tunnel before NPMpro (so between the users and NPMpro `users <=> cloudflare <=> NPMpro`) is strongly discouraged
 - Why?
