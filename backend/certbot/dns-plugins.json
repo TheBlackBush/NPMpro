@@ -141,7 +141,7 @@
     "full_plugin_name": "dns-directadmin",
     "name": "DirectAdmin",
     "package_name": "certbot-dns-directadmin",
-    "version": "1.0.15"
+    "version": "1.0.27"
   },
   "dnsimple": {
     "credentials": "dns_dnsimple_token = MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAw",
@@ -233,7 +233,7 @@
     "full_plugin_name": "dns-firstdomains",
     "name": "First Domains",
     "package_name": "certbot-dns-firstdomains",
-    "version": "1.0.3"
+    "version": "1.0.4"
   },
   "freedns": {
     "credentials": "dns_freedns_username = myremoteuser\ndns_freedns_password = verysecureremoteuserpassword",
