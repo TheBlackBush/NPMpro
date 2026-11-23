@@ -19,6 +19,7 @@
 - [Host options](Host-options)
 - [Landing pages](Landing-pages)
 - [DNS](DNS)
+- [DNS providers](DNS-providers)
 - [Load balancing](Load-balancing)
 - [PHP](PHP)
 - [Monitoring](Monitoring)
