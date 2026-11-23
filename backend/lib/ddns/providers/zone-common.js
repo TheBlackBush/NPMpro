@@ -27,7 +27,7 @@ const providerMessage = (res) => {
 const failAnswer = (res, { hint, secrets, refused = false }) => {
 	const forbidden = refused || res.status === 401 || res.status === 403;
 	const err = new DdnsProviderError({
-		status: res.status,
+		providerStatus: res.status,
 		code: forbidden ? "forbidden" : "failed",
 		message: `${forbidden ? "Access refused" : "Unexpected answer"} (${res.status}): ${providerMessage(res)}`,
 		retry: !forbidden,
@@ -72,7 +72,7 @@ const collectZones = async ({ fetchPage }) => {
 };
 
 const malformed = (res, secrets) =>
-	new DdnsProviderError({ status: res.status, code: "failed", message: "Unexpected answer shape", secrets });
+	new DdnsProviderError({ providerStatus: res.status, code: "failed", message: "Unexpected answer shape", secrets });
 
 const bearer = (token) => ({ Authorization: `Bearer ${token}`, Accept: "application/json" });
 

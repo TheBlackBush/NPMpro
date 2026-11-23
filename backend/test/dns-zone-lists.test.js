@@ -8,7 +8,8 @@ process.env.NPMPRO_TEST_ROOT = "/nonexistent-dns-zone-lists-test";
 process.env.NPMPRO_TEST_OUTBOUND = "mock";
 const { providerFetch } = await import("../lib/ddns/provider-fetch.js");
 const { DdnsProviderError } = await import("../lib/ddns/errors.js");
-const { PROVIDERS, providerById, providerForCredential, listsDomains } = await import("../lib/ddns/providers/index.js");
+const { PROVIDERS, providerById, providerForCredential, listsDomains, listProviderZones, ZONE_LIST_DEADLINE_MS } =
+	await import("../lib/ddns/providers/index.js");
 
 const realLookup = dns.lookup;
 dns.lookup = (_hostname, options, callback) => {
@@ -302,4 +303,37 @@ it("powerdns: the endpoint is read as certbot reads it", async () => {
 		assert.deepEqual([...(await run("powerdns", { ...PDNS, dns_pdns_endpoint }))], []);
 	}
 	mock.assertNoPendingInterceptors();
+});
+
+it("one deadline covers every page of a list: past it, the list ends with code timeout", async () => {
+	assert.equal(ZONE_LIST_DEADLINE_MS, 60_000);
+	const cf = CASES.cloudflare;
+	// each page answers in time on its own (10 s per call), the two together do not fit in 150 ms
+	intercept(cf.host, cf.path(1), cf.headers)
+		.reply(200, cf.body(["a.example"], 1, 2), json)
+		.delay(100);
+	intercept(cf.host, cf.path(2), cf.headers)
+		.reply(200, cf.body(["b.example"], 2, 2), json)
+		.delay(100);
+	await assert.rejects(
+		listProviderZones(providerById("cloudflare"), { fields: cf.fields, secrets: [TOKEN], deadlineMs: 150 }),
+		(err) =>
+			err instanceof DdnsProviderError &&
+			err.code === "timeout" &&
+			err.message === "The zone list did not finish within 0.15 s and was stopped",
+	);
+});
+
+it("a list that ends before its deadline is returned, the secrets scrubbed from its errors", async () => {
+	const cf = CASES.cloudflare;
+	intercept(cf.host, cf.path(1), cf.headers).reply(200, cf.body(["a.example"]), json);
+	assert.deepEqual(
+		[...(await listProviderZones(providerById("cloudflare"), { fields: cf.fields, secrets: [TOKEN] }))],
+		["a.example"],
+	);
+	intercept(cf.host, cf.path(1), cf.headers).reply(500, { errors: [{ message: `bad ${TOKEN}` }] }, json);
+	await assert.rejects(
+		listProviderZones(providerById("cloudflare"), { fields: cf.fields, secrets: [TOKEN] }),
+		(err) => err.code === "failed" && !err.message.includes(TOKEN),
+	);
 });

@@ -2,8 +2,8 @@ const MIN_SECRET_LENGTH = 4;
 const MAX_MESSAGE_LENGTH = 300;
 
 /**
- * Makes provider text safe to store or show: every secret of at least 4 characters, and its URL-encoded forms (%20 and +) and its JSON-escaped form, becomes
- * ***; line breaks become spaces; the result is cut to 300 characters
+ * Makes provider text safe to store or show: every secret of at least 4 characters, and its URL-encoded forms (%20
+ * and +) and its JSON-escaped form, becomes ***; line breaks become spaces; the result is cut to 300 characters
  *
  * @param   {*}         text
  * @param   {String[]}  [secrets]
@@ -24,14 +24,18 @@ const scrubSecrets = (text, secrets = []) => {
 	return out.replace(/[\r\n]+/gu, " ").slice(0, MAX_MESSAGE_LENGTH);
 };
 
-/** A failed provider call; its message is already scrubbed and may be shown */
+/**
+ * A failed provider call; its message is already scrubbed and may be shown. The provider's HTTP status is
+ * providerStatus, never status: the API error handler answers with err.status, and a provider's 401 or 403 must not
+ * become the instance's own answer.
+ */
 class DdnsProviderError extends Error {
 	name = "DdnsProviderError";
 	public = true;
 
-	constructor({ status = 0, code, message, retry = true, secrets = [] }) {
+	constructor({ providerStatus = 0, code, message, retry = true, secrets = [] }) {
 		super(scrubSecrets(message, secrets));
-		this.status = status;
+		this.providerStatus = providerStatus;
 		this.code = code;
 		this.retry = retry;
 	}

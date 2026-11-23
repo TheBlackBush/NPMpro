@@ -240,3 +240,44 @@ it("answers 500 without the message for an error that is not a provider error", 
 		provider.listZones = original;
 	}
 });
+
+it("answers 400 error.dns-zones-not-https for a PowerDNS http endpoint that is not on the LAN", async () => {
+	api.outside.dns.set("pdns.example.org", "198.51.100.30");
+	const mine = await credential(admin, [], {
+		provider: "powerdns",
+		fields: [
+			{ key: "dns_pdns_endpoint", value: "http://pdns.example.org:8081" },
+			{ key: "dns_pdns_api_key", value: "PDNS-KEY-123" },
+		],
+	});
+	const res = await admin.get(url(mine.id));
+	assert.equal(res.status, 400, res.text);
+	assert.equal(res.body.error.message_i18n, "error.dns-zones-not-https");
+	assert.ok(!res.text.includes("PDNS-KEY-123"));
+});
+
+it("never answers with the provider's own status", async () => {
+	const { DdnsProviderError } = await import("../lib/ddns/errors.js");
+	const { providerForCredential } = await import("../lib/ddns/providers/index.js");
+	const { default: internalDnsProviderDomains } = await import("../internal/dns-provider-domains.js");
+	const refusal = () =>
+		new DdnsProviderError({ providerStatus: 401, code: "failed", message: "Unexpected answer (401): no" });
+	const provider = providerForCredential("cloudflare");
+	const original = { listZones: provider.listZones, get: internalDnsProviderDomains.get };
+	const mine = await credential(admin);
+	try {
+		// through the route's mapping: its 400
+		provider.listZones = () => Promise.reject(refusal());
+		const mapped = await admin.get(url(mine.id));
+		assert.equal(mapped.status, 400, mapped.text);
+		assert.equal(mapped.body.error.code, 400);
+		// one that escapes a route: a 500, not the provider's 401 (which the UI would read as signed out)
+		internalDnsProviderDomains.get = () => Promise.reject(refusal());
+		const escaped = await admin.get(url(mine.id));
+		assert.equal(escaped.status, 500, escaped.text);
+		assert.equal(escaped.body.error.code, 500);
+	} finally {
+		provider.listZones = original.listZones;
+		internalDnsProviderDomains.get = original.get;
+	}
+});

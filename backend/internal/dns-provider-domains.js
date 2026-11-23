@@ -1,5 +1,4 @@
-import { providerFetch } from "../lib/ddns/provider-fetch.js";
-import { providerForCredential } from "../lib/ddns/providers/index.js";
+import { listProviderZones, providerForCredential } from "../lib/ddns/providers/index.js";
 import { credentialFields, secretValuesOf } from "../lib/dns-credential-values.js";
 import { normalizeDomainName } from "../lib/dns-domain-name.js";
 import errs from "../lib/error.js";
@@ -18,8 +17,12 @@ const refused = (error, provider) => {
 			cause: error,
 		});
 	}
-	if (error.code === "blocked" || error.code === "not-https") {
+	if (error.code === "blocked") {
 		return new errs.ValidationError(error.message, "error.dns-zones-blocked", { cause: error });
+	}
+	// an http endpoint that is not a LAN address (only a PowerDNS endpoint may be http)
+	if (error.code === "not-https") {
+		return new errs.ValidationError(error.message, "error.dns-zones-not-https", { cause: error });
 	}
 	return new errs.ValidationError(error.message, "error.dns-zones-failed", {
 		values: { message: error.message },
@@ -61,10 +64,7 @@ const internalDnsProviderDomains = {
 		const secrets = secretValuesOf(row.provider, fields);
 		let names;
 		try {
-			names = await provider.listZones({
-				fields,
-				fetch: (url, options) => providerFetch(url, { ...options, secrets }),
-			});
+			names = await listProviderZones(provider, { fields, secrets });
 		} catch (error) {
 			if (error?.name === "DdnsProviderError") throw refused(error, provider);
 			throw error;

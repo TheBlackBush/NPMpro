@@ -67,6 +67,14 @@ it("a slow answer is code timeout", async () => {
 	await assert.rejects(providerFetch("https://api.test/slow", { timeoutMs: 50 }), withCode("timeout"));
 });
 
+it("a deadline that has fired ends the call in flight and every later one with code timeout", async () => {
+	mock.get("https://api.test").intercept({ path: "/late", method: "GET" }).reply(200, "{}").delay(500);
+	const deadline = AbortSignal.timeout(50);
+	await assert.rejects(providerFetch("https://api.test/late", { deadline }), withCode("timeout"));
+	// no request is made once it has fired
+	await assert.rejects(providerFetch("https://api.test/never", { deadline }), withCode("timeout"));
+});
+
 it("a network error is code network", async () => {
 	mock.get("https://api.test").intercept({ path: "/err", method: "GET" }).replyWithError(new Error("boom"));
 	await assert.rejects(providerFetch("https://api.test/err"), withCode("network"));
@@ -118,13 +126,15 @@ it("scrubSecrets also replaces the JSON-escaped and plus-for-space forms", () =>
 
 it("DdnsProviderError scrubs its own message", () => {
 	const err = new DdnsProviderError({
-		status: 401,
+		providerStatus: 401,
 		code: "auth",
 		message: "bad token TOPSECRET",
 		secrets: ["TOPSECRET"],
 	});
 	assert.equal(err.message, "bad token ***");
-	assert.equal(err.status, 401);
+	assert.equal(err.providerStatus, 401);
+	// the API error handler answers with err.status: a provider's status must never become it
+	assert.equal(err.status, undefined);
 	assert.equal(err.retry, true);
 	assert.equal(err.public, true);
 });

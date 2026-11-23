@@ -107,7 +107,8 @@ const assertAllowedHost = async (hostOrUrl) => {
 /**
  * A dns.lookup for net.connect that refuses a name when any of its addresses is blocked (so a name cannot mix an
  * allowed and a blocked address). With privateOnly every address must also be a private LAN address, and with family
- * only that family is asked for. dns.lookup is read at call time, so tests can stub it. The connection goes to an address this lookup returned, never to a second answer.
+ * only that family is asked for. dns.lookup is read at call time, so tests can stub it. The connection goes to an
+ * address this lookup returned, never to a second answer.
  */
 const makeLookup =
 	({ privateOnly = false, family } = {}) =>

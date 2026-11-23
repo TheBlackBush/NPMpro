@@ -36,6 +36,9 @@ const hasCode = (err, code) => {
 const isTimeout = (err) =>
 	err?.name === "TimeoutError" || err?.name === "AbortError" || hasCode(err, "UND_ERR_CONNECT_TIMEOUT");
 
+const timedOut = (secrets) =>
+	new DdnsProviderError({ code: "timeout", message: "The provider did not answer in time", secrets });
+
 const readText = async (res) => {
 	const reader = res.body?.getReader();
 	if (!reader) return "";
@@ -115,12 +118,24 @@ const assertPrivateLanHost = async (url, secrets) => {
  * @param   {number}  [options.family]    4 or 6: only that family is connected to
  * @param   {number}  [options.timeoutMs]
  * @param   {boolean} [options.allowPrivateHttp]  http allowed to a private LAN address only
+ * @param   {AbortSignal} [options.deadline]  the deadline of the whole job (all pages of a list): once it fires, the
+ *                                            call in flight and every later call end with code timeout
  * @returns {Promise<{status: number, headers: Headers, text: String, json: *}>}  never throws for a 4xx or 5xx
  */
 const providerFetch = async (
 	url,
-	{ method = "GET", headers = {}, body, secrets = [], family, timeoutMs = 10_000, allowPrivateHttp = false } = {},
+	{
+		method = "GET",
+		headers = {},
+		body,
+		secrets = [],
+		family,
+		timeoutMs = 10_000,
+		allowPrivateHttp = false,
+		deadline,
+	} = {},
 ) => {
+	if (deadline?.aborted) throw timedOut(secrets);
 	let parsed;
 	try {
 		parsed = new URL(url);
@@ -140,13 +155,15 @@ const providerFetch = async (
 			headers,
 			body,
 			redirect: "manual",
-			signal: AbortSignal.timeout(timeoutMs),
+			signal: deadline
+				? AbortSignal.any([AbortSignal.timeout(timeoutMs), deadline])
+				: AbortSignal.timeout(timeoutMs),
 			dispatcher: agentFor({ family, privateOnly: plainHttp }),
 		});
 		if (res.status >= 300 && res.status < 400) {
 			await res.body?.cancel().catch(() => {});
 			throw new DdnsProviderError({
-				status: res.status,
+				providerStatus: res.status,
 				code: "redirect",
 				message: `The provider answered with a redirect (HTTP ${res.status})`,
 				retry: false,
@@ -165,9 +182,7 @@ const providerFetch = async (
 				secrets,
 			});
 		}
-		if (isTimeout(err)) {
-			throw new DdnsProviderError({ code: "timeout", message: "The provider did not answer in time", secrets });
-		}
+		if (isTimeout(err)) throw timedOut(secrets);
 		throw new DdnsProviderError({
 			code: "network",
 			message: `The provider could not be reached (${err.cause?.code ?? err.name ?? "error"})`,
