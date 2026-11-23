@@ -459,6 +459,7 @@
 	"dns-domains.empty-text": "Add the domains each DNS credential manages, so certificate and host windows can suggest them and the DNS challenge can pick the right credential.",
 	"dns-domains.fetch": "Fetch domains",
 	"dns-domains.fetch.add": "Add {count, plural, one {# domain} other {# domains}}",
+	"dns-domains.fetch.choose": "Choose a credential to list its domains.",
 	"dns-domains.fetch.empty": "The provider lists no domains.",
 	"dns-domains.fetch.here": "already here",
 	"dns-domains.fetch.hint.cloudflare": "This token cannot list zones. Add the Zone Read permission or type the domains.",

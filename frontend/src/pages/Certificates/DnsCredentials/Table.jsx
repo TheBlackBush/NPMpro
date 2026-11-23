@@ -101,7 +101,7 @@ function DnsCredentialActions({ credential, onDelete, onEdit }) {
 					onSelect: () => showFetchDomainsModal({ credentialId: credential.id }),
 					// a provider without a zone list says so; a credential that cannot be decrypted cannot ask
 					disabled: !lists || Boolean(credential.decryptError),
-					title: lists ? undefined : intl.formatMessage({ id: "dns-domains.fetch.not-supported" }),
+					note: lists ? undefined : intl.formatMessage({ id: "dns-domains.fetch.not-supported" }),
 					hidden: !canManage,
 				},
 				{

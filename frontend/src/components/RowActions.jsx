@@ -33,7 +33,7 @@ import { ROW_EDIT_ATTR, restoreRowFocus } from "src/modules/FocusReturn";
  * @param {string} [props.focusKey]  unique per row (for instance proxy-host-12), set as data-row-actions on the button
  * @param {React.ReactNode} [props.title]  the menu heading
  * @param {Array<{key: string, label: React.ReactNode, icon?: React.ElementType, onSelect: () => (void|Promise),
- *   destructive?: boolean, hidden?: boolean, disabled?: boolean, title?: string, separatorBefore?: boolean, primary?: boolean,
+ *   destructive?: boolean, hidden?: boolean, disabled?: boolean, note?: string, separatorBefore?: boolean, primary?: boolean,
  *   ariaLabel?: string}>} props.items
  *   hidden items and a separator before a first visible item are left out; a primary item needs an ariaLabel
  */
@@ -117,10 +117,10 @@ function RowActions({ label, focusKey, title, items }) {
 										}}
 									>
 										{Icon ? <Icon aria-hidden="true" /> : null}
-										{item.title ? (
-											// a disabled item takes no pointer events, so the reason's span takes them back
-											<span title={item.title} className="pointer-events-auto">
+										{item.note ? (
+											<span className="flex flex-col">
 												{item.label}
+												<span className="text-xs text-muted-foreground">{item.note}</span>
 											</span>
 										) : (
 											item.label

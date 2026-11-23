@@ -27,6 +27,8 @@ const useProviderDomains = (id) =>
 		retry: false,
 		staleTime: 0,
 		gcTime: 0,
+		// a refocus must not call the provider again or swap the shown list
+		refetchOnWindowFocus: false,
 	});
 
 const useDomainMutation = (mutationFn) => {

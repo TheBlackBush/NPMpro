@@ -13,7 +13,7 @@ import {
 import { Checkbox } from "src/components/ui/checkbox";
 import { useCreateDnsDomains, useDnsCredentials, useDnsProviders, useProviderDomains } from "src/hooks";
 import { cn } from "src/lib/utils";
-import { intl, T } from "src/locale";
+import { T } from "src/locale";
 import { displayDomain } from "src/modules/DnsDomainForms";
 import EasyModal from "src/modules/easyModal";
 import { fetchState, initialSelection } from "src/modules/FetchDomains";
@@ -78,8 +78,9 @@ const FetchDomainsModal = EasyModal.create(({ credentialId, visible, remove }) =
 	const chosenId = useWatch({ control: methods.control, name: "dnsCredentialId" });
 	const credential = credentials?.find((c) => c.id === chosenId);
 	const { data: answer, error, isFetching } = useProviderDomains(credential ? chosenId : undefined);
-	const state = fetchState(isFetching ? undefined : answer, isFetching ? null : error, credential?.provider);
-	const loading = Boolean(credential) && (isFetching || state.kind === "loading");
+	// a background refetch keeps the list that is shown; only a first load shows the spinner
+	const state = fetchState(answer, error, credential?.provider);
+	const loading = Boolean(credential) && isFetching && !answer && !error;
 
 	// a new answer starts with its new zones ticked
 	useEffect(() => {
@@ -113,7 +114,7 @@ const FetchDomainsModal = EasyModal.create(({ credentialId, visible, remove }) =
 		}
 	};
 
-	const kind = loading ? "loading" : credential ? state.kind : "empty";
+	const kind = !credential ? "idle" : loading ? "loading" : state.kind;
 
 	return (
 		<AppModal show={visible} onHide={adding ? undefined : remove} backdrop="static" data-fetch-domains-window>
@@ -133,9 +134,19 @@ const FetchDomainsModal = EasyModal.create(({ credentialId, visible, remove }) =
 					<DnsCredentialSelect name="dnsCredentialId" canUse={lists} />
 				</HookForm>
 				{loading ? <Loading noLogo /> : null}
+				{!credential ? (
+					<p className="mt-3 mb-0 text-muted-foreground">
+						<T id="dns-domains.fetch.choose" />
+					</p>
+				) : null}
+				{!loading && credential && state.kind === "not-supported" ? (
+					<p className="mt-3 mb-0 text-muted-foreground">
+						<T id="dns-domains.fetch.not-supported" />
+					</p>
+				) : null}
 				{!loading && credential && state.kind === "error" ? (
 					<div className="mt-3">
-						<ErrorAlert error={error ?? intl.formatMessage({ id: "dns-domains.fetch.not-supported" })} />
+						<ErrorAlert error={error} />
 						<p className="mt-2 mb-0 text-sm text-muted-foreground">
 							<T id={state.hintId} />
 							{needs ? ` ${needs}` : ""}

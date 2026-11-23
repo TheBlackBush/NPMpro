@@ -41,8 +41,32 @@ it("is an error with the hint of the provider", () => {
 	assert.equal(hintIdOf(undefined), "dns-domains.fetch.hint.other");
 });
 
-it("an answer of a provider that does not list is an error too", () => {
-	assert.equal(fetchState({ supported: false, truncated: false, zones: [] }, null, "duckdns").kind, "error");
+it("an answer of a provider that does not list is its own state, without a hint", () => {
+	assert.deepEqual(fetchState({ supported: false, truncated: false, zones: [] }, null, "duckdns"), {
+		kind: "not-supported",
+		rows: [],
+		hintId: null,
+		truncated: false,
+	});
+});
+
+it("sorts by the name as shown", () => {
+	// xn--bcher-kva is bücher: it sorts between "a" and "z" shown, not by its ASCII form
+	const out = fetchState(
+		{
+			supported: true,
+			truncated: false,
+			zones: [
+				{ name: "caffe.example", state: "new" },
+				{ name: "xn--bcher-kva.example", state: "new" },
+			],
+		},
+		null,
+	);
+	assert.deepEqual(
+		out.rows.map((row) => row.name),
+		["xn--bcher-kva.example", "caffe.example"],
+	);
 });
 
 it("selects every new zone and no other", () => {
