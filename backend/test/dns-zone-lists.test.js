@@ -214,7 +214,7 @@ it("a 4.1 error (network) passes through", async () => {
 it("the registry is ordered and looks providers up", () => {
 	assert.deepEqual(
 		PROVIDERS.map((p) => p.id),
-		["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh"],
+		["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh", "powerdns"],
 	);
 	assert.equal(providerById("gandi").label, "Gandi");
 	assert.equal(providerById("nope"), null);
@@ -222,4 +222,70 @@ it("the registry is ordered and looks providers up", () => {
 	assert.equal(providerForCredential("route53"), null);
 	assert.equal(listsDomains("cloudflare"), true);
 	assert.equal(listsDomains("route53"), false);
+});
+
+const PDNS = {
+	dns_pdns_endpoint: "https://pdns.example.org/",
+	dns_pdns_api_key: TOKEN,
+	dns_pdns_server_id: "localhost",
+};
+const pdnsHeaders = { "x-api-key": TOKEN };
+
+it("powerdns: https endpoint, dots stripped, IDN as punycode, sorted", async () => {
+	intercept("pdns.example.org", "/api/v1/servers/localhost/zones", pdnsHeaders).reply(
+		200,
+		[{ name: "b.example.org." }, { name: "bücher.example." }, { name: "a.example.org." }],
+		json,
+	);
+	const zones = await run("powerdns", PDNS);
+	assert.deepEqual([...zones], ["a.example.org", "b.example.org", "xn--bcher-kva.example"]);
+	assert.equal(zones.truncated, undefined);
+});
+
+it("powerdns: an http LAN endpoint is allowed", async () => {
+	mock.get("http://192.168.1.5:8081")
+		.intercept({ path: "/api/v1/servers/localhost/zones", method: "GET", headers: pdnsHeaders })
+		.reply(200, [{ name: "lan.example." }], json);
+	const zones = await run("powerdns", { ...PDNS, dns_pdns_endpoint: "http://192.168.1.5:8081" });
+	assert.deepEqual([...zones], ["lan.example"]);
+});
+
+it("powerdns: an http public endpoint is refused without a request", async () => {
+	await assert.rejects(
+		run("powerdns", { ...PDNS, dns_pdns_endpoint: "http://pdns.example.org:8081" }),
+		(err) => err instanceof DdnsProviderError && err.code === "not-https",
+	);
+});
+
+it("powerdns: a 401 is forbidden with the hint and the key scrubbed", async () => {
+	intercept("pdns.example.org", "/api/v1/servers/localhost/zones", pdnsHeaders).reply(
+		401,
+		{ error: `Unauthorized ${TOKEN}` },
+		json,
+	);
+	await assert.rejects(
+		run("powerdns", PDNS),
+		(err) => err.code === "forbidden" && err.hint.includes("api-allow-from") && !err.message.includes(TOKEN),
+	);
+});
+
+it("powerdns: the server id is URL-encoded and an empty one means localhost", async () => {
+	intercept("pdns.example.org", "/api/v1/servers/a%2Fb%20c/zones", pdnsHeaders).reply(200, [], json);
+	assert.deepEqual([...(await run("powerdns", { ...PDNS, dns_pdns_server_id: "a/b c" }))], []);
+	intercept("pdns.example.org", "/api/v1/servers/localhost/zones", pdnsHeaders).reply(200, [], json);
+	assert.deepEqual([...(await run("powerdns", { ...PDNS, dns_pdns_server_id: "" }))], []);
+});
+
+it("powerdns: an endpoint that is not an http(s) URL is failed", async () => {
+	for (const dns_pdns_endpoint of ["not a url", "ftp://pdns.example.org", undefined]) {
+		await assert.rejects(
+			run("powerdns", { ...PDNS, dns_pdns_endpoint }),
+			(err) => err.code === "failed" && err.message === "The PowerDNS endpoint is not a URL",
+		);
+	}
+});
+
+it("powerdns: a non-array answer is failed", async () => {
+	intercept("pdns.example.org", "/api/v1/servers/localhost/zones", pdnsHeaders).reply(200, { zones: [] }, json);
+	await assert.rejects(run("powerdns", PDNS), (err) => err.code === "failed");
 });
