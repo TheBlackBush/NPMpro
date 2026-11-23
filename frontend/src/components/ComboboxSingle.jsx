@@ -6,7 +6,7 @@ import { Command, CommandInput } from "src/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
 import { cn } from "src/lib/utils";
 import { intl } from "src/locale";
-import { commitTyped, isEmptyValue } from "src/modules/Combobox";
+import { commitTyped, isEmptyValue, tabStep } from "src/modules/Combobox";
 import { ComboboxItems, keepScroll, listFor, optionKey, popoverClass, useElementId } from "./ComboboxParts";
 
 /**
@@ -107,12 +107,18 @@ export function SingleCombobox({
 			onChange(null, null);
 		}
 	};
-	// Tab inside the list closes it (focus goes back to the button) instead of leaving the window's focus scope
+	// Tab inside the list closes it (focus goes back to the button) instead of leaving the window's focus scope; with a
+	// commitRef it first commits the typed text as Enter on "Add ..." does, or keeps refused text for the save
 	const onListKeyDown = (event) => {
-		if (event.key === "Tab") {
-			event.preventDefault();
-			changeOpen(false);
+		if (event.key !== "Tab") return;
+		event.preventDefault();
+		const step = tabStep({ commits: Boolean(commitRef), text: query, creatable, locked, isValidNew });
+		if (step === "keep") {
+			setOpen(false);
+			return;
 		}
+		if (step !== "clear") onChange(step.value, null);
+		changeOpen(false);
 	};
 	// focus the search box with the caret after a seeded character (Radix would select the text), or the list itself
 	const onOpenAutoFocus = (event) => {
