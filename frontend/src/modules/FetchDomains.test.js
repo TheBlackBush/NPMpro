@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { fetchState, hintIdOf, initialSelection, saveBody } from "./FetchDomains.js";
+import { autoSelection, fetchState, hasUnsavedWork, hintIdOf, limitState, saveBody } from "./FetchDomains.js";
 
 const ZONES = [
 	{ name: "b.example", state: "new" },
@@ -92,12 +92,41 @@ it("sorts by the name as shown", () => {
 	);
 });
 
-it("selects every new zone and no other", () => {
-	assert.deepEqual(
-		[...initialSelection(ZONES)].sort((a, b) => a.localeCompare(b)),
-		["a2.example", "b.example"],
-	);
-	assert.equal(initialSelection(undefined).size, 0);
+it("ticks the new zones in display order and no other", () => {
+	assert.deepEqual([...autoSelection(ZONES)], ["a2.example", "b.example"]);
+	assert.equal(autoSelection(undefined).size, 0);
+});
+
+it("ticks at most the room the typed names leave", () => {
+	assert.deepEqual([...autoSelection(ZONES, 1)], ["a2.example"]);
+	assert.equal(autoSelection(ZONES, 0).size, 0);
+	assert.equal(autoSelection(ZONES, -3).size, 0);
+	const many = Array.from({ length: 250 }, (_, i) => ({
+		name: `z${String(i).padStart(3, "0")}.example`,
+		state: "new",
+	}));
+	assert.equal(autoSelection(many).size, 100);
+	assert.equal(autoSelection(many, 100 - 30).size, 70);
+});
+
+it("knows when a save is full, over, and when the provider has more", () => {
+	assert.deepEqual(limitState(0, 99, 99), { full: false, over: false, more: false });
+	assert.deepEqual(limitState(0, 100, 150), { full: true, over: false, more: true });
+	assert.deepEqual(limitState(5, 96, 96), { full: true, over: true, more: true });
+	assert.deepEqual(limitState(100, 0, 1), { full: true, over: false, more: true });
+});
+
+it("asks to discard only what the user did", () => {
+	const auto = new Set(["a", "b"]);
+	const base = { typed: [], pending: false, ticked: new Set(["a", "b"]), auto };
+	assert.equal(hasUnsavedWork(base), false);
+	assert.equal(hasUnsavedWork({ ...base, ticked: new Set(), auto: new Set() }), false);
+	assert.equal(hasUnsavedWork({ ...base, typed: ["x.example"] }), true);
+	assert.equal(hasUnsavedWork({ ...base, typed: undefined }), false);
+	assert.equal(hasUnsavedWork({ ...base, pending: true }), true);
+	assert.equal(hasUnsavedWork({ ...base, ticked: new Set(["a"]) }), true);
+	assert.equal(hasUnsavedWork({ ...base, ticked: new Set(["a", "b", "c"]) }), true);
+	assert.equal(hasUnsavedWork({ ...base, ticked: new Set(["a", "c"]) }), true);
 });
 
 it("builds one body from the typed names and the ticked zones, each name once", () => {

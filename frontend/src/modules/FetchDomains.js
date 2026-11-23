@@ -38,12 +38,49 @@ export function fetchState(answer, error, provider) {
 	return { kind: rows.length ? "list" : "empty", rows, hintId: null, truncated: Boolean(answer.truncated) };
 }
 
+// the most names one save takes, typed and ticked together (the API's limit)
+export const MAX_NAMES = 100;
+
+const byDisplay = (a, b) => displayDomain(a.name).localeCompare(displayDomain(b.name));
+
 /**
  * @param   {{ name: string, state: string }[]|undefined} zones
- * @returns {Set<string>}  every new zone
+ * @param   {number} room  how many more names one save takes (MAX_NAMES minus the typed names)
+ * @returns {Set<string>}  the first new zones in display order, at most room of them
  */
-export function initialSelection(zones) {
-	return new Set((zones ?? []).filter((zone) => zone.state === "new").map((zone) => zone.name));
+export function autoSelection(zones, room = MAX_NAMES) {
+	const fresh = (zones ?? []).filter((zone) => zone.state === "new").sort(byDisplay);
+	return new Set(fresh.slice(0, Math.max(0, room)).map((zone) => zone.name));
+}
+
+/**
+ * @param   {number} typedCount   typed names
+ * @param   {number} tickedCount  ticked zones
+ * @param   {number} newCount     new zones the provider lists
+ * @returns {{ full: boolean, over: boolean, more: boolean }}  full: no more zone can be ticked; over: a save is
+ *          refused; more: the provider has more new zones than one save can take
+ */
+export function limitState(typedCount, tickedCount, newCount) {
+	const total = typedCount + tickedCount;
+	return {
+		full: total >= MAX_NAMES,
+		over: total > MAX_NAMES,
+		more: newCount > Math.max(0, MAX_NAMES - typedCount),
+	};
+}
+
+/**
+ * Whether closing the window would lose something the user did: typed names, text not yet a name, or ticks that
+ * differ from the ones the window made itself. Choosing a credential and the auto-ticked zones alone are no work.
+ *
+ * @param   {{ typed: string[]|undefined, pending: boolean, ticked: Set<string>, auto: Set<string> }} state
+ * @returns {boolean}
+ */
+export function hasUnsavedWork({ typed, pending, ticked, auto }) {
+	if ((typed?.length ?? 0) > 0 || pending) return true;
+	if (ticked.size !== auto.size) return true;
+	for (const name of ticked) if (!auto.has(name)) return true;
+	return false;
 }
 
 const TRAILING_DOT = /\.$/u;

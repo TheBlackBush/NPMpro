@@ -14,9 +14,9 @@ import {
 	Loading,
 	useAppForm,
 } from "src/components";
+import { usePendingEntries } from "src/components/Form/HookForm";
 import { Checkbox } from "src/components/ui/checkbox";
 import {
-	DirtyTracker,
 	useCanManage,
 	useCreateDnsDomains,
 	useDnsCredentials,
@@ -29,7 +29,15 @@ import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { displayDomain, dnsDomainNamesRule, takenNames } from "src/modules/DnsDomainForms";
 import EasyModal from "src/modules/easyModal";
-import { fetchState, hintIdOf, initialSelection, saveBody } from "src/modules/FetchDomains";
+import {
+	autoSelection,
+	fetchState,
+	hasUnsavedWork,
+	hintIdOf,
+	limitState,
+	MAX_NAMES,
+	saveBody,
+} from "src/modules/FetchDomains";
 import { fieldsValidate } from "src/modules/HookForm";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { sectionAccent } from "src/modules/SectionAccents";
@@ -58,7 +66,7 @@ function DomainNames({ credentials }) {
 	return <DnsDomainNamesField credentialId={credentialId ?? null} ownerUserId={ownerUserId} />;
 }
 
-function ZoneRow({ zone, checked, onChange }) {
+function ZoneRow({ zone, checked, full, onChange }) {
 	const id = `fetch-zone-${zone.name}`;
 	const stateId = `fetch-zone-state-${zone.name}`;
 	const here = zone.state === "here";
@@ -70,7 +78,7 @@ function ZoneRow({ zone, checked, onChange }) {
 				<Checkbox
 					id={id}
 					checked={checked}
-					disabled={zone.state === "other"}
+					disabled={zone.state === "other" || (full && !checked)}
 					aria-describedby={stateId}
 					onCheckedChange={(value) => onChange(zone.name, value === true)}
 				/>
@@ -94,37 +102,53 @@ function ZoneRow({ zone, checked, onChange }) {
 }
 
 // the zones the provider of the chosen credential lists, below the typed names
-function ProviderZones({ credential, kind, state, loading, error, selected, onToggle }) {
+function ProviderZones({ credential, kind, state, loading, error, selected, limit, onToggle }) {
 	const needs = error?.payload?.error?.message_values?.needs;
+	const titleId = "dns-zones-title";
 	return (
-		<section className="mt-3" data-fetch-domains="" data-fetch-state={kind}>
-			<h3 className="mb-2 text-sm font-medium">
+		<section className="mt-3" aria-labelledby={titleId} data-fetch-domains="" data-fetch-state={kind}>
+			<h3 id={titleId} className="mb-2 text-sm font-medium">
 				<T id="dns-domains.fetch.title" data={{ credential: credential.name }} />
 			</h3>
-			{loading ? <Loading noLogo /> : null}
-			{!loading && state.kind === "error" ? (
-				<div>
-					<ErrorAlert error={error} />
-					{/* the permission hint only for a refused credential */}
-					{state.hintId ? (
-						<p className="mt-2 mb-0 text-sm text-muted-foreground">
-							<T id={state.hintId} />
-							{/* the provider's own wording only with the general hint (a named hint says it) */}
-							{needs && state.hintId === hintIdOf() ? ` ${needs}` : ""}
-						</p>
-					) : null}
-				</div>
-			) : null}
-			{!loading && state.kind === "empty" ? (
-				<p className="mb-0 text-muted-foreground">
-					<T id="dns-domains.fetch.empty" />
-				</p>
-			) : null}
+			{/* stays mounted, so a list that loads or fails below the field is announced */}
+			<div role="status" aria-live="polite">
+				{loading ? (
+					<>
+						<Loading noLogo />
+						<span className="sr-only">
+							<T id="loading" />
+						</span>
+					</>
+				) : null}
+				{!loading && state.kind === "error" ? (
+					<div>
+						<ErrorAlert error={error} />
+						{/* the permission hint only for a refused credential */}
+						{state.hintId ? (
+							<p className="mt-2 mb-0 text-sm text-muted-foreground">
+								<T id={state.hintId} />
+								{/* the provider's own wording only with the general hint (a named hint says it) */}
+								{needs && state.hintId === hintIdOf() ? ` ${needs}` : ""}
+							</p>
+						) : null}
+					</div>
+				) : null}
+				{!loading && state.kind === "empty" ? (
+					<p className="mb-0 text-muted-foreground">
+						<T id="dns-domains.fetch.empty" />
+					</p>
+				) : null}
+			</div>
 			{!loading && state.kind === "list" ? (
 				<>
 					{state.truncated ? (
 						<p className="mb-2 text-sm text-muted-foreground">
 							<T id="dns-domains.fetch.truncated" />
+						</p>
+					) : null}
+					{limit.more ? (
+						<p className="mb-2 text-sm text-muted-foreground" data-zone-limit="">
+							<T id="dns-domains.fetch.limit" data={{ count: MAX_NAMES }} />
 						</p>
 					) : null}
 					<ul
@@ -139,6 +163,7 @@ function ProviderZones({ credential, kind, state, loading, error, selected, onTo
 								key={zone.name}
 								zone={zone}
 								checked={selected.has(zone.name)}
+								full={limit.full}
 								onChange={onToggle}
 							/>
 						))}
@@ -149,6 +174,17 @@ function ProviderZones({ credential, kind, state, loading, error, selected, onTo
 	);
 }
 
+// keeps dirtyRef true only when the user did something: typed or pending names, or ticks changed by hand
+function DirtyWatch({ dirtyRef, typed, ticked, auto }) {
+	const pending = usePendingEntries().size > 0;
+	useEffect(() => {
+		dirtyRef.current = hasUnsavedWork({ typed, pending, ticked, auto });
+	}, [dirtyRef, typed, pending, ticked, auto]);
+	return null;
+}
+
+const EMPTY_PICK = { answer: undefined, ticked: new Set(), auto: new Set() };
+
 const DnsDomainsModal = EasyModal.create(({ credentialId, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const { mutateAsync: createDnsDomains } = useCreateDnsDomains();
@@ -158,7 +194,8 @@ const DnsDomainsModal = EasyModal.create(({ credentialId, visible, remove }) => 
 	const { data: providers } = useDnsProviders();
 	const queryClient = useQueryClient();
 	const [errorMsg, setErrorMsg] = useState(null);
-	const [selected, setSelected] = useState(() => new Set());
+	// the ticks belong to one answer: another credential has none until its own answer arrives
+	const [pick, setPick] = useState(EMPTY_PICK);
 	// the validation reads the count of ticked zones at submit time
 	const tickedRef = useRef(0);
 
@@ -191,11 +228,20 @@ const DnsDomainsModal = EasyModal.create(({ credentialId, visible, remove }) => 
 	const state = fetchState(answer, error, credential?.provider);
 	// a background refetch keeps the list that is shown; only a first load shows the spinner
 	const loading = lists && isFetching && !answer && !error;
-	tickedRef.current = selected.size;
+	const current = pick.answer === answer ? pick : EMPTY_PICK;
+	const selected = current.ticked;
+	const typedCount = typed?.length ?? 0;
+	const newCount = (answer?.zones ?? []).filter((zone) => zone.state === "new").length;
+	const limit = limitState(typedCount, selected.size, newCount);
 
-	// a new answer starts with its new zones ticked; a changed credential has none until its answer arrives
 	useEffect(() => {
-		setSelected(initialSelection(answer?.zones));
+		tickedRef.current = selected.size;
+	}, [selected]);
+	// a new answer starts with its new zones ticked, up to what one save takes beside the typed names
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the typed count at arrival only, later typing keeps the ticks
+	useEffect(() => {
+		const auto = autoSelection(answer?.zones, MAX_NAMES - (methods.getValues("domains")?.length ?? 0));
+		setPick({ answer, ticked: auto, auto });
 	}, [answer]);
 	// a fetch in flight is aborted when the credential changes and when the window closes
 	useEffect(() => {
@@ -204,11 +250,11 @@ const DnsDomainsModal = EasyModal.create(({ credentialId, visible, remove }) => 
 	}, [chosenId, queryClient]);
 
 	const onToggle = (name, on) => {
-		setSelected((prev) => {
-			const next = new Set(prev);
+		setPick((prev) => {
+			const next = new Set(prev.ticked);
 			if (on) next.add(name);
 			else next.delete(name);
-			return next;
+			return { ...prev, ticked: next };
 		});
 	};
 
@@ -226,7 +272,7 @@ const DnsDomainsModal = EasyModal.create(({ credentialId, visible, remove }) => 
 	return (
 		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static" data-dns-domains-window>
 			<HookForm readOnly={readOnly} methods={methods} onSubmit={onSubmit}>
-				<DirtyTracker dirtyRef={dirtyRef} />
+				<DirtyWatch dirtyRef={dirtyRef} typed={typed} ticked={selected} auto={current.auto} />
 				<AppModal.Header closeButton={!isSubmitting}>
 					<AppModal.Title className="flex items-center gap-2">
 						{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
@@ -246,6 +292,7 @@ const DnsDomainsModal = EasyModal.create(({ credentialId, visible, remove }) => 
 								loading={loading}
 								error={error}
 								selected={selected}
+								limit={limit}
 								onToggle={onToggle}
 							/>
 						) : null}
@@ -258,7 +305,7 @@ const DnsDomainsModal = EasyModal.create(({ credentialId, visible, remove }) => 
 					<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
 						<FormSubmit
 							isLoading={isSubmitting}
-							disabled={isSubmitting || (typed?.length ?? 0) + selected.size === 0}
+							disabled={isSubmitting || typedCount + selected.size === 0 || limit.over}
 						>
 							<T id="save" />
 						</FormSubmit>
