@@ -10,14 +10,18 @@ const HINT = "The API key and api-allow-from of the PowerDNS server";
 const secretsOf = (fields) => [fields.dns_pdns_api_key].filter((value) => typeof value === "string" && value !== "");
 
 /**
+ * The API base the way certbot-dns-pdns (dns-lexicon) builds it: origin and path only (no userinfo, query or
+ * hash), trailing slashes stripped, "/api/v1" appended unless the path already ends with it.
+ *
  * @param   {*} value  the endpoint of the credential
- * @returns {String|null}  the base URL without a trailing slash, or null when it is not an http(s) URL
+ * @returns {String|null}  the base URL, or null when it is not an http(s) URL
  */
 const baseOf = (value) => {
 	try {
 		const url = new URL(String(value ?? "").trim());
 		if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-		return String(value).trim().replace(TRAILING_SLASHES, "");
+		const base = `${url.origin}${url.pathname}`.replace(TRAILING_SLASHES, "");
+		return base.endsWith("/api/v1") ? base : `${base}/api/v1`;
 	} catch {
 		return null;
 	}
@@ -40,7 +44,7 @@ export default {
 					});
 				}
 				const serverId = encodeURIComponent(fields.dns_pdns_server_id || "localhost");
-				const res = await fetch(`${base}/api/v1/servers/${serverId}/zones`, {
+				const res = await fetch(`${base}/servers/${serverId}/zones`, {
 					allowPrivateHttp: true,
 					headers: { "X-API-Key": fields.dns_pdns_api_key ?? "", Accept: "application/json" },
 				});

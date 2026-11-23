@@ -289,3 +289,17 @@ it("powerdns: a non-array answer is failed", async () => {
 	intercept("pdns.example.org", "/api/v1/servers/localhost/zones", pdnsHeaders).reply(200, { zones: [] }, json);
 	await assert.rejects(run("powerdns", PDNS), (err) => err.code === "failed");
 });
+
+it("powerdns: the endpoint is read as certbot reads it", async () => {
+	const cases = [
+		["https://pdns.example.org/api/v1", "/api/v1/servers/localhost/zones"],
+		["https://pdns.example.org/api/v1/", "/api/v1/servers/localhost/zones"],
+		["https://pdns.example.org/pdns", "/pdns/api/v1/servers/localhost/zones"],
+		["https://user:pw@pdns.example.org/?x=1#h", "/api/v1/servers/localhost/zones"],
+	];
+	for (const [dns_pdns_endpoint, path] of cases) {
+		intercept("pdns.example.org", path, pdnsHeaders).reply(200, [], json);
+		assert.deepEqual([...(await run("powerdns", { ...PDNS, dns_pdns_endpoint }))], []);
+	}
+	mock.assertNoPendingInterceptors();
+});
