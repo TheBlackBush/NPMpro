@@ -120,19 +120,20 @@ const ddnsStatus = async (access) => {
 const checkNow = async (access) => {
 	access.can("certificates:manage");
 	const { engine, timer } = service();
-	await timer.runNow(() => engine.cycle({ force: true }));
+	const ids = await internalDdnsRecord.enabledIds(access);
+	await timer.runNow(() => engine.cycle({ force: true, ids }));
 	return await ddnsStatus(access);
 };
 
 /** Update now: this record at once; the answer is the record, a failed run included */
 const updateNow = async (access, id) => {
 	access.can("certificates:manage");
-	const row = await internalDdnsRecord.rowOf(access, id);
+	const row = await internalDdnsRecord.rowOf(access, id, { expand: ["credential"] });
 	if (!row.enabled) {
 		throw new errs.ValidationError("The record is disabled; enable it first", "error.ddns-record-disabled");
 	}
 	await service().engine.updateRecord(id);
-	await audit(access, "updated", row, { update_now: true });
+	await audit(access, "updated", row, { update_now: true, credential_name: row.credential?.name });
 	return await internalDdnsRecord.get(access, { id, expand: ["credential"] });
 };
 

@@ -33,6 +33,52 @@
 				"schema": {
 					"type": "object",
 					"additionalProperties": false,
+					"allOf": [
+						{
+							"if": {
+								"required": [
+									"kind"
+								],
+								"properties": {
+									"kind": {
+										"const": "alias"
+									}
+								}
+							},
+							"then": {
+								"required": [
+									"target"
+								],
+								"properties": {
+									"target": {
+										"type": "string"
+									},
+									"ipv6_suffix": {
+										"type": "null"
+									}
+								}
+							}
+						},
+						{
+							"if": {
+								"required": [
+									"kind"
+								],
+								"properties": {
+									"kind": {
+										"const": "address"
+									}
+								}
+							},
+							"then": {
+								"properties": {
+									"target": {
+										"type": "null"
+									}
+								}
+							}
+						}
+					],
 					"properties": {
 						"name": {
 							"type": "string",
@@ -69,11 +115,14 @@
 							"description": "`address` (the default): A and AAAA records that follow the public IP; `alias`: a CNAME to `target`"
 						},
 						"target": {
-							"type": "string",
+							"type": [
+								"string",
+								"null"
+							],
 							"minLength": 1,
 							"maxLength": 253,
 							"example": "lb.example.net",
-							"description": "The CNAME target of an alias (required for one); an address record takes none. It cannot be the record's own name"
+							"description": "The CNAME target of an alias (required for one); an address record takes none (null is the same as none). It cannot be the record's own name"
 						},
 						"ip_version": {
 							"type": "string",

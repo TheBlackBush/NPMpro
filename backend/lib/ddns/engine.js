@@ -351,11 +351,13 @@ const createDdnsEngine = ({
 		/**
 		 * One cycle over the enabled records that are due (all of them with force)
 		 *
-		 * @param   {{ force?: boolean }} [options]
+		 * @param   {{ force?: boolean, ids?: number[] }} [options]  ids: only these records (Check now of a user)
 		 * @returns {Promise<{ ran: boolean }>}
 		 */
-		cycle: async ({ force = false } = {}) => {
-			const enabled = await store.enabledRecords();
+		cycle: async ({ force = false, ids } = {}) => {
+			const enabled = (await store.enabledRecords()).filter(
+				(record) => ids === undefined || ids.includes(record.id),
+			);
 			if (enabled.length === 0) return { ran: false };
 			const due = force ? enabled : enabled.filter(isDue);
 			const found = await detectFamilies(due);

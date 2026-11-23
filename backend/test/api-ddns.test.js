@@ -210,17 +210,14 @@ it("keeps the rules of the two kinds: an alias needs a target and no IP settings
 		assert.equal(done.status, 400, `${done.text} ${JSON.stringify(body)}`);
 		assert.equal(done.body.error.message_i18n, key, JSON.stringify(body));
 	};
-	await refuse({ name: "a1.example.com", kind: "alias" }, "error.ddns-alias-target-required");
+	await refuse({ name: "a1.example.com", kind: "alias" }, undefined);
 	await refuse({ name: "a2.example.com", kind: "alias", target: "a2.example.com" }, "error.ddns-alias-self");
 	await refuse({ name: "a3.example.com", kind: "alias", target: "*.example.net" }, "error.ddns-target-invalid");
 	await refuse(
 		{ name: "a4.example.com", kind: "alias", target: "x.example.net", ip_version: "ipv6" },
 		"error.ddns-alias-no-ip",
 	);
-	await refuse(
-		{ name: "a5.example.com", kind: "alias", target: "x.example.net", ipv6_suffix: "::1" },
-		"error.ddns-alias-no-ip",
-	);
+	await refuse({ name: "a5.example.com", kind: "alias", target: "x.example.net", ipv6_suffix: "::1" }, undefined);
 	await refuse({ name: "a6.example.com", target: "x.example.net" }, "error.ddns-address-no-target");
 	// a stored alias passes a save that keeps its values
 	const kept = await admin.put(`${RECORDS}/${alias.id}`, {
@@ -557,4 +554,86 @@ it("follows the certificates permission: view reads, manage writes, hidden refus
 		assert.equal((await api.client()[method](url, body)).status, 401, `no session ${method} ${url}`);
 	}
 	assert.equal((await admin.get(`${RECORDS}/${record.id}`)).status, 200);
+});
+
+it("refuses at the schema an alias without a target or with a suffix, and an address with a target", async () => {
+	const made = await withDomain();
+	const base = { name: "s.example.com", dns_credential_id: made.id };
+	for (const body of [
+		{ kind: "alias" },
+		{ kind: "alias", target: null },
+		{ kind: "alias", target: "x.example.net", ipv6_suffix: "::1" },
+		{ kind: "address", target: "x.example.net" },
+	]) {
+		const done = await add({ ...base, ...body });
+		assert.equal(done.status, 400, JSON.stringify(body));
+		assert.equal(done.body.error.message_i18n, undefined, JSON.stringify(body));
+	}
+	const alias = await addOk({ ...base, kind: "alias", target: "x.example.net", ipv6_suffix: null });
+	// a stored alias keeps its ip_version on a save that repeats it
+	const kept = await admin.put(`${RECORDS}/${alias.id}`, {
+		kind: "alias",
+		target: "x.example.net",
+		ip_version: "ipv4",
+	});
+	assert.equal(kept.status, 200, kept.text);
+	for (const body of [
+		{ kind: "alias", target: null },
+		{ kind: "alias", ipv6_suffix: "::1" },
+		{ kind: "address", target: "y.example.net" },
+	]) {
+		assert.equal((await admin.put(`${RECORDS}/${alias.id}`, body)).status, 400, JSON.stringify(body));
+	}
+	assert.equal((await admin.put(`${RECORDS}/${alias.id}`, { target: "z.example.net" })).status, 200);
+});
+
+it("clears the learned addresses and sets pending when the kind changes", async () => {
+	const made = await withDomain();
+	const record = await addOk({ name: "kind.example.com", dns_credential_id: made.id });
+	await api.db("npmpro_ddns_record").where({ id: record.id }).update({
+		state: "ok",
+		last_ipv4: PUBLIC_IP,
+		last_ipv6: "2a00:1450:4001:80b::200e",
+		last_checked_on: "2026-11-24 10:00:00.000",
+	});
+	const alias = await admin.put(`${RECORDS}/${record.id}`, { kind: "alias", target: "lb.example.net" });
+	assert.equal(alias.status, 200, alias.text);
+	assert.equal(alias.body.state, "pending");
+	assert.equal(alias.body.last_ipv4, null);
+	assert.equal(alias.body.last_ipv6, null);
+	assert.equal(alias.body.last_checked_on, null);
+	await api.db("npmpro_ddns_record").where({ id: record.id }).update({ state: "ok", last_ipv4: PUBLIC_IP });
+	const back = await admin.put(`${RECORDS}/${record.id}`, { kind: "address", target: null });
+	assert.equal(back.status, 200, back.text);
+	assert.equal(back.body.target, null);
+	assert.equal(back.body.state, "pending");
+	assert.equal(back.body.last_ipv4, null);
+});
+
+it("audits Update now with the credential name", async () => {
+	const made = await withDomain();
+	const record = await addOk({ name: "audit.example.com", dns_credential_id: made.id });
+	assert.equal((await admin.post(`${RECORDS}/${record.id}/update`)).status, 200);
+	const entry = (await auditRows("updated")).find((row) => JSON.parse(row.meta).update_now === true);
+	const meta = JSON.parse(entry.meta);
+	assert.equal(meta.credential_name, made.name);
+	assert.equal(meta.dns_credential_id, made.id);
+});
+
+it("lets Check now of a limited user run only the records that user sees", async () => {
+	const own = await api.limited({ visibility: "user", certificates: "manage" });
+	const theirs = await withDomain(admin);
+	const adminRecord = await addOk({ name: "admin-only.example.com", dns_credential_id: theirs.id });
+	const mine = await withDomain(own, "mine.example");
+	const myRecord = await addOk({ name: "me.mine.example", dns_credential_id: mine.id }, own);
+	const run = await own.post("/nginx/ddns/check");
+	assert.equal(run.status, 200, run.text);
+	assert.equal(cloudflare.patches.length, 1);
+	assert.equal((await admin.get(`${RECORDS}/${myRecord.id}`)).body.state, "ok");
+	const untouched = (await admin.get(`${RECORDS}/${adminRecord.id}`)).body;
+	assert.equal(untouched.state, "pending");
+	assert.equal(untouched.last_checked_on, null);
+	// an administrator with visibility all covers every record
+	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);
+	assert.equal((await admin.get(`${RECORDS}/${adminRecord.id}`)).body.state, "ok");
 });

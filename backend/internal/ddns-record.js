@@ -2,6 +2,7 @@ import { fromDbTime, toDbTime } from "../lib/ddns/db-time.js";
 import { isIpv6Suffix } from "../lib/ddns/ipv6.js";
 import { updaterFor } from "../lib/ddns/providers/index.js";
 import { credentialFields, secretValuesOf } from "../lib/dns-credential-values.js";
+import { ownerLock } from "../lib/dns-domain-lock.js";
 import { bareName, coveringZone } from "../lib/dns-domain-match.js";
 import { normalizeDomainName } from "../lib/dns-domain-name.js";
 import errs from "../lib/error.js";
@@ -284,15 +285,22 @@ const internalDdnsRecord = {
 	create: async (access, data) => {
 		access.can("certificates:manage");
 		const { values, credential } = await resolveSave(access, data, null);
-		const row = await nameLock("names", async () => {
-			await internalDdnsRecord.assertNameFree(values.name);
-			return await ddnsRecordModel.query().insertAndFetch({
-				...values,
-				owner_user_id: access.token.getUserId(1),
-				state: values.enabled ? "pending" : "disabled",
-				failures: 0,
-			});
-		});
+		// under the credential owner's lock, as a credential delete: an insert cannot slip in after its check
+		const row = await ownerLock(credential.owner_user_id, () =>
+			nameLock("names", async () => {
+				// the credential may have been deleted while this waited for the lock
+				if (!(await dnsCredentialModel.query().findById(credential.id))) {
+					throw new errs.ItemNotFoundError(credential.id);
+				}
+				await internalDdnsRecord.assertNameFree(values.name);
+				return await ddnsRecordModel.query().insertAndFetch({
+					...values,
+					owner_user_id: access.token.getUserId(1),
+					state: values.enabled ? "pending" : "disabled",
+					failures: 0,
+				});
+			}),
+		);
 		await internalAuditLog.add(access, {
 			action: "created",
 			object_type: "ddns-record",
@@ -318,8 +326,10 @@ const internalDdnsRecord = {
 				const turnedOn = values.enabled && !row.enabled;
 				if (!values.enabled) patch.state = "disabled";
 				else if (identityChanged || configChanged || turnedOn) patch.state = "pending";
-				if (identityChanged) {
-					Object.assign(patch, { meta: null, last_ipv4: null, last_ipv6: null, last_checked_on: null });
+				if (identityChanged) Object.assign(patch, { meta: null });
+				// the addresses and the check time belong to the old name or kind
+				if (identityChanged || values.kind !== row.kind) {
+					Object.assign(patch, { last_ipv4: null, last_ipv6: null, last_checked_on: null });
 				}
 				if (patch.state === "pending") {
 					const { error_i18n: _key, error_values: _values, ...rest } = row.meta ?? {};
@@ -376,6 +386,12 @@ const internalDdnsRecord = {
 			.limit(HISTORY_SHOWN)
 			.select("id", "created_on", "kind", "ip_version", "old_ip", "new_ip", "message");
 	},
+
+	/** @returns {Promise<number[]>} the ids of the enabled records the user can see */
+	enabledIds: async (access) =>
+		(await visibleRecords(access).where("npmpro_ddns_record.enabled", true).select("npmpro_ddns_record.id")).map(
+			(row) => row.id,
+		),
 
 	/** The number of enabled records the user can see */
 	countEnabled: async (access) => {
