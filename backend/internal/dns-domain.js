@@ -221,10 +221,14 @@ const internalDnsDomain = {
 	) => {
 		access.can("certificates:manage");
 		if (names.length + fetchedNames.length === 0) {
-			throw new errs.ValidationError("At least one domain name is needed");
+			throw new errs.ValidationError("At least one domain name is needed", "error.dns-domain-none");
 		}
 		if (names.length + fetchedNames.length > MAX_NAMES) {
-			throw new errs.ValidationError(`At most ${MAX_NAMES} domains can be added at once`);
+			throw new errs.ValidationError(
+				`At most ${MAX_NAMES} domains can be added at once`,
+				"error.dns-domain-too-many",
+				{ values: { count: MAX_NAMES } },
+			);
 		}
 		const credential = await visibleCredential(access, credentialId);
 		const rows = await ownerLock(credential.owner_user_id, () =>
@@ -247,9 +251,7 @@ const internalDnsDomain = {
 				meta: {
 					names: rows.map((row) => row.name),
 					source,
-					...(fetchedNames.length > 0 && {
-						sources: Object.fromEntries(rows.map((row) => [row.name, row.source])),
-					}),
+					sources: Object.fromEntries(rows.map((row) => [row.name, row.source])),
 					...credentialMeta(credential),
 				},
 			});

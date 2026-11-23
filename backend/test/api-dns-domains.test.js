@@ -51,6 +51,7 @@ it("adds a batch: 201, normalized, typed by default, an audit entry with the nam
 	assert.equal(meta.credential_name, c.name);
 	assert.equal(meta.provider, "cloudflare");
 	assert.equal(meta.dns_credential_id, c.id);
+	assert.deepEqual(meta.sources, { "example.com": "typed", "xn--bcher-kva.de": "typed" });
 	assert.equal(JSON.stringify(done.body).includes(TOKEN), false);
 	assert.equal(entry.meta.includes(TOKEN), false);
 	const fetched = await add(c.id, ["fetched.example"], admin, { source: "fetched" });
@@ -341,6 +342,7 @@ it("saves names and fetched_names in one call, each with its source", async () =
 	const only = await admin.post(BASE, { dns_credential_id: c.id, fetched_names: ["solo.example"] });
 	assert.equal(only.status, 201, only.text);
 	assert.equal(only.body[0].source, "fetched");
+	assert.deepEqual(JSON.parse((await auditRows("created"))[0].meta).sources, { "solo.example": "fetched" });
 });
 
 it("refuses the whole request when a name in fetched_names is on another credential", async () => {
@@ -373,9 +375,12 @@ it("counts names and fetched_names together against the limit of 100, and needs 
 	const rows = await countRows(api, "npmpro_dns_domain");
 	const over = await add(c.id, list("a", 60), admin, { fetched_names: list("b", 41) });
 	assert.equal(over.status, 400);
+	assert.equal(over.body.error.message_i18n, "error.dns-domain-too-many");
+	assert.deepEqual(over.body.error.message_values, { count: 100 });
 	assert.equal(await countRows(api, "npmpro_dns_domain"), rows);
 	const exact = await add(c.id, list("a", 60), admin, { fetched_names: list("b", 40) });
 	assert.equal(exact.status, 201, exact.text);
 	const none = await admin.post(BASE, { dns_credential_id: c.id });
 	assert.equal(none.status, 400);
+	assert.equal(none.body.error.message_i18n, "error.dns-domain-none");
 });
