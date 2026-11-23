@@ -23,6 +23,7 @@ import { NGINX_CORE_FILES, renderNginxCore } from "./nginx-core.js";
 import { rooted } from "./paths.js";
 import { effectiveEnv as defaultEffectiveEnv, getRuntimeConfig as defaultGetRuntimeConfig } from "./runtime-config.js";
 import { describeHosts } from "./runtime-hosts.js";
+import { ddnsTimeMs } from "./runtime-rule-table.js";
 import { acmeServerOf, appliesOf, RESTART_GROUPS, RUNTIME_GROUPS, renderStartupSettings } from "./runtime-rules.js";
 import { ACCESS_LOG_CONF, accessLogDirective } from "./traffic/access-log.js";
 
@@ -171,7 +172,7 @@ const changedKeys = (next, prev) =>
  * @param   {Object}    deps.nginx           { test, reload }
  * @param   {Function}  [deps.renderHosts]   (group, ctx) => files [{ path, content, nginx? }] written with the group's
  *                                           files; ctx: next, prev, changed, startup, env
- * @param   {Object}    [deps.timers]        { restartRenewal(hours) }
+ * @param   {Object}    [deps.timers]        { restartRenewal(hours), restartDdns(periodMs) }
  * @param   {Object}    [deps.log]
  * @param   {Object}    [deps.paths]         file locations (tests)
  * @param   {Function}  [deps.env]           () => process env, for ACME_SERVER
@@ -434,6 +435,12 @@ const createRuntimeApplier = ({
 				})),
 			};
 		},
+		// the service lists, the cooldown and the resolvers are read at every cycle; only the timer needs the period
+		// (at startup too: the timer is built with it before it starts)
+		ddns: ({ next, changed }) =>
+			changed.includes("period") && timers.restartDdns
+				? { after: [() => timers.restartDdns(ddnsTimeMs(next.period))] }
+				: {},
 		"forward-auth": (ctx) => (ctx.startup ? {} : { check: () => checkClearedUpstreams(ctx) }),
 		network: async (ctx) => {
 			if (!ipRanges) return {};

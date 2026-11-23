@@ -95,6 +95,7 @@
 	"put /settings/runtime/forward-auth": "0ba747efd1836cee2b987c89fb1befb6fa321c67fcacfda1be343b030ca4d7d6",
 	"put /settings/runtime/logs": "bc8c1d32d309c09988b7340d6445c77632e9e9b73dd0b230600b3b2ba98bf8e0",
 	"put /settings/runtime/advanced": "d2cf94a67814b1b3582c7445b951c6fd547b1a61392b32081d134ef25d0399af",
+	"put /settings/runtime/ddns": "1413a1d6fbab2af48ca813eddae75df30447137f2b3939ee655989904bb02da1",
 	"get /settings/{settingID}": "e6c42ed17e793c7fb599d96324b4c2a72a9073454d160da3f858849ee1cab050",
 	"put /settings/{settingID}": "da902c2288d74c9f84f6b84ef1552cfd8fa19ed59ed0f5024984619f10459796",
 	"post /tokens": "6ebec63a9d825bf885437bee43929ebb5aa5ed9aadf8bbd18aeb7447f7dec9e4",

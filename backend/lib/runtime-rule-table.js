@@ -2,8 +2,10 @@ import { statSync } from "node:fs";
 import { isIP } from "node:net";
 import { availableParallelism } from "node:os";
 import { LETSENCRYPT_SERVER, resolveAcmeServer, STAPLING_SERVERS } from "./acme-server.js";
+import { DEFAULT_IPV4_SERVICES, DEFAULT_IPV6_SERVICES } from "./ddns/public-ip.js";
 import { LOG_FORMATS } from "./log-format.js";
 import { parseCpuList, readCpusAllowed } from "./nginx-core.js";
+import { isBlockedAddress } from "./outbound-guard.js";
 import { rooted } from "./paths.js";
 import { resolverAddressList } from "./resolver-address.js";
 import { isTimeZone } from "./time-zones.js";
@@ -59,6 +61,87 @@ const validateResolverValid = (value) =>
 	value === "" || isResolverValid(value)
 		? null
 		: "must be empty or an nginx time in seconds or longer such as 30s or 5m, not 0 and not ms";
+
+// Dynamic DNS: a time from 1m to 24h as a bare number of seconds or parts with the units w d h m s in this order
+// (envs.sh checks the same); ms, M and y are refused
+const DDNS_TIME = /^(?:[0-9]+|(?:[0-9]+w)?(?:[0-9]+d)?(?:[0-9]+h)?(?:[0-9]+m)?(?:[0-9]+s)?)$/u;
+const DDNS_TIME_PART = /(?<amount>[0-9]+)(?<unit>[wdhms])/gu;
+const DDNS_TIME_SECONDS = { w: 604800, d: 86400, h: 3600, m: 60, s: 1 };
+const DDNS_TIME_MIN_MS = 60_000;
+const DDNS_TIME_MAX_MS = 86_400_000;
+const DDNS_DEFAULT_TIME = "5m";
+
+/**
+ * @param   {string}  value  such as 5m, 90 or 1h30m
+ * @returns {number|null}  the milliseconds, null when it is not a time from 1m to 24h
+ */
+const ddnsTimeMs = (value) => {
+	if (typeof value !== "string" || value === "" || value.length > 32 || !DDNS_TIME.test(value)) return null;
+	let seconds = DIGITS.test(value) ? Number(value) : 0;
+	if (!DIGITS.test(value)) {
+		for (const { groups } of value.matchAll(DDNS_TIME_PART)) {
+			seconds += Number(groups.amount) * DDNS_TIME_SECONDS[groups.unit];
+		}
+	}
+	const ms = seconds * 1000;
+	return ms >= DDNS_TIME_MIN_MS && ms <= DDNS_TIME_MAX_MS ? ms : null;
+};
+
+const ddnsTimeRule = (key, env) => ({
+	group: "ddns",
+	key,
+	env,
+	type: "string",
+	validate: (value) => (ddnsTimeMs(value) === null ? "must be a time from 1m to 24h such as 5m or 1h30m" : null),
+	parseEnv: (raw) => (ddnsTimeMs(raw) === null ? undefined : raw),
+	toEnv: String,
+	default: DDNS_DEFAULT_TIME,
+	applies: "immediately",
+});
+
+// a public IP service: an https URL without credentials (envs.sh checks the same pattern)
+const DDNS_SERVICE_URL = /^https:\/\/(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:.]+\])(?::[0-9]{1,5})?(?:\/[A-Za-z0-9._~/%-]*)?$/u;
+const DDNS_MAX_SERVICES = 10;
+const DDNS_MAX_URL_LENGTH = 200;
+
+const isServiceUrl = (entry) =>
+	typeof entry === "string" && entry.length <= DDNS_MAX_URL_LENGTH && DDNS_SERVICE_URL.test(entry);
+
+const validateServiceList = (value) => {
+	if (!Array.isArray(value)) return "must be a list of https:// URLs";
+	if (value.length === 0 || value.length > DDNS_MAX_SERVICES) return `must have 1 to ${DDNS_MAX_SERVICES} URLs`;
+	const bad = value.find((entry) => !isServiceUrl(entry));
+	return bad === undefined ? null : `"${bad}" is not an https:// URL (a host name or IP, an optional port and path)`;
+};
+
+// the literal IP of a service URL the outbound guard refuses (a name is checked when it resolves, at save and at every call)
+const refusedServiceHost = (value) => {
+	for (const entry of value) {
+		const host = new URL(entry).hostname.replace(/^\[|\]$/gu, "");
+		if (isIP(host) !== 0 && isBlockedAddress(host)) return host;
+	}
+	return null;
+};
+
+const ddnsServiceRule = (key, env, defaults) => ({
+	group: "ddns",
+	key,
+	env,
+	type: "list",
+	validate: validateServiceList,
+	validateSave: (value) => {
+		const host = refusedServiceHost(value);
+		return host === null ? null : `${host} is an address the server may not call`;
+	},
+	// one bad word drops the whole env value, as envs.sh refuses it at the start
+	parseEnv: (raw) => {
+		const list = raw.trim().split(WHITESPACE).filter(Boolean);
+		return validateServiceList(list) === null ? list : undefined;
+	},
+	toEnv: (value) => value.join(" "),
+	default: () => [...defaults],
+	applies: "immediately",
+});
 
 const isSet = (raw) => typeof raw === "string" && raw !== "";
 
@@ -524,6 +607,26 @@ const RUNTIME_RULES = [
 		default: "UTC",
 		applies: "restart",
 	},
+	// Dynamic DNS: read at every cycle, a change of the period restarts the timer (runtime-apply.js)
+	ddnsTimeRule("period", "DDNS_PERIOD"),
+	ddnsTimeRule("cooldown", "DDNS_COOLDOWN"),
+	ddnsServiceRule("ipv4_services", "DDNS_IPV4_SERVICES", DEFAULT_IPV4_SERVICES),
+	ddnsServiceRule("ipv6_services", "DDNS_IPV6_SERVICES", DEFAULT_IPV6_SERVICES),
+	{
+		group: "ddns",
+		key: "resolver",
+		env: "DDNS_RESOLVER",
+		type: "list",
+		// the list's shape only: a stored list is never dropped for a stricter rule
+		validate: resolverAddressList,
+		parseEnv: (raw) => {
+			const list = raw.trim().split(WHITESPACE).filter(Boolean);
+			return resolverAddressList(list) === null ? list : undefined;
+		},
+		toEnv: (value) => (value.length > 0 ? value.join(" ") : undefined),
+		default: () => [],
+		applies: "immediately",
+	},
 ];
 
-export { isSet, KEY_SIZES, RUNTIME_RULES, serverOf, UPSTREAM, WHITESPACE };
+export { ddnsTimeMs, isSet, KEY_SIZES, RUNTIME_RULES, serverOf, UPSTREAM, WHITESPACE };

@@ -1,10 +1,12 @@
 import { createDdnsEngine } from "../lib/ddns/engine.js";
 import { providerFetch } from "../lib/ddns/provider-fetch.js";
 import { PROVIDER_LIST, providerById } from "../lib/ddns/providers/index.js";
-import { createPublicIp, DEFAULT_IPV4_SERVICES, DEFAULT_IPV6_SERVICES } from "../lib/ddns/public-ip.js";
+import { createPublicIp } from "../lib/ddns/public-ip.js";
 import { resolveName } from "../lib/ddns/resolve-name.js";
+import { ddnsSettingsOf } from "../lib/ddns/settings.js";
 import { createDdnsTimer } from "../lib/ddns-timer.js";
 import errs from "../lib/error.js";
+import { effectiveEnv } from "../lib/runtime-config.js";
 import { global as logger } from "../logger.js";
 import internalAuditLog from "./audit-log.js";
 import internalDdnsRecord, { ddnsStore, recordLock } from "./ddns-record.js";
@@ -12,27 +14,10 @@ import internalDdnsRecord, { ddnsStore, recordLock } from "./ddns-record.js";
 // The dynamic DNS service: the public IP detector, the engine and the timer, built on first use. The status and
 // the actions of the API (Check now, Update now) and the pause a restore or a database move takes.
 
-const MINUTE_MS = 60_000;
 const FETCH_TIMEOUT_MS = 10_000;
-const WHITESPACE = /\s+/u;
 
-// The spec's defaults, with the service lists from the environment. The Dynamic DNS runtime settings (Task 5.9)
-// replace this function with the rules' values; nothing else here changes.
-const ddnsSettings = () => {
-	const list = (name, fallback) => {
-		const words = String(process.env[name] ?? "")
-			.split(WHITESPACE)
-			.filter(Boolean);
-		return words.length > 0 ? words : fallback;
-	};
-	return {
-		periodMs: 5 * MINUTE_MS,
-		cooldownMs: 5 * MINUTE_MS,
-		resolvers: [],
-		ipv4Services: list("DDNS_IPV4_SERVICES", DEFAULT_IPV4_SERVICES),
-		ipv6Services: list("DDNS_IPV6_SERVICES", DEFAULT_IPV6_SERVICES),
-	};
-};
+// The Dynamic DNS runtime settings (the ddns group) in effect, read at every use
+const ddnsSettings = () => ddnsSettingsOf(effectiveEnv());
 
 const fetchEcho = async (url, family) => {
 	const res = await providerFetch(url, { family, timeoutMs: FETCH_TIMEOUT_MS });
@@ -94,6 +79,9 @@ const audit = (access, action, row, extra = {}) =>
 /** Starts the timer; the first cycle runs a minute later */
 const initDdnsTimer = () => service().timer.start();
 
+/** Restarts the timer with a new period (ms); before the timer started it only sets the period */
+const restartDdnsTimer = (periodMs) => service().timer.restart(periodMs);
+
 /** Pauses the cycles and waits for a running one (a restore or a database move); options: { timeoutMs } */
 const pauseDdns = (options) => service().timer.pauseAndWait(options);
 
@@ -144,4 +132,4 @@ const providers = (access) => {
 	return PROVIDER_LIST;
 };
 
-export { checkNow, ddnsStatus, initDdnsTimer, pauseDdns, providers, resumeDdns, updateNow };
+export { checkNow, ddnsStatus, initDdnsTimer, pauseDdns, providers, restartDdnsTimer, resumeDdns, updateNow };

@@ -4,7 +4,7 @@ import { crowdsecEnabledNow } from "./crowdsec/config.js";
 import { parseCrowdsecEnabledEnv } from "./crowdsec/settings.js";
 import { isSet, KEY_SIZES, RUNTIME_RULES, serverOf, WHITESPACE } from "./runtime-rule-table.js";
 
-const RUNTIME_GROUPS = ["certificates", "network", "nginx", "forward-auth", "logs", "advanced"];
+const RUNTIME_GROUPS = ["certificates", "network", "nginx", "forward-auth", "logs", "advanced", "ddns"];
 
 /**
  * Why a key is locked by another setting's env var: key-size (key_type follows ACME_KEY_SIZE, the size is an ECDSA

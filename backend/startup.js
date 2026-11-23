@@ -10,7 +10,7 @@ import { startExpirySweep } from "./internal/api-token.js";
 import { backupStore } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
 import { logCrowdsecBlock, setCrowdsecHooks, startCrowdsec } from "./internal/crowdsec-setting.js";
-import { initDdnsTimer } from "./internal/ddns.js";
+import { initDdnsTimer, restartDdnsTimer } from "./internal/ddns.js";
 import internalIpRanges from "./internal/ip_ranges.js";
 import { startLandingPages } from "./internal/landing-pages.js";
 import {
@@ -84,7 +84,7 @@ const prepareApp = async ({ background = true } = {}) => {
 	const runtimeApplier = createRuntimeApplier({
 		nginx: { test: internalNginx.test, reload: internalNginx.reload },
 		renderHosts: renderRuntimeHosts,
-		timers: { restartRenewal: internalCertificate.restartTimer },
+		timers: { restartRenewal: internalCertificate.restartTimer, restartDdns: restartDdnsTimer },
 		// an mTLS CA certificate cannot serve as the default certificate
 		listCertificates: () => certificateModel.query().select("id").whereNot("provider", "mtls"),
 		ocsp: { fetch: internalNginx.fetchOcsp },

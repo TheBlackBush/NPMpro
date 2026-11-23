@@ -59,8 +59,8 @@ const BOOT_ENV = {
 const NOT_A_DNS_ADDRESS = /not a DNS server address/u;
 const userEnv = (vars) => ({ ...BOOT_ENV, ...vars, NPMPRO_USER_ENV: `PATH ${Object.keys(vars).join(" ")}` });
 
-it("has the six groups, every rule in one of them, keys unique", () => {
-	assert.deepEqual(RUNTIME_GROUPS, ["certificates", "network", "nginx", "forward-auth", "logs", "advanced"]);
+it("has the seven groups, every rule in one of them, keys unique", () => {
+	assert.deepEqual(RUNTIME_GROUPS, ["certificates", "network", "nginx", "forward-auth", "logs", "advanced", "ddns"]);
 	for (const entry of RUNTIME_RULES) assert.ok(RUNTIME_GROUPS.includes(entry.group), entry.key);
 	assert.equal(new Set(RUNTIME_RULES.map((entry) => entry.key)).size, RUNTIME_RULES.length);
 	// one env var per rule, except GOACLA, which sets all GoAccess options

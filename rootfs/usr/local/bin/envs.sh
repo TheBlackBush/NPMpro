@@ -89,7 +89,7 @@ fi
 # NPMPRO_USER_ENV lists those set (non-empty) before the defaults below: the backend treats only these as set by the
 # user and applies the stored settings to the others. NPMPRO_USER_RUNTIME_ENV is its runtime part, for ENV_SHA512SUM.
 # The NGINX_* names in NPMPRO_RUNTIME_ENVS are settings too: the backend owns them and a set env var locks the field.
-NPMPRO_RUNTIME_ENVS="ACME_KEY_TYPE ACME_KEY_SIZE ACME_PROFILE ACME_MUST_STAPLE ACME_SERVER_TLS_VERIFY CERTBOT_RUN_INTERVAL ACME_OCSP_STAPLING CUSTOM_OCSP_STAPLING DEFAULT_CERT_ID ECH_ROTATION_INTERVAL TRUST_IP TRUST_CLOUDFLARE AUTH_REQUEST_ANUBIS_UPSTREAM AUTH_REQUEST_TINYAUTH_UPSTREAM AUTH_REQUEST_OAUTH2PROXY_UPSTREAM AUTH_REQUEST_VOIDAUTH_UPSTREAM AUTH_REQUEST_AUTHELIA_UPSTREAM AUTH_REQUEST_AUTHENTIK_UPSTREAM AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES LOGROTATE LOGROTATIONS NGINX_LOG_FORMAT NGINX_TLS_HANDSHAKE_LOG DISABLE_NGINX_BEAUTIFIER DISABLE_GRAVATAR NGINX_LOG_NOT_FOUND NGINX_WORKER_PROCESSES NGINX_WORKER_CONNECTIONS NGINX_WORKER_SHUTDOWN_TIMEOUT NGINX_CPU_AFFINITY NGINX_RESOLVER NGINX_RESOLVER_HOSTS NGINX_RESOLVER_IPV6 NGINX_RESOLVER_VALID NGINX_FORCE_X25519MLKEM768 NGINX_DISABLE_TLS12 NGINX_TRUST_SECPR1 NGINX_TRUST_RSA_PKCS1 NGINX_LOAD_NJS_MODULE NGINX_LOAD_LDAP_MODULE NGINX_LOAD_NTLM_MODULE NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE"
+NPMPRO_RUNTIME_ENVS="ACME_KEY_TYPE ACME_KEY_SIZE ACME_PROFILE ACME_MUST_STAPLE ACME_SERVER_TLS_VERIFY CERTBOT_RUN_INTERVAL ACME_OCSP_STAPLING CUSTOM_OCSP_STAPLING DEFAULT_CERT_ID ECH_ROTATION_INTERVAL TRUST_IP TRUST_CLOUDFLARE AUTH_REQUEST_ANUBIS_UPSTREAM AUTH_REQUEST_TINYAUTH_UPSTREAM AUTH_REQUEST_OAUTH2PROXY_UPSTREAM AUTH_REQUEST_VOIDAUTH_UPSTREAM AUTH_REQUEST_AUTHELIA_UPSTREAM AUTH_REQUEST_AUTHENTIK_UPSTREAM AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES LOGROTATE LOGROTATIONS NGINX_LOG_FORMAT NGINX_TLS_HANDSHAKE_LOG DISABLE_NGINX_BEAUTIFIER DISABLE_GRAVATAR NGINX_LOG_NOT_FOUND NGINX_WORKER_PROCESSES NGINX_WORKER_CONNECTIONS NGINX_WORKER_SHUTDOWN_TIMEOUT NGINX_CPU_AFFINITY NGINX_RESOLVER NGINX_RESOLVER_HOSTS NGINX_RESOLVER_IPV6 NGINX_RESOLVER_VALID NGINX_FORCE_X25519MLKEM768 NGINX_DISABLE_TLS12 NGINX_TRUST_SECPR1 NGINX_TRUST_RSA_PKCS1 NGINX_LOAD_NJS_MODULE NGINX_LOAD_LDAP_MODULE NGINX_LOAD_NTLM_MODULE NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE DDNS_PERIOD DDNS_COOLDOWN DDNS_IPV4_SERVICES DDNS_IPV6_SERVICES DDNS_RESOLVER"
 NPMPRO_STARTUP_ENVS="NPM_PORT HTTP_PORT HTTPS_PORT IPV4_BINDING IPV6_BINDING NPM_IPV4_BINDING NPM_IPV6_BINDING NPM_LISTEN_LOCALHOST DISABLE_IPV6 DISABLE_HTTP DISABLE_H3_QUIC LISTEN_PROXY_PROTOCOL LISTEN_PROXY_PROTOCOL_HTTP LISTEN_PROXY_PROTOCOL_HTTPS ENABLE_MPTCP NGINX_QUIC_BPF PUID PGID TZ PHP83 PHP84 PHP85 PHP83_APKS PHP84_APKS PHP85_APKS PHP_APKS GOA GOACLA DB_MYSQL_HOST DB_MYSQL_PORT DB_MYSQL_NAME DB_MYSQL_USER DB_MYSQL_PASSWORD DB_POSTGRES_HOST DB_POSTGRES_PORT DB_POSTGRES_NAME DB_POSTGRES_USER DB_POSTGRES_PASSWORD INITIAL_ADMIN_EMAIL INITIAL_ADMIN_PASSWORD INITIAL_DEFAULT_PAGE ACME_SERVER ACME_EMAIL ACME_EAB_KID ACME_EAB_HMAC_KEY NODE_TLS_REJECT_UNAUTHORIZED NC_AIO NC_DOMAIN ENABLE_PRERUN"
 NPMPRO_USER_ENV=""
 NPMPRO_USER_RUNTIME_ENV=""
@@ -648,75 +648,78 @@ if ! echo "$NGINX_CPU_AFFINITY" | grep -Eq "^(off|auto|[0-9]+(-[0-9]+)?(,[0-9]+(
     sleep inf
 fi
 
-# DNS servers for nginx: space separated IPv4 addresses or IPv6 addresses in brackets, each with an optional :port;
-# empty means the container's own resolvers
-if [ -n "$NGINX_RESOLVER" ]; then
-    if [ "$(echo "$NGINX_RESOLVER" | wc -w)" -gt 8 ]; then
-        echo "NGINX_RESOLVER needs to have at most 8 addresses."
-        sleep inf
-    fi
-    # the same rule as backend/lib/resolver-address.js: IPv4 octets 0 to 255 without leading zeros, an IPv6 address
-    # in brackets, a port from 1 to 65535, no duplicates
-    if ! echo "$NGINX_RESOLVER" | awk '
-        function hex(g) { return g ~ /^[0-9A-Fa-f]+$/ && length(g) <= 4 }
-        function v4(a,   p, n, i) {
-            n = split(a, p, ".")
-            if (n != 4) return 0
-            for (i = 1; i <= 4; i++) if (p[i] !~ /^(0|[1-9][0-9]*)$/ || length(p[i]) > 3 || p[i] + 0 > 255) return 0
-            return 1
-        }
-        # the number of 16 bit groups of a colon separated list, -1 when it is not valid
-        function groups(list, tail,   p, n, i, c) {
-            if (list == "") return 0
-            n = split(list, p, ":")
-            c = 0
-            for (i = 1; i <= n; i++) {
-                if (hex(p[i])) c++
-                else if (tail && i == n && v4(p[i])) c += 2
-                else return -1
+# DNS servers for nginx and for the Dynamic DNS checks (NGINX_RESOLVER, DDNS_RESOLVER): space separated IPv4
+# addresses or IPv6 addresses in brackets, each with an optional :port; empty means the container's own resolvers
+for resolver_var in NGINX_RESOLVER DDNS_RESOLVER; do
+    eval "resolver_value=\"\${$resolver_var:-}\""
+    if [ -n "$resolver_value" ]; then
+        if [ "$(echo "$resolver_value" | wc -w)" -gt 8 ]; then
+            echo "$resolver_var needs to have at most 8 addresses."
+            sleep inf
+        fi
+        # the same rule as backend/lib/resolver-address.js: IPv4 octets 0 to 255 without leading zeros, an IPv6 address
+        # in brackets, a port from 1 to 65535, no duplicates
+        if ! echo "$resolver_value" | awk '
+            function hex(g) { return g ~ /^[0-9A-Fa-f]+$/ && length(g) <= 4 }
+            function v4(a,   p, n, i) {
+                n = split(a, p, ".")
+                if (n != 4) return 0
+                for (i = 1; i <= 4; i++) if (p[i] !~ /^(0|[1-9][0-9]*)$/ || length(p[i]) > 3 || p[i] + 0 > 255) return 0
+                return 1
             }
-            return c
-        }
-        function v6(a,   at, l, r, gl, gr) {
-            if (a !~ /^[0-9A-Fa-f:.]+$/ || a !~ /:/ || a ~ /:::/) return 0
-            at = index(a, "::")
-            if (at == 0) return groups(a, 1) == 8
-            l = substr(a, 1, at - 1)
-            r = substr(a, at + 2)
-            if (index(r, "::") > 0) return 0
-            gl = groups(l, 0)
-            gr = groups(r, 1)
-            return gl >= 0 && gr >= 0 && gl + gr <= 7
-        }
-        {
-            for (w = 1; w <= NF; w++) {
-                word = $w
-                if (seen[word]++) exit 1
-                port = ""
-                if (substr(word, 1, 1) == "[") {
-                    end = index(word, "]")
-                    if (end == 0) exit 1
-                    host = substr(word, 2, end - 2)
-                    rest = substr(word, end + 1)
-                    if (!v6(host)) exit 1
-                } else {
-                    colon = index(word, ":")
-                    host = colon ? substr(word, 1, colon - 1) : word
-                    rest = colon ? substr(word, colon) : ""
-                    if (!v4(host)) exit 1
+            # the number of 16 bit groups of a colon separated list, -1 when it is not valid
+            function groups(list, tail,   p, n, i, c) {
+                if (list == "") return 0
+                n = split(list, p, ":")
+                c = 0
+                for (i = 1; i <= n; i++) {
+                    if (hex(p[i])) c++
+                    else if (tail && i == n && v4(p[i])) c += 2
+                    else return -1
                 }
-                if (rest != "") {
-                    if (rest !~ /^:[0-9]+$/ || length(rest) > 6) exit 1
-                    port = substr(rest, 2) + 0
-                    if (port < 1 || port > 65535) exit 1
+                return c
+            }
+            function v6(a,   at, l, r, gl, gr) {
+                if (a !~ /^[0-9A-Fa-f:.]+$/ || a !~ /:/ || a ~ /:::/) return 0
+                at = index(a, "::")
+                if (at == 0) return groups(a, 1) == 8
+                l = substr(a, 1, at - 1)
+                r = substr(a, at + 2)
+                if (index(r, "::") > 0) return 0
+                gl = groups(l, 0)
+                gr = groups(r, 1)
+                return gl >= 0 && gr >= 0 && gl + gr <= 7
+            }
+            {
+                for (w = 1; w <= NF; w++) {
+                    word = $w
+                    if (seen[word]++) exit 1
+                    port = ""
+                    if (substr(word, 1, 1) == "[") {
+                        end = index(word, "]")
+                        if (end == 0) exit 1
+                        host = substr(word, 2, end - 2)
+                        rest = substr(word, end + 1)
+                        if (!v6(host)) exit 1
+                    } else {
+                        colon = index(word, ":")
+                        host = colon ? substr(word, 1, colon - 1) : word
+                        rest = colon ? substr(word, colon) : ""
+                        if (!v4(host)) exit 1
+                    }
+                    if (rest != "") {
+                        if (rest !~ /^:[0-9]+$/ || length(rest) > 6) exit 1
+                        port = substr(rest, 2) + 0
+                        if (port < 1 || port > 65535) exit 1
+                    }
                 }
             }
-        }
-    '; then
-        echo "NGINX_RESOLVER needs to be empty or space separated, unique IPv4 addresses or IPv6 addresses in brackets with an optional port, like 1.1.1.1 [2606:4700:4700::1111]:53."
-        sleep inf
+        '; then
+            echo "$resolver_var needs to be empty or space separated, unique IPv4 addresses or IPv6 addresses in brackets with an optional port, like 1.1.1.1 [2606:4700:4700::1111]:53."
+            sleep inf
+        fi
     fi
-fi
+done
 
 if ! echo "$NGINX_RESOLVER_HOSTS" | grep -q "^true$\|^false$"; then
     echo "NGINX_RESOLVER_HOSTS needs to be true or false."
@@ -738,6 +741,56 @@ if [ -n "$NGINX_RESOLVER_VALID" ]; then
         sleep inf
     fi
 fi
+
+# Dynamic DNS: a period and a cooldown, each empty (the default, 5m) or a time from 1m to 24h: a bare number of seconds or
+# parts with the units w d h m s in this order, at most 32 characters, on one line (the settings' rule in
+# backend/lib/runtime-rule-table.js ddnsTimeMs; ms, M and y are refused)
+for ddns_var in DDNS_PERIOD DDNS_COOLDOWN; do
+    eval "ddns_value=\"\${$ddns_var:-}\""
+    if [ -n "$ddns_value" ]; then
+        if [ "$(printf %s "$ddns_value" | wc -l)" != 0 ] || [ "${#ddns_value}" -gt 32 ] ||
+            ! printf %s "$ddns_value" | grep -Eq "^([0-9]+|([0-9]+w)?([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s)?)$" ||
+            [ "$(printf %s "$ddns_value" | awk '{
+                n = $0
+                s = 0
+                if (n ~ /^[0-9]+$/) s = n + 0
+                else {
+                    while (match(n, /^[0-9]+[wdhms]/)) {
+                        u = substr(n, RLENGTH, 1)
+                        s += substr(n, 1, RLENGTH - 1) * (u == "w" ? 604800 : u == "d" ? 86400 : u == "h" ? 3600 : u == "m" ? 60 : 1)
+                        n = substr(n, RLENGTH + 1)
+                    }
+                }
+                print (s >= 60 && s <= 86400) ? "ok" : "no"
+            }')" != ok ]; then
+            echo "$ddns_var needs to be empty or a time from 1m to 24h like 5m or 1h30m (seconds, or parts with units w d h m s)."
+            sleep inf
+        fi
+    fi
+done
+
+# Dynamic DNS: the public IP services, space separated https:// URLs (1 to 10, each at most 200 characters, a host name
+# or an IPv6 address in brackets, an optional port and path); empty means the defaults (the same rule as
+# backend/lib/runtime-rule-table.js isServiceUrl)
+for ddns_var in DDNS_IPV4_SERVICES DDNS_IPV6_SERVICES; do
+    eval "ddns_value=\"\${$ddns_var:-}\""
+    if [ "$(printf '%s\n' "$ddns_value" | wc -w)" -gt 0 ]; then
+        ddns_ok=true
+        ddns_count=0
+        set -f
+        for ddns_word in $ddns_value; do
+            ddns_count=$((ddns_count + 1))
+            if [ "${#ddns_word}" -gt 200 ] || ! printf %s "$ddns_word" | LC_ALL=C grep -Eq '^https://([A-Za-z0-9.-]+|\[[0-9A-Fa-f:.]+\])(:[0-9]{1,5})?(/[A-Za-z0-9._~/%-]*)?$'; then
+                ddns_ok=false
+            fi
+        done
+        set +f
+        if [ "$ddns_ok" != true ] || [ "$ddns_count" -gt 10 ]; then
+            echo "$ddns_var needs to be empty or 1 to 10 space separated https:// URLs like https://api.ipify.org."
+            sleep inf
+        fi
+    fi
+done
 
 if ! echo "$NGINX_FORCE_X25519MLKEM768" | grep -q "^true$\|^false$"; then
     echo "NGINX_FORCE_X25519MLKEM768 needs to be true or false."

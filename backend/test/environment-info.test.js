@@ -11,13 +11,14 @@ import {
 	settingLocksOf,
 } from "../lib/environment-info.js";
 import { mergeMonitoringConfig } from "../lib/monitoring-rules.js";
-import { isResolverAddress } from "../lib/resolver-address.js";
+import { isResolverAddress, resolverAddressList } from "../lib/resolver-address.js";
 import { RUNTIME_RULES } from "../lib/runtime-rule-table.js";
 import { RUNTIME_ENV_NAMES, userSetEnvNames } from "../lib/runtime-rules.js";
 
 const RUNTIME_LINE = /^NPMPRO_RUNTIME_ENVS="(?<names>[^"]*)"$/mu;
 const SECRET_LINE = /^NPMPRO_SECRET_ENVS="(?<names>[^"]*)"$/mu;
 const STARTUP_LINE = /^NPMPRO_STARTUP_ENVS="(?<names>[^"]*)"$/mu;
+const WHITESPACE = /\s+/u;
 const ENVS_SH = new URL("../../rootfs/usr/local/bin/envs.sh", import.meta.url);
 const SECRET_NAMES = ["DB_MYSQL_PASSWORD", "DB_POSTGRES_PASSWORD", "INITIAL_ADMIN_PASSWORD"];
 const sorted = (list) => [...list].sort((a, b) => a.localeCompare(b));
@@ -169,14 +170,20 @@ it("envs.sh accepts an unset, classic or json NGINX_LOG_FORMAT and refuses anyth
 	}
 });
 
-it("envs.sh checks NGINX_RESOLVER exactly like the setting's rule", () => {
+it("envs.sh checks NGINX_RESOLVER and DDNS_RESOLVER exactly like the setting's rule", () => {
 	const text = readFileSync(ENVS_SH, "utf8");
-	const start = text.indexOf('if [ -n "$NGINX_RESOLVER" ]; then');
+	const start = text.indexOf("for resolver_var in NGINX_RESOLVER DDNS_RESOLVER; do");
 	const block = text
 		.slice(start, text.indexOf('if ! echo "$NGINX_RESOLVER_HOSTS"', start))
 		.replaceAll("sleep inf", "exit 3");
-	const run = (value) =>
-		spawnSync("sh", ["-c", block], { env: { PATH: process.env.PATH, NGINX_RESOLVER: value }, encoding: "utf8" });
+	const run = (value, name = "NGINX_RESOLVER") =>
+		spawnSync("sh", ["-c", block], { env: { PATH: process.env.PATH, [name]: value }, encoding: "utf8" });
+	for (const word of ["1.1.1.1:53", "[::1]", "dns.example", "1.1.1.1 1.1.1.1"]) {
+		const out = run(word, "DDNS_RESOLVER");
+		const expected = resolverAddressList(word.split(" ")) === null;
+		assert.equal(out.status, expected ? 0 : 3, word);
+		assert.equal(out.stdout.startsWith("DDNS_RESOLVER needs to be empty"), !expected, word);
+	}
 	const words = [
 		"1.1.1.1",
 		"1.1.1.1:53",
@@ -483,4 +490,128 @@ it("lists Write log files as locked by CROWDSEC_ENABLED like GOA, and not when C
 		{ group: "logs", key: "write_log_files", env: "CROWDSEC_ENABLED", reason: "crowdsec" },
 	]);
 	assert.deepEqual(lock("crowdsec-setting").locked_runtime, []);
+});
+
+const ddnsRule = (key) => RUNTIME_RULES.find((entry) => entry.group === "ddns" && entry.key === key);
+
+it("lists the DDNS names as runtime names, each locking its own ddns key", () => {
+	const listed = RUNTIME_LINE.exec(readFileSync(ENVS_SH, "utf8"))?.groups.names.split(" ") ?? [];
+	for (const [key, env] of [
+		["period", "DDNS_PERIOD"],
+		["cooldown", "DDNS_COOLDOWN"],
+		["ipv4_services", "DDNS_IPV4_SERVICES"],
+		["ipv6_services", "DDNS_IPV6_SERVICES"],
+		["resolver", "DDNS_RESOLVER"],
+	]) {
+		assert.ok(RUNTIME_ENV_NAMES.includes(env), env);
+		assert.ok(listed.includes(env), env);
+		assert.deepEqual(environmentInfo({}, [{ group: "ddns", key }]).locked_runtime, [
+			{ group: "ddns", key, env, reason: null },
+		]);
+	}
+});
+
+it("envs.sh checks DDNS_PERIOD and DDNS_COOLDOWN exactly like the settings' rule", () => {
+	const text = readFileSync(ENVS_SH, "utf8");
+	const start = text.indexOf("for ddns_var in DDNS_PERIOD DDNS_COOLDOWN; do");
+	const block = text
+		.slice(start, text.indexOf("\ndone\n", start) + "\ndone\n".length)
+		.replaceAll("sleep inf", "exit 3");
+	const rule = ddnsRule("period");
+	const values = [
+		"",
+		"1m",
+		"59s",
+		"60",
+		"59",
+		"5m",
+		"90s",
+		"1h30m",
+		"24h",
+		"1d",
+		"1d1s",
+		"86400",
+		"86401",
+		"23h59m59s",
+		"1w",
+		"1h1m1s",
+		"0",
+		"00060",
+		"0m60s",
+		"100ms",
+		"1M",
+		"1y",
+		"5 m",
+		"5m\n",
+		"5m\n1",
+		"1m1h",
+		"1s1s",
+		"-5m",
+		"5M",
+		"5x",
+		"1h 30m",
+		"9".repeat(32),
+		"9".repeat(33),
+	];
+	for (const value of values) {
+		const expected = value === "" || rule.validate(value) === null;
+		for (const name of ["DDNS_PERIOD", "DDNS_COOLDOWN"]) {
+			const out = spawnSync("sh", ["-c", block], {
+				env: { PATH: process.env.PATH, [name]: value },
+				encoding: "utf8",
+			});
+			assert.equal(out.status, expected ? 0 : 3, `${name} ${JSON.stringify(value)}`);
+			assert.equal(out.stdout === "", expected, `${name} ${JSON.stringify(value)}`);
+		}
+	}
+});
+
+it("envs.sh checks DDNS_IPV4_SERVICES and DDNS_IPV6_SERVICES exactly like the settings' rule", () => {
+	const text = readFileSync(ENVS_SH, "utf8");
+	const start = text.indexOf("for ddns_var in DDNS_IPV4_SERVICES DDNS_IPV6_SERVICES; do");
+	const block = text
+		.slice(start, text.indexOf("\ndone\n", start) + "\ndone\n".length)
+		.replaceAll("sleep inf", "exit 3");
+	const rule = ddnsRule("ipv4_services");
+	const long = `https://${"a".repeat(192)}`;
+	const values = [
+		"",
+		"  ",
+		"https://api.ipify.org",
+		"https://127.0.0.1/",
+		"https://[2606:4700::1111]/ip",
+		"https://ip.example:8443/path/to-it_1.txt",
+		"https://a.example https://b.example",
+		"https://a.example\nhttps://b.example",
+		"http://api.ipify.org",
+		"HTTPS://api.ipify.org",
+		"https://",
+		"https:///x",
+		"https://user@host.example",
+		"https://host.example?x=1",
+		"https://host.example/#x",
+		"https://host.example:/",
+		"https://host.example:123456/",
+		"https://host.example/a b",
+		"https://ho_st.example",
+		"https://*",
+		"ftp://host.example",
+		"host.example",
+		long,
+		`${long}a`,
+		Array.from({ length: 10 }, (_, index) => `https://h${index}.example`).join(" "),
+		Array.from({ length: 11 }, (_, index) => `https://h${index}.example`).join(" "),
+	];
+	for (const value of values) {
+		const words = value.split(WHITESPACE).filter(Boolean);
+		const expected = words.length === 0 || rule.validate(words) === null;
+		for (const name of ["DDNS_IPV4_SERVICES", "DDNS_IPV6_SERVICES"]) {
+			const out = spawnSync("sh", ["-c", block], {
+				env: { PATH: process.env.PATH, [name]: value },
+				encoding: "utf8",
+			});
+			assert.equal(out.status, expected ? 0 : 3, `${name} ${JSON.stringify(value)}`);
+			assert.equal(out.stdout === "", expected, `${name} ${JSON.stringify(value)}`);
+		}
+	}
 });

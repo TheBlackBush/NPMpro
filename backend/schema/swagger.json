@@ -660,6 +660,14 @@
 				"$ref": "./paths/settings/runtime/logs/put.json"
 			}
 		},
+		"/settings/runtime/ddns": {
+			"get": {
+				"$ref": "./paths/settings/runtime/ddns/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/runtime/ddns/put.json"
+			}
+		},
 		"/settings/runtime/advanced": {
 			"get": {
 				"$ref": "./paths/settings/runtime/advanced/get.json"

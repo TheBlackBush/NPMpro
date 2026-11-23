@@ -1,0 +1,140 @@
+{
+	"operationId": "updateRuntimeDdnsSettings",
+	"summary": "Update the Dynamic DNS settings",
+	"description": "Saves the Dynamic DNS settings; send only what changes. Fields set by environment variables are ignored. A time must be from 1m to 24h. A service must be an https:// URL, 1 to 10 of them; a literal address the server may not call is refused with 400, and so is a name that resolves to one (error.ddns-service-blocked). A change of the period restarts the timer. Nothing is reloaded.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "The settings to change; fields you leave out keep their value",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"minProperties": 1,
+					"properties": {
+						"period": {
+							"type": "string",
+							"pattern": "^(?:[0-9]+|(?:[0-9]+w)?(?:[0-9]+d)?(?:[0-9]+h)?(?:[0-9]+m)?(?:[0-9]+s)?)$",
+							"minLength": 1,
+							"maxLength": 32,
+							"description": "How often the dynamic DNS records are checked, a time from 1m to 24h such as 5m or 1h30m (env DDNS_PERIOD); a change restarts the timer",
+							"example": "5m"
+						},
+						"cooldown": {
+							"type": "string",
+							"pattern": "^(?:[0-9]+|(?:[0-9]+w)?(?:[0-9]+d)?(?:[0-9]+h)?(?:[0-9]+m)?(?:[0-9]+s)?)$",
+							"minLength": 1,
+							"maxLength": 32,
+							"description": "The shortest time between two changes of one record, a time from 1m to 24h (env DDNS_COOLDOWN)",
+							"example": "5m"
+						},
+						"ipv4_services": {
+							"type": "array",
+							"minItems": 1,
+							"maxItems": 10,
+							"items": {
+								"type": "string",
+								"minLength": 9,
+								"maxLength": 200,
+								"pattern": "^https://"
+							},
+							"description": "The services asked for the instance's public IPv4 address, https:// URLs; a literal address the server may not call, or a name that resolves to one, is refused (env DDNS_IPV4_SERVICES)",
+							"example": [
+								"https://api.ipify.org",
+								"https://ipv4.icanhazip.com",
+								"https://v4.ident.me"
+							]
+						},
+						"ipv6_services": {
+							"type": "array",
+							"minItems": 1,
+							"maxItems": 10,
+							"items": {
+								"type": "string",
+								"minLength": 9,
+								"maxLength": 200,
+								"pattern": "^https://"
+							},
+							"description": "The services asked for the instance's public IPv6 address, https:// URLs; a literal address the server may not call, or a name that resolves to one, is refused (env DDNS_IPV6_SERVICES)",
+							"example": [
+								"https://api6.ipify.org",
+								"https://ipv6.icanhazip.com",
+								"https://v6.ident.me"
+							]
+						},
+						"resolver": {
+							"type": "array",
+							"maxItems": 8,
+							"items": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 64
+							},
+							"description": "DNS servers the updater asks for a record's current address, IPv4 addresses or IPv6 addresses in brackets with an optional :port; empty uses the container's own resolvers (env DDNS_RESOLVER)",
+							"example": [
+								"1.1.1.1"
+							]
+						}
+					}
+				},
+				"example": {
+					"period": "10m",
+					"cooldown": "5m"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "The Dynamic DNS settings after the save, in the same form as the GET answer",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"period": "5m",
+								"cooldown": "5m",
+								"ipv4_services": [
+									"https://api.ipify.org",
+									"https://ipv4.icanhazip.com",
+									"https://v4.ident.me"
+								],
+								"ipv6_services": [
+									"https://api6.ipify.org",
+									"https://ipv6.icanhazip.com",
+									"https://v6.ident.me"
+								],
+								"resolver": [],
+								"locked": [],
+								"locked_by": {},
+								"locked_reason": {},
+								"applies": {
+									"period": "immediately",
+									"cooldown": "immediately",
+									"ipv4_services": "immediately",
+									"ipv6_services": "immediately",
+									"resolver": "immediately"
+								},
+								"restart_pending": []
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/runtime-ddns-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}
