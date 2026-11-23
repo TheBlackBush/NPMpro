@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createDnsDomains, getDnsDomains, updateDnsDomain } from "src/api/backend";
+import { createDnsDomains, getDnsDomains, getProviderDomains, updateDnsDomain } from "src/api/backend";
 
 // a save of domains changes the credentials' Domains column, the window of a credential and the picker
 const DOMAIN_KEYS = [
@@ -18,6 +18,17 @@ const useDnsDomains = (expand, options = {}) =>
 		...options,
 	});
 
+// the zones a credential's provider lists, asked on each open of the Fetch domains window and never kept
+const useProviderDomains = (id) =>
+	useQuery({
+		queryKey: ["dns-provider-domains", id],
+		queryFn: () => getProviderDomains(id),
+		enabled: id !== undefined && id !== null,
+		retry: false,
+		staleTime: 0,
+		gcTime: 0,
+	});
+
 const useDomainMutation = (mutationFn) => {
 	const queryClient = useQueryClient();
 	return useMutation({
@@ -29,4 +40,4 @@ const useDomainMutation = (mutationFn) => {
 const useCreateDnsDomains = () => useDomainMutation(createDnsDomains);
 const useMoveDnsDomain = () => useDomainMutation(updateDnsDomain);
 
-export { DOMAIN_KEYS, useCreateDnsDomains, useDnsDomains, useMoveDnsDomain };
+export { DOMAIN_KEYS, useCreateDnsDomains, useDnsDomains, useMoveDnsDomain, useProviderDomains };

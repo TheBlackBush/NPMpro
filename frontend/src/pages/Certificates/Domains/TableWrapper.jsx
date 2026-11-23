@@ -1,10 +1,10 @@
-import { Plus } from "lucide-react";
+import { CloudDownload, Plus } from "lucide-react";
 import { useState } from "react";
 import { deleteDnsDomain } from "src/api/backend";
 import { Button, ErrorAlert, HasPermission, ListPage, ListToolbar, LoadingPage } from "src/components";
 import { DOMAIN_KEYS, useDnsDomains, useListFilters, usePaging } from "src/hooks";
 import { T } from "src/locale";
-import { showDeleteConfirmModal, showDnsDomainModal, showDnsDomainsModal } from "src/modals";
+import { showDeleteConfirmModal, showDnsDomainModal, showDnsDomainsModal, showFetchDomainsModal } from "src/modals";
 import { DNS_DOMAIN_LIST_EXPAND } from "src/modules/CertificateTabs";
 import { displayDomain } from "src/modules/DnsDomainForms";
 import { activeFilterCount } from "src/modules/ListFilters";
@@ -47,10 +47,16 @@ export default function TableWrapper() {
 			actions={
 				<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
 					{data?.length ? (
-						<Button color="primary" size="sm" onClick={() => showDnsDomainsModal()}>
-							<Plus data-icon="inline-start" aria-hidden="true" />
-							<T id="dns-domains.add" />
-						</Button>
+						<>
+							<Button size="sm" onClick={() => showFetchDomainsModal()}>
+								<CloudDownload data-icon="inline-start" aria-hidden="true" />
+								<T id="dns-domains.fetch" />
+							</Button>
+							<Button color="primary" size="sm" onClick={() => showDnsDomainsModal()}>
+								<Plus data-icon="inline-start" aria-hidden="true" />
+								<T id="dns-domains.add" />
+							</Button>
+						</>
 					) : null}
 				</HasPermission>
 			}

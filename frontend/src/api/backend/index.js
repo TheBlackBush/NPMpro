@@ -60,6 +60,7 @@ export * from "./getMonitoringSettings";
 export * from "./getMonitoringSummary";
 export * from "./getMonitoringTraffic";
 export * from "./getOidcSettings";
+export * from "./getProviderDomains";
 export * from "./getRuntimeSettings";
 export * from "./getToken";
 export * from "./getUser";

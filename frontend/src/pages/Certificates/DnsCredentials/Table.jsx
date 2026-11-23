@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Eye, KeyRound, SquarePen, Trash2 } from "lucide-react";
+import { CloudDownload, Eye, KeyRound, SquarePen, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
@@ -8,6 +8,7 @@ import { Badge } from "src/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
 import { useCanManage, useDnsProviders } from "src/hooks";
 import { intl, T } from "src/locale";
+import { showFetchDomainsModal } from "src/modals";
 import { displayDomain } from "src/modules/DnsDomainForms";
 import { CERTIFICATES } from "src/modules/Permissions";
 
@@ -71,6 +72,8 @@ function Domains({ domains }) {
 }
 
 function DnsCredentialActions({ credential, onDelete, onEdit }) {
+	const { data: providers } = useDnsProviders();
+	const lists = providers?.find((p) => p.id === credential.provider)?.listsDomains === true;
 	const canManage = useCanManage(CERTIFICATES);
 	const inUse = (credential.certificates?.length ?? 0) > 0;
 	return (
@@ -90,6 +93,16 @@ function DnsCredentialActions({ credential, onDelete, onEdit }) {
 						? intl.formatMessage({ id: "list.row-edit" }, { name: credential.name || `#${credential.id}` })
 						: intl.formatMessage({ id: "list.row-view" }, { name: credential.name || `#${credential.id}` }),
 					onSelect: () => onEdit?.(credential.id),
+				},
+				{
+					key: "fetch-domains",
+					label: <T id="dns-domains.fetch" />,
+					icon: CloudDownload,
+					onSelect: () => showFetchDomainsModal({ credentialId: credential.id }),
+					// a provider without a zone list says so; a credential that cannot be decrypted cannot ask
+					disabled: !lists || Boolean(credential.decryptError),
+					title: lists ? undefined : intl.formatMessage({ id: "dns-domains.fetch.not-supported" }),
+					hidden: !canManage,
 				},
 				{
 					key: "delete",
