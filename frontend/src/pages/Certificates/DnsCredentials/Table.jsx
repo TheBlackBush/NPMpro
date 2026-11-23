@@ -71,9 +71,22 @@ function Domains({ domains }) {
 	);
 }
 
+/**
+ * The reason under a disabled Fetch domains item, if any
+ *
+ * @param   {{ decryptError?: boolean }} credential
+ * @param   {boolean|undefined} lists  whether the provider lists zones (undefined: not known yet)
+ * @returns {string|undefined}
+ */
+const fetchNote = (credential, lists) => {
+	if (credential.decryptError) return intl.formatMessage({ id: "dns-credentials.decrypt-error-short" });
+	if (lists === false) return intl.formatMessage({ id: "dns-domains.fetch.not-supported" });
+};
+
 function DnsCredentialActions({ credential, onDelete, onEdit }) {
 	const { data: providers } = useDnsProviders();
-	const lists = providers?.find((p) => p.id === credential.provider)?.listsDomains === true;
+	// undefined while the providers list is loading or failed: the window then answers for the provider
+	const lists = providers ? providers.find((p) => p.id === credential.provider)?.listsDomains === true : undefined;
 	const canManage = useCanManage(CERTIFICATES);
 	const inUse = (credential.certificates?.length ?? 0) > 0;
 	return (
@@ -99,9 +112,9 @@ function DnsCredentialActions({ credential, onDelete, onEdit }) {
 					label: <T id="dns-domains.fetch" />,
 					icon: CloudDownload,
 					onSelect: () => showFetchDomainsModal({ credentialId: credential.id }),
-					// a provider without a zone list says so; a credential that cannot be decrypted cannot ask
-					disabled: !lists || Boolean(credential.decryptError),
-					note: lists ? undefined : intl.formatMessage({ id: "dns-domains.fetch.not-supported" }),
+					// a credential that cannot be decrypted cannot ask, and a provider without a zone list says so
+					disabled: lists === false || Boolean(credential.decryptError),
+					note: fetchNote(credential, lists),
 					hidden: !canManage,
 				},
 				{
