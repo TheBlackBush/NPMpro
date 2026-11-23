@@ -4,7 +4,12 @@ import errs from "./error.js";
 const FIRST_DELAY_MS = 60_000;
 const POLL_MS = 1000;
 
+const DEFAULT_PERIOD_MS = 5 * 60_000;
+// the longest period; Node fires a timer above 2^31-1 ms at once
+const MAX_PERIOD_MS = 24 * 60 * 60_000;
+
 const validMs = (ms) => Number.isFinite(ms) && ms > 0;
+const clampPeriod = (ms) => Math.min(ms, MAX_PERIOD_MS);
 
 const pausedError = () => {
 	const error = new errs.ValidationError("Dynamic DNS is paused", "error.ddns-paused");
@@ -32,7 +37,7 @@ const createDdnsTimer = ({
 	pollMs = POLL_MS,
 	log,
 } = {}) => {
-	let period = validMs(periodMs) ? periodMs : 5 * 60_000;
+	let period = validMs(periodMs) ? clampPeriod(periodMs) : DEFAULT_PERIOD_MS;
 	let firstHandle = null;
 	let intervalHandle = null;
 	let running = false;
@@ -61,7 +66,11 @@ const createDdnsTimer = ({
 
 	const tick = () => {
 		if (pauses > 0 || active > 0) return;
-		locked(run).catch((error) => log?.error(`Dynamic DNS cycle failed: ${error?.message}`));
+		locked(run).catch((error) => {
+			// a pause that began after the check above is a skip, not a failure
+			if (error?.message_i18n === "error.ddns-paused") return;
+			log?.error(`Dynamic DNS cycle failed: ${error?.message}`);
+		});
 	};
 
 	const stopHandles = () => {
@@ -77,6 +86,15 @@ const createDdnsTimer = ({
 			nextAt = now() + period;
 			tick();
 		}, period);
+	};
+
+	const scheduleFirst = (delayMs) => {
+		nextAt = now() + delayMs;
+		firstHandle = clock.setTimeout(() => {
+			firstHandle = null;
+			startInterval();
+			tick();
+		}, delayMs);
 	};
 
 	const notBusy = async (wait) => {
@@ -144,13 +162,15 @@ const createDdnsTimer = ({
 		start: () => {
 			if (running) return false;
 			running = true;
-			nextAt = now() + firstDelayMs;
-			firstHandle = clock.setTimeout(() => {
-				firstHandle = null;
-				startInterval();
-				tick();
-			}, firstDelayMs);
+			scheduleFirst(Math.min(firstDelayMs, MAX_PERIOD_MS));
 			return true;
+		},
+
+		/** Stops the timer; start() can run it again */
+		stop: () => {
+			stopHandles();
+			running = false;
+			nextAt = null;
 		},
 
 		/**
@@ -160,10 +180,14 @@ const createDdnsTimer = ({
 		 * @param {number} [nextPeriodMs]
 		 */
 		restart: (nextPeriodMs) => {
-			if (validMs(nextPeriodMs)) period = nextPeriodMs;
+			if (validMs(nextPeriodMs)) period = clampPeriod(nextPeriodMs);
 			if (!running) return;
+			// before the first tick the rest of the first delay stays, the new period starts with that tick
+			const waiting = firstHandle !== null;
+			const remaining = Math.max(0, (nextAt ?? 0) - now());
 			stopHandles();
-			startInterval();
+			if (waiting) scheduleFirst(remaining);
+			else startInterval();
 			log?.info(`Dynamic DNS timer restarted (every ${period} ms)`);
 		},
 	};

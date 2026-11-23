@@ -237,14 +237,131 @@ it("restart sets a new period and ignores an invalid one", async () => {
 	assert.equal(runs, 3);
 });
 
-it("restart before the first tick drops the first delay and uses the period", async () => {
+it("restart before the first tick keeps the rest of the first delay", async () => {
 	const clock = fakeClock();
 	let runs = 0;
 	const timer = createDdnsTimer({ run: () => runs++, periodMs: 5 * MIN, firstDelayMs: MIN, clock });
 	timer.start();
+	await clock.advance(20_000);
 	timer.restart(3 * MIN);
-	await clock.advance(2 * MIN);
+	assert.equal(timer.nextRunOn(), clock.now() + 40_000);
+	await clock.advance(39_999);
 	assert.equal(runs, 0);
-	await clock.advance(MIN);
+	await clock.advance(1);
 	assert.equal(runs, 1);
+	assert.equal(timer.nextRunOn(), clock.now() + 3 * MIN);
+});
+
+it("restart during a running cycle starts a new period and skips no more than the busy ticks", async () => {
+	const clock = fakeClock();
+	const hold = gate();
+	let runs = 0;
+	const timer = createDdnsTimer({
+		run: () => {
+			runs++;
+			return hold.promise;
+		},
+		periodMs: MIN,
+		firstDelayMs: MIN,
+		clock,
+	});
+	timer.start();
+	await clock.advance(MIN);
+	timer.restart(2 * MIN);
+	assert.equal(timer.busy(), true);
+	await clock.advance(2 * MIN);
+	assert.equal(runs, 1);
+	hold.open();
+	await new Promise((resolve) => setImmediate(resolve));
+	await clock.advance(2 * MIN);
+	assert.equal(runs, 2);
+});
+
+it("an invalid period gives the 5 minute default and a long one is capped at 24 hours", async () => {
+	const clock = fakeClock();
+	for (const bad of [0, -1, Number.NaN, undefined, "4"]) {
+		const timer = createDdnsTimer({ run: () => {}, periodMs: bad, firstDelayMs: MIN, clock });
+		timer.start();
+		await clock.advance(MIN);
+		assert.equal(timer.nextRunOn(), clock.now() + 5 * MIN);
+		timer.stop();
+	}
+	const capped = createDdnsTimer({ run: () => {}, periodMs: 2 ** 31, firstDelayMs: MIN, clock });
+	capped.start();
+	await clock.advance(MIN);
+	assert.equal(capped.nextRunOn(), clock.now() + 24 * 60 * MIN);
+	capped.restart(2 ** 40);
+	assert.equal(capped.nextRunOn(), clock.now() + 24 * 60 * MIN);
+	assert.ok([...clock.timers.values()].every((t) => (t.every ?? 0) <= 2 ** 31 - 1));
+});
+
+it("nextRunOn stays set while paused", async () => {
+	const clock = fakeClock();
+	const timer = createDdnsTimer({ run: () => {}, periodMs: MIN, firstDelayMs: MIN, clock });
+	timer.start();
+	await clock.advance(MIN);
+	timer.pause();
+	await clock.advance(30_000);
+	assert.equal(timer.nextRunOn(), clock.now() + 30_000);
+});
+
+it("a queued runNow is rejected with 409 when a pause starts meanwhile", async () => {
+	const clock = fakeClock();
+	const hold = gate();
+	const timer = createDdnsTimer({ run: () => hold.promise, periodMs: MIN, firstDelayMs: MIN, clock });
+	timer.start();
+	await clock.advance(MIN);
+	let ran = false;
+	const queued = timer.runNow(() => {
+		ran = true;
+	});
+	const outcome = assert.rejects(
+		queued,
+		(error) => error.status === 409 && error.message_i18n === "error.ddns-paused",
+	);
+	timer.pause();
+	hold.open();
+	await outcome;
+	assert.equal(ran, false);
+	assert.equal(timer.busy(), false);
+});
+
+it("a pause between the tick and the lock is a skip, not a logged error", async () => {
+	const clock = fakeClock();
+	const logged = [];
+	const timer = createDdnsTimer({
+		run: () => {},
+		periodMs: MIN,
+		firstDelayMs: MIN,
+		clock,
+		log: { error: (message) => logged.push(message), info: () => {} },
+	});
+	timer.start();
+	await clock.advance(MIN - 1);
+	// the tick runs and pauses in the same turn, before the lock's microtask
+	const original = clock.timers.values().next().value.fn;
+	clock.timers.values().next().value.fn = () => {
+		original();
+		timer.pause();
+	};
+	await clock.advance(1);
+	assert.deepEqual(logged, []);
+});
+
+it("stop clears the timer and start runs it again", async () => {
+	const clock = fakeClock();
+	let runs = 0;
+	const timer = createDdnsTimer({ run: () => runs++, periodMs: MIN, firstDelayMs: MIN, clock });
+	timer.start();
+	await clock.advance(MIN);
+	timer.stop();
+	assert.equal(timer.running(), false);
+	assert.equal(timer.nextRunOn(), null);
+	assert.equal(clock.timers.size, 0);
+	await clock.advance(5 * MIN);
+	assert.equal(runs, 1);
+	timer.stop();
+	assert.equal(timer.start(), true);
+	await clock.advance(MIN);
+	assert.equal(runs, 2);
 });
