@@ -8,6 +8,7 @@ below as its release notes.
 
 ### Added
 
+- **DNS:** dynamic DNS: records under Certificates & DNS, Dynamic DNS keep names pointed at the instance's public IP (address records, or aliases such as a wildcard CNAME to one address record) with the saved Cloudflare, DigitalOcean, Hetzner Cloud and Gandi credentials, with Update now, Check now, history, backups and Settings, Dynamic DNS.
 - **DNS:** Domain Names fields suggest the DNS domains of your credentials and the names hosts and certificates use, and the DNS challenge suggests the credential whose domains cover the names.
 - **DNS:** DNS credentials know the domains (zones) they manage: a Domains tab under Certificates & DNS, a Domains line in the credential window, and domains in backups.
 - **DNS:** fetch the domains of a Cloudflare, DigitalOcean, Hetzner Cloud, Gandi, OVH or PowerDNS credential from the provider.

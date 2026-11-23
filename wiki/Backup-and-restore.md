@@ -11,9 +11,11 @@ NPMpro saves your hosts, certificates, users and settings to a single `.npmpro` 
 
 - Hosts: proxy hosts (with their custom locations and access list links), redirection hosts, 404 hosts and streams
 - Certificates: Let's Encrypt, custom and mTLS CA certificates with their files. ACME accounts are part of the certificates: the account files (their keys only in a backup with secrets) and NPMpro's record of each CA (server, email, state). EAB keys are never in a backup. An account restored from a backup without secrets registers again at the next certificate request; a CA that needs EAB then asks for its keys in the Connect window of Settings, Certificates, ACME account. A certificate keeps its CA in a backup; restored onto an instance without that CA's account, it registers one (or reports the missing EAB keys) at its next renewal.
-- Access lists, DNS credentials (with their domains) and users
+- Access lists, DNS credentials (with their domains), Dynamic DNS records and users
 - Settings: runtime settings, Landing pages (the default site, the page choices and custom pages), OIDC sign-in, monitoring and GeoIP, backup schedules and the CrowdSec settings
 - Custom files: everything in `custom_nginx/`, and the CrowdSec pages `ban.html` and `captcha.html` of older versions
+
+Dynamic DNS records are a backup type of their own (Dynamic DNS). Their history is not backed up. A restored record is checked again by the next cycle: an enabled one starts as Pending, a disabled one stays disabled. A record whose DNS credential is not in the restore, or is of another provider or owner than the record, is dropped, and the result says so. The updater is paused while a restore or merge runs. See [DNS](DNS).
 
 A backup from an older version that holds `crowdsec.conf` restores into the CrowdSec settings. A merge does not import a `crowdsec.conf` from an older backup: use **Replace** (restore) for old backups.
 
