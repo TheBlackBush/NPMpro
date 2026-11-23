@@ -1,0 +1,231 @@
+{
+	"type": "object",
+	"description": "A dynamic DNS record NPMpro keeps in line: an address record (A or AAAA) that follows the instance's public IP, or an alias (a CNAME to a fixed name). It is written through the DNS credential's provider; the credential's values never appear.",
+	"required": [
+		"id",
+		"created_on",
+		"modified_on",
+		"owner_user_id",
+		"dns_credential_id",
+		"provider",
+		"name",
+		"zone",
+		"kind",
+		"ip_version",
+		"enabled",
+		"state",
+		"failures"
+	],
+	"additionalProperties": false,
+	"properties": {
+		"id": {
+			"$ref": "../common.json#/properties/id"
+		},
+		"created_on": {
+			"$ref": "../common.json#/properties/created_on"
+		},
+		"modified_on": {
+			"$ref": "../common.json#/properties/modified_on"
+		},
+		"owner_user_id": {
+			"$ref": "../common.json#/properties/user_id"
+		},
+		"dns_credential_id": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 1,
+			"example": 1,
+			"description": "ID of the DNS credential the record is written with; null for a record that has none"
+		},
+		"provider": {
+			"type": "string",
+			"example": "cloudflare",
+			"description": "ID of the updater provider that writes the record (`GET /nginx/ddns/providers`)"
+		},
+		"name": {
+			"type": "string",
+			"maxLength": 253,
+			"example": "home.example.com",
+			"description": "The full record name in lower case ASCII (an internationalized name as punycode); a wildcard is `*.example.com`"
+		},
+		"zone": {
+			"type": "string",
+			"maxLength": 253,
+			"example": "example.com",
+			"description": "The zone the name belongs to: the longest domain of the credential that covers it, or the one typed"
+		},
+		"kind": {
+			"type": "string",
+			"enum": [
+				"address",
+				"alias"
+			],
+			"example": "address",
+			"description": "`address`: A and AAAA records that follow the public IP; `alias`: a CNAME to `target`"
+		},
+		"target": {
+			"type": [
+				"string",
+				"null"
+			],
+			"maxLength": 253,
+			"example": null,
+			"description": "The CNAME target of an alias; null for an address record"
+		},
+		"ip_version": {
+			"type": "string",
+			"enum": [
+				"ipv4",
+				"ipv6",
+				"both"
+			],
+			"example": "ipv4",
+			"description": "Which address records an address record keeps: `ipv4` (A), `ipv6` (AAAA) or `both`; an alias always shows `ipv4` and ignores it"
+		},
+		"ipv6_suffix": {
+			"type": [
+				"string",
+				"null"
+			],
+			"maxLength": 64,
+			"example": null,
+			"description": "An IPv6 interface id such as `::1` that replaces the last 64 bits of the detected address; null for the detected address as it is"
+		},
+		"ttl": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 60,
+			"maximum": 86400,
+			"example": null,
+			"description": "The TTL in seconds the record is written with; null keeps the provider's default or the record's current TTL"
+		},
+		"enabled": {
+			"type": "boolean",
+			"example": true,
+			"description": "Whether NPMpro keeps the record up to date"
+		},
+		"state": {
+			"type": "string",
+			"enum": [
+				"pending",
+				"ok",
+				"failed",
+				"disabled"
+			],
+			"example": "ok",
+			"description": "`pending` (not checked yet), `ok`, `failed` (see `error`) or `disabled`"
+		},
+		"last_ipv4": {
+			"type": [
+				"string",
+				"null"
+			],
+			"example": "81.2.69.160",
+			"description": "The IPv4 address last seen at the provider (written or confirmed)"
+		},
+		"last_ipv6": {
+			"type": [
+				"string",
+				"null"
+			],
+			"example": null,
+			"description": "The IPv6 address last seen at the provider (written or confirmed)"
+		},
+		"last_checked_on": {
+			"type": [
+				"string",
+				"null"
+			],
+			"example": "2026-11-24T09:35:00.000Z",
+			"description": "When the record was last checked, as an ISO time"
+		},
+		"last_changed_on": {
+			"type": [
+				"string",
+				"null"
+			],
+			"example": "2026-11-24T09:30:00.000Z",
+			"description": "When the record was last written, as an ISO time; the cooldown counts from it"
+		},
+		"next_try_on": {
+			"type": [
+				"string",
+				"null"
+			],
+			"example": null,
+			"description": "When the record is tried again after a failure or a cooldown, as an ISO time; null when it is due at the next cycle"
+		},
+		"failures": {
+			"type": "integer",
+			"minimum": 0,
+			"example": 0,
+			"description": "Failed tries in a row; the retry delay doubles with each, up to 6 hours"
+		},
+		"error": {
+			"type": [
+				"string",
+				"null"
+			],
+			"example": null,
+			"description": "The last error message in English, with every secret of the credential replaced by ***"
+		},
+		"error_i18n": {
+			"type": [
+				"string",
+				"null"
+			],
+			"example": null,
+			"description": "The translation key of the last error when NPMpro raised it itself (such as `error.ddns-multi-value`); null for a provider message"
+		},
+		"error_values": {
+			"type": [
+				"object",
+				"null"
+			],
+			"additionalProperties": true,
+			"example": null,
+			"description": "The placeholders of the translated error, with `error_i18n`"
+		},
+		"proxied": {
+			"type": [
+				"boolean",
+				"null"
+			],
+			"example": false,
+			"description": "Cloudflare only: whether the record is proxied (read from the API, never changed by NPMpro); null when not known"
+		},
+		"credential": {
+			"type": "object",
+			"description": "The DNS credential, without its values; only with `expand=credential`",
+			"additionalProperties": false,
+			"properties": {
+				"id": {
+					"$ref": "../common.json#/properties/id"
+				},
+				"created_on": {
+					"$ref": "../common.json#/properties/created_on"
+				},
+				"modified_on": {
+					"$ref": "../common.json#/properties/modified_on"
+				},
+				"owner_user_id": {
+					"$ref": "../common.json#/properties/user_id"
+				},
+				"name": {
+					"$ref": "./dns-credential-object.json#/properties/name"
+				},
+				"provider": {
+					"$ref": "./dns-credential-object.json#/properties/provider"
+				}
+			}
+		},
+		"owner": {
+			"$ref": "./user-object.json",
+			"description": "The user who created the record; only with `expand=owner`"
+		}
+	}
+}

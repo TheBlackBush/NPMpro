@@ -1,0 +1,56 @@
+{
+	"operationId": "getDdnsRecordHistory",
+	"summary": "Get the history of a dynamic DNS record",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "recordID",
+			"description": "ID of the dynamic DNS record, as the list shows it",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"required": true,
+			"example": 1
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The history, newest first",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"id": 3,
+									"created_on": "2026-11-24T09:30:00.000Z",
+									"kind": "changed",
+									"ip_version": "ipv4",
+									"old_ip": "81.2.69.159",
+									"new_ip": "81.2.69.160",
+									"message": null
+								}
+							]
+						}
+					},
+					"schema": {
+						"$ref": "../../../../../components/ddns-history-list.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Lists what changed on the record, newest first: written values, creations, failures and recoveries. Checks that found the record up to date are not listed. The newest 50 are kept.\n\nNeeds: Certificates view"
+}

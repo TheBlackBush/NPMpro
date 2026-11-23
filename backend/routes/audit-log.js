@@ -27,6 +27,7 @@ const listSchema = {
 				"certificate",
 				"dns-credential",
 				"dns-domain",
+				"ddns-record",
 				"user",
 				"setting",
 				"backup-schedule",

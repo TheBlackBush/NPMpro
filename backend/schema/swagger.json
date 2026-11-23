@@ -272,6 +272,50 @@
 				"$ref": "./paths/nginx/dns-credentials/credentialID/provider-domains/get.json"
 			}
 		},
+		"/nginx/ddns-records": {
+			"get": {
+				"$ref": "./paths/nginx/ddns-records/get.json"
+			},
+			"post": {
+				"$ref": "./paths/nginx/ddns-records/post.json"
+			}
+		},
+		"/nginx/ddns-records/{recordID}": {
+			"get": {
+				"$ref": "./paths/nginx/ddns-records/recordID/get.json"
+			},
+			"put": {
+				"$ref": "./paths/nginx/ddns-records/recordID/put.json"
+			},
+			"delete": {
+				"$ref": "./paths/nginx/ddns-records/recordID/delete.json"
+			}
+		},
+		"/nginx/ddns-records/{recordID}/update": {
+			"post": {
+				"$ref": "./paths/nginx/ddns-records/recordID/update/post.json"
+			}
+		},
+		"/nginx/ddns-records/{recordID}/history": {
+			"get": {
+				"$ref": "./paths/nginx/ddns-records/recordID/history/get.json"
+			}
+		},
+		"/nginx/ddns/status": {
+			"get": {
+				"$ref": "./paths/nginx/ddns/status/get.json"
+			}
+		},
+		"/nginx/ddns/check": {
+			"post": {
+				"$ref": "./paths/nginx/ddns/check/post.json"
+			}
+		},
+		"/nginx/ddns/providers": {
+			"get": {
+				"$ref": "./paths/nginx/ddns/providers/get.json"
+			}
+		},
 		"/nginx/dns-domains": {
 			"get": {
 				"$ref": "./paths/nginx/dns-domains/get.json"

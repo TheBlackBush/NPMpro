@@ -7,7 +7,7 @@ import multer from "multer";
 import dnsPlugins from "../../certbot/dns-plugins.json" with { type: "json" };
 import internalAcmeAccount from "../../internal/acme-account.js";
 import internalCertificate from "../../internal/certificate.js";
-import { listsDomains } from "../../lib/ddns/providers/index.js";
+import { listsDomains, updaterFor } from "../../lib/ddns/providers/index.js";
 import { getFieldDefinition } from "../../lib/dns-credential-values.js";
 import errs from "../../lib/error.js";
 import jwtdecode from "../../lib/express/jwt-decode.js";
@@ -120,6 +120,7 @@ router
 					fields: getFieldDefinition(id)?.fields ?? null,
 					one_of: getFieldDefinition(id)?.one_of ?? null,
 					lists_domains: listsDomains(id),
+					ddns: updaterFor(id) !== null,
 				}))
 				.sort((a, b) => a.name.localeCompare(b.name)),
 		);

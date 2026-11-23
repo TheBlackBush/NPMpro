@@ -1,0 +1,64 @@
+{
+	"type": "array",
+	"description": "The history of a dynamic DNS record, newest first (the newest 50 are kept)",
+	"items": {
+		"type": "object",
+		"required": [
+			"id",
+			"created_on",
+			"kind"
+		],
+		"additionalProperties": false,
+		"properties": {
+			"id": {
+				"$ref": "../common.json#/properties/id"
+			},
+			"created_on": {
+				"$ref": "../common.json#/properties/created_on"
+			},
+			"kind": {
+				"type": "string",
+				"enum": [
+					"changed",
+					"created",
+					"failed",
+					"recovered"
+				],
+				"example": "changed",
+				"description": "What happened: the value `changed`, the record was `created`, the record `failed` or `recovered`"
+			},
+			"ip_version": {
+				"type": [
+					"string",
+					"null"
+				],
+				"example": "ipv4",
+				"description": "`ipv4` or `ipv6` for an address change; null for an alias or a state change"
+			},
+			"old_ip": {
+				"type": [
+					"string",
+					"null"
+				],
+				"example": "81.2.69.159",
+				"description": "The value before the change (an address, or a CNAME target for an alias)"
+			},
+			"new_ip": {
+				"type": [
+					"string",
+					"null"
+				],
+				"example": "81.2.69.160",
+				"description": "The value after the change (an address, or a CNAME target for an alias)"
+			},
+			"message": {
+				"type": [
+					"string",
+					"null"
+				],
+				"example": null,
+				"description": "The error message of a `failed` entry, with every secret replaced by ***"
+			}
+		}
+	}
+}

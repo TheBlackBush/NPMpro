@@ -49,6 +49,10 @@
 			"lists_domains": {
 				"type": "boolean",
 				"description": "Whether the provider's API can list the DNS domains (zones) of a credential, for the Add domains window"
+			},
+			"ddns": {
+				"type": "boolean",
+				"description": "Whether dynamic DNS records can be written with a credential of this provider"
 			}
 		}
 	}
