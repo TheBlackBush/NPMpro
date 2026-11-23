@@ -5,7 +5,6 @@ import {
 	addDomain,
 	cleanUp,
 	openTab,
-	revealRow,
 	rowAction,
 	rowGone,
 	rowShows,
