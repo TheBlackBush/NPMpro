@@ -4,14 +4,17 @@ export const CERTIFICATE_TABS = Object.freeze([
 	Object.freeze({ key: "certificates", to: "/certificates", labelId: "certificates" }),
 	Object.freeze({ key: "dns-credentials", to: "/certificates/dns-credentials", labelId: "dns-credentials" }),
 	Object.freeze({ key: "domains", to: "/certificates/domains", labelId: "dns-domains" }),
+	Object.freeze({ key: "dynamic-dns", to: "/certificates/dynamic-dns", labelId: "dynamic-dns" }),
 ]);
 
 const DNS_CREDENTIALS_PATH = /^\/certificates\/dns-credentials(?:\/|$)/u;
 const DOMAINS_PATH = /^\/certificates\/domains(?:\/|$)/u;
+const DYNAMIC_DNS_PATH = /^\/certificates\/dynamic-dns(?:\/|$)/u;
 
 /** The tab a path opens: DNS Credentials on its route (with or without a trailing part), else Certificates */
 export function certificateTab(pathname) {
 	if (DNS_CREDENTIALS_PATH.test(pathname)) return "dns-credentials";
+	if (DYNAMIC_DNS_PATH.test(pathname)) return "dynamic-dns";
 	return DOMAINS_PATH.test(pathname) ? "domains" : "certificates";
 }
 
@@ -30,3 +33,4 @@ export const CERTIFICATE_LIST_EXPAND = Object.freeze([
 ]);
 export const DNS_CREDENTIAL_LIST_EXPAND = Object.freeze(["owner", "certificates", "domains"]);
 export const DNS_DOMAIN_LIST_EXPAND = Object.freeze(["credential"]);
+export const DDNS_RECORD_LIST_EXPAND = Object.freeze(["credential"]);

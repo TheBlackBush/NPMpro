@@ -26,6 +26,7 @@ export const PAGED_LISTS = Object.freeze([
 	"streams",
 	"certificates",
 	"dns-domains",
+	"ddns-records",
 	"access-lists",
 	"backups",
 	"audit-log",

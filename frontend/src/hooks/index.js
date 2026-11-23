@@ -13,6 +13,7 @@ export * from "./useCertificates";
 export * from "./useCheckVersion";
 export * from "./useCrowdsecSettings";
 export * from "./useDatabase";
+export * from "./useDdns";
 export * from "./useDeadHost";
 export * from "./useDelayElapsed";
 export * from "./useDirectorySuggestions";

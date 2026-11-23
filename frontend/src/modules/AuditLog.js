@@ -9,6 +9,7 @@ export const AUDIT_OBJECT_TYPES = Object.freeze([
 	"certificate",
 	"dns-credential",
 	"dns-domain",
+	"ddns-record",
 	"user",
 	"setting",
 	"backup-schedule",

@@ -60,5 +60,6 @@ it("the stored backups default to 10 rows, every other list to 25", () => {
 
 it("the API tokens list of Settings pages with its own stored size", () => {
 	assert.ok(PAGED_LISTS.includes("api-tokens"));
+	assert.ok(PAGED_LISTS.includes("ddns-records"));
 	assert.equal(defaultPageSize("api-tokens"), 25);
 });
