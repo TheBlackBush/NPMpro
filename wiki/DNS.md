@@ -30,12 +30,12 @@ A dynamic DNS record keeps a DNS name pointed at this instance, so a home or off
 
 ### Records
 
-A record has a full name (`home.example.com`), a credential, a zone (taken from the domains of the credential, or typed), an optional TTL (60 to 86400 seconds; empty keeps the provider's value) and an **Enabled** switch. There are two kinds:
+A record has a full name (`home.example.com`), a credential, a zone (taken from the domains of the credential, or typed), an optional TTL (from the provider's minimum to 86400 seconds: 60 on Cloudflare and Hetzner Cloud, 30 on DigitalOcean, 300 on Gandi; empty keeps the provider's value) and an **Enabled** switch. There are two kinds:
 
 - **Address (A, AAAA):** follows the public IP. The IP version is IPv4, IPv6 or both. IPv6 is off unless a record asks for it. An optional IPv6 suffix replaces the last 64 bits of the detected address, for a stable address of one host in the network.
 - **Alias (CNAME):** points the name at a fixed target name and follows no address. The usual pairing is one address record such as `home.example.com` plus an alias such as `*.example.com` pointing to `home.example.com`: only the address record ever changes.
 
-A wildcard name (`*.example.com`) is possible only on Cloudflare and DigitalOcean; Hetzner Cloud and Gandi refuse it when you save. A record that is missing at the provider is created. On Cloudflare the proxied setting is never changed: a new record is not proxied, and an existing one keeps what it has. A name whose record set at the provider has more than one value is never touched: the record is marked Failed instead. A name that already has a record of the other type (an address where an alias is wanted, or the reverse) is refused. Deleting a record in NPMpro leaves the DNS entry at the provider as it is.
+A wildcard name (`*.example.com`) is possible only on Cloudflare and DigitalOcean; Hetzner Cloud and Gandi refuse it when you save. A record that is missing at the provider is created. On Cloudflare the proxied setting is never changed: a new record is not proxied, and an existing one keeps what it has. A name whose record set at the provider has more than one value is never touched: the record is marked Failed instead. A name that already has a record of the other type at the provider (an address where an alias is wanted, or the reverse) is saved, and its first check marks it Failed with a message that says which record is in the way; nothing is written until that record is removed or the kind is changed. Deleting a record in NPMpro leaves the DNS entry at the provider as it is.
 
 ### How the address is found
 
@@ -45,7 +45,7 @@ NPMpro asks public echo services over `https://`, in turn, until one answers wit
 
 A check runs at start (one minute after) and then every period (default 5 minutes). For each enabled record NPMpro first looks up the name in DNS. When the answer already is the wanted address, nothing more happens. Only when the answer differs (or there is none) does it ask the provider's API, and it writes only when the record there really differs. A proxied Cloudflare record resolves to Cloudflare, so for it the provider is always asked. An alias is always compared at the provider.
 
-If the DNS server of your network answers with a LAN address for your own names (split horizon), set **Resolver for checks** in Settings, Dynamic DNS (`DDNS_RESOLVER`) to a public resolver, so the lookup sees what the world sees.
+If the DNS server of your network answers with a LAN address for your own names (split horizon), set **DNS servers for checks** in Settings, Dynamic DNS (`DDNS_RESOLVER`) to a public resolver, so the lookup sees what the world sees. These servers are used only for this lookup of a record's name; the address services and the providers always use the container's resolvers.
 
 The **cooldown** (default 5 minutes) is the least time between two writes of one record, so a flapping address cannot hammer the provider. A change inside the cooldown waits until the cooldown has passed. After a failed check the record is tried again later with a **backoff**: the wait doubles with each failure, starting at one period and never more than 6 hours; a success resets it. **Update now** (in the record's row menu) runs that one record at once, ignoring the backoff but not the cooldown, and shows the result. **Check now** (in the status card) runs a check of all your records at once.
 
@@ -56,9 +56,9 @@ Each record keeps its last 50 changes: created, changed (old and new value), fai
 The state of a record is one of:
 
 - **Pending:** waiting for its first check.
-- **Updating:** a check is writing it now.
+- **Updating:** shown in this browser while its **Update now** runs.
 - **Up to date:** the record at the provider is what it should be (with the age of the last check).
-- **Updated:** changed by the last check.
+- **Updated:** changed at the provider within the last 24 hours (with the time of the change).
 - **Failed:** the last check failed; the message says why, and the next try is shown.
 - **Disabled:** not kept up to date.
 
