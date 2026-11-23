@@ -225,7 +225,7 @@ ARG COF_VER=da93e0cec7fdb1a80f4972f75b3638763d012c0e # main
 ARG NBF_VER=5cee8db2a505f2a253e24691399c828c043071fc # master
 ARG LRH_VER=0.18.0-0 # lua-resty-http
 ARG LRS_VER=0.09-0 # lua-resty-string
-ARG LRO_VER=1.9.0-1 # lua-resty-openssl
+ARG LRO_VER=1.10.0-1 # lua-resty-openssl
 # ISO week (2026-W46) from CI: reruns the package step weekly. Without it the step reruns only when its inputs change.
 ARG ALPINE_REFRESH=
 
