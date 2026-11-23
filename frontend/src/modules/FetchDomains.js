@@ -4,6 +4,8 @@
 import { displayDomain } from "./DnsDomainForms.js";
 
 const HINTED = new Set(["cloudflare", "digitalocean", "ovh"]);
+// the only error the permission hint is for: the provider refused the credential
+const FORBIDDEN = "error.dns-zones-forbidden";
 
 /**
  * @param   {string|undefined} provider  the provider id of the credential
@@ -14,17 +16,20 @@ export function hintIdOf(provider) {
 }
 
 /**
- * @param   {{ supported: boolean, truncated: boolean, zones: { name: string, state: string, credentialName?: string }[] }|undefined} answer
+ * @param   {{ supported: boolean, truncated: boolean,
+ *            zones: { name: string, state: string, credentialName?: string }[] }|undefined} answer
  * @param   {unknown} error     the error of the request, if it failed
  * @param   {string} [provider] the provider id of the credential, for the hint
- * @returns {{ kind: "loading"|"list"|"empty"|"error"|"not-supported", rows: object[], hintId: string|null, truncated: boolean }}
+ * @returns {{ kind: "loading"|"list"|"empty"|"error"|"not-supported", rows: object[], hintId: string|null,
+ *            truncated: boolean }}  hintId only for a refused credential (error.dns-zones-forbidden)
  */
 export function fetchState(answer, error, provider) {
 	if (answer && !answer.supported) {
 		return { kind: "not-supported", rows: [], hintId: null, truncated: false };
 	}
 	if (error) {
-		return { kind: "error", rows: [], hintId: hintIdOf(provider), truncated: false };
+		const forbidden = error?.payload?.error?.message_i18n === FORBIDDEN;
+		return { kind: "error", rows: [], hintId: forbidden ? hintIdOf(provider) : null, truncated: false };
 	}
 	if (!answer) {
 		return { kind: "loading", rows: [], hintId: null, truncated: false };

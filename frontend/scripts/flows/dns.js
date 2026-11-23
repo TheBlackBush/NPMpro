@@ -418,6 +418,15 @@ const FETCH_FORBIDDEN = {
 	},
 };
 
+const FETCH_FAILED = {
+	error: {
+		code: 400,
+		message: "Unexpected answer (500): boom",
+		message_i18n: "error.dns-zones-failed",
+		message_values: { message: "Unexpected answer (500): boom" },
+	},
+};
+
 const fetchWindow = (page) => page.locator("[data-fetch-domains-window]");
 const fetchState = (page, state) => page.locator(`[data-fetch-domains][data-fetch-state=${state}]`);
 
@@ -428,12 +437,21 @@ async function fetchDomains({ admin }) {
 	let gate = null;
 	await page.route(FETCH_ROUTE, async (route) => {
 		if (gate) await gate;
-		await route.fulfill({
-			status: answer.status,
-			contentType: "application/json",
-			body: JSON.stringify(answer.body),
-		});
+		// a request the window aborted (Cancel) cannot be answered any more
+		await route
+			.fulfill({
+				status: answer.status,
+				contentType: "application/json",
+				body: JSON.stringify(answer.body),
+			})
+			.catch(() => undefined);
 	});
+	// the provider requests the page gave up on (Cancel aborts the one in flight)
+	const aborted = [];
+	const onFailed = (request) => {
+		if (request.url().includes("/provider-domains")) aborted.push(request.url());
+	};
+	page.on("requestfailed", onFailed);
 	const cancel = async () => {
 		await fetchWindow(page).getByRole("button", { name: "Cancel", exact: true }).click();
 		await fetchWindow(page).waitFor({ state: "detached" });
@@ -477,6 +495,8 @@ async function fetchDomains({ admin }) {
 		await fetchWindow(page).waitFor();
 		await fetchState(page, "loading").waitFor();
 		await cancel();
+		for (let tries = 0; aborted.length === 0 && tries < 50; tries++) await page.waitForTimeout(100);
+		if (aborted.length === 0) throw new Error("Cancel did not abort the provider request");
 		gate = null;
 		release();
 
@@ -488,6 +508,15 @@ async function fetchDomains({ admin }) {
 		await fetchWindow(page).getByText("This token cannot list zones", { exact: false }).waitFor();
 		if ((await fetchWindow(page).getByText("Zone:Zone:Read", { exact: false }).count()) > 0)
 			throw new Error("the Cloudflare hint repeats what the token needs");
+		await cancel();
+
+		// a failed list shows its message without the permission hint
+		answer = { status: 400, body: FETCH_FAILED };
+		await rowAction(page, "flow-fetch-cf", "Fetch domains");
+		await fetchState(page, "error").waitFor();
+		await fetchWindow(page).getByText("boom", { exact: false }).first().waitFor();
+		if ((await fetchWindow(page).getByText("This token cannot list zones", { exact: false }).count()) > 0)
+			throw new Error("a failed list shows the permission hint");
 		await cancel();
 		await page.goto("/certificates/domains");
 		await page.getByRole("button", { name: "Add domains", exact: true }).first().click();
@@ -544,6 +573,7 @@ async function fetchDomains({ admin }) {
 		if (ini.id === cf.id) throw new Error("the two credentials are one");
 		if (errors.length > 0) throw new Error(`page error: ${errors[0]}`);
 	} finally {
+		page.off("requestfailed", onFailed);
 		await page.unroute(FETCH_ROUTE);
 		await cleanUp(api);
 	}

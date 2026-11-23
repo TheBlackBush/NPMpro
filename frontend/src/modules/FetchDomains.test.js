@@ -28,8 +28,12 @@ it("is empty for an answer without zones", () => {
 	assert.equal(fetchState({ supported: true, truncated: false, zones: [] }, null).kind, "empty");
 });
 
-it("is an error with the hint of the provider", () => {
-	assert.deepEqual(fetchState(undefined, new Error("x"), "cloudflare"), {
+// an error of the API as base.js throws it
+const apiError = (messageI18n) =>
+	Object.assign(new Error(messageI18n), { payload: { error: { message_i18n: messageI18n } } });
+
+it("is an error with the hint of the provider for a refused credential", () => {
+	assert.deepEqual(fetchState(undefined, apiError("error.dns-zones-forbidden"), "cloudflare"), {
 		kind: "error",
 		rows: [],
 		hintId: "dns-domains.fetch.hint.cloudflare",
@@ -39,6 +43,25 @@ it("is an error with the hint of the provider", () => {
 	assert.equal(hintIdOf("ovh"), "dns-domains.fetch.hint.ovh");
 	assert.equal(hintIdOf("hetzner-cloud"), "dns-domains.fetch.hint.other");
 	assert.equal(hintIdOf(undefined), "dns-domains.fetch.hint.other");
+});
+
+it("is an error without the hint for every other error", () => {
+	for (const error of [
+		apiError("error.dns-zones-failed"),
+		apiError("error.dns-zones-blocked"),
+		apiError("error.dns-zones-not-https"),
+		apiError("error.request-failed"),
+		new Error("Failed to fetch"),
+		{},
+	]) {
+		assert.deepEqual(fetchState(undefined, error, "cloudflare"), {
+			kind: "error",
+			rows: [],
+			hintId: null,
+			truncated: false,
+		});
+	}
+	assert.equal(fetchState(undefined, apiError("error.dns-zones-forbidden"), "gandi").hintId, hintIdOf("gandi"));
 });
 
 it("an answer of a provider that does not list is its own state, without a hint", () => {

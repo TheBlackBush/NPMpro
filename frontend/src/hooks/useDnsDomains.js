@@ -22,7 +22,8 @@ const useDnsDomains = (expand, options = {}) =>
 const useProviderDomains = (id) =>
 	useQuery({
 		queryKey: ["dns-provider-domains", id],
-		queryFn: () => getProviderDomains(id),
+		// the query's signal: a cancelled query (the window closed) aborts the request
+		queryFn: ({ signal }) => getProviderDomains(id, signal),
 		enabled: id !== undefined && id !== null,
 		retry: false,
 		staleTime: 0,
