@@ -56,6 +56,7 @@ const BOOT_ENV = {
 	NGINX_LOAD_NTLM_MODULE: "false",
 	NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE: "false",
 };
+const NOT_A_DNS_ADDRESS = /not a DNS server address/u;
 const userEnv = (vars) => ({ ...BOOT_ENV, ...vars, NPMPRO_USER_ENV: `PATH ${Object.keys(vars).join(" ")}` });
 
 it("has the six groups, every rule in one of them, keys unique", () => {
@@ -658,6 +659,63 @@ it("refuses invalid nginx values and falls back to the default for a stored one"
 	const { values, invalid } = mergeRuntimeConfig("nginx", { worker_processes: "999" }, BOOT_ENV);
 	assert.equal(values.worker_processes, NGINX_DEFAULTS_CPU);
 	assert.deepEqual(invalid, [{ key: "worker_processes", source: "stored" }]);
+});
+
+it("the resolver rules default to today's line and parse their envs", () => {
+	const { values } = mergeRuntimeConfig("nginx", {}, BOOT_ENV);
+	assert.deepEqual(values.resolver_addresses, []);
+	assert.equal(values.resolver_hosts, true);
+	assert.equal(values.resolver_ipv6, true);
+	assert.equal(values.resolver_valid, "");
+	const env = userEnv({
+		NGINX_RESOLVER: "1.1.1.1  [::1]:53",
+		NGINX_RESOLVER_HOSTS: "false",
+		NGINX_RESOLVER_IPV6: "false",
+		NGINX_RESOLVER_VALID: "30s",
+	});
+	const set = mergeRuntimeConfig("nginx", {}, env);
+	assert.deepEqual(set.values.resolver_addresses, ["1.1.1.1", "[::1]:53"]);
+	assert.equal(set.values.resolver_hosts, false);
+	assert.equal(set.values.resolver_ipv6, false);
+	assert.equal(set.values.resolver_valid, "30s");
+	for (const key of ["resolver_addresses", "resolver_hosts", "resolver_ipv6", "resolver_valid"]) {
+		assert.ok(set.locked.includes(key), key);
+		assert.equal(rule(key).applies, "reload");
+	}
+	assert.equal(rule("resolver_addresses").toEnv([]), undefined);
+	assert.equal(rule("resolver_addresses").toEnv(["1.1.1.1", "[::1]"]), "1.1.1.1 [::1]");
+	assert.equal(rule("resolver_valid").toEnv(""), undefined);
+	assert.equal(rule("resolver_valid").toEnv("5m"), "5m");
+});
+
+it("ignores a bad resolver env value and uses the rule's fallback", () => {
+	const env = userEnv({ NGINX_RESOLVER: "1.1.1.1 dns.example", NGINX_RESOLVER_VALID: "0" });
+	const { values, invalid, locked } = mergeRuntimeConfig("nginx", {}, env);
+	assert.deepEqual(values.resolver_addresses, []);
+	assert.equal(values.resolver_valid, "");
+	assert.deepEqual(invalid, [
+		{ key: "resolver_addresses", source: "env" },
+		{ key: "resolver_valid", source: "env" },
+	]);
+	assert.equal(locked.includes("resolver_addresses"), false);
+	assert.deepEqual(rule("resolver_addresses").parseEnv("1.1.1.1 1.1.1.1"), undefined);
+});
+
+it("validates resolver_addresses and resolver_valid, and a stored invalid list falls back to the default", () => {
+	assert.equal(rule("resolver_addresses").validate(["1.1.1.1", "[2606:4700::1111]:53"]), null);
+	assert.match(rule("resolver_addresses").validate(["dns.example"]), NOT_A_DNS_ADDRESS);
+	assert.notEqual(rule("resolver_addresses").validate(Array.from({ length: 9 }, (_, i) => `10.0.0.${i}`)), null);
+	for (const ok of ["", "30s", "5m", "1h30m", "90"]) assert.equal(rule("resolver_valid").validate(ok), null, ok);
+	for (const bad of ["0", "1x", "1h;", "5m 1s"]) assert.notEqual(rule("resolver_valid").validate(bad), null, bad);
+	const stored = mergeRuntimeConfig("nginx", { resolver_addresses: ["dns.example"], resolver_valid: "0" }, BOOT_ENV);
+	assert.deepEqual(stored.values.resolver_addresses, []);
+	assert.deepEqual(stored.invalid, [
+		{ key: "resolver_addresses", source: "stored" },
+		{ key: "resolver_valid", source: "stored" },
+	]);
+	const kept = mergeRuntimeConfig("nginx", { resolver_addresses: ["1.1.1.1"], resolver_valid: "30s" }, BOOT_ENV);
+	assert.deepEqual(kept.values.resolver_addresses, ["1.1.1.1"]);
+	assert.equal(kept.values.resolver_valid, "30s");
 });
 
 it("cpu_affinity is off by default, takes an env value and keeps a stored list the container no longer allows", () => {

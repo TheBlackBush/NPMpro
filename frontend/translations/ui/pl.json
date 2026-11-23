@@ -1896,6 +1896,18 @@
 	"settings.nginx.module.vts.hint": "Dyrektywy vhost_traffic_status_*.",
 	"settings.nginx.modules": "Moduły",
 	"settings.nginx.modules.description": "Opcjonalne moduły nginx dla dyrektyw w niestandardowych konfiguracjach.",
+	"settings.nginx.resolver": "Resolver DNS",
+	"settings.nginx.resolver.addresses": "Adresy resolvera",
+	"settings.nginx.resolver.addresses.hint": "Puste: resolwery kontenera (/etc/resolv.conf). Adres IPv4 lub adres IPv6 w nawiasach kwadratowych, z opcjonalnym portem. Podane adresy zastępują resolwery kontenera: host docelowy, który jest nazwą innego kontenera (127.0.0.11 Dockera), zostanie wtedy znaleziony tylko wtedy, gdy rozwiąże go jeden z nich.",
+	"settings.nginx.resolver.duplicate": "{address} występuje dwa razy",
+	"settings.nginx.resolver.hosts": "Używaj /etc/hosts",
+	"settings.nginx.resolver.info": "Serwery DNS, o które nginx pyta o nazwy hostów nadrzędnych, na przykład hosta docelowego podanego jako nazwa. Zmieniona lista obowiązuje po przeładowaniu nginx.",
+	"settings.nginx.resolver.invalid": "{address} nie jest adresem IP z opcjonalnym portem; IPv6 podaje się w nawiasach kwadratowych, na przykład [2606:4700::1111]:53",
+	"settings.nginx.resolver.ipv6": "Odpowiedzi IPv6",
+	"settings.nginx.resolver.too-many": "Najwyżej 8 adresów",
+	"settings.nginx.resolver.valid": "Buforuj odpowiedzi przez",
+	"settings.nginx.resolver.valid.invalid": "Zostaw puste albo wpisz czas co najmniej jednej sekundy, na przykład 30s lub 5m (nie 0, nie ms)",
+	"settings.nginx.resolver.valid.placeholder": "TTL rekordu",
 	"settings.nginx.rsa-pkcs1": "Zezwalaj na podpisy RSA PKCS#1",
 	"settings.nginx.rsa-pkcs1.hint": "Dla starych klientów, którzy nie obsługują RSA-PSS.",
 	"settings.nginx.secp-curves": "Zezwalaj na krzywe NIST P",
@@ -2040,5 +2052,6 @@
 	"users": "Użytkownicy",
 	"users.lead": "Kto może się logować do NPMpro i co wolno każdemu kontu.",
 	"users.oidc-hint": "Użytkownicy mogą też logować się przez OIDC.",
-	"users.oidc-hint.link": "Ustawienia, Uwierzytelnianie"
+	"users.oidc-hint.link": "Ustawienia, Uwierzytelnianie",
+	"warning.resolver-no-answer": "{address} nie odpowiedział na zapytanie DNS. Ustawienie zapisano; sprawdź adres."
 }

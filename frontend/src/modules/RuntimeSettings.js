@@ -18,6 +18,10 @@ const GROUP_KEYS = {
 		"workerConnections",
 		"workerShutdownTimeout",
 		"cpuAffinity",
+		"resolverAddresses",
+		"resolverHosts",
+		"resolverIpv6",
+		"resolverValid",
 		"logNotFound",
 		"tls12",
 		"forceMlkem",
@@ -82,12 +86,12 @@ const FIELD_ERROR = /^(?<key>[a-z0-9_]+): (?<message>[\s\S]+)$/u;
 
 const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
 
-const isIPv4 = (text) => {
+export const isIPv4 = (text) => {
 	const parts = text.split(".");
 	return parts.length === 4 && parts.every((part) => IPV4_PART.test(part) && Number(part) <= 255);
 };
 
-const isIPv6 = (text) => {
+export const isIPv6 = (text) => {
 	if (!text.includes(":")) return false;
 	const halves = text.split("::");
 	if (halves.length > 2) return false;
@@ -276,6 +280,20 @@ const fieldOfError = (group, text) => {
 const isServableCertificate = (cert) =>
 	cert?.provider !== "mtls" && Array.isArray(cert?.domainNames) && cert.domainNames.length > 0;
 
+/**
+ * The warnings of a save answer as { key (camelCase), text }: each carries a translation key and its values (here the
+ * address); one whose key is not known is dropped
+ *
+ * @param   {Object}    answer
+ * @param   {Function}  hasMessage      (id) => whether the id is translated
+ * @param   {Function}  formatMessage   (id, values) => the text
+ * @returns {{ key: string, text: string }[]}
+ */
+const warningTexts = (answer, hasMessage, formatMessage) =>
+	(answer?.warnings ?? [])
+		.filter((warning) => hasMessage(warning.messageI18n))
+		.map(({ key, messageI18n, ...values }) => ({ key: camel(key), text: formatMessage(messageI18n, values) }));
+
 export {
 	appliesMessageId,
 	defaultKeySize,
@@ -293,4 +311,5 @@ export {
 	runtimeSettingsPayload,
 	timeZoneOptions,
 	trustedIpLines,
+	warningTexts,
 };

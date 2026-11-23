@@ -2,13 +2,25 @@ import { TriangleAlert } from "lucide-react";
 import { useWatch } from "react-hook-form";
 import { SettingLineNote } from "src/components";
 import { intl, T } from "src/locale";
+import { isResolverAddress, MAX_RESOLVER_ADDRESSES, resolverValidate } from "src/modules/ResolverAddress";
 import { nginxToApi, nginxToForm, nginxValidate } from "src/modules/SettingsForms";
 import { validations } from "src/modules/Validations";
-import { RuntimeNumber, RuntimeSelect, RuntimeSwitch, RuntimeText } from "./Runtime/fields";
+import { RuntimeChips, RuntimeNumber, RuntimeSelect, RuntimeSwitch, RuntimeText } from "./Runtime/fields";
 import { Part, RuntimeSection, useRuntimeSection } from "./Runtime/RuntimeSection";
 import { StatusAlert } from "./StatusAlert";
 
-const validate = nginxValidate(validations);
+const validateNginx = nginxValidate(validations);
+const validate = (values, data) => ({ ...validateNginx(values, data), ...resolverValidate(validations, values, data) });
+
+// a typed address is taken only when it is an address and the list has room, as the save checks it
+const isNewAddress = (text, held) => isResolverAddress(text) && held.length < MAX_RESOLVER_ADDRESSES;
+const refusedAddresses = (refused) =>
+	refused.every(isResolverAddress)
+		? intl.formatMessage({ id: "settings.nginx.resolver.too-many" })
+		: intl.formatMessage(
+				{ id: "settings.nginx.resolver.invalid" },
+				{ address: refused.filter((entry) => !isResolverAddress(entry)).join(", ") },
+			);
 
 function WorkerProcesses() {
 	const { data } = useRuntimeSection();
@@ -63,6 +75,30 @@ function CpuAffinity() {
 				/>
 			) : null}
 		</>
+	);
+}
+
+function Resolver() {
+	const { warningsOf } = useRuntimeSection();
+	return (
+		<Part titleId="settings.nginx.resolver" infoId="settings.nginx.resolver.info">
+			<RuntimeChips
+				name="resolverAddresses"
+				label={<T id="settings.nginx.resolver.addresses" />}
+				hint={<T id="settings.nginx.resolver.addresses.hint" />}
+				placeholder="1.1.1.1"
+				isValidNew={isNewAddress}
+				refusedMessage={refusedAddresses}
+				notes={warningsOf("resolverAddresses")}
+			/>
+			<RuntimeSwitch name="resolverHosts" label={<T id="settings.nginx.resolver.hosts" />} />
+			<RuntimeSwitch name="resolverIpv6" label={<T id="settings.nginx.resolver.ipv6" />} />
+			<RuntimeText
+				name="resolverValid"
+				label={<T id="settings.nginx.resolver.valid" />}
+				placeholder={intl.formatMessage({ id: "settings.nginx.resolver.valid.placeholder" })}
+			/>
+		</Part>
 	);
 }
 
@@ -126,6 +162,7 @@ export default function Nginx() {
 				/>
 				<CpuAffinity />
 			</Part>
+			<Resolver />
 			<Part titleId="settings.nginx.logging" infoId="settings.nginx.logging.description">
 				<RuntimeSwitch
 					name="logNotFound"

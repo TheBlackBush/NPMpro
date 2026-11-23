@@ -2,6 +2,7 @@ import { Lock, RefreshCw } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { ErrorAlert, HookForm, useAppForm, useFieldOrder } from "src/components";
+import { usePendingEntries } from "src/components/Form/HookForm";
 import { useRuntimeSettings, useSaveRuntimeSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { formatApiError } from "src/modules/ApiError";
@@ -15,9 +16,10 @@ import {
 	isRestartPending,
 	restartPendingFields,
 	runtimeSettingsPayload,
+	warningTexts,
 } from "src/modules/RuntimeSettings";
 import { unlockedErrors } from "src/modules/SettingsForms";
-import { showError, showObjectSuccess } from "src/notifications";
+import { showError, showObjectSuccess, showWarning } from "src/notifications";
 import { SaveBar } from "../SaveBar";
 import { SettingsCard } from "../SettingsCard";
 import { SettingsForm } from "../SettingsForm";
@@ -30,6 +32,7 @@ const hasMessage = (id) => Boolean(intl.messages[id]);
 const formatMessage = (id, values) => intl.formatMessage({ id }, values);
 
 const RuntimeContext = createContext(null);
+
 // lock reasons of a setting, not of an env var (backend SETTING_LOCK_REASONS)
 const SETTING_LOCK_REASONS = new Set(["goaccess-setting", "force-mlkem-setting", "crowdsec-setting"]);
 
@@ -44,7 +47,7 @@ const useRuntimeSection = () => useContext(RuntimeContext);
 /**
  * The context value for a loaded group (exported for sections that hold more than one form, like Logs & monitoring)
  */
-const runtimeContextOf = (group, data) => {
+const runtimeContextOf = (group, data, warnings = []) => {
 	const locked = new Set((data.locked ?? []).map(camel));
 	return {
 		group,
@@ -52,6 +55,8 @@ const runtimeContextOf = (group, data) => {
 		// locked by an env var (the "set by environment variables" notice): not the locks of a setting
 		anyLocked: (data.locked ?? []).some((key) => !SETTING_LOCK_REASONS.has(data.lockedReason?.[camel(key)])),
 		isLocked: (key) => locked.has(key),
+		// the warnings of the last save for a setting (the text of each), until the next save
+		warningsOf: (key) => warnings.filter((warning) => warning.key === key).map((warning) => warning.text),
 		// locked_by: the env var that locks each key (its keys camelized by base.js, the values are env names)
 		envOf: (key) => data.lockedBy?.[key],
 		// locked_reason: only the keys locked by another setting's env var
@@ -101,8 +106,8 @@ function SaveErrorContent({ message, lead }) {
 }
 
 /**
- * Save: nothing to save while the request would be empty (no changed, unlocked key), so it reads every field of the
- * section (by name, in form order)
+ * Save: nothing to save while the request would be empty (no changed, unlocked key) and no field holds typed text
+ * not yet taken as a value (a save takes it first), so it reads every field of the section (by name, in form order)
  */
 function SaveButton({ group, toApi, data }) {
 	const names = useFieldOrder();
@@ -110,9 +115,10 @@ function SaveButton({ group, toApi, data }) {
 	const values = Object.fromEntries(names.map((name, index) => [name, list[index]]));
 	const locked = new Set((data.locked ?? []).map(camel));
 	const allLocked = (GROUP_KEYS[group] ?? []).every((key) => locked.has(key));
+	const pending = usePendingEntries().size > 0;
 	return (
 		<SaveBar
-			disabled={isEmptyPayload(runtimeSettingsPayload(group, toApi(values), data.locked, data))}
+			disabled={!pending && isEmptyPayload(runtimeSettingsPayload(group, toApi(values), data.locked, data))}
 			reasonId={allLocked ? "settings.save.all-locked" : undefined}
 		/>
 	);
@@ -164,7 +170,8 @@ const reportSaveError = (group, err, { setErrorMsg, setError, lead }) => {
 function RuntimeForm({ group, titleId, leadId, top, data, toForm, toApi, validate, children }) {
 	const { mutateAsync: save } = useSaveRuntimeSettings(group);
 	const { alert, setErrorMsg } = useSaveError();
-	const ctx = runtimeContextOf(group, data);
+	const [warnings, setWarnings] = useState([]);
+	const ctx = runtimeContextOf(group, data, warnings);
 	const saved = toForm(data);
 	const methods = useAppForm({
 		defaultValues: saved,
@@ -176,11 +183,15 @@ function RuntimeForm({ group, titleId, leadId, top, data, toForm, toApi, validat
 
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
+		setWarnings([]);
 		const payload = runtimeSettingsPayload(group, toApi(values), data.locked, data);
 		try {
 			if (!isEmptyPayload(payload)) {
-				await save(payload);
+				const answer = await save(payload);
 				showObjectSuccess("setting", "saved");
+				const found = warningTexts(answer, hasMessage, formatMessage);
+				setWarnings(found);
+				for (const warning of found) showWarning(warning.text);
 			}
 		} catch (err) {
 			reportSaveError(group, err, { setErrorMsg, setError: methods.setError });

@@ -1,15 +1,17 @@
 import { readFileSync } from "node:fs";
 import { rooted } from "./paths.js";
 
-// The nginx settings of Settings > nginx (runtime group "nginx"): four include files nginx.conf reads in the main,
-// events, http and stream context. rootfs/usr/local/bin/nginx-core-files.sh writes the same files at the first start
-// (test/nginx-core.test.js keeps them equal).
+// The nginx settings of Settings > nginx (runtime group "nginx"): include files nginx.conf reads in the main,
+// events, http and stream context, plus resolver.conf (read in http and stream).
+// rootfs/usr/local/bin/nginx-core-files.sh writes the same files at the first start (test/nginx-core.test.js keeps
+// them equal).
 const DIR = rooted("/data/npmpro/nginx");
 const NGINX_CORE_FILES = {
 	main: `${DIR}/core-main.conf`,
 	events: `${DIR}/core-events.conf`,
 	http: `${DIR}/core-http.conf`,
 	stream: `${DIR}/core-stream.conf`,
+	resolver: `${DIR}/resolver.conf`,
 };
 const HEADER = "# written by NPMpro from Settings > nginx and the NGINX_* environment variables, do not edit";
 const CORE_MODULES = {
@@ -26,6 +28,19 @@ const CPU_LIST = /^\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$/u;
 const CPU_LIST_LINE = /^Cpus_allowed_list:[ \t]*(?<list>\S*)[ \t]*$/mu;
 const MAX_CPUS = 1024;
 const STATUS_FILE = "/proc/self/status";
+
+const onOff = (value) => (value ? "on" : "off");
+
+/**
+ * @param   {Object}  values  the nginx group's values
+ * @returns {string}  the resolver directive: the addresses replace local=on (the container's own resolvers)
+ */
+const resolverLine = (values) => {
+	const addresses = values.resolver_addresses ?? [];
+	const servers = addresses.length > 0 ? addresses.join(" ") : "local=on";
+	const valid = values.resolver_valid ? ` valid=${values.resolver_valid}` : "";
+	return `resolver ${servers} hosts=${onOff(values.resolver_hosts)} ipv6=${onOff(values.resolver_ipv6)}${valid};`;
+};
 
 const file = (lines) => `${[HEADER, ...lines].join("\n")}\n`;
 
@@ -136,7 +151,8 @@ const renderNginxCore = (values, { cpusAllowed = readCpusAllowed() } = {}) => {
 		events: file(values.worker_connections === 512 ? [] : [`worker_connections ${values.worker_connections};`]),
 		http: file([`log_not_found ${values.log_not_found ? "on" : "off"};`, ...tlsLines(values), ...js]),
 		stream: file([...tlsLines(values), ...js]),
+		resolver: file([resolverLine(values)]),
 	};
 };
 
-export { affinityOf, cpuAffinityMask, NGINX_CORE_FILES, parseCpuList, readCpusAllowed, renderNginxCore };
+export { affinityOf, cpuAffinityMask, NGINX_CORE_FILES, parseCpuList, readCpusAllowed, renderNginxCore, resolverLine };

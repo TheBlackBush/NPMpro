@@ -1896,6 +1896,18 @@
 	"settings.nginx.module.vts.hint": "vhost_traffic_status_* ディレクティブ。",
 	"settings.nginx.modules": "モジュール",
 	"settings.nginx.modules.description": "カスタム設定内のディレクティブ用の任意の nginx モジュール。",
+	"settings.nginx.resolver": "DNS リゾルバー",
+	"settings.nginx.resolver.addresses": "リゾルバーのアドレス",
+	"settings.nginx.resolver.addresses.hint": "空欄: コンテナーのリゾルバー（/etc/resolv.conf）を使います。IPv4 アドレス、または角括弧で囲んだ IPv6 アドレスを指定します。ポートは省略できます。アドレスを指定するとコンテナーのリゾルバーの代わりに使われます。そのため、転送先が別のコンテナーの名前（Docker の 127.0.0.11）の場合は、指定したどれかが解決できるときだけ見つかります。",
+	"settings.nginx.resolver.duplicate": "{address} が重複しています",
+	"settings.nginx.resolver.hosts": "/etc/hosts を使用",
+	"settings.nginx.resolver.info": "nginx がアップストリームのホスト名を問い合わせる DNS サーバーです。たとえば、名前で指定した転送先ホストに使われます。変更したリストは nginx のリロードで反映されます。",
+	"settings.nginx.resolver.invalid": "{address} は IP アドレス（ポートは省略可）ではありません。IPv6 は角括弧で囲みます（例: [2606:4700::1111]:53）",
+	"settings.nginx.resolver.ipv6": "IPv6 の応答",
+	"settings.nginx.resolver.too-many": "最大 8 件のアドレス",
+	"settings.nginx.resolver.valid": "応答をキャッシュする時間",
+	"settings.nginx.resolver.valid.invalid": "空欄にするか、30s や 5m のように 1 秒以上の時間を入力してください（0 や ms は不可）",
+	"settings.nginx.resolver.valid.placeholder": "レコードの TTL",
 	"settings.nginx.rsa-pkcs1": "RSA PKCS#1 署名を許可",
 	"settings.nginx.rsa-pkcs1.hint": "RSA-PSS を使用できない古いクライアント向けです。",
 	"settings.nginx.secp-curves": "NIST P 曲線を許可",
@@ -2040,5 +2052,6 @@
 	"users": "ユーザー",
 	"users.lead": "NPMpro にサインインできるユーザーと、各アカウントに許可される操作。",
 	"users.oidc-hint": "ユーザーは OIDC でもサインインできます。",
-	"users.oidc-hint.link": "設定、認証"
+	"users.oidc-hint.link": "設定、認証",
+	"warning.resolver-no-answer": "{address} は DNS クエリに応答しませんでした。設定は保存されました。アドレスを確認してください。"
 }

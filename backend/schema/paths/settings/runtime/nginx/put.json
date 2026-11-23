@@ -1,7 +1,7 @@
 {
 	"operationId": "updateRuntimeNginxSettings",
 	"summary": "Update the nginx settings",
-	"description": "Saves the nginx settings; send only what changes. Fields set by environment variables are ignored, and tls12 and secp_curves are locked while force_mlkem is on. worker_processes must be auto or from 1 to cpu_count, and a new cpu_affinity list may only name CPUs the container may use; a refused value answers 400 with the field name. nginx -t runs on the new core config and nginx is reloaded: when applying fails, nothing is saved.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Saves the nginx settings; send only what changes. Fields set by environment variables are ignored, and tls12 and secp_curves are locked while force_mlkem is on. worker_processes must be auto or from 1 to cpu_count, and a new cpu_affinity list may only name CPUs the container may use; resolver_addresses holds at most 8 unique addresses and resolver_valid is empty or an nginx time other than 0; a refused value answers 400 with the field name. nginx -t runs on the new core config and nginx is reloaded: when applying fails, nothing is saved.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"settings"
 	],
@@ -46,6 +46,30 @@
 							"pattern": "^(off|auto|[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)$",
 							"maxLength": 256,
 							"description": "Pin the workers to CPUs: off, auto (the CPUs the container may use) or a CPU list such as 16-19 or 16,18,20, cut to the CPUs the container may use when nginx starts or reloads (env NGINX_CPU_AFFINITY)"
+						},
+						"resolver_addresses": {
+							"type": "array",
+							"maxItems": 8,
+							"items": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 64
+							},
+							"description": "Addresses of the DNS servers nginx asks for upstream names: IPv4 addresses or IPv6 addresses in brackets, each with an optional :port, at most 8; empty: the container's own resolvers from /etc/resolv.conf (env NGINX_RESOLVER, space separated)"
+						},
+						"resolver_hosts": {
+							"type": "boolean",
+							"description": "Let nginx resolve names from /etc/hosts before asking the DNS servers (env NGINX_RESOLVER_HOSTS)"
+						},
+						"resolver_ipv6": {
+							"type": "boolean",
+							"description": "Let nginx resolve names to IPv6 addresses (AAAA records) (env NGINX_RESOLVER_IPV6)"
+						},
+						"resolver_valid": {
+							"type": "string",
+							"pattern": "^([0-9]+(s|m|h|d|w|M|y)?([0-9]+(s|m|h|d|w|M|y))*)?$",
+							"maxLength": 32,
+							"description": "How long nginx keeps an answer, overriding the TTL of the record: an nginx time in seconds or longer such as 30s or 5m, not 0 and not ms; empty: the TTL of each answer (env NGINX_RESOLVER_VALID)"
 						},
 						"log_not_found": {
 							"type": "boolean",
@@ -103,6 +127,10 @@
 								"worker_connections": 1024,
 								"worker_shutdown_timeout": "1h",
 								"cpu_affinity": "off",
+								"resolver_addresses": [],
+								"resolver_hosts": true,
+								"resolver_ipv6": true,
+								"resolver_valid": "",
 								"log_not_found": false,
 								"tls12": true,
 								"force_mlkem": false,
@@ -120,6 +148,10 @@
 									"worker_connections": "reload",
 									"worker_shutdown_timeout": "reload",
 									"cpu_affinity": "reload",
+									"resolver_addresses": "reload",
+									"resolver_hosts": "reload",
+									"resolver_ipv6": "reload",
+									"resolver_valid": "reload",
 									"log_not_found": "reload",
 									"tls12": "reload",
 									"force_mlkem": "reload",

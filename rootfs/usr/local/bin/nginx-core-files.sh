@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 # Writes the nginx include files of Settings > nginx into $1 from the NGINX_* env vars envs.sh exported. The same
 # output as backend/lib/nginx-core.js (backend/test/nginx-core.test.js compares them). data-setup.sh runs it with
-# --if-missing: then nothing is written while all four files exist (the backend writes them on every save and start).
+# --if-missing: then nothing is written while all four files exist (the backend writes them on every save and start);
+# resolver.conf, the fifth file, is written on its own when it is missing.
 # --trim-affinity cuts the affinity line of an existing core-main.conf to the CPUs allowed now (see below).
 set -eu
 # Pin workers to CPUs (NGINX_CPU_AFFINITY off, auto or a CPU list): nginx's mask (CPU 0 right-most) of the allowed
@@ -60,15 +61,36 @@ if [ "$1" = "--trim-affinity" ]; then
     rm -f "$tmp"
     exit 0
 fi
+header="# written by NPMpro from Settings > nginx and the NGINX_* environment variables, do not edit"
+# the resolver directive (backend/lib/nginx-core.js resolverLine): the addresses replace local=on; NGINX_RESOLVER is
+# checked by envs.sh, repeated spaces are collapsed like the renderer's parsed list
+resolver_line() {
+    servers="$(echo "$NGINX_RESOLVER" | tr -s " \t" " " | sed "s/^ //; s/ $//")"
+    [ -n "$servers" ] || servers="local=on"
+    hosts=off
+    [ "$NGINX_RESOLVER_HOSTS" = "true" ] && hosts=on
+    ipv6=off
+    [ "$NGINX_RESOLVER_IPV6" = "true" ] && ipv6=on
+    valid=""
+    [ -z "$NGINX_RESOLVER_VALID" ] || valid=" valid=$NGINX_RESOLVER_VALID"
+    echo "resolver $servers hosts=$hosts ipv6=$ipv6$valid;"
+}
+write_resolver() {
+    {
+        echo "$header"
+        resolver_line
+    } > "$dir/resolver.conf"
+}
 if [ "$1" = "--if-missing" ]; then
     dir="$2"
+    # resolver.conf is new in this version: an upgrade has the four files but not this one, and nginx.conf includes it
+    [ -f "$dir/resolver.conf" ] || write_resolver
     if [ -f "$dir/core-main.conf" ] && [ -f "$dir/core-events.conf" ] && [ -f "$dir/core-http.conf" ] && [ -f "$dir/core-stream.conf" ]; then
         exit 0
     fi
 else
     dir="$1"
 fi
-header="# written by NPMpro from Settings > nginx and the NGINX_* environment variables, do not edit"
 sigalgs="mldsa87:mldsa65:mldsa44:ed25519:ecdsa_secp521r1_sha512:ecdsa_secp384r1_sha384:ecdsa_secp256r1_sha256:rsa_pss_rsae_sha512:rsa_pss_rsae_sha384:rsa_pss_rsae_sha256"
 if [ "$NGINX_TRUST_RSA_PKCS1" = "true" ]; then sigalgs="$sigalgs:rsa_pkcs1_sha512:rsa_pkcs1_sha384:rsa_pkcs1_sha256"; fi
 if [ "$NGINX_FORCE_X25519MLKEM768" = "true" ]; then
@@ -131,3 +153,4 @@ affinity_line() {
     echo "$header"
     tls
 } > "$dir/core-stream.conf"
+write_resolver

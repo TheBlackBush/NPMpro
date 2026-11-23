@@ -1896,6 +1896,18 @@
 	"settings.nginx.module.vts.hint": "Директиви vhost_traffic_status_*.",
 	"settings.nginx.modules": "Модулі",
 	"settings.nginx.modules.description": "Необов'язкові модулі nginx для директив у власних конфігураціях.",
+	"settings.nginx.resolver": "DNS-резолвер",
+	"settings.nginx.resolver.addresses": "Адреси резолвера",
+	"settings.nginx.resolver.addresses.hint": "Порожньо: використовуються резолвери контейнера (/etc/resolv.conf). Адреса IPv4 або адреса IPv6 у квадратних дужках, за потреби з портом. Вказані адреси замінюють резолвери контейнера: хост призначення, який є іменем іншого контейнера (127.0.0.11 у Docker), тоді знаходиться, лише якщо його розпізнає одна з них.",
+	"settings.nginx.resolver.duplicate": "{address} указано двічі",
+	"settings.nginx.resolver.hosts": "Використовувати /etc/hosts",
+	"settings.nginx.resolver.info": "DNS-сервери, до яких nginx звертається за іменами вихідних хостів, наприклад для хоста призначення, заданого іменем. Змінений список застосовується після перезавантаження nginx.",
+	"settings.nginx.resolver.invalid": "{address} не є IP-адресою з необов'язковим портом; IPv6 записується в квадратних дужках, наприклад [2606:4700::1111]:53",
+	"settings.nginx.resolver.ipv6": "Відповіді IPv6",
+	"settings.nginx.resolver.too-many": "Не більше 8 адрес",
+	"settings.nginx.resolver.valid": "Кешувати відповіді протягом",
+	"settings.nginx.resolver.valid.invalid": "Залиште порожнім або вкажіть час не менше секунди, наприклад 30s або 5m (не 0 і не ms)",
+	"settings.nginx.resolver.valid.placeholder": "TTL запису",
 	"settings.nginx.rsa-pkcs1": "Дозволити підписи RSA PKCS#1",
 	"settings.nginx.rsa-pkcs1.hint": "Для старих клієнтів, які не підтримують RSA-PSS.",
 	"settings.nginx.secp-curves": "Дозволити криві NIST P",
@@ -2040,5 +2052,6 @@
 	"users": "Користувачі",
 	"users.lead": "Хто може входити в NPMpro і що дозволено кожному обліковому запису.",
 	"users.oidc-hint": "Користувачі також можуть входити через OIDC.",
-	"users.oidc-hint.link": "Налаштування, Автентифікація"
+	"users.oidc-hint.link": "Налаштування, Автентифікація",
+	"warning.resolver-no-answer": "{address} не відповів на DNS-запит. Налаштування збережено; перевірте адресу."
 }

@@ -175,6 +175,8 @@ export const parseCpuList = (list) => {
 };
 
 const NGINX_KEYS = [
+	"resolverHosts",
+	"resolverIpv6",
 	"logNotFound",
 	"tls12",
 	"forceMlkem",
@@ -195,6 +197,8 @@ export const nginxToForm = (data) => ({
 	workerShutdownTimeout: data.workerShutdownTimeout,
 	cpuAffinityMode: data.cpuAffinity === "off" || data.cpuAffinity === "auto" ? data.cpuAffinity : "custom",
 	cpuAffinityList: data.cpuAffinity === "off" || data.cpuAffinity === "auto" ? "" : (data.cpuAffinity ?? ""),
+	resolverAddresses: [...(data.resolverAddresses ?? [])],
+	resolverValid: data.resolverValid ?? "",
 	...Object.fromEntries(NGINX_KEYS.map((key) => [key, Boolean(data[key])])),
 });
 

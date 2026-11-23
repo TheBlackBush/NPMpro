@@ -1896,6 +1896,18 @@
 	"settings.nginx.module.vts.hint": "Direttive vhost_traffic_status_*.",
 	"settings.nginx.modules": "Moduli",
 	"settings.nginx.modules.description": "Moduli nginx opzionali per le direttive nelle configurazioni personalizzate.",
+	"settings.nginx.resolver": "Resolver DNS",
+	"settings.nginx.resolver.addresses": "Indirizzi del resolver",
+	"settings.nginx.resolver.addresses.hint": "Vuoto: i resolver del container (/etc/resolv.conf). Un indirizzo IPv4 o un indirizzo IPv6 tra parentesi quadre, con una porta facoltativa. Gli indirizzi impostati sostituiscono i resolver del container: un host di inoltro che è il nome di un altro container (il 127.0.0.11 di Docker) viene trovato solo se uno di essi lo risolve.",
+	"settings.nginx.resolver.duplicate": "{address} è elencato due volte",
+	"settings.nginx.resolver.hosts": "Usa /etc/hosts",
+	"settings.nginx.resolver.info": "I server DNS che nginx interroga per i nomi degli host upstream, ad esempio un host di inoltro indicato come nome. Un elenco modificato si applica con un ricaricamento di nginx.",
+	"settings.nginx.resolver.invalid": "{address} non è un indirizzo IP con una porta facoltativa; IPv6 va tra parentesi quadre, come [2606:4700::1111]:53",
+	"settings.nginx.resolver.ipv6": "Risposte IPv6",
+	"settings.nginx.resolver.too-many": "Al massimo 8 indirizzi",
+	"settings.nginx.resolver.valid": "Memorizza le risposte in cache per",
+	"settings.nginx.resolver.valid.invalid": "Lascia vuoto oppure inserisci un tempo di almeno un secondo, come 30s o 5m (non 0, non ms)",
+	"settings.nginx.resolver.valid.placeholder": "il TTL del record",
 	"settings.nginx.rsa-pkcs1": "Consenti le firme RSA PKCS#1",
 	"settings.nginx.rsa-pkcs1.hint": "Per i client datati che non possono usare RSA-PSS.",
 	"settings.nginx.secp-curves": "Consenti le curve NIST P",
@@ -2040,5 +2052,6 @@
 	"users": "Utenti",
 	"users.lead": "Chi può accedere a NPMpro e cosa può fare ogni account.",
 	"users.oidc-hint": "Gli utenti possono accedere anche con OIDC.",
-	"users.oidc-hint.link": "Impostazioni, Autenticazione"
+	"users.oidc-hint.link": "Impostazioni, Autenticazione",
+	"warning.resolver-no-answer": "{address} non ha risposto a una query DNS. L'impostazione è salvata; controlla l'indirizzo."
 }

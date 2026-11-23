@@ -3,6 +3,8 @@ import { useController, useFormContext } from "react-hook-form";
 import { useIntl } from "react-intl";
 import { FormField, InfoBadge, SettingBadge, SwitchField, TextField, useFieldError } from "src/components";
 import { AppSelect } from "src/components/AppSelect";
+import { Combobox } from "src/components/Combobox";
+import { usePendingEntry, useReadOnly } from "src/components/Form/HookForm";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "src/components/ui/input-group";
 import { T } from "src/locale";
 import { LockedBadge, LockReason } from "../Authentication/LockedBadge";
@@ -209,4 +211,47 @@ function RuntimeSelect({ name, lockName = name, label, hint, info, options, onCh
 	);
 }
 
-export { RuntimeNumber, RuntimeSelect, RuntimeSwitch, RuntimeText };
+/**
+ * A list of values as chips (the app's combobox, free text): Enter, a comma or a paste adds, each entry is checked as
+ * typed (isValidNew, with the entries already held), the entries a save finds refused are named by refusedMessage.
+ * `notes` are texts shown under the hint (the warnings of the last save).
+ */
+function RuntimeChips({ name, label, hint, placeholder, isValidNew, refusedMessage, notes = [] }) {
+	const { field } = useController({ name });
+	const { isLocked } = useRuntimeSection();
+	const readOnly = useReadOnly();
+	const pending = usePendingEntry(name, refusedMessage);
+	const fieldHint = (
+		<>
+			{hint}
+			{notes.map((note) => (
+				<span key={note} className="block text-warning">
+					{note}
+				</span>
+			))}
+		</>
+	);
+	return (
+		<RuntimeControl name={name} label={label} hint={fieldHint} layout="block">
+			{(control) => (
+				<Combobox
+					{...control}
+					ref={field.ref}
+					name={field.name}
+					multiple
+					creatable
+					disabled={isLocked(name) || readOnly}
+					value={field.value ?? []}
+					isValidNew={isValidNew}
+					commitRef={pending.ref}
+					onQueryChange={(text) => pending.setPending(text.trim() !== "")}
+					placeholder={placeholder}
+					onBlur={field.onBlur}
+					onChange={(next) => field.onChange(next)}
+				/>
+			)}
+		</RuntimeControl>
+	);
+}
+
+export { RuntimeChips, RuntimeNumber, RuntimeSelect, RuntimeSwitch, RuntimeText };

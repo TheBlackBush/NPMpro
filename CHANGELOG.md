@@ -63,6 +63,7 @@ below as its release notes.
 - **API:** the API reference at `/api-reference` (also from `/api/docs`) describes every route and field with examples,
   in three columns: the routes with a search, what each route does and needs, and its curl, Node and Python code with
   Try it as you or as a pasted token; it starts with a Getting started guide and follows the app's light or dark theme.
+- **nginx:** the DNS resolver nginx uses for upstream names is a setting (Settings, nginx, DNS resolver, or `NGINX_RESOLVER`, `NGINX_RESOLVER_HOSTS`, `NGINX_RESOLVER_IPV6`, `NGINX_RESOLVER_VALID`).
 
 ### Changed
 

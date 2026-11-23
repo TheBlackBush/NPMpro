@@ -1807,15 +1807,17 @@ it("startup: a failing shared write (crontab) still runs the timers and the own 
 	assert.deepEqual(a.nginx.calls, ["test"]);
 });
 
-it("a nginx save writes the four include files, tests and reloads", async () => {
+it("a nginx save writes the five include files, resolver.conf among them, tests once and reloads", async () => {
 	const { paths } = await setup();
+	assert.equal(Object.keys(paths.nginxCore).length, 5);
 	const a = applier(paths);
 	const prev = mergeRuntimeConfig("nginx", {}, BOOT_ENV).values;
-	const next = { ...prev, worker_connections: 2048, module_vts: true };
+	const next = { ...prev, worker_connections: 2048, module_vts: true, resolver_addresses: ["9.9.9.9"] };
 	const { changed, reloaded } = await a.applyGroup("nginx", next, prev);
-	assert.deepEqual(changed.toSorted(), ["module_vts", "worker_connections"]);
+	assert.deepEqual(changed.toSorted(), ["module_vts", "resolver_addresses", "worker_connections"]);
 	assert.equal(reloaded, true);
 	assert.deepEqual(a.nginx.calls, ["test", "reload"]);
+	assert.ok((await readFile(paths.nginxCore.resolver, "utf8")).endsWith("\nresolver 9.9.9.9 hosts=on ipv6=on;\n"));
 	assert.ok((await readFile(paths.nginxCore.events, "utf8")).includes("worker_connections 2048;"));
 	assert.ok((await readFile(paths.nginxCore.main, "utf8")).includes("ngx_http_vhost_traffic_status_module.so"));
 });

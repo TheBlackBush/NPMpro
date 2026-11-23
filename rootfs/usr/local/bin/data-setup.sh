@@ -301,7 +301,8 @@ fi
 if [ -f /data/logrotate.state ] && [ ! -e /data/nginx/logs/logrotate.state ]; then cp -va /data/logrotate.state /data/nginx/logs/logrotate.state; fi
 
 # nginx core and module settings (Settings > nginx): the backend writes these files on every save and start; here
-# only when one is missing (first start, upgrade), so nginx starts with the modules the last apply loaded
+# only when one is missing (first start, upgrade), so nginx starts with the modules the last apply loaded; resolver.conf
+# (included by nginx.conf in http and stream) is written on its own when it is missing, as an upgrade lacks it
 nginx-core-files.sh --if-missing /data/npmpro/nginx
 # a mask kept from another CPU set must not name a CPU this container may not use (nginx would log an alert)
 nginx-core-files.sh --trim-affinity /data/npmpro/nginx

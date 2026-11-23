@@ -55,7 +55,7 @@ jobs:
       - name: Start and Wait Until Healthy
         run: |
           mkdir -p "$RUNNER_TEMP/data"
-          docker run -d --name npmpro --network host -e TZ=UTC -e ACME_EMAIL=flow-acme@example.com -v "$RUNNER_TEMP/data:/data" npmpro:test
+          docker run -d --name npmpro --network host -e TZ=UTC -e ACME_EMAIL=flow-acme@example.com -e NGINX_RESOLVER_HOSTS=true -v "$RUNNER_TEMP/data:/data" npmpro:test
           for _ in $(seq 1 60); do
             if docker exec npmpro healthcheck.sh > /dev/null 2>&1; then
               curl -sSk https://127.0.0.1:81/api | tee /dev/stderr | jq -e '.status == "OK"' > /dev/null

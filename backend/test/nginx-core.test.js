@@ -4,7 +4,14 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { it } from "node:test";
-import { affinityOf, cpuAffinityMask, parseCpuList, readCpusAllowed, renderNginxCore } from "../lib/nginx-core.js";
+import {
+	affinityOf,
+	cpuAffinityMask,
+	parseCpuList,
+	readCpusAllowed,
+	renderNginxCore,
+	resolverLine,
+} from "../lib/nginx-core.js";
 
 const DEFAULTS = {
 	worker_processes: "4",
@@ -20,6 +27,10 @@ const DEFAULTS = {
 	module_ldap: false,
 	module_ntlm: false,
 	module_vts: false,
+	resolver_addresses: [],
+	resolver_hosts: true,
+	resolver_ipv6: true,
+	resolver_valid: "",
 };
 const SIGALGS =
 	"mldsa87:mldsa65:mldsa44:ed25519:ecdsa_secp521r1_sha512:ecdsa_secp384r1_sha384:ecdsa_secp256r1_sha256:rsa_pss_rsae_sha512:rsa_pss_rsae_sha384:rsa_pss_rsae_sha256";
@@ -27,6 +38,7 @@ const NONE_ALLOWED = /none of the CPUs 0-3 is allowed/u;
 const UNREADABLE = /cannot be read/u;
 const TRIM_KEPT = /could not cut the affinity line of .*core-main\.conf, it is kept as it is/u;
 const ALLOWED_LIST = /Cpus_allowed_list:\t(?<list>\S+)/u;
+const BLANKS = /\s+/u;
 const lines = (text) => text.split("\n").filter((line) => line && !line.startsWith("#"));
 
 it("renders today's nginx.conf values for the defaults", () => {
@@ -41,6 +53,24 @@ it("renders today's nginx.conf values for the defaults", () => {
 		`ssl_sigalgs ${SIGALGS};`,
 	]);
 	assert.deepEqual(lines(out.stream), lines(out.http).slice(1));
+});
+
+it("renders today's resolver line for the defaults", () => {
+	assert.deepEqual(lines(renderNginxCore(DEFAULTS).resolver), ["resolver local=on hosts=on ipv6=on;"]);
+	assert.ok(renderNginxCore(DEFAULTS).resolver.startsWith("# written by NPMpro"));
+	assert.equal(resolverLine(DEFAULTS), "resolver local=on hosts=on ipv6=on;");
+});
+
+it("renders addresses, hosts off, ipv6 off and valid", () => {
+	const render = (extra) => lines(renderNginxCore({ ...DEFAULTS, ...extra }).resolver);
+	assert.deepEqual(render({ resolver_addresses: ["1.1.1.1", "[2606:4700::1111]:53"] }), [
+		"resolver 1.1.1.1 [2606:4700::1111]:53 hosts=on ipv6=on;",
+	]);
+	assert.deepEqual(
+		render({ resolver_addresses: ["1.1.1.1"], resolver_hosts: false, resolver_ipv6: false, resolver_valid: "30s" }),
+		["resolver 1.1.1.1 hosts=off ipv6=off valid=30s;"],
+	);
+	assert.deepEqual(render({ resolver_valid: "5m" }), ["resolver local=on hosts=on ipv6=on valid=5m;"]);
 });
 
 it("renders each setting", () => {
@@ -128,7 +158,13 @@ const shellRun = (env, statusText = null) => {
 	});
 	if (result.status !== 0) throw new Error(result.stderr);
 	const read = (name) => readFileSync(path.join(dir, `core-${name}.conf`), "utf8");
-	const files = { main: read("main"), events: read("events"), http: read("http"), stream: read("stream") };
+	const files = {
+		main: read("main"),
+		events: read("events"),
+		http: read("http"),
+		stream: read("stream"),
+		resolver: readFileSync(path.join(dir, "resolver.conf"), "utf8"),
+	};
 	return { files, note: result.stderr.trim() || null };
 };
 const shellFiles = (env, statusText) => shellRun(env, statusText).files;
@@ -152,6 +188,10 @@ const ENVS = {
 	NGINX_LOAD_LDAP_MODULE: "false",
 	NGINX_LOAD_NTLM_MODULE: "false",
 	NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE: "false",
+	NGINX_RESOLVER: "",
+	NGINX_RESOLVER_HOSTS: "true",
+	NGINX_RESOLVER_IPV6: "true",
+	NGINX_RESOLVER_VALID: "",
 };
 
 it("the shell twin matches the renderer", () => {
@@ -170,6 +210,10 @@ it("the shell twin matches the renderer", () => {
 		NGINX_LOAD_LDAP_MODULE: "true",
 		NGINX_LOAD_NTLM_MODULE: "true",
 		NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE: "true",
+		NGINX_RESOLVER: "1.1.1.1 [::1]:53",
+		NGINX_RESOLVER_HOSTS: "false",
+		NGINX_RESOLVER_IPV6: "false",
+		NGINX_RESOLVER_VALID: "30s",
 	};
 	assert.deepEqual(
 		shellFiles(variant),
@@ -186,8 +230,23 @@ it("the shell twin matches the renderer", () => {
 			module_ldap: true,
 			module_ntlm: true,
 			module_vts: true,
+			resolver_addresses: ["1.1.1.1", "[::1]:53"],
+			resolver_hosts: false,
+			resolver_ipv6: false,
+			resolver_valid: "30s",
 		}),
 	);
+});
+
+it("the shell twin matches the renderer for a tab and blanks around NGINX_RESOLVER", () => {
+	for (const raw of ["\t1.1.1.1\t[::1]:53\t", "  1.1.1.1   1.1.1.2  "]) {
+		const addresses = raw.split(BLANKS).filter(Boolean);
+		assert.deepEqual(
+			shellFiles({ ...ENVS, NGINX_RESOLVER: raw }),
+			renderedFiles({ ...DEFAULTS, resolver_addresses: addresses }, { cpusAllowed: null }),
+			JSON.stringify(raw),
+		);
+	}
 });
 
 it("the shell twin matches the renderer for every affinity mode", () => {
@@ -252,6 +311,28 @@ it("--if-missing writes all four files when one is missing", () => {
 	assert.ok(existsSync(path.join(dir, "core-stream.conf")));
 	assert.equal(readFileSync(path.join(dir, "core-stream.conf"), "utf8"), expected.stream);
 	assert.equal(readFileSync(path.join(dir, "core-main.conf"), "utf8"), expected.main);
+});
+
+it("--if-missing writes a missing resolver.conf and keeps the four", () => {
+	const dir = mkdtempSync(path.join(tmpdir(), "nginx-core-"));
+	for (const name of NAMES) {
+		writeFileSync(path.join(dir, name), `# kept ${name}\n`);
+	}
+	ifMissing(dir);
+	for (const name of NAMES) {
+		assert.equal(readFileSync(path.join(dir, name), "utf8"), `# kept ${name}\n`);
+	}
+	assert.equal(readFileSync(path.join(dir, "resolver.conf"), "utf8"), renderNginxCore(DEFAULTS).resolver);
+});
+
+it("--if-missing keeps an existing resolver.conf", () => {
+	const dir = mkdtempSync(path.join(tmpdir(), "nginx-core-"));
+	for (const name of NAMES) {
+		writeFileSync(path.join(dir, name), `# kept ${name}\n`);
+	}
+	writeFileSync(path.join(dir, "resolver.conf"), "resolver 9.9.9.9;\n");
+	ifMissing(dir);
+	assert.equal(readFileSync(path.join(dir, "resolver.conf"), "utf8"), "resolver 9.9.9.9;\n");
 });
 
 // data-setup.sh also runs --trim-affinity: a mask kept from another CPU set must not name a CPU outside the allowed ones
