@@ -48,9 +48,10 @@ export function StatusCard() {
 	if (!status) return null;
 
 	const needed = familiesNeeded(records);
-	const state = ddnsStatusOf(status);
+	// until the list is loaded both families count
+	const state = ddnsStatusOf(status, records ? needed : undefined);
 	const { tone, icon: Icon } = BADGES[state];
-	const errorText = ddnsErrorText(statusErrorItem(status));
+	const errorText = ddnsErrorText(statusErrorItem(status, records ? needed : undefined));
 	const next = nextCheckIn(status.nextRunOn, Date.now());
 	return (
 		<div className="flex flex-col gap-3 rounded-lg border bg-card p-4" data-ddns-status={state}>

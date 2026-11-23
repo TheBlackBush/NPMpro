@@ -28,6 +28,24 @@ it("says paused first, then failed, waiting and ok", () => {
 	assert.equal(ddnsStatusOf({ records: 1, ipv4: { address: null }, ipv6: { address: "2001:db8::1" } }), "ok");
 });
 
+it("counts only the families a record needs", () => {
+	const v4only = { ipv4: true, ipv6: false };
+	const staleV6 = { records: 1, ipv4: { address: "203.0.113.5" }, ipv6: { errorI18n: "error.ddns-ip-failed" } };
+	assert.equal(ddnsStatusOf(staleV6, v4only), "ok");
+	assert.equal(ddnsStatusOf(staleV6), "failed");
+	assert.equal(ddnsStatusOf({ ...staleV6, ipv4: { error: "no" } }, v4only), "failed");
+	assert.equal(ddnsStatusOf({ records: 1, ipv4: {}, ipv6: { address: "2001:db8::1" } }, v4only), "waiting");
+	assert.equal(statusErrorItem(staleV6, v4only), null);
+	assert.equal(statusErrorItem(staleV6, { ipv4: true, ipv6: true }), staleV6.ipv6);
+});
+
+it("says OK when the enabled records are aliases only", () => {
+	const none = { ipv4: false, ipv6: false };
+	assert.equal(ddnsStatusOf({ records: 2, ipv4: { address: null }, ipv6: { address: null } }, none), "ok");
+	assert.equal(ddnsStatusOf({ records: 2, ipv4: { error: "old" } }, none), "ok");
+	assert.equal(ddnsStatusOf({ records: 2, paused: true }, none), "paused");
+});
+
 it("picks the first family that holds an error", () => {
 	const v4 = { error: "four" };
 	const v6 = { errorI18n: "six" };
@@ -59,7 +77,8 @@ it("shows the target of an alias and the written addresses of an address record"
 it("picks the line of an address family", () => {
 	assert.equal(familyLineOf({ address: "203.0.113.5" }, false), "address");
 	assert.equal(familyLineOf({ error: "no" }, true), "failed");
-	assert.equal(familyLineOf({ errorI18n: "error.ddns-ip-failed" }, false), "failed");
+	// an error left from a deleted record of that family
+	assert.equal(familyLineOf({ errorI18n: "error.ddns-ip-failed" }, false), "unchecked");
 	assert.equal(familyLineOf({ address: null }, false), "unchecked");
 	assert.equal(familyLineOf({ address: null }, true), "unknown");
 	assert.equal(familyLineOf(undefined, true), "unknown");

@@ -7,28 +7,37 @@ const DAY_MS = 24 * HOUR_MS;
 
 /**
  * The state of the status card: "none" (no enabled record, nothing is checked), "paused" (a restore or a database
- * move), "failed" (a public address could not be found), "waiting" (records exist, no address found yet), else "ok".
+ * move), "failed" (an address a record needs could not be found), "waiting" (no address a record needs found yet),
+ * else "ok" (also when the enabled records are aliases only, which need no address). An error of a family no record
+ * needs (left from a deleted record) does not count.
  *
  * @param   {Object | undefined}  status  GET /nginx/ddns/status (camelCase)
+ * @param   {{ ipv4: boolean, ipv6: boolean }}  [needed]  familiesNeeded of the records; both when not known yet
  * @returns {"none" | "paused" | "failed" | "waiting" | "ok"}
  */
-const ddnsStatusOf = (status) => {
+const ddnsStatusOf = (status, needed = { ipv4: true, ipv6: true }) => {
 	if (!status?.records) return "none";
 	if (status.paused) return "paused";
-	const families = [status.ipv4, status.ipv6];
-	if (families.some((family) => family?.error || family?.errorI18n)) return "failed";
-	if (!status.ipv4?.address && !status.ipv6?.address) return "waiting";
+	const families = neededFamilies(status, needed);
+	if (families.length === 0) return "ok";
+	if (families.some(hasError)) return "failed";
+	if (!families.some((family) => family?.address)) return "waiting";
 	return "ok";
 };
 
+const hasError = (family) => Boolean(family?.error || family?.errorI18n);
+const neededFamilies = (status, needed) =>
+	[needed.ipv4 ? [status?.ipv4] : [], needed.ipv6 ? [status?.ipv6] : []].flat();
+
 /**
- * The first error of the status, from the IPv4 line or else the IPv6 line
+ * The first error of the status a record needs, from the IPv4 line or else the IPv6 line
  *
  * @param   {Object | undefined}  status
+ * @param   {{ ipv4: boolean, ipv6: boolean }}  [needed]  both when not known yet
  * @returns {Object | null}  the family state that holds an error (for ddnsErrorOf), or null
  */
-const statusErrorItem = (status) =>
-	[status?.ipv4, status?.ipv6].find((family) => family?.error || family?.errorI18n) ?? null;
+const statusErrorItem = (status, needed = { ipv4: true, ipv6: true }) =>
+	neededFamilies(status, needed).find(hasError) ?? null;
 
 /**
  * The time until the next check as a number and a unit for Intl.RelativeTimeFormat (rounded up, at least a minute
@@ -76,8 +85,9 @@ const familiesNeeded = (records) => {
 };
 
 /**
- * What one address line of the status card shows: "address" (known), "failed" (checked and failed), "unchecked"
- * (no enabled address record needs the family), else "unknown" (needed, no address found yet).
+ * What one address line of the status card shows: "address" (known), "unchecked" (no enabled address record needs
+ * the family, an old error of it aside), "failed" (needed, checked and failed), else "unknown" (needed, no address
+ * found yet).
  *
  * @param   {Object | undefined}  family  status.ipv4 or status.ipv6
  * @param   {boolean}  needed  whether an enabled address record follows this family
@@ -85,8 +95,8 @@ const familiesNeeded = (records) => {
  */
 const familyLineOf = (family, needed) => {
 	if (family?.address) return "address";
-	if (family?.error || family?.errorI18n) return "failed";
-	return needed ? "unknown" : "unchecked";
+	if (!needed) return "unchecked";
+	return hasError(family) ? "failed" : "unknown";
 };
 
 /**
