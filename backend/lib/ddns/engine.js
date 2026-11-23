@@ -189,7 +189,7 @@ const createDdnsEngine = ({
 		if (unit.type !== "CNAME" && ctx.meta.proxied !== true) {
 			const answer = await resolveName(record.name, unit.type, settings().resolvers ?? []);
 			if (Array.isArray(answer) && answer.length === 1 && same(unit.type, answer[0], unit.wanted)) {
-				return { outcome: "uptodate" };
+				return { outcome: "current" };
 			}
 		}
 		const existing = await ctx.provider.read({ ...base, meta: lookupMeta(ctx.meta) });
@@ -214,7 +214,7 @@ const createDdnsEngine = ({
 			);
 		}
 		ctx.meta = { ...ctx.meta, ...existing.meta };
-		if (same(unit.type, existing.values?.[0], unit.wanted)) return { outcome: "uptodate" };
+		if (same(unit.type, existing.values?.[0], unit.wanted)) return { outcome: "current" };
 		const lastWrite = toMs(record.last_changed_on);
 		const { cooldownMs } = settings();
 		if (lastWrite !== null && lastWrite + cooldownMs > now()) {
