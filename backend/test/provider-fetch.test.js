@@ -110,6 +110,12 @@ it("scrubSecrets replaces secrets and their URL form, drops line breaks and cuts
 	assert.equal(scrubSecrets(undefined), "");
 });
 
+it("scrubSecrets also replaces the JSON-escaped and plus-for-space forms", () => {
+	assert.equal(scrubSecrets('{"e":"a\\"b\\\\c"}', ['a"b\\c']), '{"e":"***"}');
+	assert.equal(scrubSecrets("q=ab+cd&x", ["ab cd"]), "q=***&x");
+	assert.equal(scrubSecrets("ab%20cd ab+cd ab cd", ["ab cd"]), "*** *** ***");
+});
+
 it("DdnsProviderError scrubs its own message", () => {
 	const err = new DdnsProviderError({
 		status: 401,

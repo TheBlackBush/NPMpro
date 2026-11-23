@@ -5,6 +5,7 @@ import {
 	createGuardedAgent,
 	guardedAgent,
 	isPrivateLanAddress,
+	isTestOutbound,
 	lookupAll,
 } from "../outbound-guard.js";
 import { DdnsProviderError } from "./errors.js";
@@ -16,13 +17,11 @@ const BRACKETS = /^\[|\]$/gu;
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
 const agents = new Map();
 
-const testDispatcher = () => Boolean(process.env.NPMPRO_TEST_ROOT) && process.env.NPMPRO_TEST_OUTBOUND === "mock";
-
 /**
  * @returns {Agent|undefined}  undefined: the global dispatcher (the tests)
  */
 const agentFor = ({ family, privateOnly }) => {
-	if (testDispatcher()) return;
+	if (isTestOutbound()) return;
 	if (!family && !privateOnly) return guardedAgent;
 	const key = `${family ?? 0}:${privateOnly}`;
 	if (!agents.has(key)) agents.set(key, createGuardedAgent({ family, privateOnly }));

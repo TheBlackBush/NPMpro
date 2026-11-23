@@ -1,6 +1,6 @@
 import { Agent, fetch } from "undici";
 import errs from "./error.js";
-import { createGuardedAgent, assertAllowedHost as guardAssertAllowedHost } from "./outbound-guard.js";
+import { createGuardedAgent, assertAllowedHost as guardAssertAllowedHost, isTestOutbound } from "./outbound-guard.js";
 
 // fetch comes from the npm undici package like the dispatchers: Node's built-in fetch rejects an Agent of another
 // undici version (UND_ERR_INVALID_ARG).
@@ -20,16 +20,14 @@ const ZEROSSL_TIMEOUT = 10_000;
 const cache = new Map();
 const agents = new Map();
 
-// tests (NPMPRO_TEST_ROOT set) read through the global dispatcher (undici MockAgent) with NPMPRO_TEST_OUTBOUND=mock;
-// the host check still runs. Never honoured outside the test root, like NPMPRO_TEST_ARGON2 (lib/argon2.js).
-const testDispatcher = () => Boolean(process.env.NPMPRO_TEST_ROOT) && process.env.NPMPRO_TEST_OUTBOUND === "mock";
+// tests read through the global dispatcher (undici MockAgent), see isTestOutbound; the host check still runs
 
 /**
  * @param   {{guarded: boolean, verify: boolean}}  options
  * @returns {Agent|undefined}  undefined: the global dispatcher (a verified trusted read, or the tests)
  */
 const dispatcherFor = ({ guarded, verify }) => {
-	if (testDispatcher() || (!guarded && verify)) return;
+	if (isTestOutbound() || (!guarded && verify)) return;
 	const key = `${guarded}:${verify}`;
 	if (!agents.has(key)) {
 		agents.set(

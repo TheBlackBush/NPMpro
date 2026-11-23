@@ -2,7 +2,7 @@ const MIN_SECRET_LENGTH = 4;
 const MAX_MESSAGE_LENGTH = 300;
 
 /**
- * Makes provider text safe to store or show: every secret of at least 4 characters, and its URL-encoded form, becomes
+ * Makes provider text safe to store or show: every secret of at least 4 characters, and its URL-encoded forms (%20 and +) and its JSON-escaped form, becomes
  * ***; line breaks become spaces; the result is cut to 300 characters
  *
  * @param   {*}         text
@@ -13,7 +13,12 @@ const scrubSecrets = (text, secrets = []) => {
 	let out = String(text ?? "");
 	const forms = secrets
 		.filter((secret) => typeof secret === "string" && secret.length >= MIN_SECRET_LENGTH)
-		.flatMap((secret) => [secret, encodeURIComponent(secret)])
+		.flatMap((secret) => [
+			secret,
+			encodeURIComponent(secret),
+			encodeURIComponent(secret).replaceAll("%20", "+"),
+			JSON.stringify(secret).slice(1, -1),
+		])
 		.sort((a, b) => b.length - a.length);
 	for (const form of new Set(forms)) out = out.split(form).join("***");
 	return out.replace(/[\r\n]+/gu, " ").slice(0, MAX_MESSAGE_LENGTH);

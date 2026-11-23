@@ -162,8 +162,26 @@ const publicView = (provider, values) => {
 };
 
 /**
- * The field values of a stored credential: a fields credential as is; an ini credential parsed line by line
- * (key = value, # and ; comments skipped)
+ * The value of an ini line, the inverse of quoteValue: a quoted value keeps its # and loses its quotes (text after
+ * the closing quote is a comment), an unquoted one ends at the first # (an inline comment)
+ *
+ * @param   {String}  raw  the text after the =
+ * @returns {String}
+ */
+const unquoteValue = (raw) => {
+	const text = raw.trim();
+	for (const quote of ['"""', '"', "'"]) {
+		if (!text.startsWith(quote)) continue;
+		const end = text.indexOf(quote, quote.length);
+		if (end !== -1) return text.slice(quote.length, end);
+	}
+	const hash = text.indexOf("#");
+	return (hash === -1 ? text : text.slice(0, hash)).trim();
+};
+
+/**
+ * The field values of a stored credential: a fields credential as is; an ini credential parsed line by line like
+ * toIni writes it (key = value, quoted values unquoted, # and ; comment lines and inline # comments skipped)
  *
  * @param   {Object}  values  { fields } or { ini }
  * @returns {Object}          { key: value }
@@ -176,7 +194,7 @@ const credentialFields = (values) => {
 		if (text === "" || text.startsWith("#") || text.startsWith(";")) continue;
 		const at = text.indexOf("=");
 		if (at < 1) continue;
-		out[text.slice(0, at).trim()] = text.slice(at + 1).trim();
+		out[text.slice(0, at).trim()] = unquoteValue(text.slice(at + 1));
 	}
 	return out;
 };

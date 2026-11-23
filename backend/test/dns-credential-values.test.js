@@ -257,3 +257,23 @@ it("secretValuesOf returns the secret field values, or every value without a fie
 	]);
 	assert.deepEqual(secretValuesOf("google", { a: "x", b: "", c: "y" }), ["x", "y"]);
 });
+
+it("credentialFields and toIni are inverses for quoted values and drop inline comments", () => {
+	const fields = {
+		a: "plain",
+		b: "has#hash",
+		c: "com,ma",
+		d: 'say "hi"',
+		e: "it's",
+		f: " lead",
+		g: "trail ",
+		h: `both "x" and 'y'`,
+		i: "# starts",
+	};
+	assert.deepEqual(credentialFields({ ini: toIni({ fields }) }), fields);
+	assert.deepEqual(credentialFields({ ini: "k = v # note\nq = \"a#b\" # note\nr = 'x'\n" }), {
+		k: "v",
+		q: "a#b",
+		r: "x",
+	});
+});

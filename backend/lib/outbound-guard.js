@@ -1,4 +1,4 @@
-import dns, { lookup as dnsLookup } from "node:dns";
+import dns from "node:dns";
 import { BlockList, isIP } from "node:net";
 import { Agent } from "undici";
 
@@ -67,6 +67,12 @@ const isPrivateLanAddress = (address) => {
 const blockedError = (host) =>
 	Object.assign(new Error(`${host} resolves to an address outbound requests may not reach`), { code: "EBLOCKED" });
 
+/**
+ * @returns {Boolean}  true when outbound reads go through the global undici dispatcher (a MockAgent): only in the
+ *                     test root with NPMPRO_TEST_OUTBOUND=mock, never honoured in the image (like NPMPRO_TEST_ARGON2)
+ */
+const isTestOutbound = () => Boolean(process.env.NPMPRO_TEST_ROOT) && process.env.NPMPRO_TEST_OUTBOUND === "mock";
+
 const BRACKETS = /^\[|\]$/gu;
 
 const lookupAll = (host) =>
@@ -101,14 +107,14 @@ const assertAllowedHost = async (hostOrUrl) => {
 /**
  * A dns.lookup for net.connect that refuses a name when any of its addresses is blocked (so a name cannot mix an
  * allowed and a blocked address). With privateOnly every address must also be a private LAN address, and with family
- * only that family is asked for. The connection goes to an address this lookup returned, never to a second answer.
+ * only that family is asked for. dns.lookup is read at call time, so tests can stub it. The connection goes to an address this lookup returned, never to a second answer.
  */
 const makeLookup =
 	({ privateOnly = false, family } = {}) =>
 	(hostname, options, callback) => {
 		const done = typeof options === "function" ? options : callback;
 		const asked = typeof options === "function" ? {} : options;
-		dnsLookup(hostname, { ...asked, ...(family ? { family } : {}), all: true }, (err, addresses) => {
+		dns.lookup(hostname, { ...asked, ...(family ? { family } : {}), all: true }, (err, addresses) => {
 			if (err) return done(err);
 			if (
 				addresses.length === 0 ||
@@ -145,5 +151,6 @@ export {
 	guardedAgent,
 	isBlockedAddress,
 	isPrivateLanAddress,
+	isTestOutbound,
 	lookupAll,
 };

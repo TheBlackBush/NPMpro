@@ -1,0 +1,114 @@
+import assert from "node:assert/strict";
+import dns from "node:dns";
+import http from "node:http";
+import { after, before, beforeEach, it } from "node:test";
+import { fetch } from "undici";
+
+// no NPMPRO_TEST_ROOT here: providerFetch uses the real guarded agents, so the connect-time lookup is what runs
+const { providerFetch } = await import("../lib/ddns/provider-fetch.js");
+const { createGuardedAgent } = await import("../lib/outbound-guard.js");
+
+const realLookup = dns.lookup;
+let answers = new Map();
+let asked = [];
+// per name a list of answers (each a list of addresses); the last one repeats
+dns.lookup = (hostname, options, callback) => {
+	const done = typeof options === "function" ? options : callback;
+	asked.push({ hostname, family: options?.family });
+	const queue = answers.get(hostname);
+	if (!queue && hostname === "127.0.0.1") return realLookup(hostname, options, callback);
+	if (!queue) return done(Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" }));
+	const list = queue.length > 1 ? queue.shift() : queue[0];
+	const all = list.map((address) => ({ address, family: address.includes(":") ? 6 : 4 }));
+	return options?.all ? done(null, all) : done(null, all[0].address, all[0].family);
+};
+
+let hits = 0;
+let port = 0;
+let server;
+before(async () => {
+	server = http.createServer((_req, res) => {
+		hits += 1;
+		res.end("ok");
+	});
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	port = server.address().port;
+});
+beforeEach(() => {
+	hits = 0;
+	answers = new Map();
+	asked = [];
+});
+
+after(async () => {
+	dns.lookup = realLookup;
+	await new Promise((resolve) => server.close(resolve));
+});
+
+const blockedCause = (err) => {
+	for (let cause = err; cause; cause = cause.cause) if (cause.code === "EBLOCKED") return true;
+	return false;
+};
+const viaAgent = (name, options) => fetch(`http://${name}:${port}/`, { dispatcher: createGuardedAgent(options) });
+
+it("a name that resolves to the local server is refused at connect, with and without privateOnly", async () => {
+	answers.set("local.test", [["127.0.0.1"]]);
+	await assert.rejects(viaAgent("local.test"), blockedCause);
+	await assert.rejects(viaAgent("local.test", { privateOnly: true }), blockedCause);
+	assert.equal(hits, 0);
+});
+
+it("providerFetch never reaches the local server by name, over https or allowed http", async () => {
+	answers.set("local.test", [["127.0.0.1"]]);
+	await assert.rejects(providerFetch(`https://local.test:${port}/`), (err) => err.code === "blocked");
+	await assert.rejects(
+		providerFetch(`http://local.test:${port}/`, { allowPrivateHttp: true }),
+		(err) => err.code === "blocked",
+	);
+	assert.equal(hits, 0);
+});
+
+it("privateOnly refuses an answer that mixes a private and a public address", async () => {
+	answers.set("mixed.test", [["192.168.1.5", "8.8.8.8"]]);
+	await assert.rejects(viaAgent("mixed.test", { privateOnly: true }), blockedCause);
+	await assert.rejects(
+		providerFetch(`http://mixed.test:${port}/`, { allowPrivateHttp: true }),
+		(err) => err.code === "not-https",
+	);
+	assert.equal(hits, 0);
+});
+
+it("privateOnly refuses a public address, a plain agent refuses a mixed blocked one", async () => {
+	answers.set("public.test", [["8.8.8.8"]]);
+	await assert.rejects(viaAgent("public.test", { privateOnly: true }), blockedCause);
+	answers.set("blend.test", [["8.8.8.8", "127.0.0.1"]]);
+	await assert.rejects(viaAgent("blend.test"), blockedCause);
+	assert.equal(hits, 0);
+});
+
+it("a rebinding flip after the pre-check is refused at connect", async () => {
+	for (const flipped of ["127.0.0.1", "8.8.8.8", "169.254.169.254"]) {
+		// http: assertAllowedHost and the private check see the LAN address, the connection's own lookup the other
+		answers.set("flip.test", [["192.168.1.5"], ["192.168.1.5"], [flipped]]);
+		await assert.rejects(
+			providerFetch(`http://flip.test:${port}/`, { allowPrivateHttp: true, timeoutMs: 2000 }),
+			(err) => err.code === "blocked",
+			flipped,
+		);
+	}
+	// https: the pre-check sees a public address, the connection a loopback one
+	answers.set("flip.test", [["93.184.216.34"], ["127.0.0.1"]]);
+	await assert.rejects(providerFetch(`https://flip.test:${port}/`), (err) => err.code === "blocked");
+	assert.equal(hits, 0);
+});
+
+it("with family 4 or 6 the lookup asks only for that family", async () => {
+	answers.set("fam.test", [["127.0.0.1"]]);
+	await assert.rejects(viaAgent("fam.test", { family: 4 }), blockedCause);
+	await assert.rejects(viaAgent("fam.test", { family: 6 }), blockedCause);
+	await assert.rejects(viaAgent("fam.test"), blockedCause);
+	assert.deepEqual(
+		asked.filter(({ hostname }) => hostname === "fam.test").map(({ family }) => family),
+		[4, 6, undefined],
+	);
+});
