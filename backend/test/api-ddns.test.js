@@ -510,7 +510,7 @@ it("refuses wildcard, alias and apex records for OVH, and takes any TTL", async 
 	assert.equal(toApex.body.error.message_i18n, "error.ddns-apex-unsupported");
 });
 
-it("refuses a TTL under 3600 and a wildcard for deSEC, and has no zone fetch", async () => {
+it("refuses a TTL under 3600 and a wildcard for deSEC, which lists its domains", async () => {
 	const made = await makeCredential(admin, {
 		provider: "desec",
 		fields: [{ key: "dns_desec_token", value: "tok-SECRET-1234" }],
@@ -525,10 +525,10 @@ it("refuses a TTL under 3600 and a wildcard for deSEC, and has no zone fetch", a
 	const ok = await add({ dns_credential_id: made.id, name: "home.example.com", ttl: 3600 });
 	assert.equal(ok.status, 201, ok.text);
 	const providers = await admin.get("/nginx/certificates/dns-providers");
-	assert.equal(providers.body.find((provider) => provider.id === "desec").lists_domains, false);
+	assert.equal(providers.body.find((provider) => provider.id === "desec").lists_domains, true);
 });
 
-it("refuses a TTL under 600 and a wildcard for Porkbun, and has no zone fetch", async () => {
+it("refuses a TTL under 600 and a wildcard for Porkbun, which lists its domains", async () => {
 	const made = await makeCredential(admin, {
 		provider: "porkbun",
 		fields: [
@@ -546,7 +546,7 @@ it("refuses a TTL under 600 and a wildcard for Porkbun, and has no zone fetch", 
 	const ok = await add({ dns_credential_id: made.id, name: "home.example.com", ttl: 600 });
 	assert.equal(ok.status, 201, ok.text);
 	const providers = await admin.get("/nginx/certificates/dns-providers");
-	assert.equal(providers.body.find((provider) => provider.id === "porkbun").lists_domains, false);
+	assert.equal(providers.body.find((provider) => provider.id === "porkbun").lists_domains, true);
 });
 
 it("keeps DuckDNS records under duckdns.org: one label, no TTL, no alias, no wildcard, no domain to add", async () => {

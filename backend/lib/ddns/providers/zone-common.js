@@ -5,16 +5,24 @@ const MAX_ZONES = 1000;
 // 1000 zones at the smallest page size of the providers is 20 pages of 50; 25 leaves room for short pages
 const MAX_PAGES = 25;
 
+const filled = (value) => typeof value === "string" && value !== "";
+
 /**
- * The message of a failed provider answer: errors[0].message, message, or the first 300 characters of the text.
+ * The message of a failed provider answer, by the shapes of the providers: errors[].message or errors[].reason
+ * (Cloudflare, Linode; several joined), message, Message (bunny.net), detail (deSEC), error (Vultr), else the text.
+ * The caller scrubs the secrets from it.
  *
  * @param   {{ json: *, text: string }} res
  * @returns {String}
  */
 const providerMessage = (res) => {
 	const body = res.json;
-	const text = body?.errors?.[0]?.message ?? body?.message ?? res.text;
-	return typeof text === "string" && text !== "" ? text : "no message";
+	const listed = Array.isArray(body?.errors)
+		? body.errors.map((item) => [item?.message, item?.reason].find(filled)).filter(filled)
+		: [];
+	if (listed.length > 0) return listed.join("; ");
+	const text = [body?.message, body?.Message, body?.detail, body?.error, res.text].find(filled);
+	return text ?? "no message";
 };
 
 /**

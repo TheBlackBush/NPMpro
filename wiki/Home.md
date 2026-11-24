@@ -23,6 +23,7 @@ This wiki is the documentation. The [README](https://github.com/TheBlackBush/NPM
 ## Hosts and traffic
 
 - [Host options](Host-options): notes on the options of hosts and streams
+- [DNS](DNS): DNS domains per credential, fetching them from the provider, the DNS challenge, dynamic DNS and the DNS resolver; [DNS providers](DNS-providers) shows what each provider supports
 - [Load balancing](Load-balancing): several upstream servers behind one host
 - [PHP](PHP): serving PHP with an external or the built-in php-fpm
 - [Monitoring](Monitoring): traffic statistics, GeoIP, active CrowdSec bans and the GoAccess report

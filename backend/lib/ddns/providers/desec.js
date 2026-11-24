@@ -1,6 +1,6 @@
 import { DdnsProviderError } from "../errors.js";
 import { pathName, recordGone, refuseMultiple, refuseWildcard, relativeName, zoneNotFound } from "./record-common.js";
-import { failAnswer, malformed } from "./zone-common.js";
+import { collectZones, failAnswer, malformed } from "./zone-common.js";
 
 const DEFAULT_ENDPOINT = "https://desec.io/api/v1/";
 const HINT = "A token that may read and change the RRsets of the domain";
@@ -8,6 +8,26 @@ const HINT = "A token that may read and change the RRsets of the domain";
 const MIN_TTL = 3600;
 const MAX_TTL = 86_400;
 const TRAILING_SLASHES = /\/+$/u;
+
+const LIST_HINT = "A token that may read the domains of the account";
+const WHITESPACE = /\s+/u;
+const LINK_ENTRY = /<(?<url>[^>]*)>(?<params>[^<]*)/gu;
+const LINK_REL = /;\s*rel\s*=\s*(?:"(?<quoted>[^"]*)"|(?<bare>[^\s;,]+))/iu;
+
+/**
+ * The URL of the Link header entry whose rel holds the given token (exact token, "nextfoo" is not "next").
+ *
+ * @param   {String} header
+ * @param   {String} rel
+ * @returns {String|undefined}
+ */
+const linkOf = (header, rel) => {
+	for (const entry of header.matchAll(LINK_ENTRY)) {
+		const match = LINK_REL.exec(entry.groups.params);
+		const tokens = (match?.groups.quoted ?? match?.groups.bare ?? "").toLowerCase().split(WHITESPACE);
+		if (tokens.includes(rel)) return entry.groups.url;
+	}
+};
 
 const secretsOf = (fields) => [fields.dns_desec_token].filter((value) => typeof value === "string" && value !== "");
 
@@ -118,5 +138,47 @@ export default {
 		if (res.status === 404) throw zoneNotFound(res, secrets);
 		if (res.status !== 201 && res.status !== 200) failAnswer(res, { hint: HINT, secrets });
 		return { meta: { ...meta }, created: true };
+	},
+	/**
+	 * The domains, newest first. The Link header cursor (rel="next") is followed; a 400 that carries a rel="first"
+	 * link (more than 500 domains need a cursor) is followed once. Links of another origin are never followed: they
+	 * would send the token elsewhere.
+	 */
+	listZones: ({ fields, fetch }) => {
+		let base = null;
+		let url = null;
+		let firstTried = false;
+		const follow = (link, res, secrets) => {
+			let target;
+			try {
+				target = new URL(link, base);
+			} catch {
+				throw malformed(res, secrets);
+			}
+			if (target.origin !== base.origin) throw malformed(res, secrets);
+			return target.href;
+		};
+		return collectZones({
+			fetchPage: async () => {
+				const secrets = secretsOf(fields);
+				if (base === null) {
+					base = new URL(baseOf(fields.dns_desec_endpoint));
+					url = `${base.href}domains/`;
+				}
+				let res = await fetch(url, { headers: headersOf(fields) });
+				const first =
+					res.status === 400 && !firstTried ? linkOf(res.headers?.get?.("link") ?? "", "first") : undefined;
+				if (first !== undefined) {
+					firstTried = true;
+					url = follow(first, res, secrets);
+					res = await fetch(url, { headers: headersOf(fields) });
+				}
+				if (res.status !== 200) failAnswer(res, { hint: LIST_HINT, secrets });
+				if (!Array.isArray(res.json)) throw malformed(res, secrets);
+				const next = linkOf(res.headers?.get?.("link") ?? "", "next");
+				if (next !== undefined) url = follow(next, res, secrets);
+				return { names: res.json.map((zone) => zone?.name), more: next !== undefined };
+			},
+		});
 	},
 };

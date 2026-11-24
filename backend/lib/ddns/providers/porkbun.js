@@ -1,12 +1,20 @@
 import { DdnsProviderError } from "../errors.js";
 import { recordGone, refuseMultiple, refuseWildcard, relativeName, zoneNotFound } from "./record-common.js";
-import { failAnswer, malformed } from "./zone-common.js";
+import { collectZones, failAnswer, malformed } from "./zone-common.js";
 
 const BASE = "https://api.porkbun.com/api/json/v3";
 const HINT = "An API key with DNS access, and API access switched on for the domain";
 // "typically 600": the account setting decides, so a lower value than the account allows shows as the failed answer
 const MIN_TTL = 600;
 const REFUSED_CODES = /^(?:INVALID_API_KEYS|MISSING_|API_ACCESS_DISABLED)/u;
+const LIST_PAGE = 1000;
+const LIST_HINT = "A valid API key and secret, API access switched on for the domain, and the IP list of the key";
+const LIST_REFUSED =
+	/^(?:INVALID_API_KEYS|MISSING_|API_KEY_REQUIRED|INSUFFICIENT_SCOPE|IP_NOT_ALLOWED|DOMAIN_NOT_ALLOWED)/u;
+// a domain without API access, or not hosted at Porkbun (notLocal), appears in the list but the credential cannot use it
+const apiOff = (value) => value === 0 || value === "0" || value === false || value === "no";
+const notLocal = (value) => value === 1 || value === "1" || value === true || value === "yes";
+const unusable = (zone) => apiOff(zone?.apiAccess) || notLocal(zone?.notLocal);
 const MISSING_RECORD = /not found|could not find|cannot find|does not exist|no record|no such/iu;
 
 const secretsOf = (fields) =>
@@ -69,6 +77,40 @@ export default {
 	wildcards: false,
 	aliases: false,
 	minTtl: MIN_TTL,
+	/**
+	 * The domains of the account: POST with both credentials in the body, paged by the `start` offset (chunks of
+	 * up to 1000). A page shorter than the chunk is the end. Domains with `apiAccess` 0 are left out.
+	 */
+	listZones: ({ fields, fetch }) => {
+		let start = 0;
+		return collectZones({
+			fetchPage: async () => {
+				const secrets = secretsOf(fields);
+				const res = await fetch(`${BASE}/domain/listAll`, {
+					method: "POST",
+					headers: { Accept: "application/json", "Content-Type": "application/json" },
+					body: JSON.stringify({
+						apikey: fields.dns_porkbun_key,
+						secretapikey: fields.dns_porkbun_secret,
+						start,
+					}),
+				});
+				if (!(res.status >= 200 && res.status < 300 && res.json?.status === "SUCCESS")) {
+					if (res.status >= 200 && res.status < 300 && res.json?.status !== "ERROR")
+						throw malformed(res, secrets);
+					const code = typeof res.json?.code === "string" ? res.json.code : "";
+					failAnswer(res, { hint: LIST_HINT, secrets, refused: LIST_REFUSED.test(code) });
+				}
+				if (!Array.isArray(res.json.domains)) throw malformed(res, secrets);
+				const { domains } = res.json;
+				start += domains.length;
+				return {
+					names: domains.map((zone) => (unusable(zone) ? "" : zone?.domain)),
+					more: domains.length >= LIST_PAGE,
+				};
+			},
+		});
+	},
 	/** The records of the name and type; an empty answer is "missing", so a create follows */
 	async read({ zone, name, type, fields, fetch, meta }) {
 		refuseWildcard(name);

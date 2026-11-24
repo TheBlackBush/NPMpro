@@ -601,6 +601,40 @@ async function fetchDomains({ admin }) {
 		await rowAction(page, "flow-fetch-cf", "Add domains");
 		await zonesState(page, "empty").waitFor();
 		await cancel();
+
+		// 6. a provider added with PR 7 (Porkbun): its zones come from the same route, and a refusal shows its own hint
+		await api("POST", "/nginx/dns-credentials", {
+			name: "flow-fetch-pork",
+			provider: "porkbun",
+			ini: "dns_porkbun_key=flow-key\ndns_porkbun_secret=flow-secret",
+		});
+		answer = { status: 200, body: ZONES };
+		await page.goto("/certificates/dns-credentials");
+		await rowAction(page, "flow-fetch-pork", "Add domains");
+		await addWindow(page).waitFor();
+		await zonesState(page, "list").waitFor();
+		await zone("flow-f1.example").waitFor();
+		await addWindow(page).getByText("on flow-elsewhere", { exact: true }).waitFor();
+		await cancel(false);
+		answer = {
+			status: 400,
+			body: {
+				error: {
+					code: 400,
+					message: "The provider refused to list the zones: API access not enabled",
+					message_i18n: "error.dns-zones-forbidden",
+					message_values: { message: "API access not enabled", provider: "Porkbun" },
+				},
+			},
+		};
+		await rowAction(page, "flow-fetch-pork", "Add domains");
+		await zonesState(page, "error").waitFor();
+		await addWindow(page).getByText("Turn on API access for the domain", { exact: false }).waitFor();
+		if ((await addWindow(page).getByText("This token cannot list zones", { exact: false }).count()) > 0)
+			throw new Error("Porkbun shows the Cloudflare hint");
+		if ((await addWindow(page).getByText("Check the credential", { exact: false }).count()) > 0)
+			throw new Error("Porkbun shows the general hint");
+		await cancel();
 		if (errors.length > 0) throw new Error(`page error: ${errors[0]}`);
 	} finally {
 		await page.unroute(ZONES_ROUTE);

@@ -17,6 +17,19 @@ What NPMpro offers, grouped by topic. Each group links to the page that explains
 - DNS challenge with many providers and saved DNS credentials: enter the credentials of a DNS provider once (Certificates, DNS credentials tab) and reuse them; they are stored encrypted with the key `/data/npmpro/dns-credentials.key`. The same key also encrypts the OIDC client secret, the MaxMind license key and the key behind the unique visitor hashes: keep it with your backups (without it saved DNS credentials, the client secret and the license key must be entered again)
 - custom certificates can be replaced, and mTLS with client certificates per host
 
+## DNS
+- DNS domains: each saved DNS credential knows the domains (zones) it manages, in the Domains tab of Certificates & DNS and in the credential window ([Domains](DNS#domains))
+- Fetch domains: for Cloudflare, DigitalOcean, Hetzner Cloud, Gandi, OVH, PowerDNS, Linode, Vultr, deSEC, bunny.net, Porkbun, IONOS and GoDaddy credentials the Add domains window lists the provider's zones to tick ([Domains from the provider](DNS#domains-from-the-provider))
+- suggestions while you type: Domain Names fields offer names under your domains and the names your hosts and certificates use, and the DNS challenge suggests the credential whose domains cover the names ([Suggestions while you type](DNS#suggestions-while-you-type), [DNS challenge](DNS#dns-challenge))
+- dynamic DNS: the Dynamic DNS tab of Certificates & DNS keeps records that point a name at the public IP of this instance, so a connection with a changing address stays reachable ([Dynamic DNS](DNS#dynamic-dns))
+- dynamic DNS records: address records (A, AAAA; IPv4, IPv6 or both, with an optional IPv6 suffix for one host) and alias records (CNAME), for example one address record plus a wildcard alias `*.example.com` pointing at it; wildcard names on Cloudflare and DigitalOcean
+- dynamic DNS providers: with a saved DNS credential Cloudflare, DigitalOcean, Hetzner Cloud, Gandi, OVH, deSEC, DuckDNS and Porkbun; with their own account details the presets Namecheap, No-IP and Dynu; for administrators a Custom HTTP updater that calls a URL you set ([Providers](DNS#providers))
+- Keep updated suggests the host names that a dynamic DNS record could keep updated, on the Dynamic DNS tab and in the proxy host window ([Keep updated](DNS#keep-updated))
+- dynamic DNS checks on a schedule and writes only when the record at the provider needs it, with Check now, Update now, a history per record and the waits that a provider asks for; a preset whose account is refused stops until you act ([The check](DNS#the-check), [History and states](DNS#history-and-states))
+- dynamic DNS settings in Settings, Dynamic DNS or as `DDNS_*` variables ([Configuration](Configuration)); records travel in backups, and passwords and custom URLs only in a backup with secrets ([Backup and restore](Backup-and-restore))
+- the DNS resolver nginx uses for upstream names, in Settings or with the `NGINX_RESOLVER*` variables ([DNS resolver](DNS#dns-resolver))
+- which provider supports which feature: [DNS providers](DNS-providers)
+
 ## Security
 - [CrowdSec](CrowdSec) support, including AppSec (WAF) and bot detection
 - security headers always sent, fingerprinting headers stripped, based on the OWASP secure headers project

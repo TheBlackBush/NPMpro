@@ -142,7 +142,21 @@ it("shows lists_domains in the providers list", async () => {
 	const res = await admin.get("/nginx/certificates/dns-providers");
 	assert.equal(res.status, 200, res.text);
 	const flag = (id) => res.body.find((provider) => provider.id === id)?.lists_domains;
-	for (const id of ["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh", "powerdns"]) {
+	for (const id of [
+		"cloudflare",
+		"digitalocean",
+		"hetzner-cloud",
+		"gandi",
+		"ovh",
+		"powerdns",
+		"linode",
+		"vultr",
+		"desec",
+		"bunny",
+		"porkbun",
+		"ionos",
+		"godaddy",
+	]) {
 		assert.equal(flag(id), true, id);
 	}
 	assert.equal(flag("acmedns"), false);

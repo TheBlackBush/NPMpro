@@ -3,7 +3,7 @@
 
 import { displayDomain } from "./DnsDomainForms.js";
 
-const HINTED = new Set(["cloudflare", "digitalocean", "ovh"]);
+const HINTED = new Set(["bunny", "cloudflare", "desec", "digitalocean", "linode", "ovh", "porkbun", "vultr"]);
 // the only error the permission hint is for: the provider refused the credential
 const FORBIDDEN = "error.dns-zones-forbidden";
 
