@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
 	ageText,
+	batchesOf,
 	canDelete,
 	deleteBody,
 	hasUnknownAge,
@@ -9,6 +10,9 @@ import {
 	keepSelection,
 	resultCounts,
 	resultLine,
+	runBatches,
+	selectAllKeys,
+	selectAllState,
 	shortValue,
 	VALUE_LIMIT,
 } from "./DnsChallenges.js";
@@ -120,4 +124,64 @@ it("counts the results and is ok only without a skip or a failure", () => {
 	assert.equal(mixed.skipped, 1);
 	assert.equal(mixed.ok, false);
 	assert.equal(resultCounts(undefined).ok, true);
+});
+
+it("cuts a body into requests of at most 100", () => {
+	const body = Array.from({ length: 101 }, (_, i) => ({ name: `n${i}`, id: String(i), values: [] }));
+	const batches = batchesOf(body);
+	assert.deepEqual(
+		batches.map((b) => b.length),
+		[100, 1],
+	);
+	assert.equal(batches[1][0].name, "n100");
+	assert.deepEqual(batchesOf([]), []);
+	assert.deepEqual(batchesOf(undefined), []);
+});
+
+it("merges the results of the batches in order", async () => {
+	const body = Array.from({ length: 101 }, (_, i) => ({ name: `n${i}`, id: null, values: [] }));
+	const sent = [];
+	const run = await runBatches((batch) => {
+		sent.push(batch.length);
+		return Promise.resolve({ results: batch.map((b) => ({ key: b.name, result: "deleted" })) });
+	}, body);
+	assert.deepEqual(sent, [100, 1]);
+	assert.equal(run.results.length, 101);
+	assert.equal(run.done, 101);
+	assert.equal(run.error, null);
+});
+
+it("stops the remaining batches after a failure and says how many were done", async () => {
+	const body = Array.from({ length: 250 }, (_, i) => ({ name: `n${i}`, id: null, values: [] }));
+	const busy = new Error("busy");
+	let calls = 0;
+	const run = await runBatches((batch) => {
+		calls += 1;
+		if (calls === 2) return Promise.reject(busy);
+		return Promise.resolve({ results: batch.map((b) => ({ key: b.name, result: "deleted" })) });
+	}, body);
+	assert.equal(calls, 2);
+	assert.equal(run.done, 100);
+	assert.equal(run.total, 250);
+	assert.equal(run.results.length, 100);
+	assert.equal(run.error, busy);
+	const first = await runBatches(() => Promise.reject(busy), body);
+	assert.equal(first.done, 0);
+	assert.equal(first.results.length, 0);
+});
+
+it("selects every record that is not in use, unknown age and recent ones included", () => {
+	const items = [item("a"), item("b", { ageSeconds: null, preselected: false }), item("c", { recent: true })];
+	assert.deepEqual([...selectAllKeys(items, false)], ["a", "b", "c"]);
+	assert.equal(selectAllKeys(items, true).size, 0);
+	assert.equal(selectAllKeys(undefined, false).size, 0);
+});
+
+it("states the select all box as none, some or all", () => {
+	const items = [item("a"), item("b")];
+	assert.equal(selectAllState(items, new Set(), false), false);
+	assert.equal(selectAllState(items, new Set(["a"]), false), "indeterminate");
+	assert.equal(selectAllState(items, new Set(["a", "b"]), false), true);
+	assert.equal(selectAllState(items, new Set(["a", "b"]), true), false);
+	assert.equal(selectAllState([], new Set(), false), false);
 });

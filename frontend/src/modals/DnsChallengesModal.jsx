@@ -16,6 +16,9 @@ import {
 	keepSelection,
 	resultCounts,
 	resultLine,
+	runBatches,
+	selectAllKeys,
+	selectAllState,
 	shortValue,
 } from "src/modules/DnsChallenges";
 import EasyModal from "src/modules/easyModal";
@@ -48,7 +51,7 @@ function Values({ values }) {
 			) : (
 				values.map((value) => (
 					<TapTooltip key={value} content={value}>
-						<code className="block max-w-full wrap-anywhere">
+						<code className="block max-w-full rounded-sm wrap-anywhere outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
 							<span aria-hidden="true">{shortValue(value)}</span>
 							<span className="sr-only">{value}</span>
 						</code>
@@ -123,11 +126,14 @@ function Results({ results, items }) {
 
 const DnsChallengesModal = EasyModal.create(({ credentialId, credentialName, visible, remove }) => {
 	const { data: answer, error, isFetching } = useDnsChallenges(credentialId);
-	const { mutateAsync: deleteChallenges, isPending } = useDeleteDnsChallenges(credentialId);
+	const { mutateAsync: deleteChallenges } = useDeleteDnsChallenges(credentialId);
+	const [isPending, setRunning] = useState(false);
 	const [selection, setSelection] = useState(new Set());
 	const [step, setStep] = useState("list");
 	const [results, setResults] = useState(null);
 	const [deleteError, setDeleteError] = useState(null);
+	// a delete that stopped between batches: how many records were answered of the ticked ones
+	const [partial, setPartial] = useState(null);
 
 	const items = answer?.items ?? [];
 	const busy = answer?.busy === true;
@@ -157,24 +163,34 @@ const DnsChallengesModal = EasyModal.create(({ credentialId, credentialName, vis
 	const onDelete = async () => {
 		if (isPending) return;
 		setDeleteError(null);
-		try {
-			const { results: done } = await deleteChallenges(deleteBody(items, selection));
-			const counts = resultCounts(done);
-			const text = intl.formatMessage({ id: "dns-challenges.toast" }, counts);
-			if (counts.ok) showSuccess(text);
-			else if (counts.failed > 0 && counts.deleted + counts.gone === 0) showError(text);
-			else showWarning(text);
-			setResults(done);
-			setSelection(new Set());
-			setStep("results");
-		} catch (err) {
+		setPartial(null);
+		// the route takes 100 records: the ticked ones go in batches, one after another, and a failed batch stops the rest
+		setRunning(true);
+		const run = await runBatches((batch) => deleteChallenges(batch), deleteBody(items, selection));
+		setRunning(false);
+		if (run.error && run.done === 0) {
 			// a busy instance or a missing lock: nothing was deleted, the list is read again and the window says why
-			setDeleteError(err);
+			setDeleteError(run.error);
 			setStep("list");
+			return;
 		}
+		const counts = resultCounts(run.results);
+		const text = intl.formatMessage({ id: "dns-challenges.toast" }, counts);
+		if (counts.ok && !run.error) showSuccess(text);
+		else if (counts.failed > 0 && counts.deleted + counts.gone === 0) showError(text);
+		else showWarning(text);
+		if (run.error) {
+			setDeleteError(run.error);
+			setPartial({ done: run.done, total: run.total });
+		}
+		setResults(run.results);
+		setSelection(new Set());
+		setStep("results");
 	};
 
 	const backToList = () => {
+		setPartial(null);
+		setDeleteError(null);
 		setResults(null);
 		setStep("list");
 	};
@@ -230,9 +246,14 @@ const DnsChallengesModal = EasyModal.create(({ credentialId, credentialName, vis
 						</p>
 					) : null}
 				</div>
-				{answer && busy && step === "list" ? (
+				{answer && busy && step !== "results" ? (
 					<NoticeAlert className="mb-3" data-challenge-busy="">
 						<T id="dns-challenges.busy" />
+					</NoticeAlert>
+				) : null}
+				{step === "results" && partial ? (
+					<NoticeAlert className="mb-3" data-challenge-partial="">
+						<T id="dns-challenges.partial" data={partial} />
 					</NoticeAlert>
 				) : null}
 				{step === "results" && results ? <Results results={results} items={items} /> : null}
@@ -277,6 +298,19 @@ const DnsChallengesModal = EasyModal.create(({ credentialId, credentialName, vis
 								<T id="dns-challenges.truncated" />
 							</p>
 						) : null}
+						<div className="mb-2 flex items-center gap-2 px-1">
+							<Checkbox
+								id="dns-challenges-all"
+								checked={selectAllState(items, selection, busy)}
+								disabled={busy}
+								onCheckedChange={(value) =>
+									setSelection(value === true ? selectAllKeys(items, busy) : new Set())
+								}
+							/>
+							<label htmlFor="dns-challenges-all" className="text-sm">
+								<T id="dns-challenges.select-all" />
+							</label>
+						</div>
 						<ul
 							aria-label={intl.formatMessage({ id: "dns-challenges.list" })}
 							className="m-0 list-none divide-y overflow-y-auto rounded-md border p-0"

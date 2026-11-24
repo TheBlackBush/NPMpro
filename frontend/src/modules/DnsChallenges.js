@@ -112,3 +112,52 @@ export function resultCounts(results) {
 	}
 	return { ...counts, ok: counts.skipped === 0 && counts.failed === 0 };
 }
+
+/** The most records one delete request takes (the route's limit) */
+export const BATCH_LIMIT = 100;
+
+/** The body items cut into requests of at most BATCH_LIMIT, in order */
+export function batchesOf(body) {
+	const list = body ?? [];
+	const batches = [];
+	for (let start = 0; start < list.length; start += BATCH_LIMIT) batches.push(list.slice(start, start + BATCH_LIMIT));
+	return batches;
+}
+
+/**
+ * Sends the batches one after another and merges the results. A batch that fails (busy, no locks, any error) stops
+ * the rest: nothing further is sent.
+ *
+ * @param   {(batch: Array) => Promise<{ results: Array }>} send
+ * @param   {Array} body  the items to delete
+ * @returns {Promise<{ results: Array, done: number, total: number, error: unknown }>}  done: the records of the
+ *          batches that were answered; error: the failure that stopped the run, or null
+ */
+export function runBatches(send, body) {
+	const batches = batchesOf(body);
+	const total = (body ?? []).length;
+	const results = [];
+	// one batch after the other: the next is sent when the previous answered
+	const step = async (index, done) => {
+		if (index >= batches.length) return { results, done, total, error: null };
+		try {
+			const answer = await send(batches[index]);
+			results.push(...(answer?.results ?? []));
+			return step(index + 1, done + batches[index].length);
+		} catch (error) {
+			return { results, done, total, error };
+		}
+	};
+	return step(0, 0);
+}
+
+/** The keys "Select all" ticks: every record that is not in use (unknown age and recent ones too: an explicit action) */
+export const selectAllKeys = (items, busy) => (busy ? new Set() : new Set((items ?? []).map((item) => item.key)));
+
+/** The state of the "Select all" box: true, false or "indeterminate" */
+export function selectAllState(items, selection, busy) {
+	const total = (items ?? []).length;
+	const ticked = (items ?? []).filter((item) => selection?.has(item.key)).length;
+	if (busy || total === 0 || ticked === 0) return false;
+	return ticked === total ? true : "indeterminate";
+}
