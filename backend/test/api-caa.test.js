@@ -294,7 +294,10 @@ it("a change of the allowed CAs clears the results", async () => {
 	assert.equal((await entry(admin, id)).state, "refused");
 	await dns("k.example.com", issue("directory-ca.example"));
 	assert.equal((await entry(admin, id)).state, "refused");
-	const added = await admin.post("/settings/acme/accounts", { server: "https://third.test/dir", email: "a@example.com" });
+	const added = await admin.post("/settings/acme/accounts", {
+		server: "https://third.test/dir",
+		email: "a@example.com",
+	});
 	// whatever the answer (the CA may not register), the attempt cleared the cache
 	assert.ok(added.status > 0);
 	assert.equal((await entry(admin, id)).state, "allowed");
@@ -320,7 +323,10 @@ it("renew, re-issue and a domain change each clear the entry", async () => {
 		assert.equal((await entry(admin, id)).state, expectState);
 	};
 	await flip(() => admin.post(`${CERTS}/${id}/renew`, {}), "allowed");
-	await flip(() => admin.put(`${CERTS}/${id}/domains`, { domain_names: ["n.example.com", "o2.example.com"] }), "allowed");
+	await flip(
+		() => admin.put(`${CERTS}/${id}/domains`, { domain_names: ["n.example.com", "o2.example.com"] }),
+		"allowed",
+	);
 	// re-issue at the CA without an identity: the result is rebuilt for it
 	await flip(() => admin.post(`${CERTS}/${id}/reissue`, { npmpro_acme_server: OTHER }), "not-checked");
 });
