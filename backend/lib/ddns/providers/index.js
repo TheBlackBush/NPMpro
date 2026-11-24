@@ -3,13 +3,14 @@ import { providerFetch } from "../provider-fetch.js";
 import cloudflare from "./cloudflare.js";
 import desec from "./desec.js";
 import digitalocean from "./digitalocean.js";
+import duckdns from "./duckdns.js";
 import gandi from "./gandi.js";
 import hetznerCloud from "./hetzner-cloud.js";
 import ovh from "./ovh.js";
 import powerdns from "./powerdns.js";
 
 /** The providers with an API, in the order the UI shows them */
-const PROVIDERS = Object.freeze([cloudflare, digitalocean, hetznerCloud, gandi, ovh, desec, powerdns]);
+const PROVIDERS = Object.freeze([cloudflare, digitalocean, hetznerCloud, gandi, ovh, desec, duckdns, powerdns]);
 
 const providerById = (id) => PROVIDERS.find((provider) => provider.id === id) ?? null;
 
@@ -42,6 +43,8 @@ const PROVIDER_LIST = Object.freeze(
 		admin_only: provider.adminOnly,
 		wildcards: provider.wildcards,
 		aliases: provider.aliases === true,
+		zoneless: provider.zoneless === true,
+		zone: provider.zone ?? null,
 		apex: provider.apex !== false,
 		min_ttl: provider.minTtl ?? null,
 	})),

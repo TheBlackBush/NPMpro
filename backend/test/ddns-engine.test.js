@@ -57,7 +57,14 @@ const promised = (object) =>
 		Object.entries(object).map(([key, fn]) => [key, typeof fn === "function" ? promisedFn(fn) : fn]),
 	);
 
-const harness = ({ records = [recordRow()], zone = {}, resolver = () => null, ip = {}, cooldownMs = 5 * MIN } = {}) => {
+const harness = ({
+	records = [recordRow()],
+	zone = {},
+	resolver = () => null,
+	ip = {},
+	cooldownMs = 5 * MIN,
+	zoneless = false,
+} = {}) => {
 	const clock = makeClock();
 	const rows = new Map(records.map((row) => [row.id, structuredClone(row)]));
 	const historyRows = [];
@@ -73,8 +80,10 @@ const harness = ({ records = [recordRow()], zone = {}, resolver = () => null, ip
 	const key = (type) => `${type}`;
 	const provider = promised({
 		id: "fake",
+		zoneless,
 		read: ({ type, meta }) => {
 			calls.push({ op: "read", type, meta });
+			if (zoneless) return null;
 			if (dns.readError) throw dns.readError;
 			const values = dns[key(type)];
 			return values ? { values, ttl: 300, meta: { zone_id: "z1", record_id: `r-${type}`, ...dns.meta } } : null;
@@ -754,5 +763,81 @@ describe("ddns engine: history", () => {
 		assert.equal(own.length, HISTORY_LIMIT);
 		assert.equal(own[0].new_ip, "t1.example.net");
 		assert.equal(own.at(-1).new_ip, `t${HISTORY_LIMIT}.example.net`);
+	});
+});
+
+describe("ddns engine: zoneless provider", () => {
+	const record = (over = {}) => recordRow({ name: "home.duckdns.org", zone: "duckdns.org", ...over });
+
+	it("writes when the DNS answer differs, never reads the provider and never creates", async () => {
+		const h = harness({ zoneless: true, records: [record()], resolver: () => [IP4_NEW] });
+		await h.engine.cycle();
+		assert.deepEqual(
+			h.calls.map((call) => call.op),
+			["write"],
+		);
+		assert.equal(writes(h)[0].ip, IP4);
+		assert.equal(writes(h)[0].existing, null);
+		assert.equal(h.row().state, "ok");
+		assert.equal(h.row().last_ipv4, IP4);
+		assert.deepEqual(
+			h.historyRows.map((row) => [row.kind, row.old_ip, row.new_ip]),
+			[["changed", null, IP4]],
+		);
+		assert.equal(h.resolves.length, 1);
+	});
+
+	it("writes when the name does not resolve yet, and keeps the old address in the history", async () => {
+		const h = harness({
+			zoneless: true,
+			records: [record({ last_ipv4: IP4_NEW })],
+			resolver: () => null,
+		});
+		await h.engine.cycle();
+		assert.equal(writes(h).length, 1);
+		assert.equal(h.historyRows[0].old_ip, IP4_NEW);
+	});
+
+	it("does not write when the DNS answer is already the address, even for a record never written", async () => {
+		const h = harness({ zoneless: true, records: [record()], resolver: () => [IP4] });
+		await h.engine.cycle();
+		assert.equal(h.calls.length, 0);
+		assert.equal(h.row().state, "ok");
+		assert.equal(h.historyRows.length, 0);
+	});
+
+	it("writes A and AAAA of a both record separately, with no provider read and no other-type check", async () => {
+		const h = harness({ zoneless: true, records: [record({ ip_version: "both" })], resolver: () => null });
+		await h.engine.cycle();
+		assert.deepEqual(
+			h.calls.map((call) => [call.op, call.type]),
+			[
+				["write", "A"],
+				["write", "AAAA"],
+			],
+		);
+	});
+
+	it("holds the cooldown after a write, and Update now answers the cooldown error", async () => {
+		const h = harness({ zoneless: true, records: [record()], resolver: () => [IP4_NEW] });
+		await h.engine.cycle();
+		h.clock.advance(MIN);
+		await h.engine.cycle({ force: true });
+		assert.equal(writes(h).length, 1);
+		assert.equal(h.row().state, "ok");
+		await assert.rejects(h.engine.updateRecord(1), (err) => err.message_i18n === "error.ddns-cooldown");
+		h.clock.advance(10 * MIN);
+		await h.engine.cycle({ force: true });
+		assert.equal(writes(h).length, 2);
+	});
+
+	it("a failed write is a failure with the scrubbed message and the next try", async () => {
+		const h = harness({ zoneless: true, records: [record()], resolver: () => null });
+		h.dns.writeError = new DdnsProviderError({ code: "failed", message: `bad ${TOKEN}`, secrets: [TOKEN] });
+		await h.engine.cycle();
+		assert.equal(h.row().state, "failed");
+		assert.match(h.row().error, STARS);
+		assert.doesNotMatch(h.row().error, TOKEN_FOUND);
+		assert.equal(h.row().failures, 1);
 	});
 });

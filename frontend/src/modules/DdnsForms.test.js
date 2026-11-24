@@ -29,12 +29,23 @@ const PROVIDERS = [
 		apex: false,
 		minTtl: null,
 	},
+	{
+		id: "duckdns",
+		label: "DuckDNS",
+		credentialProvider: "duckdns",
+		wildcards: false,
+		aliases: false,
+		zoneless: true,
+		zone: "duckdns.org",
+		minTtl: null,
+	},
 ];
 const CREDENTIALS = [
 	{ id: 1, name: "Cloudflare main", provider: "cloudflare", ownerUserId: 1 },
 	{ id: 2, name: "Gandi", provider: "gandi", ownerUserId: 1 },
 	{ id: 3, name: "Other", provider: "route53", ownerUserId: 1 },
 	{ id: 4, name: "OVH", provider: "ovh", ownerUserId: 1 },
+	{ id: 5, name: "Duck", provider: "duckdns", ownerUserId: 1 },
 ];
 const ZONES = [
 	{ name: "example.com", credentialId: 1, ownerUserId: 1 },
@@ -159,6 +170,67 @@ it("refuses an alias and a name at the apex for a provider without them (the bac
 		).target.id,
 		"error.ddns-alias-unsupported",
 	);
+});
+
+it("keeps a zoneless provider's records under its fixed zone, with no zone to add and no TTL (the backend cases)", () => {
+	const duck = (values, context) => check({ credentialId: 5, ...values }, context);
+	// no domain of the credential exists and none is asked for
+	assert.deepEqual(duck({ name: "home.duckdns.org" }), {});
+	assert.deepEqual(duck({ name: "home.duckdns.org", ipVersion: "both", ipv6Suffix: "::1" }), {});
+	for (const name of ["home.example.com", "duckdns.org", "a.b.duckdns.org"]) {
+		assert.deepEqual(duck({ name }).name, {
+			id: "error.ddns-zoneless-name",
+			values: { provider: "DuckDNS", zone: "duckdns.org" },
+		});
+	}
+	assert.equal(duck({ name: "*.home.duckdns.org" }).name.id, "error.ddns-wildcard-unsupported");
+	assert.equal(duck({ name: "home.duckdns.org", ttl: "300" }).ttl.id, "error.ddns-ttl-unsupported");
+	assert.equal(duck({ name: "home.duckdns.org", ttl: "" }).ttl, undefined);
+	assert.equal(
+		alias({ credentialId: 5, name: "home.duckdns.org", target: "x.example.net" }).target.id,
+		"error.ddns-alias-unsupported",
+	);
+	assert.equal(
+		duck({ name: "home.duckdns.org", ipVersion: "ipv4", ipv6Suffix: "::1" }).ipv6Suffix.id,
+		"error.ddns-suffix-needs-ipv6",
+	);
+	assert.equal(
+		duck({ name: "home.duckdns.org", ipVersion: "ipv6", ipv6Suffix: "1::1" }).ipv6Suffix.id,
+		"error.ddns-suffix-invalid",
+	);
+	// a stored record passes a save that keeps its name, a rename or a credential change runs the rules again
+	const stored = { ...STORED, name: "home.duckdns.org", dnsCredentialId: 5, zone: "duckdns.org" };
+	assert.deepEqual(duck({ name: "home.duckdns.org" }, { stored }), {});
+	assert.equal(duck({ name: "other.example.com" }, { stored }).name.id, "error.ddns-zoneless-name");
+	assert.equal(duck({ name: "home.duckdns.org", ttl: "600" }, { stored }).ttl.id, "error.ddns-ttl-unsupported");
+	// the kind and the IP version come from the stored record when the form leaves them out
+	assert.deepEqual(ddnsRecordValidate({ name: "home.duckdns.org", credentialId: 5 }, { ...CONTEXT, stored }), {});
+	const storedSuffix = { ...stored, ipVersion: "ipv4", ipv6Suffix: "::1" };
+	assert.equal(
+		ddnsRecordValidate(
+			{ name: "home.duckdns.org", credentialId: 5, ipv6Suffix: "::2" },
+			{ ...CONTEXT, stored: storedSuffix },
+		).ipv6Suffix.id,
+		"error.ddns-suffix-needs-ipv6",
+	);
+	// an alias that stays an alias passes, an address that becomes one is refused; an alias form has no suffix
+	const storedAlias = { ...stored, kind: "alias", target: "x.example.net" };
+	assert.equal(
+		ddnsRecordValidate(
+			{ name: "home.duckdns.org", credentialId: 5, kind: "alias", target: "x.example.net" },
+			{ ...CONTEXT, stored: storedAlias },
+		).target,
+		undefined,
+	);
+	assert.equal(
+		alias({ credentialId: 5, name: "home.duckdns.org", target: "x.example.net" }, { stored }).target.id,
+		"error.ddns-alias-unsupported",
+	);
+	// a bad name is reported once, by the generic rule
+	assert.equal(duck({ name: "*.duckdns.org" }).name.id, "error.ddns-wildcard-unsupported");
+	assert.equal(duck({ name: "home.duckdns.org", ttl: "abc" }).ttl.id, "error.ddns-ttl-unsupported");
+	const storedTtl = { ...stored, ttl: 600 };
+	assert.equal(duck({ name: "home.duckdns.org", ttl: "600" }, { stored: storedTtl }).ttl, undefined);
 });
 
 it("a provider without min_ttl gets the generic TTL message under the schema floor", () => {

@@ -34,6 +34,8 @@
 									"admin_only": false,
 									"wildcards": true,
 									"aliases": true,
+									"zoneless": false,
+									"zone": null,
 									"apex": true,
 									"min_ttl": 60
 								}

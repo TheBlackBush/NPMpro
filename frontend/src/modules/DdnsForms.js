@@ -102,6 +102,39 @@ const providerOf = (credential, providers) =>
 
 const problem = (id, values) => (values ? { id, values } : { id });
 
+// <subdomain>.<zone> with one subdomain label
+const zonelessNameOk = (name, zone) => name.endsWith(`.${zone}`) && !name.slice(0, -(zone.length + 1)).includes(".");
+
+/** The rules of a record of a zoneless provider: the twin of resolveZoneless in backend/internal/ddns-record.js */
+const zonelessErrors = (errors, { values, provider, stored, name, renamed, credentialChanged }) => {
+	if (!errors.name && (renamed || credentialChanged) && !zonelessNameOk(name, provider.zone)) {
+		errors.name = problem("error.ddns-zoneless-name", { provider: provider.label, zone: provider.zone });
+	}
+	const kind = values.kind ?? stored?.kind ?? "address";
+	if (kind === "alias" && (stored === null || kind !== stored.kind || credentialChanged)) {
+		errors.target = problem("error.ddns-alias-unsupported", { provider: provider.label });
+	}
+	if (!isBlank(values.ttl)) {
+		const text = String(values.ttl).trim();
+		const ttl = WHOLE_NUMBER.test(text) ? Number(text) : Number.NaN;
+		if (stored === null || ttl !== stored.ttl || credentialChanged) {
+			errors.ttl = problem("error.ddns-ttl-unsupported", { provider: provider.label });
+		}
+	}
+	const suffix = trimmed(values.ipv6Suffix);
+	const ipVersion = values.ipVersion ?? stored?.ipVersion ?? "ipv4";
+	const kindChanged = stored === null || kind !== stored.kind;
+	if (
+		kind !== "alias" &&
+		suffix !== "" &&
+		(kindChanged || suffix !== trimmed(stored?.ipv6Suffix) || ipVersion !== stored?.ipVersion)
+	) {
+		if (ipVersion === "ipv4") errors.ipv6Suffix = problem("error.ddns-suffix-needs-ipv6");
+		else if (!isIpv6Suffix(suffix)) errors.ipv6Suffix = problem("error.ddns-suffix-invalid", { suffix });
+	}
+	return errors;
+};
+
 /**
  * The errors of a record form, by field. A field without an entry passes.
  *
@@ -138,6 +171,10 @@ const ddnsRecordValidate = (values, { providers, credentials, zones, stored = nu
 	if ((renamed || credentialChanged) && name.startsWith(WILDCARD_PREFIX) && !provider.wildcards) {
 		errors.name = problem("error.ddns-wildcard-unsupported", { provider: provider.label });
 	}
+
+	// a zoneless provider (DuckDNS): one fixed zone, the name is <subdomain>.<zone>, no domain to add, no TTL
+	if (provider.zoneless === true)
+		return zonelessErrors(errors, { values, provider, stored, name, renamed, credentialChanged });
 
 	const typedZone = trimmed(values.zone);
 	const checkTyped = () => {

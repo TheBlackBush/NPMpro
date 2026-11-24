@@ -194,6 +194,49 @@ const createDdnsEngine = ({
 		return familyOf(record).length === 1 && Boolean(record.meta?.record_id);
 	};
 
+	/** The cooldown after the last write: { outcome: "waiting" } to wait (or the error of Update now), else null */
+	const cooldownOf = (ctx) => {
+		const lastWrite = toMs(ctx.record.last_changed_on);
+		const { cooldownMs } = settings();
+		if (lastWrite === null || lastWrite + cooldownMs <= now()) return null;
+		const waitUntil = lastWrite + cooldownMs;
+		if (ctx.strictCooldown) {
+			throw Object.assign(
+				new errs.ValidationError(
+					"The record was written recently; the next write is allowed later",
+					"error.ddns-cooldown",
+					{ values: { next_write_on: new Date(waitUntil).toISOString() } },
+				),
+				{ cooldown: true },
+			);
+		}
+		return { outcome: "waiting", waitUntil };
+	};
+
+	/**
+	 * A provider without zones and without a read (DuckDNS): the DNS answer is the only reading. It is written when
+	 * that answer differs from the wanted address, never as "create", and the other record type is not looked at.
+	 */
+	const runZoneless = async (ctx, unit, base) => {
+		const { record } = ctx;
+		const answer = await resolveName(record.name, unit.type, settings().resolvers ?? []);
+		if (Array.isArray(answer) && answer.length === 1 && same(unit.type, answer[0], unit.wanted)) {
+			return { outcome: "current" };
+		}
+		const held = cooldownOf(ctx);
+		if (held) return held;
+		const written = await ctx.provider.write({
+			...base,
+			ip: unit.wanted,
+			ttl: record.ttl ?? undefined,
+			existing: null,
+			meta: lookupMeta(ctx.meta),
+		});
+		ctx.meta = { ...ctx.meta, ...written?.meta };
+		const old = (unit.family === 6 ? record.last_ipv6 : record.last_ipv4) ?? null;
+		return { outcome: "changed", change: { kind: "changed", old, new: unit.wanted } };
+	};
+
 	/** Brings one record type in line. Returns { outcome, change?, waitUntil? } or throws */
 	const runUnit = async (ctx, unit) => {
 		const { record } = ctx;
@@ -204,6 +247,7 @@ const createDdnsEngine = ({
 			fields: ctx.cred.fields,
 			fetch: ctx.fetch,
 		};
+		if (ctx.provider.zoneless === true) return runZoneless(ctx, unit, base);
 		// a proxied record resolves to the proxy, so only the provider's answer tells its value; and only a record the
 		// provider showed before may be trusted from DNS (a wildcard or a CNAME may answer for one that does not exist)
 		const proxied = ctx.meta[proxiedKey(unit.type)] ?? record.meta?.proxied;
@@ -238,22 +282,8 @@ const createDdnsEngine = ({
 		const readProxied = existing.proxied ?? existing.meta?.proxied;
 		if (typeof readProxied === "boolean") ctx.meta[proxiedKey(unit.type)] = readProxied;
 		if (same(unit.type, existing.values?.[0], unit.wanted)) return { outcome: "current" };
-		const lastWrite = toMs(record.last_changed_on);
-		const { cooldownMs } = settings();
-		if (lastWrite !== null && lastWrite + cooldownMs > now()) {
-			const waitUntil = lastWrite + cooldownMs;
-			if (ctx.strictCooldown) {
-				throw Object.assign(
-					new errs.ValidationError(
-						"The record was written recently; the next write is allowed later",
-						"error.ddns-cooldown",
-						{ values: { next_write_on: new Date(waitUntil).toISOString() } },
-					),
-					{ cooldown: true },
-				);
-			}
-			return { outcome: "waiting", waitUntil };
-		}
+		const held = cooldownOf(ctx);
+		if (held) return held;
 		const written = await ctx.provider.write({
 			...base,
 			ip: unit.wanted,

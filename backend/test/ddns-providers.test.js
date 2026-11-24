@@ -38,6 +38,7 @@ const bodyIs = (expected) => (text) => text === JSON.stringify(expected);
 const MORE_THAN_ONE = /more than one/u;
 const REMOVED = /removed at the provider/u;
 const LIST_PATH = `/1.0/domain/zone/example.com/record?${new URLSearchParams({ fieldType: "A", subDomain: "home" })}`;
+const ANSWER_KO = /KO/u;
 const REFRESH_FAILED = /zone refresh failed/u;
 const BETWEEN = /between 300/u;
 const cfRecords = (type, name, zoneId = "zid") =>
@@ -48,7 +49,7 @@ describe("registry", () => {
 	it("lists the five updater providers and finds them by credential provider", () => {
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.id),
-			["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh", "desec"],
+			["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh", "desec", "duckdns"],
 		);
 		assert.deepEqual(PROVIDER_LIST[0], {
 			id: "cloudflare",
@@ -60,26 +61,33 @@ describe("registry", () => {
 			admin_only: false,
 			wildcards: true,
 			aliases: true,
+			zoneless: false,
+			zone: null,
 			apex: true,
 			min_ttl: 60,
 		});
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.min_ttl),
-			[60, 30, 60, 300, null, 3600],
+			[60, 30, 60, 300, null, 3600, null],
 		);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.aliases),
-			[true, true, true, true, false, false],
+			[true, true, true, true, false, false, false],
 		);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.apex),
-			[true, true, true, true, false, true],
+			[true, true, true, true, false, true, true],
 		);
 		assert.equal(PROVIDER_LIST.filter((p) => p.proxied).length, 1);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.wildcards),
-			[true, true, false, false, false, false],
+			[true, true, false, false, false, false, false],
 		);
+		assert.deepEqual(
+			PROVIDER_LIST.map((p) => p.zoneless),
+			[false, false, false, false, false, false, true],
+		);
+		assert.equal(PROVIDER_LIST.at(-1).zone, "duckdns.org");
 		assert.equal(updaterFor("gandi").id, "gandi");
 		assert.equal(updaterFor("ovh").id, "ovh");
 		assert.equal(updaterFor("powerdns"), null);
@@ -999,5 +1007,98 @@ describe("desec", () => {
 
 	it("has no zone fetch", () => {
 		assert.equal(providerById("desec").listZones, undefined);
+	});
+});
+
+describe("duckdns", () => {
+	// a token with characters that change when URL-encoded
+	const DUCK_TOKEN = ["duck", "tok/+ab&cd=12 xyz"].join("-");
+	const fields = { dns_duckdns_token: DUCK_TOKEN };
+	const secrets = [DUCK_TOKEN];
+	const base = { zone: "duckdns.org", name: "home.duckdns.org", type: "A", fields, ip: "5.6.7.8", existing: null };
+	const run = (method, args) => call("duckdns", method, args, secrets);
+	const encoded = encodeURIComponent(DUCK_TOKEN);
+	const pathOf = (extra) => `/update?domains=home&token=${encoded}&${extra}&verbose=true`;
+	const duck = () => api("www.duckdns.org");
+
+	it("is a zoneless provider without a record read", async () => {
+		const provider = providerById("duckdns");
+		assert.equal(provider.zoneless, true);
+		assert.equal(provider.zone, "duckdns.org");
+		assert.equal(provider.listZones, undefined);
+		assert.equal(await run("read", base), null);
+		assert.equal(updaterFor("duckdns").id, "duckdns");
+	});
+
+	it("sends one GET with the subdomain, the token and the address, and takes OK as success", async () => {
+		duck()
+			.intercept({ path: pathOf("ip=5.6.7.8"), method: "GET" })
+			.reply(200, "OK\n5.6.7.8\n\nUPDATED", { headers: { "content-type": "text/plain" } });
+		assert.deepEqual(await run("write", base), { meta: {}, created: false });
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("sends an IPv6 address as ipv6", async () => {
+		duck()
+			.intercept({ path: pathOf(`ipv6=${encodeURIComponent("2001:db8::1")}`), method: "GET" })
+			.reply(200, "OK\n\n2001:db8::1\nNOCHANGE");
+		assert.deepEqual(await run("write", { ...base, type: "AAAA", ip: "2001:db8::1" }), {
+			meta: {},
+			created: false,
+		});
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("takes KO as a refusal without a retry, and scrubs the token from the message", async () => {
+		duck()
+			.intercept({ path: pathOf("ip=5.6.7.8"), method: "GET" })
+			.reply(200, "KO");
+		await assert.rejects(
+			run("write", base),
+			(err) =>
+				err.code === "forbidden" && err.retry === false && ANSWER_KO.test(err.message) && Boolean(err.hint),
+		);
+	});
+
+	it("takes an empty body or any other first line as a retried failure", async () => {
+		duck()
+			.intercept({ path: pathOf("ip=5.6.7.8"), method: "GET" })
+			.reply(200, "");
+		await assert.rejects(run("write", base), (err) => err.code === "failed" && err.retry !== false);
+		duck()
+			.intercept({ path: pathOf("ip=5.6.7.8"), method: "GET" })
+			.reply(200, "<html>maintenance</html>");
+		await assert.rejects(run("write", base), (err) => err.code === "failed" && err.retry !== false);
+		duck()
+			.intercept({ path: pathOf("ip=5.6.7.8"), method: "GET" })
+			.reply(502, "OK");
+		await assert.rejects(run("write", base), (err) => err.code === "failed");
+	});
+
+	it("never lets the token into an error message, plain, URL-encoded or echoed by the answer", async () => {
+		const echoes = [`KO ${DUCK_TOKEN}`, `bad ${encoded}`, `bad ${encoded.replaceAll("%20", "+")}`];
+		for (const body of echoes) {
+			duck()
+				.intercept({ path: pathOf("ip=5.6.7.8"), method: "GET" })
+				.reply(200, body);
+			await assert.rejects(run("write", base), (err) => {
+				assert.ok(err.message.includes("***"), err.message);
+				return !err.message.includes(DUCK_TOKEN) && !err.message.includes(encoded);
+			});
+		}
+		duck()
+			.intercept({ path: pathOf("ip=5.6.7.8"), method: "GET" })
+			.replyWithError(Object.assign(new Error(`connect failed ${DUCK_TOKEN}`), { code: "ECONNRESET" }));
+		await assert.rejects(run("write", base), (err) => {
+			assert.ok(!err.message.includes(DUCK_TOKEN) && !err.message.includes(encoded), err.message);
+			return err.code === "network";
+		});
+	});
+
+	it("refuses a wildcard name", async () => {
+		await assert.rejects(
+			run("write", { ...base, name: "*.home.duckdns.org" }),
+			(err) => err.code === "failed" && err.retry === false,
+		);
 	});
 });

@@ -147,6 +147,63 @@ const zoneFor = async (credential, name, typed) => {
 	});
 };
 
+// <subdomain>.<zone> with one subdomain label
+const zonelessNameOk = (name, zone) => name.endsWith(`.${zone}`) && !name.slice(0, -(zone.length + 1)).includes(".");
+
+/**
+ * The save of a record of a zoneless provider: the zone is the provider's own, the name one label under it, the
+ * record an address record without a TTL
+ */
+const resolveZoneless = ({ updater, credential, credentialChanged, data, row, name, renamed }) => {
+	if ((renamed || credentialChanged) && !zonelessNameOk(name, updater.zone)) {
+		throw refusal(`${updater.label} records are named <subdomain>.${updater.zone}`, "error.ddns-zoneless-name", {
+			provider: updater.label,
+			zone: updater.zone,
+		});
+	}
+	const kind = data.kind ?? row?.kind ?? "address";
+	if (kind === "alias" && (row === null || kind !== row.kind || credentialChanged)) {
+		throw refusal(`${updater.label} does not allow alias (CNAME) records`, "error.ddns-alias-unsupported", {
+			provider: updater.label,
+		});
+	}
+	const ttl = data.ttl !== undefined ? data.ttl : (row?.ttl ?? null);
+	if (ttl !== null && (row === null || ttl !== row.ttl || credentialChanged)) {
+		throw refusal(`${updater.label} takes no TTL`, "error.ddns-ttl-unsupported", { provider: updater.label });
+	}
+	const suffixInput = data.ipv6_suffix !== undefined ? data.ipv6_suffix : (row?.ipv6_suffix ?? null);
+	const suffix = typeof suffixInput === "string" && suffixInput.trim() !== "" ? suffixInput.trim() : null;
+	const kindChanged = row === null || kind !== row.kind;
+	const hasTarget = typeof data.target === "string" && data.target.trim() !== "";
+	if (hasTarget) throw refusal("An address record takes no target", "error.ddns-address-no-target");
+	const ipVersion = data.ip_version ?? (kindChanged ? "ipv4" : row.ip_version);
+	if (suffix !== null && (kindChanged || suffix !== row?.ipv6_suffix || ipVersion !== row?.ip_version)) {
+		if (ipVersion === "ipv4") throw refusal("An IPv6 suffix needs IPv6 or both", "error.ddns-suffix-needs-ipv6");
+		if (!isIpv6Suffix(suffix)) {
+			throw refusal(`'${suffix}' is not an IPv6 interface id of at most 64 bits`, "error.ddns-suffix-invalid", {
+				suffix,
+			});
+		}
+	}
+	return {
+		values: {
+			owner_user_id: credential.owner_user_id,
+			dns_credential_id: credential.id,
+			provider: updater.id,
+			name,
+			zone: updater.zone,
+			kind,
+			ttl,
+			enabled: data.enabled ?? row?.enabled ?? true,
+			target: null,
+			ip_version: ipVersion,
+			ipv6_suffix: suffix,
+		},
+		credential,
+		identityChanged: row !== null && (renamed || credentialChanged || updater.zone !== row.zone),
+	};
+};
+
 /**
  * The values a save stores. Rules run on new or changed values only: a stored value passes a save that keeps it.
  *
@@ -183,6 +240,11 @@ const resolveSave = async (access, data, row) => {
 			provider: updater.label,
 		});
 	}
+
+	// a zoneless provider (DuckDNS) has one fixed zone and takes the name as <subdomain>.<zone>; no domain of the
+	// credential is looked up and none needs adding
+	if (updater.zoneless === true)
+		return resolveZoneless({ updater, credential, credentialChanged, data, row, name, renamed });
 
 	let zone = row?.zone;
 	const typedZone = data.zone !== undefined && data.zone !== null && data.zone !== "" ? data.zone : null;

@@ -13,6 +13,8 @@
 			"admin_only",
 			"wildcards",
 			"aliases",
+			"zoneless",
+			"zone",
 			"apex",
 			"min_ttl"
 		],
@@ -69,6 +71,19 @@
 				"type": "boolean",
 				"example": true,
 				"description": "Whether an alias (CNAME) record is allowed"
+			},
+			"zoneless": {
+				"type": "boolean",
+				"example": false,
+				"description": "Whether the provider has no zones and no record read (DuckDNS): records are address records only, take no TTL and sit under its one fixed zone"
+			},
+			"zone": {
+				"type": [
+					"string",
+					"null"
+				],
+				"example": null,
+				"description": "The fixed zone of a zoneless provider (`duckdns.org`: the record name is `<subdomain>.duckdns.org`); null for the others"
 			},
 			"apex": {
 				"type": "boolean",
