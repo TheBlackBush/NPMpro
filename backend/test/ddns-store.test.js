@@ -64,9 +64,9 @@ it("opens the credential of a record for one run, with its secret values", async
 	const opened = await store.openCredential(await store.getRecord(id));
 	assert.equal(opened.fields.dns_cloudflare_api_token, "store-token-1234567890");
 	assert.deepEqual(opened.secrets, ["store-token-1234567890"]);
-	await assert.rejects(store.openCredential({ dns_credential_id: 987654 }), GONE);
+	await assert.rejects(store.openCredential({ provider: "cloudflare", dns_credential_id: 987654 }), GONE);
 	// a custom record has no credential: its sealed URL is what the run gets, and it is scrubbed from every message
-	assert.deepEqual(await store.openCredential({ dns_credential_id: null, secret: null }), {
+	assert.deepEqual(await store.openCredential({ provider: "custom", dns_credential_id: null, secret: null }), {
 		fields: {},
 		secrets: [],
 	});

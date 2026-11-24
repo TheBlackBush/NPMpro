@@ -10,6 +10,7 @@ const AUTHORITY = /^https:\/\/(?<authority>[^/?#]*)/iu;
 const BRACES = /[{}]|%7b|%7d/iu;
 const PIECE_BREAK = /[/?&=#]/u;
 const MIN_PIECE = 4;
+const BRACKETS = /^\[|\]$/gu;
 
 /**
  * Checks the shape of a stored or typed URL (no network).
@@ -33,6 +34,9 @@ const checkUrlShape = (text) => {
 	if (sample.protocol !== "https:" || sample.hostname === "" || sample.username !== "" || sample.password !== "") {
 		return { key: "error.ddns-custom-url-invalid" };
 	}
+	// the fragment is never sent: a placeholder there would fill nothing
+	const hash = text.indexOf("#");
+	if (hash !== -1 && PLACEHOLDER_SPLIT.test(text.slice(hash))) return { key: "error.ddns-custom-host-placeholder" };
 	return { sample };
 };
 
@@ -57,11 +61,14 @@ const refusalOf = async (text) => {
  * The URL of one call: the placeholders filled and URL-encoded.
  *
  * @param   {String}  template
- * @param   {{ ip: String, type: String, name: String }}  values  type is A or AAAA
+ * @param   {{ ip: String, type: String, name: String, addresses?: { ipv4?: String, ipv6?: String } }}  values
+ *          type is A or AAAA; addresses are the wanted addresses of the record, both when it follows both
  * @returns {String}
  */
-const fillUrl = (template, { ip, type, name }) => {
-	const values = { ip, ipv4: type === "AAAA" ? "" : ip, ipv6: type === "AAAA" ? ip : "", name };
+const fillUrl = (template, { ip, type, name, addresses }) => {
+	// a record of both families fills both: a placeholder is empty only when that family has no address
+	const wanted = addresses ?? { ipv4: type === "AAAA" ? "" : ip, ipv6: type === "AAAA" ? ip : "" };
+	const values = { ip, ipv4: wanted.ipv4 ?? "", ipv6: wanted.ipv6 ?? "", name };
 	return template.replace(PLACEHOLDER, (_all, key) => encodeURIComponent(values[key]));
 };
 
@@ -79,7 +86,12 @@ const secretsOfUrl = (template) => {
 	const rest = authority ? template.slice(authority[0].length) : template;
 	const literals = rest.split(PLACEHOLDER_SPLIT);
 	const pieces = literals.flatMap((literal) => literal.split(PIECE_BREAK));
-	const all = [template, host, rest, ...literals, ...pieces];
+	// the host as the guard and the connection name it: lower case, punycode, no port, no brackets
+	const shape = checkUrlShape(template);
+	const named = shape.sample
+		? [shape.sample.hostname, shape.sample.hostname.replace(BRACKETS, ""), shape.sample.host]
+		: [];
+	const all = [template, host, host.toLowerCase(), ...named, rest, ...literals, ...pieces];
 	return [...new Set(all)].filter((piece) => piece.length >= MIN_PIECE);
 };
 

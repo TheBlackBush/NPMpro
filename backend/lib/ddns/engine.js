@@ -217,13 +217,18 @@ const createDdnsEngine = ({
 		}
 		const held = cooldownOf(ctx);
 		if (held) return held;
-		const written = await ctx.provider.write({
-			...base,
-			ip: unit.wanted,
-			ttl: record.ttl ?? undefined,
-			existing: null,
-			meta: lookupMeta(ctx.meta),
-		});
+		const written =
+			ctx.provider.oneCall === true && ctx.called
+				? ctx.called
+				: await ctx.provider.write({
+						...base,
+						ip: unit.wanted,
+						addresses: ctx.addresses,
+						ttl: record.ttl ?? undefined,
+						existing: null,
+						meta: lookupMeta(ctx.meta),
+					});
+		if (ctx.provider.oneCall === true) ctx.called = written ?? {};
 		ctx.meta = { ...ctx.meta, ...written?.meta };
 		const old = (unit.family === 6 ? record.last_ipv6 : record.last_ipv4) ?? null;
 		return { outcome: "changed", change: { kind: "changed", old, new: unit.wanted } };
@@ -325,6 +330,10 @@ const createDdnsEngine = ({
 			try {
 				const units = unitsOf(record, found);
 				if (units === null) return { skipped: "address" };
+				ctx.addresses = {
+					ipv4: units.find((unit) => unit.family === 4)?.wanted,
+					ipv6: units.find((unit) => unit.family === 6)?.wanted,
+				};
 				ctx.cred = await store.openCredential(record);
 				secrets = ctx.cred.secrets ?? [];
 				ctx.provider = providers.providerById(record.provider);

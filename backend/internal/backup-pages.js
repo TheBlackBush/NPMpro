@@ -192,6 +192,8 @@ const createBackupPages = ({
 						items,
 						// ACME account keys only go to an administrator, and only those of the exported certificates
 						accounts: secrets && access.isAdmin === true ? "named" : "none",
+						// the custom DDNS URL is for administrators: such a row is exported without it
+						customUrls: access.isAdmin === true,
 					});
 					return {
 						pending: await store.addPending(file, { owner: userId }),

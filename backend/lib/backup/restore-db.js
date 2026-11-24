@@ -48,6 +48,7 @@ const SECRET_TYPES = new Set([
 	"certificates",
 	"access_lists",
 	"dns_credentials",
+	"ddns",
 	"users",
 	"settings_oidc",
 	"settings_monitoring",

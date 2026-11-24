@@ -18,9 +18,11 @@ export default {
 	wildcards: false,
 	aliases: false,
 	zoneless: true,
+	// a record of both families makes one call with both addresses, not one per family
+	oneCall: true,
 	read: () => Promise.resolve(null),
 	/** One GET or POST: a 2xx answer that holds the expected text (when one is set) is a success */
-	async write({ name, type, ip, fields, fetch, meta }) {
+	async write({ name, type, ip, addresses, fields, fetch, meta }) {
 		const { url, method, expect } = fields;
 		if (typeof url !== "string" || url === "") {
 			throw new EngineFailure("Enter the URL again", "error.ddns-custom-url-missing");
@@ -28,7 +30,9 @@ export default {
 		if (checkUrlShape(url).key) {
 			throw new DdnsProviderError({ code: "not-https", message: "The saved URL is not valid", retry: false });
 		}
-		const res = await fetch(fillUrl(url, { ip, type, name }), { method: method === "POST" ? "POST" : "GET" });
+		const res = await fetch(fillUrl(url, { ip, type, name, addresses }), {
+			method: method === "POST" ? "POST" : "GET",
+		});
 		if (res.status < 200 || res.status >= 300) {
 			throw new DdnsProviderError({
 				providerStatus: res.status,

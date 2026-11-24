@@ -556,6 +556,15 @@ const internalDdnsRecord = {
 						Object.assign(patch, { failures: 0, next_try_on: null, error: null });
 						if (!identityChanged) patch.meta = rest;
 					}
+					// a new URL answers "Enter the URL again" of a restore (enabling stays the user's choice)
+					if (
+						"secret" in values &&
+						!("meta" in patch) &&
+						row.meta?.error_i18n === "error.ddns-custom-url-missing"
+					) {
+						const { error_i18n: _key, error_values: _values, ...rest } = row.meta;
+						patch.meta = rest;
+					}
 					const done = await ddnsRecordModel.query().patchAndFetchById(row.id, patch);
 					return { saved: done, credential: next, toggled: row.enabled !== done.enabled };
 				}),
@@ -672,7 +681,7 @@ const ddnsStore = {
 	/** @returns {Promise<{ fields: Object, secrets: String[] }>}  the opened credential, in memory for one run */
 	openCredential: async (record) => {
 		// a custom record has no credential: its sealed URL, method and expected text are the fields
-		if (record.dns_credential_id === null) {
+		if (record.provider === CUSTOM) {
 			const custom = openCustom(record.secret);
 			return { fields: custom ?? {}, secrets: custom === null ? [] : secretsOfUrl(custom.url) };
 		}

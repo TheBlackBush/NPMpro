@@ -28,6 +28,7 @@ describe("checkUrlShape", () => {
 		assert.equal(key("https://dyn.example.net:{ip}/x"), "error.ddns-custom-host-placeholder");
 		assert.equal(key("https://dyn.example.net/{other}"), "error.ddns-custom-url-invalid");
 		assert.equal(key("https://dyn.example.net/{ip"), "error.ddns-custom-url-invalid");
+		assert.equal(key("https://dyn.example.net/x#{name}"), "error.ddns-custom-host-placeholder");
 		assert.equal(key("https://user:pw@dyn.example.net/x"), "error.ddns-custom-url-invalid");
 		assert.equal(key("https:///x"), "error.ddns-custom-url-invalid");
 	});
@@ -43,6 +44,23 @@ describe("refusalOf", () => {
 });
 
 describe("fillUrl", () => {
+	it("fills both families when the record has both addresses", () => {
+		const template = `https://h.example/?${QUERY}`;
+		assert.equal(
+			fillUrl(template, {
+				ip: "203.0.113.9",
+				type: "A",
+				name: "n",
+				addresses: { ipv4: "203.0.113.9", ipv6: "::1" },
+			}),
+			"https://h.example/?ip=203.0.113.9&a=203.0.113.9&b=%3A%3A1",
+		);
+		assert.equal(
+			fillUrl(template, { ip: "203.0.113.9", type: "A", name: "n", addresses: { ipv4: "203.0.113.9" } }),
+			"https://h.example/?ip=203.0.113.9&a=203.0.113.9&b=",
+		);
+	});
+
 	it("fills the family's placeholders and URL-encodes every value", () => {
 		const template = `https://h.example/u/{name}?${QUERY}`;
 		assert.equal(
@@ -65,6 +83,9 @@ describe("secretsOfUrl", () => {
 		const text = `failed https://${host}/u/${inPath}/home?key=${inQuery}&ip=1 and ${inPath} and ${inQuery}`;
 		const scrubbed = scrubSecrets(text, secrets);
 		for (const word of [inPath, inQuery, host]) assert.ok(!scrubbed.includes(word), word);
+		const spelled = secretsOfUrl("https://DYN.Example.NET:8443/x-path");
+		for (const form of ["DYN.Example.NET:8443", "dyn.example.net", "dyn.example.net:8443"])
+			assert.ok(spelled.includes(form), form);
 		assert.deepEqual(secretsOfUrl(""), []);
 		assert.deepEqual(secretsOfUrl(null), []);
 	});

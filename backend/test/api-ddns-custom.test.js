@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { after, afterEach, before, it } from "node:test";
+import { extractTo } from "../lib/backup/archive.js";
+import { openBackupFile } from "../lib/backup/format.js";
 import { startApi } from "./support/api.js";
 
 const RECORDS = "/nginx/ddns-records";
 const PUBLIC_IP = "81.2.69.160";
+const PUBLIC_IP6 = "2a00:1450:4001:81b::200e";
 const DYN = "https://dyn.test";
 const TOKEN = "tok-SECRET-custom-9876";
 const HTTP_500 = /HTTP 500/u;
@@ -35,7 +41,12 @@ const mockDyn = () => {
 };
 
 before(async () => {
-	api = await startApi({ env: { DDNS_IPV4_SERVICES: "https://ip1.test https://ip2.test" } });
+	api = await startApi({
+		env: {
+			DDNS_IPV4_SERVICES: "https://ip1.test https://ip2.test",
+			DDNS_IPV6_SERVICES: "https://ip6a.test https://ip6b.test",
+		},
+	});
 	admin = await api.admin();
 	for (const method of ["log", "warn", "error", "info"]) {
 		console[method] = (...args) => logged.push(args.map(String).join(" "));
@@ -48,6 +59,14 @@ before(async () => {
 			.get(`https://${host}`)
 			.intercept({ path: "/", method: "GET" })
 			.reply(() => ({ statusCode: 200, data: `${PUBLIC_IP}\n` }))
+			.persist();
+	}
+	for (const host of ["ip6a.test", "ip6b.test"]) {
+		api.outside.dns.set(host, "198.51.100.6");
+		api.outside.http
+			.get(`https://${host}`)
+			.intercept({ path: "/", method: "GET" })
+			.reply(() => ({ statusCode: 200, data: `${PUBLIC_IP6}\n` }))
 			.persist();
 	}
 	mockDyn();
@@ -224,4 +243,112 @@ it("refuses a credential, a TTL, an alias, a wildcard or a URL on the wrong prov
 	});
 	assert.equal(other.status, 400, other.text);
 	assert.equal(other.body.error.message_i18n, "error.ddns-custom-fields-only");
+});
+
+const PASSPHRASE = "a long enough passphrase of my own";
+const exportedDdns = async (session, id) => {
+	const made = await session.post("/backups/export", {
+		kind: "ddns",
+		ids: [id],
+		linked: {},
+		secrets: true,
+		passphrase: PASSPHRASE,
+	});
+	if (made.status !== 200) throw new Error(`export answered ${made.status}: ${made.text}`);
+	const downloaded = await session.get(`/backups/pending/${made.body.pending}`);
+	if (downloaded.status !== 200) throw new Error(`download answered ${downloaded.status}`);
+	const dir = await mkdtemp(path.join(os.tmpdir(), "custom-export-"));
+	try {
+		const file = path.join(dir, "export.npmpro");
+		await writeFile(file, downloaded.bytes);
+		await extractTo({
+			source: await openBackupFile({ file, passphrase: PASSPHRASE }),
+			dir: path.join(dir, "out"),
+			allow: () => true,
+		});
+		return await readFile(path.join(dir, "out", "data", "ddns.json"), "utf8");
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
+};
+
+it("exports the custom URL for an administrator only: a user's own page export has it emptied", async () => {
+	const manager = await api.limited({ visibility: "all", certificates: "manage" });
+	const record = await addOk({ name: "export.example.com", url: `${DYN}/e/${TOKEN}`, method: "POST" });
+	const preview = await manager.post("/backups/export/preview", { kind: "ddns" });
+	assert.equal(preview.status, 200, preview.text);
+	assert.ok(!preview.text.includes(TOKEN));
+	const theirs = await exportedDdns(manager, record.id);
+	assert.ok(!theirs.includes(TOKEN), "the user's archive holds no URL");
+	assert.ok(!theirs.includes("dyn.test"));
+	const [row] = JSON.parse(theirs).npmpro_ddns_record;
+	assert.equal(row.secret, null);
+	assert.equal(row.provider, "custom");
+	const adminsFile = await exportedDdns(admin, record.id);
+	assert.deepEqual(JSON.parse(adminsFile).npmpro_ddns_record[0].secret, {
+		url: `${DYN}/e/${TOKEN}`,
+		method: "POST",
+		expect: null,
+	});
+});
+
+it("lets Check now of a user who is no administrator skip custom records", async () => {
+	const manager = await api.limited({ visibility: "all", certificates: "manage" });
+	const record = await addOk({ name: "check.example.com", url: `${DYN}/c/${TOKEN}` });
+	const run = await manager.post("/nginx/ddns/check");
+	assert.equal(run.status, 200, run.text);
+	assert.deepEqual(seen, []);
+	assert.equal((await admin.get(`${RECORDS}/${record.id}`)).body.state, "pending");
+	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);
+	assert.equal(seen.length, 1);
+});
+
+it("clears 'Enter the URL again' when a new URL is saved, and leaves the record disabled", async () => {
+	const record = await addOk({ name: "restored.example.com", url: `${DYN}/r/${TOKEN}` });
+	await api
+		.db("npmpro_ddns_record")
+		.where({ id: record.id })
+		.update({
+			secret: null,
+			enabled: 0,
+			state: "disabled",
+			meta: JSON.stringify({ error_i18n: "error.ddns-custom-url-missing" }),
+		});
+	const shown = (await admin.get(`${RECORDS}/${record.id}`)).body;
+	assert.equal(shown.url_set, false);
+	assert.equal(shown.error_i18n, "error.ddns-custom-url-missing");
+	const saved = await admin.put(`${RECORDS}/${record.id}`, { url: `${DYN}/new/${TOKEN}` });
+	assert.equal(saved.status, 200, saved.text);
+	assert.equal(saved.body.url_set, true);
+	assert.equal(saved.body.error_i18n, null);
+	assert.equal(saved.body.enabled, false);
+	assert.equal(saved.body.state, "disabled");
+});
+
+it("hides the host in every spelling when a call is blocked: upper case and a port", async () => {
+	const record = await addOk({ name: "ported.example.com", url: `https://LATE2.test:8443/u/${TOKEN}` });
+	api.outside.dns.set("late2.test", "127.0.0.1");
+	const run = await admin.post(`${RECORDS}/${record.id}/update`);
+	assert.equal(run.body.state, "failed", run.text);
+	assert.ok(!run.text.toLowerCase().includes("late2.test"), run.text);
+	assert.ok(!run.text.includes(TOKEN));
+});
+
+it("makes one call with both addresses for a record of both families", async () => {
+	const record = await addOk({
+		name: "both.example.com",
+		ip_version: "both",
+		url: `${DYN}/b/${TOKEN}?a={ipv4}&b={ipv6}`,
+	});
+	const run = await admin.post(`${RECORDS}/${record.id}/update`);
+	assert.equal(run.body.state, "ok", run.text);
+	assert.deepEqual(seen, [{ path: `/b/${TOKEN}?a=${PUBLIC_IP}&b=${encodeURIComponent(PUBLIC_IP6)}`, method: "GET" }]);
+	assert.equal(run.body.last_ipv4, PUBLIC_IP);
+	assert.equal(run.body.last_ipv6, PUBLIC_IP6);
+});
+
+it("refuses a placeholder in the fragment at save", async () => {
+	const done = await add({ name: "frag.example.com", url: `${DYN}/f/${TOKEN}#{name}` });
+	assert.equal(done.status, 400, done.text);
+	assert.equal(done.body.error.message_i18n, "error.ddns-custom-host-placeholder");
 });
