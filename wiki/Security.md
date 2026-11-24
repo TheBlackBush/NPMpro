@@ -159,6 +159,8 @@ The Custom HTTP dynamic DNS provider calls a URL an administrator sets, so only 
 
 A credential's endpoint is not an admin-only setting: any user who may manage certificates can set it, so a PowerDNS endpoint can point at a LAN address over `http://`. Choosing the credential in Add domains then sends one GET request there. The limits stay the same: the outbound check, no redirect, and from an answer other than 200 only a short message with the secrets removed. This is no more than certbot itself can already reach with such a credential, since its PowerDNS challenge contacts the same endpoint.
 
+The DNS checks only read. The credential Test, the host check and the CAA check ask a provider for a zone page or a record, look up names in DNS and read the CA's ACME directory; they write nothing and store only states, addresses and scrubbed messages (in memory for the host check and the CAA check). The provider calls go through the outbound check and the secrets of the credential are removed from every message, as above. The challenge cleanup is the one place that deletes at a provider: only TXT records at `_acme-challenge` names that you ticked and confirmed, each read again just before its delete (a record that changed is skipped), never while a certificate request or renewal runs, and with the certificate locks held. The audit log gets the names and the count, not the values. CNAME delegations are never touched. These actions need the Certificates manage permission (the host check's provider read and the cleanup) and use the saved credential, so its secrets are never shown again.
+
 ## Notes on Cloudflare
 - Using cloudflare proxy/tunnel before NPMpro (so between the users and NPMpro `users <=> cloudflare <=> NPMpro`) is strongly discouraged
 - Why?
