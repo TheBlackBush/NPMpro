@@ -56,7 +56,14 @@ const accessLists = (type) => (type === "proxy" ? [["access-lists"]] : []);
 // the names of proxy, redirection and 404 hosts feed the Keep updated suggestions of Dynamic DNS (streams have none)
 const ddnsSuggestions = (type) => (type === "stream" ? [] : [["ddns-suggestions"]]);
 
-export const toggleInvalidations = (type, id) => [[HOST_TYPES[type].listKey], [HOST_TYPES[type].itemKey, id]];
+// the server drops a host's DNS check when the host changes, is enabled, disabled or deleted (streams have none)
+const dnsChecks = (type) => (type === "stream" ? [] : [["dns-check-hosts"]]);
+
+export const toggleInvalidations = (type, id) => [
+	[HOST_TYPES[type].listKey],
+	[HOST_TYPES[type].itemKey, id],
+	...dnsChecks(type),
+];
 
 export const deleteInvalidations = (type, id) => [
 	...toggleInvalidations(type, id),
@@ -73,6 +80,7 @@ export const saveInvalidations = (type, id) => [
 	["certificates"],
 	...accessLists(type),
 	...ddnsSuggestions(type),
+	...dnsChecks(type),
 ];
 
 // a save that answered an error but is stored (nginx could not reload) changed the same caches as a successful one: the

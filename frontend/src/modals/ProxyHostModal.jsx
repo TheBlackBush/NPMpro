@@ -5,13 +5,14 @@ import {
 	DomainNamesField,
 	FormSection,
 	ForwardFields,
-	KeepUpdatedHint,
+	HostDnsCard,
 	LocationsFields,
 	ModalTabs,
 	NginxConfigField,
 	PageChoiceField,
 	PageLines,
 	ProxyOptionsFields,
+	ReadOnlyFields,
 	SSLCertificateField,
 	SSLOptionsFields,
 	SwitchField,
@@ -73,29 +74,33 @@ function ProxyHostFields({ isAdmin, hostId }) {
 				advanced: advancedConfig?.trim() || npmproLocationConfig?.trim() ? "*" : null,
 			}}
 		>
-			<TabPane id="details">
-				<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
-				<KeepUpdatedHint onOpen={showDdnsRecordModal} />
-				<TextField
-					name="npmproDescription"
-					label={<T id="host.description" />}
-					type="text"
-					maxLength={255}
-					placeholder={intl.formatMessage({ id: "host.description.placeholder" })}
-				/>
-				<ForwardFields className="mb-3" />
-				<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
-					<DirectoryField className="mb-0" labelId="proxy-host.directory" />
-					<TagsField className="mb-0" />
-				</div>
-				<ProxyOptionsFields />
-				<FormSection heading legend={<T id="proxy-host.global-access-lists" />} className="mb-0">
-					<AccessFields
-						name="npmproAccessListIds"
-						typeName="npmproAccessListType"
-						authRequest={npmproAuthRequest}
+			<TabPane id="details" selfReadOnly>
+				<ReadOnlyFields>
+					<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
+				</ReadOnlyFields>
+				<HostDnsCard type="proxy" hostId={hostId} onKeepUpdated={showDdnsRecordModal} />
+				<ReadOnlyFields>
+					<TextField
+						name="npmproDescription"
+						label={<T id="host.description" />}
+						type="text"
+						maxLength={255}
+						placeholder={intl.formatMessage({ id: "host.description.placeholder" })}
 					/>
-				</FormSection>
+					<ForwardFields className="mb-3" />
+					<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
+						<DirectoryField className="mb-0" labelId="proxy-host.directory" />
+						<TagsField className="mb-0" />
+					</div>
+					<ProxyOptionsFields />
+					<FormSection heading legend={<T id="proxy-host.global-access-lists" />} className="mb-0">
+						<AccessFields
+							name="npmproAccessListIds"
+							typeName="npmproAccessListType"
+							authRequest={npmproAuthRequest}
+						/>
+					</FormSection>
+				</ReadOnlyFields>
 			</TabPane>
 			<TabPane id="locations" selfReadOnly>
 				<LocationsFields />

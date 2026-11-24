@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { StatusBadge } from "src/components/StatusBadge";
 import { Badge } from "src/components/ui/badge";
 import { formatDateTime, T } from "src/locale";
@@ -26,7 +27,7 @@ const DomainLink = ({ domain, color }) => {
 	);
 };
 
-export function DomainsFormatter({ domains, createdOn, niceName, provider, color, below }) {
+export function DomainsFormatter({ domains, createdOn, niceName, provider, color, below, after }) {
 	const elms = [];
 
 	if (domains.length === 0 && !niceName) {
@@ -46,6 +47,8 @@ export function DomainsFormatter({ domains, createdOn, niceName, provider, color
 	}
 
 	elms.push(...domains.map((domain) => <DomainLink key={domain} domain={domain} color={color} />));
+	// a small badge after the names (the DNS check of a host list)
+	if (after) elms.push(<Fragment key="after">{after}</Fragment>);
 
 	return (
 		<div className="flex-1">

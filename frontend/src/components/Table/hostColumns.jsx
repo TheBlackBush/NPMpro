@@ -1,4 +1,5 @@
 import { Copy, Eye, Power, SquarePen, Trash2 } from "lucide-react";
+import { DnsCheckBadge } from "src/components/DnsCheckBadge";
 import { RowActions } from "src/components/RowActions";
 import { useCanManage } from "src/hooks/useUser";
 import { intl, T } from "src/locale";
@@ -89,10 +90,13 @@ export const domainsColumn = () =>
 		header: intl.formatMessage({ id: "column.source" }),
 		cell: (info) => {
 			const value = info.row.original;
+			// the cached DNS check of this host, only on the lists that have one (meta.dnsChecks: host id -> check)
+			const check = info.table.options.meta?.dnsChecks?.get(value.id);
 			return (
 				<DomainsFormatter
 					domains={value.domainNames}
 					createdOn={value.createdOn}
+					after={check ? <DnsCheckBadge names={check.names} /> : null}
 					below={
 						<HostLabels
 							description={value.npmproDescription}

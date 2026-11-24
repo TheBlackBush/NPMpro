@@ -174,4 +174,16 @@ function TabPane({ id, selfReadOnly = false, children }) {
 	);
 }
 
-export { ModalTabs, TabPane };
+/**
+ * A part of a selfReadOnly pane that follows the pane's read-only rule: in a View window its fields sit in a disabled
+ * fieldset. A pane that holds a control that works in a View window too (the host windows' DNS check) is selfReadOnly
+ * and wraps its fields in this.
+ *
+ * @param {Object} props
+ * @param {*}      props.children
+ */
+function ReadOnlyFields({ children }) {
+	return useReadOnly() ? <fieldset disabled>{children}</fieldset> : children;
+}
+
+export { ModalTabs, ReadOnlyFields, TabPane };

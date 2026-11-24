@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { testAvailability, testStateOf } from "./DnsCheck.js";
+import {
+	CHECK_LIMIT,
+	cardLines,
+	checkCounts,
+	checkOfHost,
+	checksOfType,
+	checkTargets,
+	hostCheckBadge,
+	mergeChecks,
+	nameLine,
+	namesChanged,
+	testAvailability,
+	testStateOf,
+} from "./DnsCheck.js";
 
 const answer = (state, extra = {}) => ({ supported: true, state, zonesSeen: 2, needs: null, message: null, ...extra });
 
@@ -78,4 +91,140 @@ it("disables the button while the form is changed, and for an unsupported provid
 		disabled: true,
 		reasonId: "dns-credentials.test.unsupported",
 	});
+});
+
+const found = (v4 = [], v6 = []) => ({ ipv4: { found: v4, public: null }, ipv6: { found: v6, public: null } });
+const result = (name, state, extra = {}) => ({
+	name,
+	state,
+	via: null,
+	proxied: false,
+	reason: null,
+	message: null,
+	...found(),
+	...extra,
+});
+
+it("shows the worst state of a host and ignores skipped names", () => {
+	const badge = (...states) => hostCheckBadge(states.map((state) => result("a.example.com", state)));
+	assert.deepEqual(badge("here"), { state: "here", tone: "success" });
+	assert.deepEqual(badge("here", "partly"), { state: "partly", tone: "warning" });
+	assert.deepEqual(badge("here", "unknown"), { state: "unknown", tone: "warning" });
+	assert.deepEqual(badge("partly", "unknown"), { state: "partly", tone: "warning" });
+	assert.deepEqual(badge("partly", "elsewhere", "here"), { state: "elsewhere", tone: "destructive" });
+	assert.deepEqual(badge("elsewhere", "none"), { state: "none", tone: "destructive" });
+	assert.deepEqual(badge("here", "skipped"), { state: "here", tone: "success" });
+	assert.equal(badge("skipped"), null);
+	assert.equal(hostCheckBadge([]), null);
+	assert.equal(hostCheckBadge(undefined), null);
+});
+
+it("reads a state this version does not know as unknown", () => {
+	assert.equal(hostCheckBadge([result("a.example.com", "later")]).state, "unknown");
+	assert.equal(nameLine(result("a.example.com", "later")).state, "unknown");
+});
+
+it("shows a name that reaches this instance with its addresses and how it was found", () => {
+	const line = nameLine(result("a.example.com", "here", { via: "dns", ...found(["192.0.2.1"], ["2001:db8::1"]) }));
+	assert.deepEqual(line, {
+		state: "here",
+		tone: "success",
+		stateId: "dns-check.state.here",
+		addresses: ["192.0.2.1", "2001:db8::1"],
+		via: null,
+		proxied: false,
+		reason: null,
+	});
+	assert.deepEqual(nameLine(result("a.example.com", "here", { via: "record" })).via, {
+		id: "dns-check.via.record",
+		values: {},
+	});
+	assert.deepEqual(nameLine(result("a.b.example.com", "here", { via: "wildcard" })).via, {
+		id: "dns-check.via.wildcard",
+		values: { name: "*.b.example.com" },
+	});
+	assert.equal(nameLine(result("a.example.com", "here", { via: "alias" })).via.id, "dns-check.via.alias");
+	assert.equal(nameLine(result("a.example.com", "here", { via: "record", proxied: true })).proxied, true);
+});
+
+it("shows via and proxied only for a name that reaches this instance", () => {
+	const line = nameLine(
+		result("a.example.com", "elsewhere", { via: "record", proxied: true, ...found(["198.51.100.4"]) }),
+	);
+	assert.equal(line.via, null);
+	assert.equal(line.proxied, false);
+	assert.deepEqual(line.addresses, ["198.51.100.4"]);
+	assert.equal(line.tone, "destructive");
+	assert.equal(nameLine(result("a.example.com", "none")).stateId, "dns-check.state.none");
+});
+
+it("explains why a name was not checked, with the provider's message only for a failed read", () => {
+	assert.deepEqual(nameLine(result("*.example.com", "skipped", { reason: "skipped-pattern" })).reason, {
+		id: "dns-check.reason.skipped-pattern",
+		detail: null,
+	});
+	assert.deepEqual(
+		nameLine(result("a.example.com", "elsewhere", { reason: "provider-read-failed", message: "Forbidden" })).reason,
+		{ id: "dns-check.reason.provider-read-failed", detail: "Forbidden" },
+	);
+	assert.equal(
+		nameLine(result("a.example.com", "unknown", { reason: "lookup-timeout", message: "x" })).reason.detail,
+		null,
+	);
+	assert.equal(
+		nameLine(result("a.example.com", "unknown", { reason: "newer-code" })).reason.id,
+		"dns-check.reason.check-failed",
+	);
+});
+
+it("makes one line per name of the form with the result of that name", () => {
+	const results = [result("A.example.com", "here"), result("b.example.com", "none")];
+	const lines = cardLines(["a.example.com", "c.example.com", "A.EXAMPLE.COM"], results);
+	assert.deepEqual(
+		lines.map((line) => [line.name, line.result?.state ?? null]),
+		[
+			["a.example.com", "here"],
+			["c.example.com", null],
+		],
+	);
+	assert.deepEqual(cardLines(undefined, results), []);
+});
+
+it("notices names that changed since the check", () => {
+	const results = [result("a.example.com", "here"), result("b.example.com", "none")];
+	assert.equal(namesChanged(["B.example.com", "a.example.com"], results), false);
+	assert.equal(namesChanged(["a.example.com"], results), true);
+	assert.equal(namesChanged(["a.example.com", "c.example.com"], results), true);
+});
+
+it("finds, merges and picks checks by host", () => {
+	const one = { type: "proxy", id: 1, names: [] };
+	const two = { type: "dead", id: 1, names: [] };
+	assert.equal(checkOfHost([one, two], "dead", 1), two);
+	assert.equal(checkOfHost([one], "dead", 1), undefined);
+	assert.equal(checkOfHost(undefined, "dead", 1), undefined);
+	assert.deepEqual([...checksOfType([one, two], "proxy").keys()], [1]);
+	const fresh = { type: "proxy", id: 1, names: [{ name: "x" }] };
+	assert.deepEqual(mergeChecks([one, two], [fresh]), [fresh, two]);
+	assert.deepEqual(mergeChecks(undefined, [one]), [one]);
+	assert.deepEqual(mergeChecks([one], undefined), [one]);
+});
+
+it("checks the hosts of the page, at most 50", () => {
+	const rows = Array.from({ length: 120 }, (_, index) => ({ id: index + 1 }));
+	const targets = checkTargets("proxy", rows);
+	assert.equal(CHECK_LIMIT, 50);
+	assert.equal(targets.length, 50);
+	assert.deepEqual(targets[0], { type: "proxy", id: 1 });
+	assert.deepEqual(checkTargets("dead", [{ id: 7 }]), [{ type: "dead", id: 7 }]);
+	assert.deepEqual(checkTargets("dead", undefined), []);
+});
+
+it("counts the names a check looked at", () => {
+	const hosts = [
+		{ names: [result("a", "here"), result("b", "partly"), result("*.c", "skipped")] },
+		{ names: [result("d", "elsewhere"), result("e", "none"), result("f", "unknown"), result("g", "here")] },
+	];
+	assert.deepEqual(checkCounts(hosts), { checked: 6, here: 2, away: 3, unknown: 1 });
+	assert.deepEqual(checkCounts(undefined), { checked: 0, here: 0, away: 0, unknown: 0 });
 });

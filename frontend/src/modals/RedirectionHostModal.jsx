@@ -3,8 +3,10 @@ import {
 	DirectoryField,
 	DomainNamesField,
 	FormSection,
+	HostDnsCard,
 	ModalTabs,
 	NginxConfigField,
+	ReadOnlyFields,
 	SelectField,
 	SSLCertificateField,
 	SSLOptionsFields,
@@ -30,61 +32,66 @@ import { createHostEditorModal } from "./HostEditorModal";
 // the redirect status codes, in the select's order
 const REDIRECTION_HTTP_CODES = [301, 302, 303, 307, 308];
 
-function RedirectionHostFields() {
+function RedirectionHostFields({ hostId }) {
 	const { register } = useFormContext();
 	const [certificateId, npmproDnsChallenge, advancedConfig] = useWatch({
 		name: ["certificateId", "npmproDnsChallenge", "advancedConfig"],
 	});
 	return (
 		<ModalTabs tabs={REDIRECTION_HOST_TABS} markers={{ advanced: advancedConfig?.trim() ? "*" : null }}>
-			<TabPane id="details">
-				<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
-				<TextField
-					name="npmproDescription"
-					label={<T id="host.description" />}
-					type="text"
-					maxLength={255}
-					placeholder={intl.formatMessage({ id: "host.description.placeholder" })}
-				/>
-				<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
-					<SelectField className="mb-0" name="forwardScheme" label={<T id="host.forward-scheme" />}>
-						<option value="$scheme">{intl.formatMessage({ id: "redirection.scheme.keep" })}</option>
-						<option value="http">http</option>
-						<option value="https">https</option>
-					</SelectField>
+			<TabPane id="details" selfReadOnly>
+				<ReadOnlyFields>
+					<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
+				</ReadOnlyFields>
+				<HostDnsCard type="redirection" hostId={hostId} />
+				<ReadOnlyFields>
 					<TextField
-						className="mb-0"
-						name="forwardDomainName"
-						label={<T id="redirection-host.forward-domain" />}
-						required
+						name="npmproDescription"
+						label={<T id="host.description" />}
 						type="text"
-						placeholder="example.com"
+						maxLength={255}
+						placeholder={intl.formatMessage({ id: "host.description.placeholder" })}
 					/>
-				</div>
-				<SelectField
-					name="forwardHttpCode"
-					label={<T id="redirection-host.forward-http-code" />}
-					registerOptions={{ valueAsNumber: true }}
-				>
-					{REDIRECTION_HTTP_CODES.map((code) => (
-						<option key={code} value={code}>
-							{intl.formatMessage({ id: `redirection-hosts.http-code.${code}` })}
-						</option>
-					))}
-				</SelectField>
-				<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
-					<DirectoryField className="mb-0" labelId="redirection-host.directory" />
-					<TagsField className="mb-0" />
-				</div>
-				<FormSection heading legend={<T id="options" />} className="mb-0">
-					<SwitchList>
-						<SwitchField
-							id="preservePath"
-							label={<T id="host.flags.preserve-path" />}
-							{...register("preservePath")}
+					<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
+						<SelectField className="mb-0" name="forwardScheme" label={<T id="host.forward-scheme" />}>
+							<option value="$scheme">{intl.formatMessage({ id: "redirection.scheme.keep" })}</option>
+							<option value="http">http</option>
+							<option value="https">https</option>
+						</SelectField>
+						<TextField
+							className="mb-0"
+							name="forwardDomainName"
+							label={<T id="redirection-host.forward-domain" />}
+							required
+							type="text"
+							placeholder="example.com"
 						/>
-					</SwitchList>
-				</FormSection>
+					</div>
+					<SelectField
+						name="forwardHttpCode"
+						label={<T id="redirection-host.forward-http-code" />}
+						registerOptions={{ valueAsNumber: true }}
+					>
+						{REDIRECTION_HTTP_CODES.map((code) => (
+							<option key={code} value={code}>
+								{intl.formatMessage({ id: `redirection-hosts.http-code.${code}` })}
+							</option>
+						))}
+					</SelectField>
+					<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
+						<DirectoryField className="mb-0" labelId="redirection-host.directory" />
+						<TagsField className="mb-0" />
+					</div>
+					<FormSection heading legend={<T id="options" />} className="mb-0">
+						<SwitchList>
+							<SwitchField
+								id="preservePath"
+								label={<T id="host.flags.preserve-path" />}
+								{...register("preservePath")}
+							/>
+						</SwitchList>
+					</FormSection>
+				</ReadOnlyFields>
 			</TabPane>
 			<TabPane id="tls">
 				<SSLCertificateField label="ssl-certificate" allowNew />

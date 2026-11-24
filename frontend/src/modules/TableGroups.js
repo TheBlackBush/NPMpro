@@ -38,3 +38,18 @@ export function pageGroups(groups, pageIndex, pageSize) {
 	}
 	return out;
 }
+
+/**
+ * The rows one page of a list shows, in display order
+ *
+ * @param   {Object}   options
+ * @param   {Array}    options.rows       the table's rows: already the page for a plain list, all rows for a grouped one
+ * @param   {(item) => string} [options.keyOf]  the group of a row; given for a grouped list
+ * @param   {number}   options.pageIndex
+ * @param   {number}   options.pageSize
+ * @returns {Array}
+ */
+export function pageRows({ rows, keyOf, pageIndex, pageSize }) {
+	if (!keyOf) return rows;
+	return pageGroups(groupRows(rows, keyOf), pageIndex, pageSize).flatMap(([, part]) => part);
+}

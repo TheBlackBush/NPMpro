@@ -52,3 +52,174 @@ export function testAvailability({ supported, dirty }) {
 	if (dirty) return { disabled: true, reasonId: `${ID}.save-first` };
 	return { disabled: false, reasonId: null };
 }
+
+// The host check (POST and GET /nginx/dns-check/hosts): what a name's result shows, which result a host list shows
+// beside its names, which hosts a list checks, and the toast's counts. Pure.
+
+const CHECK_ID = "dns-check";
+// the host check's states by tone; skipped is no result of its own (nothing was looked at)
+const CHECK_TONES = {
+	here: "success",
+	partly: "warning",
+	elsewhere: "destructive",
+	none: "destructive",
+	unknown: "warning",
+	skipped: "muted",
+};
+// the worst state of a host first: what a list badge shows for the host
+const WORST_FIRST = ["none", "elsewhere", "partly", "unknown", "here"];
+const REASONS = [
+	"skipped-pattern",
+	"lookup-timeout",
+	"lookup-servfail",
+	"lookup-error",
+	"public-address-unknown",
+	"public-ipv6-unknown",
+	"provider-read-failed",
+	"check-failed",
+];
+const VIA_IDS = { record: "record", wildcard: "wildcard", alias: "alias" };
+/** The most hosts one request checks */
+export const CHECK_LIMIT = 50;
+
+const stateOfName = (result) => (Object.hasOwn(CHECK_TONES, result?.state) ? result.state : "unknown");
+
+/**
+ * The state a host list shows beside the names of a host: the worst of its names (none and elsewhere red, partly and
+ * unknown amber, here green); skipped names are ignored
+ *
+ * @param   {Array<{ state: string }>|undefined} results  the names of one host's check
+ * @returns {{ state: string, tone: string }|null}  null when no name was looked at
+ */
+export function hostCheckBadge(results) {
+	const states = (results ?? []).map(stateOfName).filter((state) => state !== "skipped");
+	const worst = WORST_FIRST.find((state) => states.includes(state));
+	return worst === undefined ? null : { state: worst, tone: CHECK_TONES[worst] };
+}
+
+/** The wildcard name that answered for a name: `*.` and the name without its first label */
+export const wildcardOf = (name) => `*.${String(name).split(".").slice(1).join(".")}`;
+
+/**
+ * What one name's line shows
+ *
+ * @param   {Object} result  one entry of a host check's names (camelCase)
+ * @returns {{ state: string, tone: string, stateId: string, addresses: string[], via: { id: string, values: Object }|null,
+ *            proxied: boolean, reason: { id: string, detail: string|null }|null }}
+ *          via: only for a name that reaches this instance by a record, a wildcard or an alias (a plain DNS answer
+ *          has none); reason: why a name was not or only partly checked, detail the provider's scrubbed message
+ */
+export function nameLine(result) {
+	const state = stateOfName(result);
+	const reaches = state === "here" || state === "partly";
+	const viaKey = reaches ? VIA_IDS[result.via] : undefined;
+	const code = typeof result?.reason === "string" ? result.reason : null;
+	const known = code !== null && REASONS.includes(code);
+	return {
+		state,
+		tone: CHECK_TONES[state],
+		stateId: `${CHECK_ID}.state.${state}`,
+		addresses: [...(result?.ipv4?.found ?? []), ...(result?.ipv6?.found ?? [])],
+		via:
+			viaKey === undefined
+				? null
+				: {
+						id: `${CHECK_ID}.via.${viaKey}`,
+						values: viaKey === "wildcard" ? { name: wildcardOf(result.name) } : {},
+					},
+		proxied: reaches && result.proxied === true,
+		reason:
+			code === null
+				? null
+				: {
+						id: `${CHECK_ID}.reason.${known ? code : "check-failed"}`,
+						detail:
+							code === "provider-read-failed" &&
+							typeof result.message === "string" &&
+							result.message !== ""
+								? result.message
+								: null,
+					},
+	};
+}
+
+const lower = (name) => String(name).toLowerCase();
+
+/**
+ * The lines of the DNS card: one per name of the form, in the form's order, with the host's result for it (null for a
+ * name that was not checked)
+ *
+ * @param   {string[]|undefined} formNames
+ * @param   {Array<{ name: string }>|undefined} results  the names of the host's check
+ * @returns {Array<{ name: string, result: Object|null }>}
+ */
+export function cardLines(formNames, results) {
+	const byName = new Map((results ?? []).map((result) => [lower(result.name), result]));
+	const seen = new Set();
+	const lines = [];
+	for (const name of Array.isArray(formNames) ? formNames : []) {
+		if (!seen.has(lower(name))) {
+			seen.add(lower(name));
+			lines.push({ name, result: byName.get(lower(name)) ?? null });
+		}
+	}
+	return lines;
+}
+
+/** Whether the names in the form differ from the names the check looked at (the host was changed after it) */
+export function namesChanged(formNames, results) {
+	const form = new Set((Array.isArray(formNames) ? formNames : []).map(lower));
+	const checked = new Set((results ?? []).map((result) => lower(result.name)));
+	return form.size !== checked.size || [...form].some((name) => !checked.has(name));
+}
+
+const keyOf = (type, id) => `${type}:${id}`;
+
+/** The checks of one host type by host id */
+export function checksOfType(checks, type) {
+	return new Map((checks ?? []).filter((entry) => entry.type === type).map((entry) => [entry.id, entry]));
+}
+
+/** The check of one host, or undefined */
+export const checkOfHost = (checks, type, id) => (checks ?? []).find((entry) => entry.type === type && entry.id === id);
+
+/** The cached checks with the fresh ones: a fresh entry replaces the cached one of the same host */
+export function mergeChecks(cached, fresh) {
+	const merged = new Map((cached ?? []).map((entry) => [keyOf(entry.type, entry.id), entry]));
+	for (const entry of fresh ?? []) merged.set(keyOf(entry.type, entry.id), entry);
+	return [...merged.values()];
+}
+
+/**
+ * The hosts a list checks: the rows of the page it shows, at most CHECK_LIMIT, as the request wants them
+ *
+ * @param   {string} type  proxy, redirection or dead
+ * @param   {Array<{ id: number }>} rows  the rows of the current page
+ * @returns {Array<{ type: string, id: number }>}
+ */
+export function checkTargets(type, rows) {
+	return (rows ?? []).slice(0, CHECK_LIMIT).map((row) => ({ type, id: row.id }));
+}
+
+/**
+ * The counts the toast of a check shows, per name
+ *
+ * @param   {Array<{ names: Array<{ state: string }> }>} hosts  the answer of the check
+ * @returns {{ checked: number, here: number, away: number, unknown: number }}
+ *          away: the names that answer other addresses, only one family or none; skipped names are not counted
+ */
+export function checkCounts(hosts) {
+	const counts = { checked: 0, here: 0, away: 0, unknown: 0 };
+	for (const host of hosts ?? []) {
+		for (const result of host.names ?? []) {
+			const state = stateOfName(result);
+			if (state !== "skipped") {
+				counts.checked += 1;
+				if (state === "here") counts.here += 1;
+				else if (state === "unknown") counts.unknown += 1;
+				else counts.away += 1;
+			}
+		}
+	}
+	return counts;
+}
