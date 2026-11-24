@@ -118,15 +118,19 @@ const ZONE_LIST_DEADLINE_MS = 60_000;
  * @param   {String[]} options.secrets     values scrubbed from every message
  * @param   {number}   [options.deadlineMs]
  * @param   {number}   [options.maxPages]    stop after this many page calls (the credential Test reads one)
+ * @param   {Function} [options.fetch]       the provider call (the credential Test passes its own); providerFetch with the secrets by default
  * @returns {Promise<String[]>}  with truncated: true when the list was cut
  */
-const listProviderZones = async (provider, { fields, secrets, deadlineMs = ZONE_LIST_DEADLINE_MS, maxPages }) => {
+const listProviderZones = async (
+	provider,
+	{ fields, secrets, deadlineMs = ZONE_LIST_DEADLINE_MS, maxPages, fetch },
+) => {
 	const deadline = AbortSignal.timeout(deadlineMs);
 	try {
 		return await provider.listZones({
 			fields,
 			maxPages,
-			fetch: (url, options) => providerFetch(url, { ...options, secrets, deadline }),
+			fetch: fetch ?? ((url, options) => providerFetch(url, { ...options, secrets, deadline })),
 		});
 	} catch (err) {
 		if (deadline.aborted && err?.name === "DdnsProviderError" && err.code === "timeout") {

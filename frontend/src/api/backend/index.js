@@ -93,6 +93,7 @@ export * from "./setPermissions";
 export * from "./startDatabaseMove";
 export * from "./testCrowdsecSettings";
 export * from "./testDatabase";
+export * from "./testDnsCredential";
 export * from "./testHttpCertificate";
 export * from "./testOidcSettings";
 export * from "./toggleUser";

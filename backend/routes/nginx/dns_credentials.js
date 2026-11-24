@@ -93,4 +93,18 @@ router
 		);
 	});
 
+/**
+ * /api/nginx/dns-credentials/123/test
+ */
+router
+	.route("/:credential_id/test")
+	.all(jwtdecode())
+	.post(async (req, res) => {
+		res.status(200).send(
+			await internalDnsCredential.test(res.locals.access, {
+				id: Number.parseInt(req.params.credential_id, 10),
+			}),
+		);
+	});
+
 export default router;

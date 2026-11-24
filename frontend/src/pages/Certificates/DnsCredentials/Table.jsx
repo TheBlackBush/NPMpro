@@ -1,16 +1,18 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Eye, KeyRound, Plus, SquarePen, Trash2 } from "lucide-react";
+import { Activity, Eye, KeyRound, Plus, SquarePen, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { useAppTable } from "src/components/Table/useAppTable";
 import { Badge } from "src/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
-import { useCanManage, useDnsProviders } from "src/hooks";
+import { useCanManage, useDnsProviders, useTestDnsCredential } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDnsDomainsModal } from "src/modals";
+import { testStateOf } from "src/modules/DnsCheck";
 import { displayDomain } from "src/modules/DnsDomainForms";
 import { CERTIFICATES } from "src/modules/Permissions";
+import { showApiError, showError, showSuccess, showWarning } from "src/notifications";
 
 function UsedBy({ certificates }) {
 	if (certificates.length === 0) {
@@ -71,8 +73,27 @@ function Domains({ domains }) {
 	);
 }
 
+// the result of a Test as a toast: green for works, red for a refusal, amber for a failure
+const showTestResult = (credential, answer) => {
+	const state = testStateOf(answer);
+	const text = `${credential.name || `#${credential.id}`}: ${intl.formatMessage({ id: state.messageId }, state.values)}`;
+	if (state.tone === "success") showSuccess(text);
+	else if (state.tone === "destructive") showError(text);
+	else showWarning(text);
+};
+
 function DnsCredentialActions({ credential, onDelete, onEdit }) {
 	const canManage = useCanManage(CERTIFICATES);
+	const { data: providers } = useDnsProviders();
+	const { mutateAsync: testCredential } = useTestDnsCredential();
+	const supported = providers?.find((p) => p.id === credential.provider)?.listsDomains === true;
+	const test = async () => {
+		try {
+			showTestResult(credential, await testCredential(credential.id));
+		} catch (err) {
+			showApiError(err);
+		}
+	};
 	const inUse = (credential.certificates?.length ?? 0) > 0;
 	return (
 		<RowActions
@@ -102,6 +123,20 @@ function DnsCredentialActions({ credential, onDelete, onEdit }) {
 					note: credential.decryptError
 						? intl.formatMessage({ id: "dns-credentials.decrypt-error-short" })
 						: undefined,
+					hidden: !canManage,
+				},
+				{
+					key: "test",
+					label: <T id="dns-credentials.test" />,
+					icon: Activity,
+					onSelect: test,
+					// a provider without a read call, or a credential that cannot be decrypted, has nothing to test with
+					disabled: !supported || Boolean(credential.decryptError),
+					note: supported
+						? credential.decryptError
+							? intl.formatMessage({ id: "dns-credentials.decrypt-error-short" })
+							: undefined
+						: intl.formatMessage({ id: "dns-credentials.test.unsupported" }),
 					hidden: !canManage,
 				},
 				{

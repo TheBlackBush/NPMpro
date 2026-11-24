@@ -17,6 +17,7 @@ export * from "./useDdns";
 export * from "./useDeadHost";
 export * from "./useDelayElapsed";
 export * from "./useDirectorySuggestions";
+export * from "./useDnsCheck";
 export * from "./useDnsCredential";
 export * from "./useDnsCredentials";
 export * from "./useDnsDomains";

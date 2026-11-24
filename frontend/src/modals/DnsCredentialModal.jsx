@@ -1,5 +1,6 @@
+import { Activity } from "lucide-react";
 import { useState } from "react";
-import { useController, useFormContext, useWatch } from "react-hook-form";
+import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
 import {
 	ApiErrorContent,
 	AppModal,
@@ -14,6 +15,7 @@ import {
 	HookForm,
 	Loading,
 	NoticeAlert,
+	StatusBadge,
 	TextField,
 	useAppForm,
 	useReadOnly,
@@ -25,19 +27,21 @@ import {
 	useDnsDomains,
 	useDnsProviders,
 	useSetDnsCredential,
+	useTestDnsCredential,
 	useUnsavedChangesGuard,
 	useUser,
 } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { credentialFieldValues, dnsCredentialValidate } from "src/modules/CertificateForms";
+import { testAvailability, testStateOf } from "src/modules/DnsCheck";
 import { dnsDomainNamesRule, takenNames } from "src/modules/DnsDomainForms";
 import EasyModal from "src/modules/easyModal";
 import { windowTitleId } from "src/modules/HostForms";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
-import { showObjectSuccess } from "src/notifications";
+import { showApiError, showObjectSuccess } from "src/notifications";
 import { sectionIcon } from "src/shell/useNavItems";
 
 // DNS credentials has no menu link of its own: the certificates icon in the DNS credentials accent
@@ -145,6 +149,63 @@ function CredentialValues({ providers, data }) {
 	);
 }
 
+// the Test button of a saved credential: one read through the saved values, the result as a line under the button
+function TestCredential({ id, supported }) {
+	const { isDirty } = useFormState();
+	const { mutateAsync, isPending } = useTestDnsCredential();
+	const [answer, setAnswer] = useState(null);
+	const [failure, setFailure] = useState(null);
+	const { disabled, reasonId } = testAvailability({ supported, dirty: isDirty });
+	const shown = testStateOf(answer);
+
+	const run = async () => {
+		setFailure(null);
+		try {
+			setAnswer(await mutateAsync(id));
+		} catch (err) {
+			setAnswer(null);
+			setFailure(<ApiErrorContent error={err} />);
+			showApiError(err);
+		}
+	};
+
+	return (
+		<div className="mb-3">
+			<div className="flex flex-wrap items-center gap-2">
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={run}
+					disabled={disabled || isPending}
+					aria-describedby={reasonId ? "dnsCredentialTestNote" : undefined}
+				>
+					<Activity aria-hidden="true" />
+					<T id="dns-credentials.test" />
+				</Button>
+				{reasonId ? (
+					<span id="dnsCredentialTestNote" className="text-sm text-muted-foreground">
+						<T id={reasonId} />
+					</span>
+				) : null}
+			</div>
+			{/* the result is announced where it appears */}
+			<div role="status" aria-live="polite" className="mt-2 text-sm">
+				{shown ? (
+					<div className="flex flex-col items-start gap-1">
+						<StatusBadge tone={shown.tone} className="whitespace-normal text-start">
+							<T id={shown.messageId} data={shown.values} />
+						</StatusBadge>
+						{shown.detail ? (
+							<span className="wrap-anywhere text-muted-foreground">{shown.detail}</span>
+						) : null}
+					</div>
+				) : null}
+				{failure ? <span className="text-destructive">{failure}</span> : null}
+			</div>
+		</div>
+	);
+}
+
 const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onSaved, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	// a user who may only view the section gets a View window
@@ -245,6 +306,12 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 								ownerUserId={isNew ? me?.id : data.ownerUserId}
 							/>
 						</fieldset>
+						{isNew || readOnly ? null : (
+							<TestCredential
+								id={id}
+								supported={providers.find((p) => p.id === data.provider)?.listsDomains === true}
+							/>
+						)}
 					</AppModal.Body>
 					<AppModal.Footer>
 						<Button variant="ghost" onClick={close} disabled={isSubmitting}>
