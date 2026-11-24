@@ -49,7 +49,7 @@ describe("registry", () => {
 	it("lists the updater providers and finds them by credential provider", () => {
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.id),
-			["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh", "desec", "duckdns"],
+			["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh", "desec", "duckdns", "porkbun"],
 		);
 		assert.deepEqual(PROVIDER_LIST[0], {
 			id: "cloudflare",
@@ -68,26 +68,26 @@ describe("registry", () => {
 		});
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.min_ttl),
-			[60, 30, 60, 300, null, 3600, null],
+			[60, 30, 60, 300, null, 3600, null, 600],
 		);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.aliases),
-			[true, true, true, true, false, false, false],
+			[true, true, true, true, false, false, false, false],
 		);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.apex),
-			[true, true, true, true, false, true, true],
+			[true, true, true, true, false, true, true, true],
 		);
 		assert.equal(PROVIDER_LIST.filter((p) => p.proxied).length, 1);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.wildcards),
-			[true, true, false, false, false, false, false],
+			[true, true, false, false, false, false, false, false],
 		);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.zoneless),
-			[false, false, false, false, false, false, true],
+			[false, false, false, false, false, false, true, false],
 		);
-		assert.equal(PROVIDER_LIST.at(-1).zone, "duckdns.org");
+		assert.equal(PROVIDER_LIST[6].zone, "duckdns.org");
 		assert.equal(updaterFor("gandi").id, "gandi");
 		assert.equal(updaterFor("ovh").id, "ovh");
 		assert.equal(updaterFor("powerdns"), null);
@@ -1100,5 +1100,140 @@ describe("duckdns", () => {
 			run("write", { ...base, name: "*.home.duckdns.org" }),
 			(err) => err.code === "failed" && err.retry === false,
 		);
+	});
+});
+
+describe("porkbun", () => {
+	const KEY = ["pk1", "key", "4321"].join("-");
+	const SECRET = ["sk1", "secret", "8765"].join("-");
+	const pbFields = { dns_porkbun_key: KEY, dns_porkbun_secret: SECRET };
+	const secrets = [KEY, SECRET];
+	const base = { zone: "example.com", name: "home.example.com", type: "A", fields: pbFields };
+	const pool = () => api("api.porkbun.com");
+	const run = (method, args) => call("porkbun", method, args, secrets);
+	const auth = { apikey: KEY, secretapikey: SECRET };
+	const READ = "/api/json/v3/dns/retrieveByNameType/example.com/A/home";
+	const EDIT = "/api/json/v3/dns/editByNameType/example.com/A/home";
+	const record = (over = {}) => ({
+		id: "111",
+		name: "home.example.com",
+		type: "A",
+		content: "1.2.3.4",
+		ttl: "600",
+		prio: null,
+		...over,
+	});
+
+	it("reads with both credentials in the body", async () => {
+		pool()
+			.intercept({ path: READ, method: "POST", body: bodyIs(auth) })
+			.reply(200, { status: "SUCCESS", records: [record()] }, json);
+		assert.deepEqual(await run("read", base), { values: ["1.2.3.4"], ttl: 600, meta: { record_id: "111" } });
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("reads the apex without a subdomain, reports two values, and answers null for no record", async () => {
+		pool()
+			.intercept({ path: "/api/json/v3/dns/retrieveByNameType/example.com/A", method: "POST" })
+			.reply(
+				200,
+				{
+					status: "SUCCESS",
+					records: [
+						record({ name: "example.com", id: 5 }),
+						record({ name: "example.com", content: "2.2.2.2" }),
+					],
+				},
+				json,
+			);
+		const apex = await run("read", { ...base, name: "example.com" });
+		assert.deepEqual(apex.values, ["1.2.3.4", "2.2.2.2"]);
+		assert.equal(apex.meta.record_id, 5);
+		pool().intercept({ path: READ, method: "POST" }).reply(200, { status: "SUCCESS", records: [] }, json);
+		assert.equal(await run("read", base), null);
+	});
+
+	it("edits by name and type with content and ttl only, keeping the record's own TTL", async () => {
+		pool()
+			.intercept({ path: EDIT, method: "POST", body: bodyIs({ ...auth, content: "5.6.7.8", ttl: 900 }) })
+			.reply(200, { status: "SUCCESS" }, json);
+		const existing = { values: ["1.2.3.4"], ttl: 600 };
+		assert.deepEqual(await run("write", { ...base, ip: "5.6.7.8", ttl: 900, existing }), {
+			meta: {},
+			created: false,
+		});
+		pool()
+			.intercept({ path: EDIT, method: "POST", body: bodyIs({ ...auth, content: "5.6.7.8", ttl: 600 }) })
+			.reply(200, { status: "SUCCESS" }, json);
+		await run("write", { ...base, ip: "5.6.7.8", existing });
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("creates a missing record and keeps the numeric id", async () => {
+		pool()
+			.intercept({
+				path: "/api/json/v3/dns/create/example.com",
+				method: "POST",
+				body: bodyIs({ ...auth, type: "A", name: "home", content: "5.6.7.8", ttl: 600 }),
+			})
+			.reply(200, { status: "SUCCESS", id: 42 }, json);
+		assert.deepEqual(await run("write", { ...base, ip: "5.6.7.8", ttl: 600, existing: null }), {
+			meta: { record_id: 42 },
+			created: true,
+		});
+		pool()
+			.intercept({
+				path: "/api/json/v3/dns/create/example.com",
+				method: "POST",
+				body: bodyIs({ ...auth, type: "AAAA", content: "2001:db8::1" }),
+			})
+			.reply(200, { status: "SUCCESS", id: 43, warnings: ["not delegated"] }, json);
+		await run("write", { ...base, name: "example.com", type: "AAAA", ip: "2001:db8::1", existing: null });
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("refuses two values, a wildcard and a TTL under 600, and treats a missing record as removed", async () => {
+		const failed = (err) => err.code === "failed" && err.retry === false;
+		await assert.rejects(
+			run("write", { ...base, ip: "5.6.7.8", existing: { values: ["1.1.1.1", "2.2.2.2"], ttl: 600 } }),
+			MORE_THAN_ONE,
+		);
+		await assert.rejects(run("read", { ...base, name: "*.example.com" }), failed);
+		await assert.rejects(run("write", { ...base, ip: "5.6.7.8", ttl: 300, existing: null }), failed);
+		pool()
+			.intercept({ path: EDIT, method: "POST" })
+			.reply(400, { status: "ERROR", message: "Could not find record to edit." }, json);
+		await assert.rejects(
+			run("write", { ...base, ip: "5.6.7.8", existing: { values: ["1.2.3.4"], ttl: 600 } }),
+			(err) => err.code === "failed" && err.retry !== false && REMOVED.test(err.message),
+		);
+	});
+
+	it("reports an ERROR status and a 403 without either secret", async () => {
+		pool()
+			.intercept({ path: READ, method: "POST" })
+			.reply(400, { status: "ERROR", code: "INVALID_API_KEYS_001", message: `bad ${KEY} ${SECRET}` }, json);
+		await assert.rejects(run("read", base), (err) => {
+			assert.equal(err.code, "forbidden");
+			assert.equal(err.retry, false);
+			assert.ok(!err.message.includes(KEY) && !err.message.includes(SECRET));
+			return true;
+		});
+		pool()
+			.intercept({ path: READ, method: "POST" })
+			.reply(200, { status: "ERROR", message: `odd ${SECRET}` }, json);
+		await assert.rejects(run("read", base), (err) => err.code === "failed" && !err.message.includes(SECRET));
+		pool()
+			.intercept({ path: "/api/json/v3/dns/create/example.com", method: "POST" })
+			.reply(403, `denied ${KEY}`, { headers: { "content-type": "text/plain" } });
+		await assert.rejects(run("write", { ...base, ip: "5.6.7.8", existing: null }), (err) => {
+			assert.equal(err.code, "forbidden");
+			assert.ok(!err.message.includes(KEY));
+			return true;
+		});
+	});
+
+	it("has no zone fetch", () => {
+		assert.equal(providerById("porkbun").listZones, undefined);
 	});
 });
