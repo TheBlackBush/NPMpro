@@ -552,6 +552,22 @@ it("a backup with secrets carries the custom URL in the archive rows, a backup w
 	assert.equal(sealed[1].secret, null);
 });
 
+it("a record stopped after a provider refusal is restored as pending, without the stop and the note", () => {
+	const [row] = TYPES.ddns.restoreRows({
+		npmpro_ddns_record: [
+			record(1, 1, "s.example.com", {
+				meta: JSON.stringify({ proxied: true, stopped: true, note_i18n: "ddns.note.resolver-old", error_i18n: "x" }),
+			}),
+		],
+	}).npmpro_ddns_record;
+	const meta = JSON.parse(row.meta);
+	assert.equal(row.state, "pending");
+	assert.equal(meta.stopped, undefined);
+	assert.equal(meta.note_i18n, undefined);
+	assert.equal(meta.error_i18n, undefined);
+	assert.equal(meta.proxied, true);
+});
+
 it("a custom record restored without its URL comes back disabled and asks for the URL again, one with it keeps running", () => {
 	const [without, withUrl, other] = TYPES.ddns.restoreRows({
 		npmpro_ddns_record: [

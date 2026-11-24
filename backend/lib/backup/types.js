@@ -169,7 +169,8 @@ const withoutRunState = (rowsByTable) =>
 
 const hasText = (value) => typeof value === "string" && value !== "";
 
-// the engine's last error is kept in the meta next to the provider ids and the proxied flag: only that goes
+// the engine's last error, its note and the stop after a refusal are kept in the meta next to the provider ids and
+// the proxied flag: only those go, so a restored record is tried again and nothing hides a silent stop
 const restartedMeta = (meta) => {
 	let value = meta;
 	if (typeof meta === "string") {
@@ -180,7 +181,7 @@ const restartedMeta = (meta) => {
 		}
 	}
 	if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
-	const { error_i18n: _key, error_values: _values, ...rest } = value;
+	const { error_i18n: _key, error_values: _values, note_i18n: _note, stopped: _stopped, ...rest } = value;
 	return typeof meta === "string" ? JSON.stringify(rest) : rest;
 };
 
