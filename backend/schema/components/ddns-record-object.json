@@ -257,6 +257,19 @@
 			"maxLength": 255,
 			"example": null,
 			"description": "Custom provider only: text the answer must contain, else the update counts as failed"
+		},
+		"secret_set": {
+			"type": "boolean",
+			"example": true,
+			"description": "Presets only: whether the account details (password, user name) are stored. They are never shown"
+		},
+		"domain": {
+			"type": [
+				"string",
+				"null"
+			],
+			"example": "example.com",
+			"description": "Namecheap preset only: the domain of the record"
 		}
 	}
 }

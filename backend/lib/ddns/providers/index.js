@@ -5,8 +5,11 @@ import custom from "./custom.js";
 import desec from "./desec.js";
 import digitalocean from "./digitalocean.js";
 import duckdns from "./duckdns.js";
+import dynu from "./dynu.js";
 import gandi from "./gandi.js";
 import hetznerCloud from "./hetzner-cloud.js";
+import namecheap from "./namecheap.js";
+import noip from "./noip.js";
 import ovh from "./ovh.js";
 import porkbun from "./porkbun.js";
 import powerdns from "./powerdns.js";
@@ -21,6 +24,9 @@ const PROVIDERS = Object.freeze([
 	desec,
 	duckdns,
 	porkbun,
+	namecheap,
+	noip,
+	dynu,
 	custom,
 	powerdns,
 ]);
@@ -61,6 +67,7 @@ const PROVIDER_LIST = Object.freeze(
 			wildcards: provider.wildcards,
 			aliases: provider.aliases === true,
 			zoneless: provider.zoneless === true,
+			preset: provider.preset === true,
 			zone: provider.zone ?? null,
 			apex: provider.apex !== false,
 			min_ttl: provider.minTtl ?? null,

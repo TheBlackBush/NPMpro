@@ -85,12 +85,29 @@
 								]
 							},
 							"else": {
-								"required": [
-									"dns_credential_id"
-								],
-								"properties": {
-									"dns_credential_id": {
-										"type": "integer"
+								"if": {
+									"required": [
+										"provider"
+									],
+									"properties": {
+										"provider": {
+											"enum": [
+												"namecheap",
+												"noip",
+												"dynu"
+											]
+										}
+									}
+								},
+								"then": {},
+								"else": {
+									"required": [
+										"dns_credential_id"
+									],
+									"properties": {
+										"dns_credential_id": {
+											"type": "integer"
+										}
 									}
 								}
 							}
@@ -205,6 +222,24 @@
 							"maxLength": 255,
 							"example": "good",
 							"description": "Custom provider only: text the answer must contain; without it the update counts as failed. Empty or null: any 2xx answer succeeds"
+						},
+						"username": {
+							"type": "string",
+							"maxLength": 255,
+							"example": "user@example.com",
+							"description": "No-IP and Dynu presets only, write-only: the account's user name. It is stored sealed and never shown (`secret_set` tells whether the details are stored); an empty value keeps the stored one"
+						},
+						"password": {
+							"type": "string",
+							"maxLength": 255,
+							"example": "update-password",
+							"description": "Namecheap, No-IP and Dynu presets only, write-only: the Dynamic DNS password (Namecheap: of the domain, Advanced DNS tab; No-IP and Dynu: of the account). It is stored sealed and never shown; an empty value keeps the stored one"
+						},
+						"domain": {
+							"type": "string",
+							"maxLength": 255,
+							"example": "example.com",
+							"description": "Namecheap preset only: the domain the record belongs to, as Namecheap lists it. The record name is this domain or a name under it"
 						}
 					}
 				},

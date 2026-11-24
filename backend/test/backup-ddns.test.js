@@ -622,3 +622,49 @@ it("a merge seals the custom URL of an archive with secrets, and a page import o
 		await knex.destroy();
 	}
 });
+
+const presetRecord = (id, name, extra = {}) =>
+	record(id, null, name, {
+		provider: "noip",
+		zone: "",
+		secret: box.encrypt({ username: "me@example.com", password: "PRESET-pass-4321" }),
+		...extra,
+	});
+
+it("a backup with secrets carries a preset's details, a backup without them none, and a restore seals them again", () => {
+	const rows = { npmpro_ddns_record: [presetRecord(1, "p.example.com")] };
+	const opened = TYPES.ddns.secrets.export(rows, box).npmpro_ddns_record;
+	assert.deepEqual(opened[0].secret, { username: "me@example.com", password: "PRESET-pass-4321" });
+	const stripped = TYPES.ddns.secrets.strip(rows).npmpro_ddns_record;
+	assert.equal(stripped[0].secret, null);
+	assert.ok(!JSON.stringify(stripped).includes("PRESET-pass-4321"));
+	const sealed = TYPES.ddns.secrets.seal({ npmpro_ddns_record: opened }, box).npmpro_ddns_record;
+	assert.deepEqual(box.decrypt(sealed[0].secret), opened[0].secret);
+});
+
+it("a preset record restored without its details comes back disabled and asks for the password again", async () => {
+	const [without, withSecret] = TYPES.ddns.restoreRows({
+		npmpro_ddns_record: [presetRecord(1, "a.example.com", { secret: null }), presetRecord(2, "b.example.com")],
+	}).npmpro_ddns_record;
+	assert.equal(Number(without.enabled), 0);
+	assert.equal(without.state, "disabled");
+	assert.equal(JSON.parse(without.meta).error_i18n, "error.ddns-secret-missing");
+	assert.equal(Number(withSecret.enabled), 1);
+	assert.equal(withSecret.state, "pending");
+	const knex = await open();
+	try {
+		const stripped = TYPES.ddns.secrets.strip(ddnsData([presetRecord(1, "a.example.com")]).ddns);
+		await replaceTypes({ knex, data: { ddns: stripped }, types: ["ddns"], adminUserId: 1, box, now: NOW });
+		const [row] = await knex("npmpro_ddns_record");
+		assert.equal(row.secret, null);
+		assert.equal(Number(row.enabled), 0);
+		assert.equal(JSON.parse(row.meta).error_i18n, "error.ddns-secret-missing");
+		const full = TYPES.ddns.secrets.export(ddnsData([presetRecord(1, "a.example.com")]).ddns, box);
+		await replaceTypes({ knex, data: { ddns: full }, types: ["ddns"], adminUserId: 1, box, now: NOW });
+		const [kept] = await knex("npmpro_ddns_record");
+		assert.deepEqual(box.decrypt(kept.secret), { username: "me@example.com", password: "PRESET-pass-4321" });
+		assert.equal(Number(kept.enabled), 1);
+	} finally {
+		await knex.destroy();
+	}
+});

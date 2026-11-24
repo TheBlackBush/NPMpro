@@ -14,6 +14,7 @@
 			"wildcards",
 			"aliases",
 			"zoneless",
+			"preset",
 			"zone",
 			"apex",
 			"min_ttl"
@@ -79,6 +80,11 @@
 				"type": "boolean",
 				"example": false,
 				"description": "Whether the provider has no zones and no record read (DuckDNS): records are address records only, take no TTL and sit under its one fixed zone"
+			},
+			"preset": {
+				"type": "boolean",
+				"example": false,
+				"description": "Whether it is an update-URL preset (Namecheap, No-IP, Dynu): no DNS credential, the account details are typed in the record and stored sealed"
 			},
 			"zone": {
 				"type": [

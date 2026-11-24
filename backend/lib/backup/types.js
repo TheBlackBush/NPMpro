@@ -1,4 +1,5 @@
 import path from "node:path";
+import { isPreset } from "../ddns/presets.js";
 import { RUNTIME_GROUPS } from "../runtime-rules.js";
 import { TABLE as SCHEDULE_TABLE, SCHEDULE_TYPE } from "./schedule-rows.js";
 import { nextRun } from "./schedule-time.js";
@@ -183,14 +184,17 @@ const restartedMeta = (meta) => {
 	return typeof meta === "string" ? JSON.stringify(rest) : rest;
 };
 
-// a restored DDNS record is checked again by the next cycle (a disabled one stays disabled); a custom record whose
-// URL did not come along (a backup without secrets) is disabled and says so
+// a restored DDNS record is checked again by the next cycle (a disabled one stays disabled); a custom or preset record
+// whose sealed details did not come along (a backup without secrets) is disabled and says so
 const restartedRecord = (row) => {
-	const urlMissing = row.provider === "custom" && !hasText(row.secret);
+	const urlMissing = (row.provider === "custom" || isPreset(row.provider)) && !hasText(row.secret);
 	const enabled = Number(row.enabled) && !urlMissing;
 	const meta = restartedMeta(row.meta);
 	const marked = urlMissing
-		? { ...(typeof meta === "string" ? JSON.parse(meta) : meta), error_i18n: "error.ddns-custom-url-missing" }
+		? {
+				...(typeof meta === "string" ? JSON.parse(meta) : meta),
+				error_i18n: row.provider === "custom" ? "error.ddns-custom-url-missing" : "error.ddns-secret-missing",
+			}
 		: meta;
 	return {
 		...row,
@@ -203,7 +207,7 @@ const restartedRecord = (row) => {
 	};
 };
 
-// the custom provider's URL, method and expected text are sealed in the record's secret column
+// the custom provider's URL, method and expected text and a preset's account details are sealed in the record's secret column
 const ddnsSecrets = {
 	export: (rowsByTable, box) =>
 		mapRows(rowsByTable, "npmpro_ddns_record", (row) =>

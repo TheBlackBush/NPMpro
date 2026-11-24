@@ -35,6 +35,7 @@
 									"wildcards": true,
 									"aliases": true,
 									"zoneless": false,
+									"preset": false,
 									"zone": null,
 									"apex": true,
 									"min_ttl": 60

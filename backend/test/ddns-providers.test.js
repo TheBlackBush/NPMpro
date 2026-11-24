@@ -49,7 +49,20 @@ describe("registry", () => {
 	it("lists the updater providers and finds them by credential provider", () => {
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.id),
-			["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh", "desec", "duckdns", "porkbun", "custom"],
+			[
+				"cloudflare",
+				"digitalocean",
+				"hetzner-cloud",
+				"gandi",
+				"ovh",
+				"desec",
+				"duckdns",
+				"porkbun",
+				"namecheap",
+				"noip",
+				"dynu",
+				"custom",
+			],
 		);
 		assert.deepEqual(PROVIDER_LIST[0], {
 			id: "cloudflare",
@@ -62,30 +75,39 @@ describe("registry", () => {
 			wildcards: true,
 			aliases: true,
 			zoneless: false,
+			preset: false,
 			zone: null,
 			apex: true,
 			min_ttl: 60,
 		});
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.min_ttl),
-			[60, 30, 60, 300, null, 3600, null, 600, null],
+			[60, 30, 60, 300, null, 3600, null, 600, null, null, null, null],
 		);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.aliases),
-			[true, true, true, true, false, false, false, false, false],
+			[true, true, true, true, false, false, false, false, false, false, false, false],
 		);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.apex),
-			[true, true, true, true, false, true, true, true, true],
+			[true, true, true, true, false, true, true, true, true, true, true, true],
 		);
 		assert.equal(PROVIDER_LIST.filter((p) => p.proxied).length, 1);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.wildcards),
-			[true, true, false, false, false, false, false, false, false],
+			[true, true, false, false, false, false, false, false, false, false, false, false],
 		);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.zoneless),
-			[false, false, false, false, false, false, true, false, true],
+			[false, false, false, false, false, false, true, false, true, true, true, true],
+		);
+		assert.deepEqual(
+			PROVIDER_LIST.filter((p) => p.preset).map((p) => [p.id, p.credential_provider, p.admin_only, p.zone]),
+			[
+				["namecheap", null, false, null],
+				["noip", null, false, null],
+				["dynu", null, false, null],
+			],
 		);
 		assert.equal(PROVIDER_LIST[6].zone, "duckdns.org");
 		assert.equal(updaterFor(null), null);
@@ -1287,5 +1309,260 @@ describe("porkbun", () => {
 
 	it("has no zone fetch", () => {
 		assert.equal(providerById("porkbun").listZones, undefined);
+	});
+});
+
+describe("update-URL presets (namecheap, noip, dynu)", () => {
+	// secrets with characters that change when URL-encoded
+	const PASSWORD = ["pw", "a/b+c&d=1 2"].join("-");
+	const USER = "me+box@example.com";
+	const encodedPw = encodeURIComponent(PASSWORD);
+	const echoes = (extra = "") => [
+		`${extra}${PASSWORD}`,
+		`${extra}${encodedPw}`,
+		`${extra}${encodedPw.replaceAll("%20", "+")}`,
+	];
+	const noLeak = (err) => !err.message.includes(PASSWORD) && !err.message.includes(encodedPw);
+
+	describe("namecheap", () => {
+		const nc = () => api("dynamicdns.park-your-domain.com");
+		const fields = { domain: "example.com", password: PASSWORD };
+		const secrets = [PASSWORD];
+		const base = { zone: "", name: "home.example.com", type: "A", fields, ip: "5.6.7.8", existing: null };
+		const run = (method, args) => call("namecheap", method, args, secrets);
+		const pathOf = (host) => `/update?host=${host}&domain=example.com&password=${encodedPw}&ip=5.6.7.8`;
+		const xml = (count, errors = "") =>
+			`<?xml version="1.0" encoding="utf-16"?><interface-response><Command>SETDNSHOST</Command><ErrCount>${count}</ErrCount>${
+				errors === "" ? "<errors />" : `<errors>${errors}</errors>`
+			}<Done>true</Done></interface-response>`;
+
+		it("is a zoneless address provider without a read", async () => {
+			const provider = providerById("namecheap");
+			assert.equal(provider.zoneless, true);
+			assert.equal(provider.credentialProvider, null);
+			assert.equal(provider.adminOnly, false);
+			assert.equal(provider.ipv6, false);
+			assert.deepEqual(provider.recordTypes, ["A"]);
+			assert.equal(await run("read", base), null);
+		});
+
+		it("sends one GET with the host, the domain, the password and the address, and takes ErrCount 0 as success", async () => {
+			nc()
+				.intercept({ path: pathOf("home"), method: "GET" })
+				.reply(200, xml(0), { headers: { "content-type": "application/json" } });
+			assert.deepEqual(await run("write", base), { meta: {}, created: false });
+			nc()
+				.intercept({ path: pathOf("%40"), method: "GET" })
+				.reply(200, xml(0));
+			assert.deepEqual(await run("write", { ...base, name: "example.com" }), { meta: {}, created: false });
+			nc()
+				.intercept({ path: pathOf("a.b"), method: "GET" })
+				.reply(200, xml(0));
+			assert.deepEqual(await run("write", { ...base, name: "a.b.example.com" }), { meta: {}, created: false });
+			mock.assertNoPendingInterceptors();
+		});
+
+		it("takes ErrCount above 0 as a refusal with the first error text, not retried", async () => {
+			nc()
+				.intercept({ path: pathOf("home"), method: "GET" })
+				.reply(200, xml(1, "<Err1>Passwords do not match</Err1>"));
+			await assert.rejects(
+				run("write", base),
+				(err) =>
+					err.code === "forbidden" &&
+					err.retry === false &&
+					err.message.includes("Passwords do not match") &&
+					noLeak(err),
+			);
+		});
+
+		it("takes a body that is no answer, an HTTP error or ErrCount missing as a retried failure", async () => {
+			for (const [status, body] of [
+				[200, ""],
+				[200, "<html>maintenance</html>"],
+				[200, "<interface-response><Done>true</Done></interface-response>"],
+				[200, "not xml ErrCount 0"],
+				[502, xml(0)],
+			]) {
+				nc()
+					.intercept({ path: pathOf("home"), method: "GET" })
+					.reply(status, body);
+				await assert.rejects(run("write", base), (err) => err.code === "failed" && err.retry !== false);
+			}
+		});
+
+		it("never lets the password into a message, plain, URL-encoded, echoed or in a network error", async () => {
+			for (const body of echoes("<Err1>bad ").map((text) => xml(1, `${text}</Err1>`))) {
+				nc()
+					.intercept({ path: pathOf("home"), method: "GET" })
+					.reply(200, body);
+				await assert.rejects(run("write", base), (err) => err.message.includes("***") && noLeak(err));
+			}
+			nc()
+				.intercept({ path: pathOf("home"), method: "GET" })
+				.replyWithError(Object.assign(new Error(`connect failed ${PASSWORD}`), { code: "ECONNRESET" }));
+			await assert.rejects(run("write", base), (err) => err.code === "network" && noLeak(err));
+		});
+
+		it("refuses IPv6, a wildcard and missing details before any call", async () => {
+			await assert.rejects(
+				run("write", { ...base, type: "AAAA", ip: "2001:db8::1" }),
+				(err) => err.retry === false,
+			);
+			await assert.rejects(run("write", { ...base, name: "*.example.com" }), (err) => err.retry === false);
+			await assert.rejects(
+				run("write", { ...base, fields: { domain: "example.com" } }),
+				(err) => err.retry === false,
+			);
+			await assert.rejects(
+				run("write", { ...base, fields: { password: PASSWORD } }),
+				(err) => err.retry === false,
+			);
+		});
+	});
+
+	describe("noip", () => {
+		const np = () => api("dynupdate.no-ip.com");
+		const fields = { username: USER, password: PASSWORD };
+		const secrets = [PASSWORD, USER];
+		const base = { zone: "", name: "home.example.net", type: "A", fields, ip: "5.6.7.8", existing: null };
+		const run = (method, args) => call("noip", method, args, secrets);
+		const basic = `Basic ${Buffer.from(`${USER}:${PASSWORD}`).toString("base64")}`;
+		const send = (ipKey = "myip", ip = "5.6.7.8") => ({
+			path: `/nic/update?hostname=home.example.net&${ipKey}=${encodeURIComponent(ip)}`,
+			method: "GET",
+			headers: (headers) => headers.authorization === basic && headers["user-agent"].startsWith("NPMpro "),
+		});
+
+		it("sends one GET with Basic auth and a user agent, and takes good and nochg as success", async () => {
+			np().intercept(send()).reply(200, "good 5.6.7.8");
+			assert.deepEqual(await run("write", base), { meta: {}, created: false });
+			np().intercept(send()).reply(200, "nochg 5.6.7.8\n");
+			assert.deepEqual(await run("write", base), { meta: {}, created: false });
+			np().intercept(send("myipv6", "2001:db8::1")).reply(200, "good 2001:db8::1");
+			assert.deepEqual(await run("write", { ...base, type: "AAAA", ip: "2001:db8::1" }), {
+				meta: {},
+				created: false,
+			});
+			mock.assertNoPendingInterceptors();
+		});
+
+		it("tells each failure answer and retries only 911", async () => {
+			const cases = [
+				["nohost", 200, "forbidden", false],
+				["badauth", 401, "forbidden", false],
+				["badagent", 200, "forbidden", false],
+				["!donator", 200, "forbidden", false],
+				["abuse", 200, "forbidden", false],
+				["911", 200, "failed", true],
+			];
+			for (const [body, status, code, retry] of cases) {
+				np().intercept(send()).reply(status, body);
+				await assert.rejects(
+					run("write", base),
+					(err) =>
+						err.code === code &&
+						err.retry === retry &&
+						err.message.includes(body) &&
+						err.providerStatus === status,
+					body,
+				);
+			}
+			np().intercept(send()).reply(200, "something new");
+			await assert.rejects(run("write", base), (err) => err.code === "failed" && err.retry !== false);
+			np().intercept(send()).reply(500, "good 5.6.7.8");
+			await assert.rejects(run("write", base), (err) => err.code === "failed");
+		});
+
+		it("never lets the password or the user name into a message", async () => {
+			for (const body of [...echoes("badauth "), `badauth ${USER}`]) {
+				np().intercept(send()).reply(401, body);
+				await assert.rejects(run("write", base), (err) => noLeak(err) && !err.message.includes(USER));
+			}
+			np()
+				.intercept(send())
+				.replyWithError(Object.assign(new Error(`connect failed ${PASSWORD} ${USER}`), { code: "ECONNRESET" }));
+			await assert.rejects(
+				run("write", base),
+				(err) => err.code === "network" && noLeak(err) && !err.message.includes(USER),
+			);
+		});
+
+		it("refuses a wildcard and missing details before any call", async () => {
+			await assert.rejects(run("write", { ...base, name: "*.example.net" }), (err) => err.retry === false);
+			await assert.rejects(
+				run("write", { ...base, fields: { password: PASSWORD } }),
+				(err) => err.retry === false,
+			);
+		});
+	});
+
+	describe("dynu", () => {
+		const dy = () => api("api.dynu.com");
+		const fields = { username: USER, password: PASSWORD };
+		const secrets = [PASSWORD, USER];
+		const base = { zone: "", name: "home.example.org", type: "A", fields, ip: "5.6.7.8", existing: null };
+		const run = (method, args) => call("dynu", method, args, secrets);
+		const basic = `Basic ${Buffer.from(`${USER}:${PASSWORD}`).toString("base64")}`;
+		const send = (query) => ({
+			path: `/nic/update?hostname=home.example.org&${query}`,
+			method: "GET",
+			headers: (headers) => headers.authorization === basic,
+		});
+
+		it("always sends the hostname and blocks the other family, with Basic auth", async () => {
+			dy().intercept(send("myip=5.6.7.8&myipv6=no")).reply(200, "good 5.6.7.8");
+			assert.deepEqual(await run("write", base), { meta: {}, created: false });
+			dy()
+				.intercept(send(`myip=no&myipv6=${encodeURIComponent("2001:db8::1")}`))
+				.reply(200, "nochg");
+			assert.deepEqual(await run("write", { ...base, type: "AAAA", ip: "2001:db8::1" }), {
+				meta: {},
+				created: false,
+			});
+			mock.assertNoPendingInterceptors();
+		});
+
+		it("tells each failure answer and retries only the retryable ones", async () => {
+			const cases = [
+				["nohost", "forbidden", false],
+				["badauth", "forbidden", false],
+				["notfqdn", "forbidden", false],
+				["abuse", "forbidden", false],
+				["numhost", "forbidden", false],
+				["!donator", "forbidden", false],
+				["unknown", "forbidden", false],
+				["911", "failed", true],
+				["servererror", "failed", true],
+				["dnserr", "failed", true],
+			];
+			for (const [body, code, retry] of cases) {
+				dy().intercept(send("myip=5.6.7.8&myipv6=no")).reply(200, body);
+				await assert.rejects(
+					run("write", base),
+					(err) => err.code === code && err.retry === retry && err.message.includes(body),
+					body,
+				);
+			}
+			dy().intercept(send("myip=5.6.7.8&myipv6=no")).reply(200, "surprise");
+			await assert.rejects(run("write", base), (err) => err.code === "failed" && err.retry !== false);
+			dy().intercept(send("myip=5.6.7.8&myipv6=no")).reply(500, "good");
+			await assert.rejects(run("write", base), (err) => err.code === "failed");
+		});
+
+		it("never lets the password or the user name into a message", async () => {
+			for (const body of [...echoes("badauth "), `badauth ${USER}`]) {
+				dy().intercept(send("myip=5.6.7.8&myipv6=no")).reply(200, body);
+				await assert.rejects(run("write", base), (err) => noLeak(err) && !err.message.includes(USER));
+			}
+		});
+
+		it("refuses a wildcard and missing details before any call", async () => {
+			await assert.rejects(run("write", { ...base, name: "*.example.org" }), (err) => err.retry === false);
+			await assert.rejects(
+				run("write", { ...base, fields: { password: PASSWORD } }),
+				(err) => err.retry === false,
+			);
+		});
 	});
 });
