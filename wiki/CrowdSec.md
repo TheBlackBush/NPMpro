@@ -199,9 +199,9 @@ jq -r 'select(.host_id == "proxy-12") | [.time_local, .remote_addr, .status] | @
 jq -r 'select((.request_time|tonumber) > 1) | .request' /opt/npmpro/nginx/logs/access.log
 ```
 
-The JSON format needs the parser `TheBlackBush/npmpro-logs` (in the collection `TheBlackBush/npmpro`). It is waiting for review in the CrowdSec hub ([hub#1961](https://github.com/crowdsecurity/hub/pull/1961)) and cannot be installed from the hub yet. The parser `ZoeyVid/npmplus-logs` of the default setup cannot read JSON lines. Until the NPMpro parser is on the hub, keep Log format on **Classic**.
+The JSON format needs the parser `TheBlackBush/npmpro-logs` (in the collection `TheBlackBush/npmpro`). It is waiting for review in the CrowdSec hub ([hub#1961](https://github.com/crowdsecurity/hub/pull/1961)) and cannot be installed from the hub yet. The parser `ZoeyVid/npmplus-logs` of the default setup cannot read JSON lines. Until the NPMpro parser is on the hub, keep Log format on **Classic**, or install the NPMpro items with the script of [Install the NPMpro items before they are on the hub](#install-the-npmpro-items-before-they-are-on-the-hub).
 
-Once it is on the hub, the acquisition of step 4 becomes this (the AppSec part stays as it is):
+With the NPMpro parser (from the hub or from the script), the acquisition of step 4 becomes this (the AppSec part stays as it is):
 
 ```yaml
 filenames:
@@ -226,6 +226,37 @@ The NPMpro collection also brings five scenarios:
 | `TheBlackBush/npmpro-login-bf` | Failed sign-ins to the NPMpro admin UI on port 81 (401, 403 or 429 answers to the login): more than 5 from one IP (the count drops by one every 2 minutes). |
 | `TheBlackBush/npmpro-tls-probe` | A client that fails the TLS handshake of the default site or the admin UI on purpose (rejected, old TLS version, no shared cipher, not TLS): more than 10 from one IP, HTTP/3 counted apart (the count drops by one every 30 seconds). Needs the [TLS handshake log](#tls-handshake-log). |
 | `TheBlackBush/npmpro-stream-tls-probe` | A client whose connections to a TLS stream keep failing before the handshake ends (status 500): more than 15 to one stream (the count drops by one every 5 seconds), see [TLS streams](#tls-streams). |
+
+### Install the NPMpro items before they are on the hub
+
+Until the collection `TheBlackBush/npmpro` is on the CrowdSec hub, the script `scripts/crowdsec-npmpro.sh` of this repository installs its parser, its five scenarios and its alert context into your CrowdSec container as local items. It runs inside the CrowdSec container, so it finds CrowdSec's config folder and `cscli` by itself and needs nothing else on the host. Run it from the Docker host:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/TheBlackBush/NPMpro/develop/scripts/crowdsec-npmpro.sh | docker exec -i crowdsec sh
+```
+
+Replace `crowdsec` with the name of your CrowdSec container. Without `curl` on the host, use `wget -qO- <the same URL>`. To read the script before you run it, download it first (`curl -fsSL -o crowdsec-npmpro.sh <URL>`), then run `docker exec -i crowdsec sh < crowdsec-npmpro.sh`. The items are written into the script itself, so it downloads nothing else.
+
+The script:
+
+1. Installs the hub items that the collection needs with `cscli`: `crowdsecurity/base-http-scenarios`, the AppSec collections `crowdsecurity/appsec-virtual-patching`, `crowdsecurity/appsec-generic-rules` and `crowdsecurity/appsec-wordpress`, `crowdsecurity/wordpress` and the scenario `crowdsecurity/nginx-req-limit-exceeded`.
+2. Writes the NPMpro parser, the five scenarios and the alert context into CrowdSec's config folder (`/etc/crowdsec` in the container). A file that is already there and different is first copied to `npmpro-backup/<date>/` in the config folder. The alert context needs CrowdSec 1.6.4 or newer; with an older CrowdSec the script leaves it out and says so.
+3. Changes `type: npmplus` to `type: npmpro` in the acquisition files (`acquis.yaml` and `acquis.d/`), copying each file it changes to `npmpro-backup/<date>/` first. The JSON log format, `error.log`, `stream.log` and `tls.log` need the NPMpro parser, see the acquisition of [JSON log format and the NPMpro parser](#json-log-format-and-the-npmpro-parser).
+4. Checks the configuration with `crowdsec -t`.
+
+Then restart CrowdSec (`docker restart crowdsec`, or `docker compose restart crowdsec`) and check that the parser reads the log with `docker exec crowdsec cscli metrics`. `docker exec crowdsec cscli parsers list` shows `TheBlackBush/npmpro-logs` as a local item.
+
+- **Keep the config folder mounted.** The items live in CrowdSec's config folder. They survive an update of the container only when that folder is mounted from the host (`/opt/crowdsec/conf:/etc/crowdsec` in step 1). The script warns when it is not.
+- **The `COLLECTIONS` variable.** The container installs the collections of `COLLECTIONS` at every start. Replace `ZoeyVid/npmplus` there with the hub items of point 1: `COLLECTIONS=crowdsecurity/base-http-scenarios crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules crowdsecurity/appsec-wordpress crowdsecurity/wordpress` and `SCENARIOS=crowdsecurity/nginx-req-limit-exceeded`. Leaving `ZoeyVid/npmplus` in does no harm: its parser reads only `type: npmplus`, so it reads nothing anymore.
+- **Updates.** A new version of the NPMpro items comes with a new version of the script: run it again. The hub's own update (`cscli hub upgrade`) does not change local items.
+- **When the collection is on the hub**, remove the local items and install it from the hub, then restart CrowdSec:
+
+  ```sh
+  curl -fsSL https://raw.githubusercontent.com/TheBlackBush/NPMpro/develop/scripts/crowdsec-npmpro.sh | docker exec -i crowdsec sh -s -- --remove
+  docker exec crowdsec cscli collections install TheBlackBush/npmpro
+  ```
+
+  The acquisition keeps `type: npmpro`, which the hub collection reads too. Put `TheBlackBush/npmpro` in `COLLECTIONS`.
 
 ### Host id
 
@@ -416,7 +447,7 @@ The bouncer supports the captcha remediation. In Settings, CrowdSec choose the c
 
 ### Find the request of an AppSec event
 
-An alert raised by the AppSec carries the request id of the blocked request as `request_id` in its context, the `request_id` field of the access log line. It needs CrowdSec 1.6.4 or newer and the alert context `TheBlackBush/npmpro`. Check your version first (`docker exec crowdsec cscli version`): CrowdSec 1.6.3 and older refuse to start with this context (`unknown name req`), and with **When AppSec cannot be reached** on **Deny the request** a stopped CrowdSec blocks every checked request. Update CrowdSec before you add the context or install the collection. That context is part of the collection `TheBlackBush/npmpro`, which waits for review in the CrowdSec hub ([hub#1961](https://github.com/crowdsecurity/hub/pull/1961)); until then, and with any other collection (for example with `ZoeyVid/npmplus`), add it by hand: create `contexts/npmpro.yaml` in CrowdSec's config folder (`/etc/crowdsec/contexts/npmpro.yaml` in the container, `/opt/crowdsec/conf/contexts/npmpro.yaml` on the host) with
+An alert raised by the AppSec carries the request id of the blocked request as `request_id` in its context, the `request_id` field of the access log line. It needs CrowdSec 1.6.4 or newer and the alert context `TheBlackBush/npmpro`. Check your version first (`docker exec crowdsec cscli version`): CrowdSec 1.6.3 and older refuse to start with this context (`unknown name req`), and with **When AppSec cannot be reached** on **Deny the request** a stopped CrowdSec blocks every checked request. Update CrowdSec before you add the context or install the collection. That context is part of the collection `TheBlackBush/npmpro`, which waits for review in the CrowdSec hub ([hub#1961](https://github.com/crowdsecurity/hub/pull/1961)); until then the script of [Install the NPMpro items before they are on the hub](#install-the-npmpro-items-before-they-are-on-the-hub) installs it, or, with any other collection (for example with `ZoeyVid/npmplus`), add it by hand: create `contexts/npmpro.yaml` in CrowdSec's config folder (`/etc/crowdsec/contexts/npmpro.yaml` in the container, `/opt/crowdsec/conf/contexts/npmpro.yaml` on the host) with
 
 ```yaml
 context:
