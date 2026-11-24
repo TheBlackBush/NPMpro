@@ -1,5 +1,5 @@
 import { DdnsProviderError } from "../errors.js";
-import { pathName, refuseMultiple, refuseWildcard, relativeName, zoneNotFound } from "./record-common.js";
+import { pathName, recordGone, refuseMultiple, refuseWildcard, relativeName, zoneNotFound } from "./record-common.js";
 import { failAnswer, malformed } from "./zone-common.js";
 
 const DEFAULT_ENDPOINT = "https://desec.io/api/v1/";
@@ -99,7 +99,8 @@ export default {
 				headers: headersOf(fields, true),
 				body: JSON.stringify({ records: [ip], ...(ttl === undefined || ttl === null ? {} : { ttl }) }),
 			});
-			if (res.status === 404) throw zoneNotFound(res, secrets);
+			// the RRset was deleted between the read and the write: the next check creates it again
+			if (res.status === 404) throw recordGone(res, secrets);
 			if (res.status !== 200) failAnswer(res, { hint: HINT, secrets });
 			return { meta: { ...meta }, created: false };
 		}

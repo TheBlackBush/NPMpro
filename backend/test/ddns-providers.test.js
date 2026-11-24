@@ -36,6 +36,7 @@ const call = (id, method, args, secrets = [TOKEN]) =>
 const api = (host) => mock.get(`https://${host}`);
 const bodyIs = (expected) => (text) => text === JSON.stringify(expected);
 const MORE_THAN_ONE = /more than one/u;
+const REMOVED = /removed at the provider/u;
 const LIST_PATH = `/1.0/domain/zone/example.com/record?${new URLSearchParams({ fieldType: "A", subDomain: "home" })}`;
 const REFRESH_FAILED = /zone refresh failed/u;
 const BETWEEN = /between 300/u;
@@ -931,6 +932,15 @@ describe("desec", () => {
 			.intercept({ path: RRSET, method: "PATCH", body: bodyIs({ records: ["5.6.7.8"] }) })
 			.reply(200, {}, json);
 		await run("write", { ...base, ip: "5.6.7.8", existing });
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("a PATCH answered 404 (the RRset was deleted meanwhile) is a retried failure, not a missing zone", async () => {
+		pool().intercept({ path: RRSET, method: "PATCH" }).reply(404, { detail: "Not found." }, json);
+		await assert.rejects(
+			run("write", { ...base, ip: "5.6.7.8", existing: { values: ["1.2.3.4"], ttl: 3600 } }),
+			(err) => err.code === "failed" && err.retry !== false && REMOVED.test(err.message),
+		);
 		mock.assertNoPendingInterceptors();
 	});
 

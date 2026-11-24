@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
 import { DdnsProviderError } from "../errors.js";
-import { plainTarget, refuseMultiple, refuseWildcard, relativeName, zoneNotFound } from "./record-common.js";
+import {
+	plainTarget,
+	recordGone,
+	refuseMultiple,
+	refuseWildcard,
+	relativeName,
+	zoneNotFound,
+} from "./record-common.js";
 import { collectZones, failAnswer, malformed } from "./zone-common.js";
 
 // OVH signs every request: "$1$" + sha1(secret + "+" + consumer + "+" + method + "+" + url + "+" + body + "+" +
@@ -112,14 +119,6 @@ const refreshAfterSave = async ({ zone, fields, fetch, meta, recordId }) => {
 		throw err;
 	}
 };
-
-const recordGone = (res, secrets) =>
-	new DdnsProviderError({
-		providerStatus: res.status,
-		code: "failed",
-		message: "The record was removed at the provider; it is created again on the next check",
-		secrets,
-	});
 
 export { ovhEndpoint, ovhRequest, ovhSignature };
 
