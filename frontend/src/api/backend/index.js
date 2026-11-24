@@ -53,6 +53,7 @@ export * from "./getDdnsProviders";
 export * from "./getDdnsRecord";
 export * from "./getDdnsRecords";
 export * from "./getDdnsStatus";
+export * from "./getDdnsSuggestions";
 export * from "./getDnsCredential";
 export * from "./getDnsCredentials";
 export * from "./getDnsDomainSuggestions";

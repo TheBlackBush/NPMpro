@@ -20,6 +20,7 @@ import { showApiError, showError, showObjectSuccess, showSuccess } from "src/not
 import { CertificateTabs } from "../Tabs";
 import { ddnsApiErrorText, ddnsErrorText } from "./errorText";
 import { StatusCard } from "./StatusCard";
+import { SuggestionsBar } from "./SuggestionsBar";
 import Table, { useColumns } from "./Table";
 
 export default function TableWrapper() {
@@ -82,6 +83,7 @@ export default function TableWrapper() {
 				<>
 					<CertificateTabs />
 					<StatusCard />
+					<SuggestionsBar />
 				</>
 			}
 			actions={

@@ -355,4 +355,5 @@ const internalDnsDomain = {
 	removeAllLocked: (credentialId, trx) => dnsDomainModel.query(trx).where("dns_credential_id", credentialId).delete(),
 };
 
+export { mayView, namesOfRow, ownOnly, suggestedName };
 export default internalDnsDomain;

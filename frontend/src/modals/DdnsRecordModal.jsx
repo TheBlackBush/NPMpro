@@ -59,9 +59,12 @@ import { sectionIcon } from "src/shell/useNavItems";
 const accent = sectionAccent("dnsCredentials");
 const Icon = sectionIcon("certificates");
 
-/** The Add and Edit window of a dynamic DNS record (a View window without manage); no id adds one */
-const showDdnsRecordModal = (id) => {
-	EasyModal.show(DdnsRecordModal, { id });
+/**
+ * The Add and Edit window of a dynamic DNS record (a View window without manage); no id adds one, with the values
+ * of prefill ({ name, credentialId }, see DdnsSuggestions) when given
+ */
+const showDdnsRecordModal = (id, prefill) => {
+	EasyModal.show(DdnsRecordModal, { id, prefill });
 };
 
 const emptyRecord = {
@@ -378,7 +381,7 @@ function RecordFields({ stored, providers, credentials, zones, names, ownerUserI
 	);
 }
 
-const DdnsRecordModal = EasyModal.create(({ id, visible, remove }) => {
+const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const readOnly = !useCanManage(CERTIFICATES);
 	const isNew = id === undefined || id === null;
@@ -410,7 +413,7 @@ const DdnsRecordModal = EasyModal.create(({ id, visible, remove }) => {
 	const ready = providers && (isNew || stored);
 	const methods = useAppForm({
 		defaultValues: emptyRecord,
-		values: ready ? (isNew ? emptyRecord : toForm(stored)) : undefined,
+		values: ready ? (isNew ? { ...emptyRecord, ...prefill } : toForm(stored)) : undefined,
 		validate: (values) => {
 			const found = ddnsRecordValidate(ddnsRulesInput(values), {
 				providers,
