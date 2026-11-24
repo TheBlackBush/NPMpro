@@ -131,9 +131,32 @@ const updateNow = async (access, id) => {
 	return await internalDdnsRecord.get(access, { id, expand: ["credential"] });
 };
 
+/**
+ * The public address of one family: the detector's confirmed one, else one detection now (null when it has none)
+ *
+ * @param   {number}  family  4 or 6
+ * @returns {Promise<String|null>}
+ */
+const publicAddressOf = async (family) => {
+	const { publicIp } = service();
+	const known = publicIp.state(family).address;
+	if (known) return known;
+	return (await publicIp.detect(family)).address ?? null;
+};
+
 const providers = (access) => {
 	access.can("certificates:view");
 	return PROVIDER_LIST;
 };
 
-export { checkNow, ddnsStatus, initDdnsTimer, pauseDdns, providers, restartDdnsTimer, resumeDdns, updateNow };
+export {
+	checkNow,
+	ddnsStatus,
+	initDdnsTimer,
+	pauseDdns,
+	providers,
+	publicAddressOf,
+	restartDdnsTimer,
+	resumeDdns,
+	updateNow,
+};

@@ -22,6 +22,7 @@ import accessListsRoutes from "./nginx/access_lists.js";
 import certificatesHostsRoutes from "./nginx/certificates.js";
 import ddnsRoutes from "./nginx/ddns.js";
 import ddnsRecordsRoutes from "./nginx/ddns_records.js";
+import dnsCheckRoutes from "./nginx/dns_check.js";
 import dnsCredentialsRoutes from "./nginx/dns_credentials.js";
 import dnsDomainsRoutes from "./nginx/dns_domains.js";
 import oidcRoutes from "./oidc.js";
@@ -144,6 +145,7 @@ router.use(
 router.use("/api/nginx/access-lists", accessListsRoutes);
 router.use("/api/nginx/certificates", certificatesHostsRoutes);
 router.use("/api/nginx/dns-credentials", dnsCredentialsRoutes);
+router.use("/api/nginx/dns-check", dnsCheckRoutes);
 router.use("/api/nginx/ddns-records", ddnsRecordsRoutes);
 router.use("/api/nginx/ddns", ddnsRoutes);
 router.use("/api/nginx/dns-domains", dnsDomainsRoutes);

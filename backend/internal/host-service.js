@@ -1,3 +1,4 @@
+import { hostCheckCache } from "../lib/dns-check/host-cache.js";
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
 import { assertHostConfig } from "../lib/host-config-guard.js";
@@ -118,6 +119,7 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 			}
 
 			await flow.patchRow(thisData);
+			hostCheckCache.clearHost(hostType, thisData.id);
 
 			return auditAfter(access, "updated", thisData.id, async () => {
 				const row = await service.get(access, { id: thisData.id, expand });
@@ -151,6 +153,7 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 			const row = await service.get(access, { id: data.id });
 
 			await flow.deleteRow(row);
+			hostCheckCache.clearHost(hostType, row.id);
 
 			try {
 				await internalNginx.removeConfig(hostType, row, flow.removeOptions(row));
@@ -174,6 +177,7 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 			row.enabled = 1;
 
 			await model.query().where("id", row.id).patch({ enabled: 1 });
+			hostCheckCache.clearHost(hostType, row.id);
 
 			return auditAfter(access, "enabled", row.id, () =>
 				internalNginx.configure(model, hostType, row, { change: true }),
@@ -189,6 +193,7 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 			}
 
 			await model.query().where("id", row.id).patch({ enabled: 0 });
+			hostCheckCache.clearHost(hostType, row.id);
 
 			return auditAfter(access, "disabled", row.id, () =>
 				internalNginx.removeConfig(hostType, row, { saved: row }),

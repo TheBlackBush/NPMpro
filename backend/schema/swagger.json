@@ -277,6 +277,14 @@
 				"$ref": "./paths/nginx/dns-credentials/credentialID/test/post.json"
 			}
 		},
+		"/nginx/dns-check/hosts": {
+			"get": {
+				"$ref": "./paths/nginx/dns-check/hosts/get.json"
+			},
+			"post": {
+				"$ref": "./paths/nginx/dns-check/hosts/post.json"
+			}
+		},
 		"/nginx/ddns-records": {
 			"get": {
 				"$ref": "./paths/nginx/ddns-records/get.json"
