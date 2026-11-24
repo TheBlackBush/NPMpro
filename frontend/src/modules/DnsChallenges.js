@@ -7,6 +7,12 @@ export const VALUE_LIMIT = 40;
 const MINUTE = 60;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
+// the text of each skip reason, written out whole (the unused-key check reads them here)
+const SKIPPED_IDS = {
+	changed: "dns-challenges.result.skipped.changed",
+	outside: "dns-challenges.result.skipped.outside",
+	busy: "dns-challenges.result.skipped.busy",
+};
 
 /**
  * The items ticked when the window opens: only those the backend preselected (a known age over one hour), and only
@@ -69,11 +75,29 @@ export const deleteBody = (items, selection) =>
 export const hasUnknownAge = (items, selection) =>
 	(items ?? []).some((item) => (selection ? selection.has(item.key) : true) && !Number.isInteger(item.ageSeconds));
 
-/** The keys that are still ticked after a new list: an item that is gone or in use loses its tick */
-export function keepSelection(selection, items, busy) {
+const sameItem = (a, b) =>
+	a !== undefined &&
+	b !== undefined &&
+	(a.id ?? null) === (b.id ?? null) &&
+	a.name === b.name &&
+	JSON.stringify(a.values ?? []) === JSON.stringify(b.values ?? []);
+
+/**
+ * The keys that are still ticked after a new list. A tick stays only on an item that is still there with the same id,
+ * name and values as the user saw it: an item that is gone, in use or changed (a whole TXT set with another value, for
+ * a provider whose key leaves the values out) loses its tick and shows unticked.
+ *
+ * @param   {Set<string>} selection
+ * @param   {Array} previous  the list the user ticked on
+ * @param   {Array} items     the new list
+ * @param   {boolean} busy
+ * @returns {Set<string>}
+ */
+export function keepSelection(selection, previous, items, busy) {
 	if (busy) return new Set();
-	const keys = new Set((items ?? []).map((item) => item.key));
-	return new Set([...selection].filter((key) => keys.has(key)));
+	const before = new Map((previous ?? []).map((item) => [item.key, item]));
+	const now = new Map((items ?? []).map((item) => [item.key, item]));
+	return new Set([...selection].filter((key) => sameItem(before.get(key), now.get(key))));
 }
 
 /**
@@ -91,7 +115,7 @@ export function resultLine(result) {
 		case "skipped":
 			return {
 				tone: "warning",
-				id: `${ID}.result.skipped.${result.reason === "outside" ? "outside" : "changed"}`,
+				id: SKIPPED_IDS[result.reason] ?? SKIPPED_IDS.changed,
 				detail: null,
 			};
 		default:

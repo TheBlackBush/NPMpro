@@ -15,6 +15,14 @@ export function DnsCheckBadge({ names }) {
 	const badge = hostCheckBadge(names);
 	if (badge === null) return null;
 	const lines = names.map((result) => ({ name: result.name, line: nameLine(result) }));
+	// the accessible name carries the state and the lines of the tooltip, which a focused badge would not read
+	const label = [
+		intl.formatMessage(
+			{ id: "dns-check.badge-label" },
+			{ state: intl.formatMessage({ id: `dns-check.state.${badge.state}` }) },
+		),
+		...lines.map(({ name, line }) => `${name}: ${intl.formatMessage({ id: line.stateId })}`),
+	].join(". ");
 	return (
 		<TapTooltip
 			content={
@@ -27,15 +35,7 @@ export function DnsCheckBadge({ names }) {
 				</ul>
 			}
 		>
-			<StatusBadge
-				tone={badge.tone}
-				className="mr-2"
-				data-dns-check={badge.state}
-				aria-label={intl.formatMessage(
-					{ id: "dns-check.badge-label" },
-					{ state: intl.formatMessage({ id: `dns-check.state.${badge.state}` }) },
-				)}
-			>
+			<StatusBadge tone={badge.tone} className="mr-2" data-dns-check={badge.state} role="img" aria-label={label}>
 				<T id="dns-check.badge" />
 			</StatusBadge>
 		</TapTooltip>

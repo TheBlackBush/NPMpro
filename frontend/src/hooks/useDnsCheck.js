@@ -34,7 +34,8 @@ const useCheckHostDns = () => {
 	});
 };
 
-// the leftover challenge records are read at the provider on every open (no cache between openings)
+// the leftover challenge records are read at the provider on every open (no cache between openings) and after a
+// delete, never on its own: a list read again while the user ticks or confirms could change what a tick means
 const challengesKey = (id) => ["dns-challenges", id];
 
 const useDnsChallenges = (id) =>
@@ -45,6 +46,7 @@ const useDnsChallenges = (id) =>
 		gcTime: 0,
 		retry: false,
 		refetchOnWindowFocus: false,
+		refetchOnReconnect: false,
 	});
 
 // a delete changes the provider's list: the window lists again

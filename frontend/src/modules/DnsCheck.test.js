@@ -9,6 +9,7 @@ import {
 	checksOfType,
 	hostCheckBadge,
 	mergeChecks,
+	NAME_LIMIT,
 	nameLine,
 	namesChanged,
 	testAvailability,
@@ -167,6 +168,14 @@ it("explains why a name was not checked, with the provider's message only for a 
 		nameLine(result("a.example.com", "elsewhere", { reason: "provider-read-failed", message: "Forbidden" })).reason,
 		{ id: "dns-check.reason.provider-read-failed", detail: "Forbidden" },
 	);
+	assert.deepEqual(nameLine(result("a.example.com", "here", { reason: "provider-read-skipped" })).reason, {
+		id: "dns-check.reason.provider-read-skipped",
+		detail: null,
+	});
+	assert.deepEqual(nameLine(result("a.example.com", "unknown", { reason: "timeout" })).reason, {
+		id: "dns-check.reason.timeout",
+		detail: null,
+	});
 	assert.equal(
 		nameLine(result("a.example.com", "unknown", { reason: "lookup-timeout", message: "x" })).reason.detail,
 		null,
@@ -229,11 +238,37 @@ it("checks every host of the page in requests of at most 50", () => {
 	assert.deepEqual(checkBatches("dead", undefined), []);
 });
 
+it("keeps each request within 200 names across its hosts", () => {
+	assert.equal(NAME_LIMIT, 200);
+	const named = (id, count) => ({ id, domainNames: Array.from({ length: count }, (_, i) => `n${i}.h${id}.example`) });
+	assert.deepEqual(
+		checkBatches("proxy", [named(1, 100), named(2, 90), named(3, 20), named(4, 100), named(5, 100)]).map((batch) =>
+			batch.map((host) => host.id),
+		),
+		[[1, 2], [3, 4], [5]],
+	);
+	// names that differ only in case count once, as the backend counts them
+	const twice = { id: 6, domainNames: ["A.example", "a.example"] };
+	assert.deepEqual(
+		checkBatches("proxy", [named(1, 199), twice]).map((batch) => batch.length),
+		[2],
+	);
+});
+
 it("counts the names a check looked at", () => {
 	const hosts = [
 		{ names: [result("a", "here"), result("b", "partly"), result("*.c", "skipped")] },
 		{ names: [result("d", "elsewhere"), result("e", "none"), result("f", "unknown"), result("g", "here")] },
 	];
-	assert.deepEqual(checkCounts(hosts), { checked: 6, here: 2, away: 3, unknown: 1 });
-	assert.deepEqual(checkCounts(undefined), { checked: 0, here: 0, away: 0, unknown: 0 });
+	assert.deepEqual(checkCounts(hosts), { checked: 6, here: 2, away: 2, none: 1, unknown: 1 });
+	assert.deepEqual(checkCounts(undefined), { checked: 0, here: 0, away: 0, none: 0, unknown: 0 });
+});
+
+it("counts a row without names as none in a batch", () => {
+	assert.deepEqual(checkBatches("proxy", [{ id: 1 }, { id: 2, domainNames: undefined }]), [
+		[
+			{ type: "proxy", id: 1 },
+			{ type: "proxy", id: 2 },
+		],
+	]);
 });

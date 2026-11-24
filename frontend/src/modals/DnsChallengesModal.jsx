@@ -1,8 +1,9 @@
 import { Eraser } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppModal, Button, ErrorAlert, Loading, NoticeAlert } from "src/components";
+import { DESTRUCTIVE_TEXT } from "src/components/Button";
+import { StatusBadge } from "src/components/StatusBadge";
 import { TapTooltip } from "src/components/TapTooltip";
-import { Badge } from "src/components/ui/badge";
 import { Checkbox } from "src/components/ui/checkbox";
 import { useDeleteDnsChallenges, useDnsChallenges } from "src/hooks";
 import { cn } from "src/lib/utils";
@@ -40,7 +41,7 @@ const TONE_CLASSES = {
 	success: "text-success",
 	muted: "text-muted-foreground",
 	warning: "text-warning",
-	destructive: "text-destructive",
+	destructive: DESTRUCTIVE_TEXT,
 };
 
 function Values({ values }) {
@@ -85,14 +86,14 @@ function ChallengeRow({ item, checked, busy, onChange }) {
 						<T id={age.id} data={age.values} />
 					</span>
 					{busy ? (
-						<Badge variant="outline" className="border-warning text-warning">
+						<StatusBadge tone="warning" dot={false}>
 							<T id="dns-challenges.state.in-use" />
-						</Badge>
+						</StatusBadge>
 					) : null}
 					{item.recent ? (
-						<Badge variant="outline" className="border-warning text-warning">
+						<StatusBadge tone="warning" dot={false}>
 							<T id="dns-challenges.state.recent" />
-						</Badge>
+						</StatusBadge>
 					) : null}
 				</div>
 			</div>
@@ -100,27 +101,37 @@ function ChallengeRow({ item, checked, busy, onChange }) {
 	);
 }
 
-function Results({ results, items }) {
+function Results({ results, items, headingRef }) {
 	const names = new Map((items ?? []).map((item) => [item.key, item.name]));
 	return (
-		<ul
-			aria-label={intl.formatMessage({ id: "dns-challenges.results" })}
-			className="m-0 list-none divide-y overflow-y-auto rounded-md border p-0"
-			data-challenge-results=""
-		>
-			{results.map((entry) => {
-				const line = resultLine(entry);
-				return (
-					<li key={entry.key} className="px-3 py-2" data-challenge-result={entry.result}>
-						<div className="wrap-anywhere font-medium">{entry.name ?? names.get(entry.key)}</div>
-						<div className={cn("text-sm wrap-anywhere", TONE_CLASSES[line.tone])}>
-							<T id={line.id} />
-							{line.detail ? `: ${line.detail}` : ""}
-						</div>
-					</li>
-				);
-			})}
-		</ul>
+		<>
+			<h3
+				ref={headingRef}
+				tabIndex={-1}
+				className="mb-2 text-base font-medium outline-none"
+				data-challenge-results-heading=""
+			>
+				<T id="dns-challenges.results" />
+			</h3>
+			<ul
+				aria-label={intl.formatMessage({ id: "dns-challenges.results" })}
+				className="m-0 list-none divide-y overflow-y-auto rounded-md border p-0"
+				data-challenge-results=""
+			>
+				{results.map((entry) => {
+					const line = resultLine(entry);
+					return (
+						<li key={entry.key} className="px-3 py-2" data-challenge-result={entry.result}>
+							<div className="wrap-anywhere font-medium">{entry.name ?? names.get(entry.key)}</div>
+							<div className={cn("text-sm wrap-anywhere", TONE_CLASSES[line.tone])}>
+								<T id={line.id} />
+								{line.detail ? `: ${line.detail}` : ""}
+							</div>
+						</li>
+					);
+				})}
+			</ul>
+		</>
 	);
 }
 
@@ -137,6 +148,15 @@ const DnsChallengesModal = EasyModal.create(({ credentialId, credentialName, vis
 
 	const items = answer?.items ?? [];
 	const busy = answer?.busy === true;
+	// the list the user ticked on: a tick stays on a new list only for the same item (keepSelection)
+	const shownItems = useRef([]);
+	// the step's first element takes the focus when the step changes (the footer buttons are replaced)
+	const questionRef = useRef(null);
+	const resultsRef = useRef(null);
+	useEffect(() => {
+		if (step === "confirm") questionRef.current?.focus();
+		if (step === "results") resultsRef.current?.focus();
+	}, [step]);
 	const name = credentialName || `#${credentialId}`;
 
 	// each answer starts with its old records ticked (never while a request runs, never an unknown age); ticks the
@@ -144,10 +164,12 @@ const DnsChallengesModal = EasyModal.create(({ credentialId, credentialName, vis
 	// biome-ignore lint/correctness/useExhaustiveDependencies: only a new answer resets the ticks
 	useEffect(() => {
 		if (!answer) return;
+		const previous = shownItems.current;
+		shownItems.current = answer.items ?? [];
 		setSelection((prev) =>
 			step === "list" && results === null && prev.size === 0
 				? initialSelection(answer.items, answer.busy === true)
-				: keepSelection(prev, answer.items, answer.busy === true),
+				: keepSelection(prev, previous, answer.items, answer.busy === true),
 		);
 	}, [answer]);
 
@@ -256,10 +278,17 @@ const DnsChallengesModal = EasyModal.create(({ credentialId, credentialName, vis
 						<T id="dns-challenges.partial" data={partial} />
 					</NoticeAlert>
 				) : null}
-				{step === "results" && results ? <Results results={results} items={items} /> : null}
+				{step === "results" && results ? (
+					<Results results={results} items={items} headingRef={resultsRef} />
+				) : null}
 				{step === "confirm" ? (
 					<div data-challenge-confirm="">
-						<p className="font-medium">
+						<p
+							ref={questionRef}
+							tabIndex={-1}
+							className="font-medium outline-none"
+							data-challenge-question=""
+						>
 							<T id="dns-challenges.confirm.question" data={{ count: selectedCount, credential: name }} />
 						</p>
 						<ul className="m-0 max-h-72 list-none divide-y overflow-y-auto rounded-md border p-0">
@@ -277,6 +306,18 @@ const DnsChallengesModal = EasyModal.create(({ credentialId, credentialName, vis
 							</NoticeAlert>
 						) : null}
 					</div>
+				) : null}
+				{answer?.failedZones?.length > 0 && step === "list" ? (
+					<NoticeAlert className="mb-3" data-challenge-failed-zones="">
+						<T id="dns-challenges.failed-zones" data={{ count: answer.failedZones.length }} />
+						<ul className="mt-1 mb-0 list-none p-0">
+							{answer.failedZones.map((entry) => (
+								<li key={entry.zone} className="wrap-anywhere">
+									<span className="font-mono">{entry.zone}</span>: {entry.message}
+								</li>
+							))}
+						</ul>
+					</NoticeAlert>
 				) : null}
 				{showList && step === "list" ? (
 					<>
@@ -344,6 +385,7 @@ const DnsChallengesModal = EasyModal.create(({ credentialId, credentialName, vis
 								variant="destructive"
 								disabled={!canDelete(selection, busy)}
 								onClick={() => setStep("confirm")}
+								data-challenge-delete=""
 							>
 								<T id="dns-challenges.delete" data={{ count: selectedCount }} />
 							</Button>

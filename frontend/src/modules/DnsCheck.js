@@ -86,11 +86,15 @@ const REASONS = [
 	"public-address-unknown",
 	"public-ipv6-unknown",
 	"provider-read-failed",
+	"provider-read-skipped",
+	"timeout",
 	"check-failed",
 ];
 const VIA_IDS = { record: "record", wildcard: "wildcard", alias: "alias" };
 /** The most hosts one request checks */
 export const CHECK_LIMIT = 50;
+/** The most names one request checks, across its hosts */
+export const NAME_LIMIT = 200;
 
 const stateOfName = (result) => (Object.hasOwn(CHECK_TONES, result?.state) ? result.state : "unknown");
 
@@ -200,19 +204,31 @@ export function mergeChecks(cached, fresh) {
 	return [...merged.values()];
 }
 
+const nameCountOf = (row) => new Set((row?.domainNames ?? []).map(lower)).size;
+
 /**
- * The hosts a list checks: every row of the page it shows, in requests of at most CHECK_LIMIT hosts
+ * The hosts a list checks: every row of the page it shows, in requests of at most CHECK_LIMIT hosts and NAME_LIMIT
+ * names, in order
  *
  * @param   {string} type  proxy, redirection or dead
- * @param   {Array<{ id: number }>} rows  the rows of the current page
+ * @param   {Array<{ id: number, domainNames?: string[] }>} rows  the rows of the current page
  * @returns {Array<Array<{ type: string, id: number }>>}  the requests; none for an empty page
  */
 export function checkBatches(type, rows) {
-	const targets = (rows ?? []).map((row) => ({ type, id: row.id }));
 	const batches = [];
-	for (let start = 0; start < targets.length; start += CHECK_LIMIT) {
-		batches.push(targets.slice(start, start + CHECK_LIMIT));
+	let batch = [];
+	let names = 0;
+	for (const row of rows ?? []) {
+		const count = nameCountOf(row);
+		if (batch.length > 0 && (batch.length >= CHECK_LIMIT || names + count > NAME_LIMIT)) {
+			batches.push(batch);
+			batch = [];
+			names = 0;
+		}
+		batch.push({ type, id: row.id });
+		names += count;
 	}
+	if (batch.length > 0) batches.push(batch);
 	return batches;
 }
 
@@ -220,11 +236,12 @@ export function checkBatches(type, rows) {
  * The counts the toast of a check shows, per name
  *
  * @param   {Array<{ names: Array<{ state: string }> }>} hosts  the answer of the check
- * @returns {{ checked: number, here: number, away: number, unknown: number }}
- *          away: the names that answer other addresses, only one family or none; skipped names are not counted
+ * @returns {{ checked: number, here: number, away: number, none: number, unknown: number }}
+ *          away: the names that answer other addresses or reach this instance with one family only; none: the names
+ *          with no address; skipped names are not counted
  */
 export function checkCounts(hosts) {
-	const counts = { checked: 0, here: 0, away: 0, unknown: 0 };
+	const counts = { checked: 0, here: 0, away: 0, none: 0, unknown: 0 };
 	for (const host of hosts ?? []) {
 		for (const result of host.names ?? []) {
 			const state = stateOfName(result);
@@ -232,6 +249,7 @@ export function checkCounts(hosts) {
 				counts.checked += 1;
 				if (state === "here") counts.here += 1;
 				else if (state === "unknown") counts.unknown += 1;
+				else if (state === "none") counts.none += 1;
 				else counts.away += 1;
 			}
 		}

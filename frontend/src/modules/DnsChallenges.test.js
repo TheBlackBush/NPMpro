@@ -86,8 +86,20 @@ it("finds a ticked item of unknown age", () => {
 
 it("drops the ticks of items that left the list or are in use", () => {
 	const items = [item("a"), item("b")];
-	assert.deepEqual([...keepSelection(new Set(["a", "z"]), items, false)], ["a"]);
-	assert.equal(keepSelection(new Set(["a"]), items, true).size, 0);
+	const previous = [item("a"), item("b"), item("z")];
+	assert.deepEqual([...keepSelection(new Set(["a", "z"]), previous, items, false)], ["a"]);
+	assert.equal(keepSelection(new Set(["a"]), previous, items, true).size, 0);
+});
+
+it("keeps a tick only on the same item: the same key with other values or another id loses it", () => {
+	const previous = [item("a"), item("b"), item("c")];
+	// a whole TXT set (key name|set) that another client added a value to, and a record whose id changed
+	const now = [item("a"), item("b", { values: ["v", "other-client"] }), item("c", { id: "c2" })];
+	assert.deepEqual([...keepSelection(new Set(["a", "b", "c"]), previous, now, false)], ["a"]);
+	// the same values in the same order and the same id: kept; an age that moved on does not matter
+	assert.deepEqual([...keepSelection(new Set(["a"]), previous, [item("a", { ageSeconds: 9000 })], false)], ["a"]);
+	// a tick on an item the user never saw is not kept
+	assert.equal(keepSelection(new Set(["n"]), previous, [item("n")], false).size, 0);
 });
 
 it("shows a result per outcome", () => {
@@ -98,6 +110,8 @@ it("shows a result per outcome", () => {
 	});
 	assert.equal(resultLine({ result: "gone" }).tone, "muted");
 	assert.equal(resultLine({ result: "skipped", reason: "changed" }).id, "dns-challenges.result.skipped.changed");
+	assert.equal(resultLine({ result: "skipped", reason: "busy" }).id, "dns-challenges.result.skipped.busy");
+	assert.equal(resultLine({ result: "skipped", reason: "odd" }).id, "dns-challenges.result.skipped.changed");
 	assert.equal(resultLine({ result: "skipped", reason: "outside" }).id, "dns-challenges.result.skipped.outside");
 	assert.equal(resultLine({ result: "skipped" }).id, "dns-challenges.result.skipped.changed");
 	assert.deepEqual(resultLine({ result: "failed", message: "denied" }), {
@@ -184,4 +198,14 @@ it("states the select all box as none, some or all", () => {
 	assert.equal(selectAllState(items, new Set(["a", "b"]), false), true);
 	assert.equal(selectAllState(items, new Set(["a", "b"]), true), false);
 	assert.equal(selectAllState([], new Set(), false), false);
+});
+
+it("keeps a tick on a set without an id or values the same way, and on no list none", () => {
+	const set = { key: "s|set", name: "_acme-challenge.s" };
+	assert.deepEqual(
+		[...keepSelection(new Set(["s|set"]), [set], [{ ...set, id: null, values: [] }], false)],
+		["s|set"],
+	);
+	assert.equal(keepSelection(new Set(["s|set"]), undefined, undefined, false).size, 0);
+	assert.equal(keepSelection(new Set(["s|set"]), [set], [{ ...set, name: "_acme-challenge.t" }], false).size, 0);
 });
