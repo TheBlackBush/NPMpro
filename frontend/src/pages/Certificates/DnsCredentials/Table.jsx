@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Activity, Eye, KeyRound, Plus, SquarePen, Trash2 } from "lucide-react";
+import { Activity, Eraser, Eye, KeyRound, Plus, SquarePen, Trash2 } from "lucide-react";
 import { useMemo, useRef } from "react";
 import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
@@ -8,7 +8,7 @@ import { Badge } from "src/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
 import { useCanManage, useDnsProviders, useTestDnsCredential } from "src/hooks";
 import { intl, T } from "src/locale";
-import { showDnsDomainsModal } from "src/modals";
+import { showDnsChallengesModal, showDnsDomainsModal } from "src/modals";
 import { testStateOf } from "src/modules/DnsCheck";
 import { displayDomain } from "src/modules/DnsDomainForms";
 import { CERTIFICATES } from "src/modules/Permissions";
@@ -87,6 +87,7 @@ function DnsCredentialActions({ credential, onDelete, onEdit }) {
 	const { data: providers } = useDnsProviders();
 	const { mutateAsync: testCredential } = useTestDnsCredential();
 	const supported = providers?.find((p) => p.id === credential.provider)?.listsDomains === true;
+	const cleans = providers?.find((p) => p.id === credential.provider)?.cleansChallenges === true;
 	const running = useRef(false);
 	const test = async () => {
 		// a second select while a test of this credential runs sends nothing
@@ -143,6 +144,21 @@ function DnsCredentialActions({ credential, onDelete, onEdit }) {
 							? intl.formatMessage({ id: "dns-credentials.decrypt-error-short" })
 							: undefined
 						: intl.formatMessage({ id: "dns-credentials.test.unsupported" }),
+					hidden: !canManage,
+				},
+				{
+					key: "cleanup",
+					label: <T id="dns-challenges.menu" />,
+					icon: Eraser,
+					onSelect: () =>
+						showDnsChallengesModal({ credentialId: credential.id, credentialName: credential.name }),
+					// a provider without a confirmed TXT list and delete, or a credential that cannot be decrypted
+					disabled: !cleans || Boolean(credential.decryptError),
+					note: cleans
+						? credential.decryptError
+							? intl.formatMessage({ id: "dns-credentials.decrypt-error-short" })
+							: undefined
+						: intl.formatMessage({ id: "dns-challenges.menu.unsupported" }),
 					hidden: !canManage,
 				},
 				{

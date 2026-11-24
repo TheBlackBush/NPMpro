@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { checkHostDns, getHostDnsChecks, testDnsCredential } from "src/api/backend";
+import {
+	checkHostDns,
+	deleteDnsChallenges,
+	getDnsChallenges,
+	getHostDnsChecks,
+	testDnsCredential,
+} from "src/api/backend";
 import { mergeChecks } from "src/modules/DnsCheck";
 
 // a test reads at the provider and stores nothing: no query key changes
@@ -28,4 +34,26 @@ const useCheckHostDns = () => {
 	});
 };
 
-export { useCheckHostDns, useHostDnsChecks, useTestDnsCredential };
+// the leftover challenge records are read at the provider on every open (no cache between openings)
+const challengesKey = (id) => ["dns-challenges", id];
+
+const useDnsChallenges = (id) =>
+	useQuery({
+		queryKey: challengesKey(id),
+		queryFn: () => getDnsChallenges(id),
+		staleTime: 0,
+		gcTime: 0,
+		retry: false,
+		refetchOnWindowFocus: false,
+	});
+
+// a delete changes the provider's list: the window lists again
+const useDeleteDnsChallenges = (id) => {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (items) => deleteDnsChallenges(id, items),
+		onSettled: () => queryClient.invalidateQueries({ queryKey: challengesKey(id) }),
+	});
+};
+
+export { useCheckHostDns, useDeleteDnsChallenges, useDnsChallenges, useHostDnsChecks, useTestDnsCredential };

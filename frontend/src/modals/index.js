@@ -10,6 +10,7 @@ export * from "./DdnsRecordModal";
 export * from "./DeadHostModal";
 export * from "./DeleteConfirmModal";
 export * from "./DNSCertificateModal";
+export * from "./DnsChallengesModal";
 export * from "./DnsCredentialModal";
 export * from "./DnsDomainModal";
 export * from "./DnsDomainsModal";
