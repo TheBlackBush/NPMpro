@@ -29,6 +29,12 @@ const labelsFit = (name) =>
 
 // the states that warn, worst first, with the tone of the note and the badge
 const WARNING_TONES = { refused: "destructive", limited: "warning", unknown: "warning" };
+// the line text of each warning state, written out whole (the unused-key check reads them here)
+const LINE_MESSAGES = {
+	refused: "certificates.caa.refused",
+	limited: "certificates.caa.limited",
+	unknown: "certificates.caa.unknown",
+};
 const WARNING_ORDER = Object.keys(WARNING_TONES);
 const REASONS = [
 	"none",
@@ -128,7 +134,7 @@ export function caaLine(result) {
 	return {
 		state,
 		tone: WARNING_TONES[state],
-		messageId: `${ID}.${state}`,
+		messageId: LINE_MESSAGES[state],
 		values,
 		reasonId: reason === null ? null : `${ID}.reason.${reason}`,
 	};

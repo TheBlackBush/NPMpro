@@ -11,6 +11,16 @@ const TONES = {
 	unreachable: "warning",
 	blocked: "warning",
 };
+// the text of each state, written out whole (the unused-key check reads them here)
+const MESSAGES = {
+	works: "dns-credentials.test.works",
+	"wrong-key": "dns-credentials.test.wrong-key",
+	"missing-right": "dns-credentials.test.missing-right",
+	refused: "dns-credentials.test.refused",
+	failed: "dns-credentials.test.failed",
+	unreachable: "dns-credentials.test.unreachable",
+	blocked: "dns-credentials.test.blocked",
+};
 
 /**
  * @param   {{ supported: boolean, state: string|null, needs: string|null, message: string|null }|undefined} answer
@@ -33,7 +43,7 @@ export function testStateOf(answer) {
 	return {
 		state,
 		tone: TONES[state],
-		messageId: `${ID}.${shown}`,
+		messageId: MESSAGES[shown],
 		values: named ? { hint: answer.needs } : {},
 		detail:
 			state !== "works" && typeof answer.message === "string" && answer.message !== "" ? answer.message : null,
