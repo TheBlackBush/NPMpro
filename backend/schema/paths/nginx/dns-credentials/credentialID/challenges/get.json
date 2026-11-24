@@ -60,7 +60,7 @@
 			}
 		},
 		"400": {
-			"description": "The provider refused the credential or the request failed (`error.dns-cleanup-failed`)",
+			"description": "Every zone failed: the provider refused the credential or the request failed (`error.dns-cleanup-failed`)",
 			"content": {
 				"application/json": {
 					"schema": {
@@ -80,5 +80,5 @@
 			}
 		}
 	},
-	"description": "Lists the TXT records named `_acme-challenge` or below it in the credential's domains (its zones), read from the provider with the saved secret opened for this one call. Only TXT records are listed; CNAME records at those names (a delegation) are left out and counted in `skipped_cnames`. At most 500 items and 25 pages per zone (`truncated`). `age_seconds` comes from the provider's change time and is null when the provider gives none; `recent` is true under 10 minutes; `preselected` only for a known age over 1 hour. While a certbot run of this instance is going on `busy` is true and every item is in use. A credential without domains answers no items and `error_i18n` `error.dns-cleanup-no-domains`. For a provider without a confirmed list and delete `supported` is false and no outside request is made.\n\nNeeds: Certificates manage"
+	"description": "Lists the TXT records named `_acme-challenge` or below it in the credential's domains (its zones), read from the provider with the saved secret opened for this one call. Only TXT records are listed; CNAME records at those names (a delegation) are left out and counted in `skipped_cnames`. At most 500 items across the zones and 25 pages per zone (`truncated`). A zone that cannot be listed is named in `failed_zones` and the others are listed; only when every zone fails is the answer 400. `age_seconds` comes from the provider's change time and is null when the provider gives none; `recent` is true under 10 minutes; `preselected` only for a known age over 1 hour. While a certbot run of this instance is going on `busy` is true and every item is in use. A credential without domains answers no items and `error_i18n` `error.dns-cleanup-no-domains`. For a provider without a confirmed list and delete `supported` is false and no outside request is made.\n\nNeeds: Certificates manage"
 }

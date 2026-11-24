@@ -6,6 +6,7 @@ import { limitConcurrency } from "../lib/dns-check/limit.js";
 import { credentialFields, secretValuesOf } from "../lib/dns-credential-values.js";
 import { bareName } from "../lib/dns-domain-match.js";
 import errs from "../lib/error.js";
+import { global as logger } from "../logger.js";
 import { withRenewalLocks } from "./acme-account.js";
 import internalAuditLog from "./audit-log.js";
 import internalDnsCredential from "./dns-credential.js";
@@ -18,6 +19,9 @@ const CONCURRENCY = 4;
 const OPERATION_DEADLINE_MS = 300_000;
 const ZONE_DEADLINE_MS = 60_000;
 const MAX_ZONES = 100;
+// the items of one answer, across all the credential's zones
+const MAX_ITEMS = 500;
+const UNEXPECTED = "Unexpected error";
 const RECENT_SECONDS = 600;
 const PRESELECT_SECONDS = 3600;
 
@@ -62,12 +66,14 @@ const zoneOfName = (zones, name) => {
 	return holding.length === 0 ? null : holding.reduce((best, zone) => (zone.length > best.length ? zone : best));
 };
 
+/** a zone's list, or { failed: message } when it cannot be listed (an unexpected error is logged with its stack) */
 const listZone = async (provider, caller, zone) => {
 	try {
 		return await provider.listChallenges({ zone, ...caller.forZone() });
 	} catch (error) {
-		if (isProviderError(error)) throw failure(error);
-		throw error;
+		if (isProviderError(error)) return { failed: error, zone };
+		logger.error(`DNS cleanup: the list of ${zone} failed: ${error?.stack ?? error}`);
+		return { failed: new Error(UNEXPECTED), zone };
 	}
 };
 
@@ -116,24 +122,43 @@ const internalDnsChallenges = {
 		}
 		const caller = callerOf(row);
 		const limit = limitConcurrency(CONCURRENCY);
-		const lists = await Promise.all(zones.map((zone) => limit(() => listZone(provider, caller, zone))));
+		let collected = 0;
+		// a zone not started before the cap is reached is not asked
+		const settled = await Promise.all(
+			zones.map((zone) =>
+				limit(async () => {
+					if (collected >= MAX_ITEMS) return { items: [], skipped_cnames: 0, truncated: true };
+					const list = await listZone(provider, caller, zone);
+					collected += list.items?.length ?? 0;
+					return list;
+				}),
+			),
+		);
+		const failed = settled.filter((list) => list.failed);
+		// a zone that fails is reported on its own; only when every zone fails is the whole list a failure
+		if (failed.length === zones.length) throw failure(failed[0].failed);
+		const lists = settled.filter((list) => !list.failed);
 		const now = Date.now();
 		const seen = new Set();
-		const items = [];
+		const all = [];
 		for (const list of lists) {
 			for (const item of list.items) {
 				if (seen.has(item.key)) continue;
 				seen.add(item.key);
-				items.push(listItem(item, busy, now));
+				all.push(listItem(item, busy, now));
 			}
 		}
-		items.sort((a, b) => a.name.localeCompare(b.name) || String(a.id).localeCompare(String(b.id)));
+		all.sort((a, b) => a.name.localeCompare(b.name) || String(a.id).localeCompare(String(b.id)));
+		const items = all.slice(0, MAX_ITEMS);
 		return {
 			supported: true,
 			busy,
 			items,
 			skipped_cnames: lists.reduce((sum, list) => sum + list.skipped_cnames, 0),
-			truncated: tooMany || lists.some((list) => list.truncated === true),
+			truncated: tooMany || all.length > MAX_ITEMS || lists.some((list) => list.truncated === true),
+			...(failed.length > 0
+				? { failed_zones: failed.map(({ zone, failed: error }) => ({ zone, message: error.message })) }
+				: {}),
 		};
 	},
 
@@ -164,14 +189,15 @@ const internalDnsChallenges = {
 		const provider = providerForCredential(row.provider);
 		const { zones } = await zonesOf(row);
 
-		// never without the locks: a request could start beside the delete
+		// never without the locks of every CA a request may use: a request could start beside the delete; only the
+		// locks, no account registration or conf write
 		const results = await withRenewalLocks(
 			async () => {
 				// a run counted outside the locks (a plugin install, an account registration) is seen here
 				if (certbotRunning() > 0) throw busy();
 				return await deleteItems({ provider, caller: callerOf(row), zones, items });
 			},
-			{ requireLocks: true },
+			{ requireLocks: true, allowedCas: true, prepare: false },
 		);
 
 		// names and the count only: the values are challenge tokens
@@ -214,31 +240,50 @@ const deleteItems = async ({ provider, caller, zones, items }) => {
 		byZone.set(zone, [...(byZone.get(zone) ?? []), item]);
 	}
 	const limit = limitConcurrency(CONCURRENCY);
+	// a certbot run counted during the deletes (one that took no lock) stops them: the rest are skipped as busy
+	let stopped = false;
+	const deleteZone = async (zone, chosen) => {
+		// one deadline for the zone's list and its deletes
+		const call = caller.forZone();
+		let current;
+		try {
+			current = await provider.listChallenges({ zone, ...call });
+		} catch (error) {
+			if (!isProviderError(error)) throw error;
+			for (const item of chosen) results.set(item, resultOf(item, "failed", { message: error.message }));
+			return;
+		}
+		const listed = new Map(current.items.map((entry) => [entry.key, entry]));
+		for (const item of chosen) {
+			const found = listed.get(keyOf(item));
+			if (found === undefined) {
+				results.set(item, resultOf(item, "gone"));
+				continue;
+			}
+			if (!sameValues(found.values, item.values)) {
+				results.set(item, resultOf(item, "skipped", { reason: "changed" }));
+				continue;
+			}
+			if (stopped || certbotRunning() > 0) {
+				stopped = true;
+				results.set(item, resultOf(item, "skipped", { reason: "busy" }));
+				continue;
+			}
+			results.set(item, await removeOne({ provider, call, zone, item, found }));
+		}
+	};
+	// each zone settles on its own: an unexpected error fails that zone's open items, the others go on, and the caller
+	// always gets every result (and writes the audit of the deleted ones)
 	await Promise.all(
 		[...byZone].map(([zone, chosen]) =>
 			limit(async () => {
-				// one deadline for the zone's list and its deletes
-				const call = caller.forZone();
-				let current;
 				try {
-					current = await provider.listChallenges({ zone, ...call });
+					await deleteZone(zone, chosen);
 				} catch (error) {
-					if (!isProviderError(error)) throw error;
-					for (const item of chosen) results.set(item, resultOf(item, "failed", { message: error.message }));
-					return;
-				}
-				const listed = new Map(current.items.map((entry) => [entry.key, entry]));
-				for (const item of chosen) {
-					const found = listed.get(keyOf(item));
-					if (found === undefined) {
-						results.set(item, resultOf(item, "gone"));
-						continue;
+					logger.error(`DNS cleanup: the delete in ${zone} failed: ${error?.stack ?? error}`);
+					for (const item of chosen) {
+						if (!results.has(item)) results.set(item, resultOf(item, "failed", { message: UNEXPECTED }));
 					}
-					if (!sameValues(found.values, item.values)) {
-						results.set(item, resultOf(item, "skipped", { reason: "changed" }));
-						continue;
-					}
-					results.set(item, await removeOne({ provider, call, zone, item, found }));
 				}
 			}),
 		),

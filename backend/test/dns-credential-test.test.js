@@ -57,6 +57,31 @@ describe("testCredential", () => {
 		assert.ok(calls[1].startsWith(RECORDS));
 	});
 
+	it("reads only a zone the zone page listed: a domain below a zone or not on the page is not read", async () => {
+		const calls = [];
+		const below = await run([[ZONES, page]], {
+			domains: ["sub.example.com", "missing.example"],
+			fetch: fakeFetch([[ZONES, page]], calls),
+		});
+		assert.equal(below.state, "works");
+		assert.equal(calls.length, 1);
+		const later = [];
+		const other = "https://api.digitalocean.com/v2/domains/example.org/records";
+		const listed = await run([], {
+			domains: ["sub.example.com", "Example.ORG"],
+			fetch: fakeFetch(
+				[
+					[ZONES, page],
+					[other, { json: { domain_records: [] } }],
+				],
+				later,
+			),
+		});
+		assert.equal(listed.state, "works");
+		assert.equal(later.length, 2);
+		assert.ok(later[1].startsWith(other));
+	});
+
 	it("makes no record read without a domain", async () => {
 		const calls = [];
 		const result = await testCredential({

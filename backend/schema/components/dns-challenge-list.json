@@ -80,7 +80,29 @@
 		},
 		"truncated": {
 			"type": "boolean",
-			"description": "More than 500 items or 25 pages: the list is cut"
+			"description": "More than 500 items across the credential's zones, more than 25 pages of a zone or more than 100 zones: the list is cut"
+		},
+		"failed_zones": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"zone",
+					"message"
+				],
+				"properties": {
+					"zone": {
+						"type": "string",
+						"description": "The credential domain that could not be listed"
+					},
+					"message": {
+						"type": "string",
+						"description": "The provider's answer without any secret"
+					}
+				}
+			},
+			"description": "Only when some of the zones could not be listed (for example a domain the provider does not know as a zone); the others are listed. When every zone fails the call answers 400"
 		},
 		"error_i18n": {
 			"type": "string",

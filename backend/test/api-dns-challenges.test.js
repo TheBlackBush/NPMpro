@@ -406,3 +406,143 @@ it("lists at most 100 zones of a credential and says it is cut", async () => {
 	assert.equal(zoneCalls.length, 100);
 	assert.ok(untouched());
 });
+
+// a zone of its own: its zone id, its list and its record reads, as path functions of the fake Cloudflare
+const ownZone = (zone, zoneId, records, { find = true } = {}) => {
+	const pool = api.outside.http.get(HOST);
+	pool.intercept({ path: `/client/v4/zones?name=${zone}`, method: "GET" })
+		.reply(200, { success: true, result: zoneId === null ? [] : [{ id: zoneId }] }, json)
+		.persist();
+	if (zoneId === null) return;
+	pool.intercept({
+		path: (url) => url.startsWith(`/client/v4/zones/${zoneId}/dns_records?name.startswith=`),
+		method: "GET",
+	})
+		.reply(200, { success: true, result: records, result_info: { page: 1, total_pages: 1 } }, json)
+		.persist();
+	if (!find) return;
+	pool.intercept({
+		path: (url) => url.startsWith(`/client/v4/zones/${zoneId}/dns_records?name.exact=`),
+		method: "GET",
+	})
+		.reply((options) => {
+			const name = decodeURIComponent(new URL(options.path, HOST).searchParams.get("name.exact"));
+			return {
+				statusCode: 200,
+				data: { success: true, result: records.filter((one) => one.name === name) },
+				responseOptions: json,
+			};
+		})
+		.persist();
+	pool.intercept({ path: (url) => url.startsWith(`/client/v4/zones/${zoneId}/dns_records/`), method: "DELETE" })
+		.reply((options) => ({
+			statusCode: 200,
+			data: { success: true, result: { id: options.path.split("/").at(-1) } },
+			responseOptions: json,
+		}))
+		.persist();
+};
+
+it("lists the zones it can and reports a zone the provider does not know on its own", async () => {
+	const mine = await credential(admin, ["listed.example", "unknown.example"], { name: "Two zones" });
+	ownZone("listed.example", "a".repeat(32), [record(1, "_acme-challenge.listed.example", "tok", minutesAgo(90))]);
+	ownZone("unknown.example", null);
+	const res = await get(mine.id);
+	assert.equal(res.status, 200, res.text);
+	assert.deepEqual(
+		res.body.items.map((one) => one.name),
+		["_acme-challenge.listed.example"],
+	);
+	assert.equal(res.body.failed_zones.length, 1);
+	assert.equal(res.body.failed_zones[0].zone, "unknown.example");
+	assert.ok(res.body.failed_zones[0].message.includes("zone was not found"));
+	// only zones that fail: the whole list fails
+	const none = await credential(admin, ["gone.example"], { name: "No zone" });
+	ownZone("gone.example", null);
+	const refused = await get(none.id);
+	assert.equal(refused.status, 400, refused.text);
+	assert.equal(refused.body.error.message_i18n, "error.dns-cleanup-failed");
+});
+
+it("answers at most 500 items across the credential's zones and says the list is cut", async () => {
+	const mine = await credential(admin, ["many-a.example", "many-b.example"], { name: "Big zones" });
+	const records = (zone, base) =>
+		Array.from({ length: 300 }, (_, i) =>
+			record(base + i, `_acme-challenge.r${i}.${zone}`, `v${i}`, minutesAgo(90)),
+		);
+	ownZone("many-a.example", "c".repeat(32), records("many-a.example", 1000), { find: false });
+	ownZone("many-b.example", "d".repeat(32), records("many-b.example", 2000), { find: false });
+	const res = await get(mine.id);
+	assert.equal(res.status, 200, res.text);
+	assert.equal(res.body.items.length, 500);
+	assert.equal(res.body.truncated, true);
+});
+
+it("settles each zone of a delete on its own: an unexpected error fails that zone's open items, the audit is written", async () => {
+	const mine = await credential(admin, ["bug.example", "fine.example"], { name: "Bug zones" });
+	const bugItem = record(31, "_acme-challenge.bug.example", "tok-bug", minutesAgo(90));
+	const fineItem = record(32, "_acme-challenge.fine.example", "tok-fine", minutesAgo(90));
+	ownZone("bug.example", "e".repeat(32), [bugItem]);
+	ownZone("fine.example", "1".repeat(32), [fineItem]);
+	const { default: cloudflare } = await import("../lib/ddns/providers/cloudflare.js");
+	const remove = cloudflare.removeChallenge;
+	cloudflare.removeChallenge = function removeOrFail(args) {
+		if (args.zone === "bug.example") throw new TypeError("a provider bug");
+		return remove.call(this, args);
+	};
+	const earlier = (await auditRows()).length;
+	try {
+		const res = await del(mine.id, [
+			{ name: bugItem.name, id: bugItem.id, values: ["tok-bug"] },
+			{ name: fineItem.name, id: fineItem.id, values: ["tok-fine"] },
+		]);
+		assert.equal(res.status, 200, res.text);
+		assert.deepEqual(
+			res.body.results.map(({ result, message }) => [result, message ?? null]),
+			[
+				["failed", "Unexpected error"],
+				["deleted", null],
+			],
+		);
+	} finally {
+		cloudflare.removeChallenge = remove;
+	}
+	const rows = await auditRows();
+	assert.equal(rows.length, earlier + 1);
+});
+
+it("stops deleting when a certbot run starts during the deletes: the rest are skipped as busy", async () => {
+	const mine = await credential(admin, ["stop.example"], { name: "Stop zone" });
+	const first = record(41, "_acme-challenge.a.stop.example", "tok-1", minutesAgo(90));
+	const second = record(42, "_acme-challenge.b.stop.example", "tok-2", minutesAgo(90));
+	ownZone("stop.example", "2".repeat(32), [first, second]);
+	await api.outside.hookCommand(
+		"certbot",
+		`#!/bin/sh\nwhile [ ! -f "${path.join(api.root, "fake/release-stop")}" ]; do sleep 0.05; done\n`,
+	);
+	const { default: cloudflare } = await import("../lib/ddns/providers/cloudflare.js");
+	const remove = cloudflare.removeChallenge;
+	let running = null;
+	cloudflare.removeChallenge = async function removeThenStart(args) {
+		const done = await remove.call(this, args);
+		// a run that took no lock starts after the first delete
+		running ??= certbot.runCertbot(["renew"]);
+		return done;
+	};
+	try {
+		const res = await del(mine.id, [
+			{ name: first.name, id: first.id, values: ["tok-1"] },
+			{ name: second.name, id: second.id, values: ["tok-2"] },
+		]);
+		assert.equal(res.status, 200, res.text);
+		assert.deepEqual(
+			res.body.results.map(({ result, reason }) => (reason ? `${result}:${reason}` : result)),
+			["deleted", "skipped:busy"],
+		);
+	} finally {
+		cloudflare.removeChallenge = remove;
+		await writeFile(path.join(api.root, "fake/release-stop"), "0");
+		await running;
+		await certbotSucceeds(api, pair);
+	}
+});

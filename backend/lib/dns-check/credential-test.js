@@ -1,8 +1,8 @@
 import { providerFetch } from "../ddns/provider-fetch.js";
 import { listProviderZones, refusalOf } from "../ddns/providers/index.js";
 
-// The credential Test: one page of the zone list and, when the credential has a domain and the provider can read
-// records, one A read at the first domain's apex. Reads only, nothing stored, nothing written.
+// The credential Test: one page of the zone list and, when a domain of the credential is a zone on that page and the
+// provider can read records, one A read at that zone's apex. Reads only, nothing stored, nothing written.
 
 const TEST_DEADLINE_MS = 30_000;
 
@@ -35,9 +35,13 @@ const testCredential = async ({ provider, fields, secrets, domains = [], fetch =
 	try {
 		const zones = await listProviderZones(provider, { fields, secrets, maxPages: 1, fetch: call });
 		zonesSeen = zones.length;
-		const [apex] = domains;
-		if (typeof apex === "string" && typeof provider.read === "function" && provider.apex !== false) {
-			await provider.read({ zone: apex, name: apex, type: "A", fields, fetch: call, meta: {} });
+		// the first domain that is a zone the page listed: a domain below a zone, or one the page did not show, is not
+		// read (its zone call would fail for a token that works)
+		const listed = new Set(zones);
+		const apex = domains.find((domain) => typeof domain === "string" && listed.has(domain.toLowerCase()));
+		if (apex !== undefined && typeof provider.read === "function" && provider.apex !== false) {
+			const zone = apex.toLowerCase();
+			await provider.read({ zone, name: zone, type: "A", fields, fetch: call, meta: {} });
 		}
 		return { supported: true, state: "works", zones_seen: zonesSeen, needs: null, message: null };
 	} catch (error) {

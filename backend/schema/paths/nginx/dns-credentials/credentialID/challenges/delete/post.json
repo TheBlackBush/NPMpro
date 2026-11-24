@@ -159,13 +159,14 @@
 											"type": "string",
 											"enum": [
 												"changed",
-												"outside"
+												"outside",
+												"busy"
 											],
-											"description": "Only with `skipped`. `changed`: the record differs from the list (another value, another name or id). `outside`: the name is not in the credential's domains"
+											"description": "Only with `skipped`. `changed`: the record differs from the list (another value, another name or id). `outside`: the name is not in the credential's domains. `busy`: a certbot run of this instance started during the deletes, so this and the items after it were not deleted"
 										},
 										"message": {
 											"type": "string",
-											"description": "Only with `failed`: the provider's answer without any secret"
+											"description": "Only with `failed`: the provider's answer without any secret, or `Unexpected error` when the zone failed for another reason (logged)"
 										}
 									}
 								},
@@ -207,5 +208,5 @@
 			}
 		}
 	},
-	"description": "Deletes the chosen TXT records. Runs under every CA lock, so no certificate request or renewal starts beside it, and is refused with 409 while a certbot run of this instance is going on. The credential's domains are listed again first: only an item still present with the same name, id and values is deleted (a provider that addresses the whole TXT set deletes the whole set only when it is still what the list showed); an item outside the credential's domains is never touched. One audit entry (`dns-credential`, `challenges-deleted`) names the credential and the deleted record names, never their values.\n\nNeeds: Certificates manage"
+	"description": "Deletes the chosen TXT records. Runs under the lock of every CA (those with an account row or a renewal conf and every CA a certificate may be requested from), so no certificate request or renewal starts beside it; it takes only the locks (no account is registered and no renewal conf is written). It is refused with 409 while a certbot run of this instance is going on, and the counter is read again before each delete call. Each zone settles on its own. The credential's domains are listed again first: only an item still present with the same name, id and values is deleted (a provider that addresses the whole TXT set deletes the whole set only when it is still what the list showed); an item outside the credential's domains is never touched. One audit entry (`dns-credential`, `challenges-deleted`) names the credential and the deleted record names, never their values.\n\nNeeds: Certificates manage"
 }

@@ -623,19 +623,24 @@ const prepareRenewals = async (confs, { access = null } = {}) => {
  * a renewal conf (withAccountLocks): a Replace account of any of them waits for it, and it for a Replace account, so
  * certbot never writes back a conf naming a replaced account. The confs are prepared under the locks first. When the
  * CAs cannot be listed, fn runs without the locks and without the preparation, unless requireLocks is set: then the
- * call is refused (409 error.dns-cleanup-no-locks) and fn never runs.
+ * call is refused (409 error.dns-cleanup-no-locks) and fn never runs. allowedCas also locks every CA a certificate may
+ * be requested from (allowedAcmeServers: the instance CA even before it has an account row or a conf); prepare false
+ * skips the preparation (no account registration, no conf write: the challenge cleanup needs only the locks).
  *
  * @param   {Function}  fn
  * @param   {Object}    [options]
  * @param   {boolean}   [options.requireLocks]
+ * @param   {boolean}   [options.allowedCas]
+ * @param   {boolean}   [options.prepare]  true by default
  * @returns {Promise<*>}  fn's result
  */
-const withRenewalLocks = async (fn, { requireLocks = false } = {}) => {
+const withRenewalLocks = async (fn, { requireLocks = false, allowedCas = false, prepare = true } = {}) => {
 	let servers;
 	try {
 		const confs = await listRenewalConfs();
 		const rows = await acmeAccountModel.query();
 		servers = [...rows.map((row) => row.server), ...confs.map((conf) => conf.server ?? LETSENCRYPT_SERVER)];
+		if (allowedCas) servers.push(...(await allowedAcmeServers()));
 	} catch (err) {
 		if (requireLocks) {
 			logger.warn(`The ACME accounts and renewal confs could not be listed: ${err}`);
@@ -648,6 +653,7 @@ const withRenewalLocks = async (fn, { requireLocks = false } = {}) => {
 	}
 	const held = new Set(servers.map(serverKey));
 	return await withAccountLocks(servers, async () => {
+		if (!prepare) return await fn();
 		try {
 			// read again under the locks: a Replace account may have rewritten a conf meanwhile; a conf of a CA that
 			// appeared since is left to certbot as it is (its lock is not held)
