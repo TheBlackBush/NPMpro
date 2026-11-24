@@ -1,5 +1,5 @@
-// Dynamic DNS: the tab (status card, Add record, Check now, Update now, History, Disable, Delete) and Settings, Dynamic
-// DNS. The updater never calls a provider or an address service: the flow runs only where the IPv4 services are the
+// Dynamic DNS: the tab (status card, Add record, Check now, Update now, History, Disable, Delete, Keep updated, a
+// custom record seen by a manager, a preset record) and Settings, Dynamic DNS. The updater never calls a provider or an address service: the flow runs only where the IPv4 services are the
 // env value DDNS_IPV4_SERVICES (the smoke container sets https://127.0.0.1/ and https://127.0.0.2/, which the guard refuses). The flows
 // create their data as flow-... and remove it.
 import {
@@ -21,6 +21,9 @@ const ZONE_GANDI = "flow-gandi.example";
 const RECORD = `home.${ZONE}`;
 const KEEP_HOST = `keep.${ZONE}`;
 const CUSTOM = `custom.${ZONE}`;
+const PRESET = `nc.${ZONE}`;
+const PRESET_RENAMED = `nc2.${ZONE}`;
+const PRESET_PASSWORD = "flow-namecheap-password";
 const ALIAS = `alias.${ZONE_GANDI}`;
 
 // the message of a service address the server may not call
@@ -266,6 +269,41 @@ async function dynamicDns({ admin, browser, base }) {
 		} finally {
 			await other.context.close();
 		}
+
+		// 10. a preset in the window: Namecheap's domain and password, saved disabled (no provider is called). Opened
+		// again it says the password is saved; an edit that leaves the password empty sends none and keeps it
+		await addRecord(page);
+		await win.locator("#ddnsProvider").click();
+		await page.getByRole("option", { name: "Namecheap", exact: true }).click();
+		await typeName(page, "#ddnsName", PRESET, "Enter");
+		await win.locator("#ddnsDomain").fill(ZONE);
+		await win.locator("#ddnsPassword").fill(PRESET_PASSWORD);
+		await win.locator("#ddnsEnabled").click();
+		if (await win.locator("#ddnsEnabled").isChecked()) throw new Error("the Enabled switch did not turn off");
+		await withToast(page, "saved", () => win.getByRole("button", { name: "Save", exact: true }).click());
+		await windowClosed(page);
+		await rowShows(page, PRESET, "Disabled");
+		const preset = (await api("GET", "/nginx/ddns-records")).find((row) => row.name === PRESET);
+		if (preset?.provider !== "namecheap" || preset.secret_set !== true || preset.domain !== ZONE)
+			throw new Error(`the preset is stored as ${JSON.stringify(preset)}`);
+		await rowAction(page, PRESET, "Edit");
+		await recordWindow(page).waitFor();
+		await windowTitled(page, "Edit Dynamic DNS record");
+		await win.getByText("Saved. Leave empty to keep it.", { exact: true }).waitFor();
+		if ((await win.locator("#ddnsPassword").inputValue()) !== "")
+			throw new Error("the saved password is filled in the window");
+		await typeName(page, "#ddnsName", PRESET_RENAMED, "Enter");
+		const sent = page.waitForRequest(
+			(request) => request.method() === "PUT" && request.url().endsWith(`/nginx/ddns-records/${preset.id}`),
+		);
+		await withToast(page, "saved", () => win.getByRole("button", { name: "Save", exact: true }).click());
+		const body = (await sent).postDataJSON();
+		if (Object.hasOwn(body, "password") || Object.hasOwn(body, "username"))
+			throw new Error(`the edit sent account details: ${Object.keys(body).join(", ")}`);
+		await windowClosed(page);
+		const edited = (await api("GET", "/nginx/ddns-records")).find((row) => row.id === preset.id);
+		if (edited?.name !== PRESET_RENAMED || edited.secret_set !== true)
+			throw new Error(`the edited preset is stored as ${JSON.stringify(edited)}`);
 		if (errors.length > 0) throw new Error(`page error: ${errors[0]}`);
 	} finally {
 		if (managerId !== undefined) await api("DELETE", `/users/${managerId}`).catch(() => undefined);

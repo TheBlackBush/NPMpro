@@ -54,11 +54,11 @@ DuckDNS, the presets and Custom HTTP take no TTL, wildcard or alias record, and 
 
 The passwords of the presets and the custom URL are stored encrypted and are never shown again: editing the record shows **Saved. Leave empty to keep it.** A preset password needs at least 4 characters. They never appear in the status, the history, the log or an error message.
 
-When a provider asks NPMpro to wait, NPMpro waits at least that long: No-IP after a 911 answer 30 minutes, Dynu after a 911 answer 10 minutes, and a refused sign-in or an unknown host 6 hours (on Namecheap, No-IP and Dynu). Saving the record or **Update now** tries again at once.
+When a provider asks NPMpro to wait, NPMpro waits at least that long: No-IP after a 911 answer 30 minutes, Dynu after a 911 answer 10 minutes. When Namecheap, No-IP or Dynu refuse the account (a wrong password, an unknown host, a blocked client), NPMpro stops: the record shows the error and gets no more automatic tries, not even from **Check now**, until you save it with a change, disable and enable it again, or press **Update now**. Those providers ask a client to stop after such an answer and may block one that goes on.
 
 ### Keep updated
 
-The Dynamic DNS tab suggests host names to keep updated: names of your proxy, redirection and 404 hosts that sit under a domain of one of your DNS credentials whose provider has zones and can update records (so not DuckDNS, and never the presets or Custom HTTP), and that have no record yet. Wildcard names are not suggested, and at most 100 names are listed. Each suggestion has **Add**, which opens the record window filled with the name and the credential. The proxy host window shows **Keep updated** beside such a name, with the same effect; it needs the Certificates manage permission.
+The Dynamic DNS tab suggests host names to keep updated: names of your proxy, redirection and 404 hosts that sit under a domain of one of your DNS credentials whose provider has zones and can update records (so not DuckDNS, and never the presets or Custom HTTP), and that have no record yet. Wildcard names are not suggested, and at most 100 names are listed. The tab shows how many names could be kept updated and an **Add** button: with one name it opens the record window filled with the name and the credential, with several it first lists them to choose from. The proxy host window shows **Keep updated** beside such a name, with the same effect; it needs the Certificates manage permission.
 
 ### How the address is found
 
@@ -67,6 +67,8 @@ NPMpro asks public echo services over `https://`, in turn, until one answers wit
 ### The check
 
 A check runs at start (one minute after) and then every period (default 5 minutes). For each enabled record NPMpro first looks up the name in DNS. When the answer already is the wanted address, nothing more happens. Only when the answer differs (or there is none) does it ask the provider's API, and it writes only when the record there really differs. A proxied Cloudflare record resolves to Cloudflare, so for it the provider is always asked. An alias is always compared at the provider.
+
+DuckDNS, the presets and Custom HTTP have no way to read a record, so for them the DNS answer is the only reading. NPMpro writes when the wanted address differs from the one it last wrote. When only the DNS answer differs, it writes that same address again at most once a day, and the record shows a note that the check still answers an old address: the providers ask for no repeated updates of an unchanged address.
 
 If the DNS server of your network answers with a LAN address for your own names (split horizon), set **DNS servers for checks** in Settings, Dynamic DNS (`DDNS_RESOLVER`) to a public resolver, so the lookup sees what the world sees. These servers are used only for this lookup of a record's name; the address services and the providers always use the container's resolvers.
 
