@@ -556,7 +556,12 @@ it("a record stopped after a provider refusal is restored as pending, without th
 	const [row] = TYPES.ddns.restoreRows({
 		npmpro_ddns_record: [
 			record(1, 1, "s.example.com", {
-				meta: JSON.stringify({ proxied: true, stopped: true, note_i18n: "ddns.note.resolver-old", error_i18n: "x" }),
+				meta: JSON.stringify({
+					proxied: true,
+					stopped: true,
+					note_i18n: "ddns.note.resolver-old",
+					error_i18n: "x",
+				}),
 			}),
 		],
 	}).npmpro_ddns_record;
