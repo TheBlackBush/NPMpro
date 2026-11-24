@@ -1,4 +1,4 @@
-import { createDdnsEngine } from "../lib/ddns/engine.js";
+import { confirmed, createDdnsEngine } from "../lib/ddns/engine.js";
 import { providerFetch } from "../lib/ddns/provider-fetch.js";
 import { PROVIDER_LIST, providerById } from "../lib/ddns/providers/index.js";
 import { createPublicIp } from "../lib/ddns/public-ip.js";
@@ -131,17 +131,28 @@ const updateNow = async (access, id) => {
 	return await internalDdnsRecord.get(access, { id, expand: ["credential"] });
 };
 
+// one detection at a time per family, shared by the callers that wait for it
+const detecting = new Map();
+
 /**
- * The public address of one family: the detector's confirmed one, else one detection now (null when it has none)
+ * The public address of one family: the detector's confirmed one, else one detection now (shared by parallel calls).
+ * null when it has no confirmed address (the engine's own rule: an address the last detection doubts is not used).
  *
  * @param   {number}  family  4 or 6
  * @returns {Promise<String|null>}
  */
 const publicAddressOf = async (family) => {
 	const { publicIp } = service();
-	const known = publicIp.state(family).address;
-	if (known) return known;
-	return (await publicIp.detect(family)).address ?? null;
+	const known = publicIp.state(family);
+	if (confirmed(known)) return known.address;
+	if (!detecting.has(family)) {
+		detecting.set(
+			family,
+			publicIp.detect(family).finally(() => detecting.delete(family)),
+		);
+	}
+	const state = await detecting.get(family);
+	return confirmed(state) ? state.address : null;
 };
 
 const providers = (access) => {

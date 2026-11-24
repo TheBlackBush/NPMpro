@@ -85,6 +85,10 @@ export default {
 	aliases: true,
 	// the lowest TTL of a record that is not proxied on the plans below Enterprise (Cloudflare docs, TTL)
 	minTtl: 60,
+	/** The zone id as meta, looked up once: a caller that reads many names of a zone passes it to each read */
+	async zoneMeta(args) {
+		return { zone_id: await zoneIdOf({ ...args, meta: undefined }) };
+	},
 	/** The record's values (more than one: the engine marks it Failed), its ttl and proxied flag; null when missing */
 	read(args) {
 		return withZone(args, async ({ name, type, fields, fetch, meta }, zoneId) => {

@@ -9,6 +9,9 @@ import { plainTarget } from "./providers/record-common.js";
 const HISTORY_LIMIT = 50;
 const MAX_BACKOFF_MS = 6 * 60 * 60_000;
 const NO_ADDRESS_ERRORS = new Set(["error.ddns-ip-failed", "error.ddns-ip-disagree", "error.ddns-ip-unconfirmed"]);
+
+/** A detector state whose address may be used: an address, and no error of the last detection that doubts it */
+const confirmed = (state) => Boolean(state?.address) && !(state.error_i18n && NO_ADDRESS_ERRORS.has(state.error_i18n));
 // a zoneless record whose provider already holds the wanted address is sent again only this long after its last write
 const REASSERT_MS = 24 * 60 * 60_000;
 // the note of a zoneless record whose DNS answer still differs from the address last written
@@ -124,9 +127,6 @@ const createDdnsEngine = ({
 		}
 		return found;
 	};
-
-	const confirmed = (state) =>
-		Boolean(state?.address) && !(state.error_i18n && NO_ADDRESS_ERRORS.has(state.error_i18n));
 
 	/** The units a record keeps in line: [{ type, family, wanted }], or null when an address is not known */
 	const unitsOf = (record, found) => {
@@ -519,4 +519,4 @@ const createDdnsEngine = ({
 	};
 };
 
-export { createDdnsEngine, HISTORY_LIMIT, REASSERT_MS, STALE_ANSWER_NOTE };
+export { confirmed, createDdnsEngine, HISTORY_LIMIT, REASSERT_MS, STALE_ANSWER_NOTE };

@@ -19,7 +19,8 @@ let admin;
 let hosts = 0;
 let credentials = 0;
 // what the fake Cloudflare answers: record name -> { content, proxied }; failWith makes every record read a 403
-const cloudflare = { records: {}, reads: [], failWith: null };
+// (status 429 with rateLimit); zoneLookups and calls count the zone lookups and the record reads of every type
+const cloudflare = { records: {}, reads: [], failWith: null, rateLimit: false, zoneLookups: 0, calls: 0 };
 
 const dns = (name, values, type = "A") => api.outside.names.set(name, type, values);
 const check = (session, list) => session.post(CHECK, { hosts: list });
@@ -54,7 +55,10 @@ const withCredential = async (domain, session = admin) => {
 const mockCloudflare = () => {
 	const pool = api.outside.http.get(CF);
 	pool.intercept({ path: ZONE_LOOKUP, method: "GET" })
-		.reply(200, { success: true, result: [{ id: "zone1" }] }, json)
+		.reply(() => {
+			cloudflare.zoneLookups += 1;
+			return { statusCode: 200, data: { success: true, result: [{ id: "zone1" }] }, responseOptions: json };
+		})
 		.persist();
 	pool.intercept({ path: RECORD_LOOKUP, method: "GET" })
 		.reply((options) => {
@@ -62,6 +66,14 @@ const mockCloudflare = () => {
 			const name = decodeURIComponent(query.get("name.exact"));
 			const type = query.get("type");
 			if (type === "A") cloudflare.reads.push(name);
+			cloudflare.calls += 1;
+			if (cloudflare.rateLimit) {
+				const limited = {
+					success: false,
+					errors: [{ code: 971, message: "Please wait and consider throttling" }],
+				};
+				return { statusCode: 429, data: limited, responseOptions: json };
+			}
 			if (cloudflare.failWith) {
 				return { statusCode: 403, data: cloudflare.failWith, responseOptions: json };
 			}
@@ -93,6 +105,9 @@ afterEach(async () => {
 	cloudflare.records = {};
 	cloudflare.reads.length = 0;
 	cloudflare.failWith = null;
+	cloudflare.rateLimit = false;
+	cloudflare.zoneLookups = 0;
+	cloudflare.calls = 0;
 	await api.outside.names.clear();
 	await api.db("npmpro_dns_domain").del();
 	await api.db("npmpro_dns_credential").del();
@@ -351,4 +366,44 @@ it("does not cache a result of a check that began before the host changed", asyn
 	const done = await running;
 	assert.equal(done.status, 200, done.text);
 	assert.ok(!(await admin.get(CHECK)).body.some((entry) => entry.id === host.id));
+});
+
+it("looks a Cloudflare zone up once per request, shared by its names", async () => {
+	await withCredential("once.example");
+	const names = Array.from({ length: 10 }, (_, index) => `n${index}.once.example`);
+	const host = await proxyHost(names);
+	for (const name of names) {
+		await dns(name, ["104.16.0.1"]);
+		cloudflare.records[name] = { content: PUBLIC_IP, proxied: true };
+	}
+	const entry = await checkOne(admin, "proxy", host.id);
+	assert.ok(entry.names.every((one) => one.state === "here" && one.via === "record"));
+	assert.equal(cloudflare.zoneLookups, 1);
+	assert.equal(cloudflare.calls, 10);
+});
+
+it("makes at most 50 provider reads per request; the other names keep their DNS answer with a reason", async () => {
+	await withCredential("budget.example");
+	const names = Array.from({ length: 30 }, (_, index) => `n${index}.budget.example`);
+	const host = await proxyHost(names);
+	// no record at the provider: each name reads A, CNAME and the wildcard
+	for (const name of names) await dns(name, [PUBLIC_IP]);
+	const entry = await checkOne(admin, "proxy", host.id);
+	assert.equal(cloudflare.zoneLookups + cloudflare.calls, 50);
+	const skipped = entry.names.filter((one) => one.reason === "provider-read-skipped");
+	assert.ok(skipped.length > 0);
+	// the DNS answer counts for them
+	assert.ok(skipped.every((one) => one.state === "here" && one.via === "dns"));
+});
+
+it("reads no more from a credential after it answered 429", async () => {
+	await withCredential("limited.example");
+	const names = Array.from({ length: 12 }, (_, index) => `n${index}.limited.example`);
+	const host = await proxyHost(names);
+	for (const name of names) await dns(name, [OTHER_IP]);
+	cloudflare.rateLimit = true;
+	const entry = await checkOne(admin, "proxy", host.id);
+	// only the reads already running when the first 429 came (4 at once) were made
+	assert.ok(cloudflare.calls <= 4, `${cloudflare.calls} reads`);
+	assert.ok(entry.names.every((one) => one.reason === "provider-read-skipped" && one.state === "elsewhere"));
 });

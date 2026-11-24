@@ -135,7 +135,7 @@
 								"string",
 								"null"
 							],
-							"description": "A code: `skipped-pattern`, `lookup-timeout`, `lookup-servfail`, `lookup-error`, `public-address-unknown`, `public-ipv6-unknown`, `provider-read-failed` or `check-failed` (this name could not be checked)"
+							"description": "A code: `skipped-pattern`, `lookup-timeout`, `lookup-servfail`, `lookup-error`, `public-address-unknown`, `public-ipv6-unknown`, `provider-read-failed`, `provider-read-skipped` (the provider was not read: the request's provider reads were used up or the provider limited the rate; the DNS answer counts), `timeout` (the request's deadline of 60 s ended before this name was checked) or `check-failed` (this name could not be checked)"
 						},
 						"message": {
 							"type": [

@@ -3,9 +3,10 @@ import { providerFetch } from "../lib/ddns/provider-fetch.js";
 import { updaterFor } from "../lib/ddns/providers/index.js";
 import { ddnsSettingsOf } from "../lib/ddns/settings.js";
 import { hostCheckCache } from "../lib/dns-check/host-cache.js";
-import { checkName } from "../lib/dns-check/host-check.js";
+import { checkName, unknownAnswer } from "../lib/dns-check/host-check.js";
 import { limitConcurrency } from "../lib/dns-check/limit.js";
 import { lookup } from "../lib/dns-check/lookup.js";
+import { beforeDeadline, requestDeadline } from "../lib/dns-check/timing.js";
 import { credentialFields, secretValuesOf } from "../lib/dns-credential-values.js";
 import { bareName, coveringZone } from "../lib/dns-domain-match.js";
 import errs from "../lib/error.js";
@@ -24,6 +25,8 @@ import internalDnsCredential from "./dns-credential.js";
 // provider of a visible covering credential. Results are cached in memory (lib/dns-check/host-cache.js).
 
 const CONCURRENCY = 4;
+// the names of one request, across its hosts (the UI sends its batches within it)
+const MAX_NAMES = 200;
 const PROVIDER_DEADLINE_MS = 30_000;
 const UNREADABLE = "The DNS credential cannot be read";
 
@@ -67,22 +70,66 @@ const loadZones = async (access) => {
 
 const inZone = (zone, name) => name === zone || name.endsWith(`.${zone}`);
 
+// the provider reads of one request: at most this many (a check must not use up a rate limit that certbot's DNS plugin
+// and the DDNS updater share), and none more for a credential once it answered 429
+const MAX_PROVIDER_READS = 50;
+const READ_SKIPPED = "provider-read-skipped";
+
+class ReadSkipped extends Error {
+	name = "ReadSkipped";
+}
+
 /**
  * The provider read of one call (per user): A at the name and, when there is none, the wildcard at the direct parent
  * (Cloudflare and DigitalOcean only). null: no right, no visible covering credential, no read call, or the DNS answer
- * is already here on a provider whose answers are not the record (only Cloudflare is read always).
+ * is already here on a provider whose answers are not the record (only Cloudflare is read always). { skipped } when
+ * the request's reads are used up or the credential answered 429: the name keeps its DNS answer.
+ *
+ * @param   {Access}    access
+ * @param   {Function}  limit   the request's concurrency limit
+ * @param   {AbortSignal}  signal  the request's deadline
  */
-const createCoverage = (access, limit) => {
+const createCoverage = (access, limit, signal) => {
 	const manage = access.level("certificates") === "manage";
 	let zones = null;
 	const credentials = new Map();
+	// one zone lookup per credential and zone, shared by the names of the request
+	const metas = new Map();
+	const rateLimited = new Set();
+	let reads = 0;
 
 	const credentialOf = async (id) => {
 		if (!credentials.has(id)) credentials.set(id, dnsCredentialModel.query().findById(id));
 		return await credentials.get(id);
 	};
 
-	const read = async (provider, args, type = "A") => limit(() => provider.read({ ...args, type, meta: {} }));
+	const spend = (credentialId) => {
+		if (rateLimited.has(credentialId) || reads >= MAX_PROVIDER_READS) throw new ReadSkipped();
+		reads += 1;
+	};
+	const call = (credentialId, task) =>
+		limit(async () => {
+			spend(credentialId);
+			try {
+				return await task();
+			} catch (error) {
+				if (error instanceof DdnsProviderError && error.providerStatus === 429) rateLimited.add(credentialId);
+				throw error;
+			}
+		});
+
+	const metaOf = (credentialId, provider, args) => {
+		const key = `${credentialId}|${args.zone}`;
+		if (!metas.has(key)) {
+			metas.set(
+				key,
+				typeof provider.zoneMeta === "function"
+					? call(credentialId, () => provider.zoneMeta(args))
+					: Promise.resolve({}),
+			);
+		}
+		return metas.get(key);
+	};
 
 	return async (name, { dnsHere }) => {
 		if (!manage) return null;
@@ -90,7 +137,8 @@ const createCoverage = (access, limit) => {
 		const host = bareName(name);
 		const cover = coveringZone(host, await zones, access.token.getUserId(1));
 		if (cover === null || cover.credentialIds.length !== 1) return null;
-		const row = await credentialOf(cover.credentialIds[0]);
+		const credentialId = cover.credentialIds[0];
+		const row = await credentialOf(credentialId);
 		const provider = updaterFor(row?.provider);
 		if (provider === null) return null;
 		if (dnsHere && provider.proxied !== true) return null;
@@ -104,19 +152,22 @@ const createCoverage = (access, limit) => {
 			if (!(error instanceof errs.ValidationError)) throw error;
 			return { record: null, wildcard: null, error: UNREADABLE };
 		}
-		const deadline = AbortSignal.timeout(PROVIDER_DEADLINE_MS);
+		const deadline = AbortSignal.any([signal, AbortSignal.timeout(PROVIDER_DEADLINE_MS)]);
 		const fetch = (url, options) => providerFetch(url, { ...options, secrets, deadline });
+		const base = { zone: cover.zone, fields, fetch };
+		const read = async (readName, type = "A") => {
+			const meta = await metaOf(credentialId, provider, base);
+			return await call(credentialId, () => provider.read({ ...base, name: readName, type, meta: { ...meta } }));
+		};
 		try {
-			const record = await read(provider, { zone: cover.zone, name: host, fields, fetch });
+			const record = await read(host);
 			if (record !== null)
 				return { record: { values: record.values, proxied: record.proxied === true }, wildcard: null };
 			if (provider.aliases === true) {
-				const cname = await read(provider, { zone: cover.zone, name: host, fields, fetch }, "CNAME");
+				const cname = await read(host, "CNAME");
 				const target = cname === null ? null : bareName(cname.values[0]);
 				if (target) {
-					const own = inZone(cover.zone, target)
-						? await read(provider, { zone: cover.zone, name: target, fields, fetch })
-						: null;
+					const own = inZone(cover.zone, target) ? await read(target) : null;
 					return {
 						record: null,
 						wildcard: null,
@@ -133,7 +184,7 @@ const createCoverage = (access, limit) => {
 				return { record: null, wildcard: null };
 			}
 			const wildcardName = `*.${parent}`;
-			const wildcard = await read(provider, { zone: cover.zone, name: wildcardName, fields, fetch });
+			const wildcard = await read(wildcardName);
 			return {
 				record: null,
 				wildcard:
@@ -142,7 +193,10 @@ const createCoverage = (access, limit) => {
 						: { name: wildcardName, values: wildcard.values, proxied: wildcard.proxied === true },
 			};
 		} catch (error) {
+			if (error instanceof ReadSkipped) return { skipped: READ_SKIPPED };
 			if (!(error instanceof DdnsProviderError)) throw error;
+			// a 429 stops this credential's reads for the rest of the request: this name keeps its DNS answer too
+			if (error.providerStatus === 429) return { skipped: READ_SKIPPED };
 			return { record: null, wildcard: null, error: error.message };
 		}
 	};
@@ -176,11 +230,15 @@ const internalDnsCheck = {
 	 * Checks the names of the hosts (cached for 30 s) and caches the results
 	 *
 	 * @param   {Access}  access
-	 * @param   {Array<{ type: String, id: number }>}  hosts  1 to 50 hosts
-	 * @returns {Promise<Array>}  [{ type, id, checked_on, names }]
+	 * @param   {Array<{ type: String, id: number }>}  hosts  1 to 50 hosts, 200 names at most across them
+	 * @returns {Promise<Array>}  [{ type, id, checked_on, names }]; within the request deadline (60 s): a name not
+	 *                            finished by then answers unknown (reason timeout) and its host is not cached
 	 * @throws  {errs.ItemNotFoundError}  a host the user may not view or that does not exist: the whole request
+	 * @throws  {errs.ValidationError}    more than 200 names
 	 */
 	check: async (access, hosts) => {
+		// a clear (host change, restore) from here on keeps this check's results out of the cache
+		const since = hostCheckCache.generation();
 		const wanted = [...new Map(hosts.map((host) => [`${host.type}:${host.id}`, host])).values()];
 		for (const { type, id } of wanted) {
 			if (!canView(access, type)) throw new errs.ItemNotFoundError(id);
@@ -196,10 +254,17 @@ const internalDnsCheck = {
 		for (const { type, id } of wanted) {
 			if (!rows.has(`${type}:${id}`)) throw new errs.ItemNotFoundError(id);
 		}
+		const nameCount = new Set([...rows.values()].flatMap(namesOf)).size;
+		if (nameCount > MAX_NAMES) {
+			throw new errs.ValidationError(
+				`These hosts have ${nameCount} names; one check takes at most ${MAX_NAMES}: check fewer hosts at once`,
+				"error.dns-check-too-many-names",
+				{ values: { count: nameCount, max: MAX_NAMES } },
+			);
+		}
 
 		const scope = scopeOf(access);
-		// a clear (host change, restore) while this runs keeps its results out of the cache
-		const since = hostCheckCache.generation();
+		const deadline = requestDeadline();
 		const limit = limitConcurrency(CONCURRENCY);
 		const servers = ddnsSettingsOf(effectiveEnv()).resolvers ?? [];
 		const once = (task) => {
@@ -220,19 +285,27 @@ const internalDnsCheck = {
 		};
 		const ipv4 = once(detect(4));
 		const ipv6 = once(detect(6));
-		const coverage = createCoverage(access, limit);
+		const coverage = createCoverage(access, limit, deadline.signal);
+		// a lookup unfinished at the deadline answers timeout, and one still waiting for its turn is not made
+		const timedOut = () => ({ ok: false, code: "timeout" });
+		const lookupLimited = (name, type) =>
+			limit(() =>
+				deadline.signal.aborted ? timedOut() : beforeDeadline(lookup(name, type, servers), deadline, timedOut),
+			);
 		const byName = new Map();
-		const checkOnce = (name, publicIp) => {
+		const checkOnce = (name) => {
 			if (!byName.has(name)) {
-				byName.set(
-					name,
+				const task = (async () =>
 					checkName({
 						name,
-						publicIp,
-						lookup: (n, type) => limit(() => lookup(n, type, servers)),
+						publicIp: { ipv4: await ipv4(), ipv6 },
+						lookup: lookupLimited,
 						coverage,
 						onError: (error) => logger.warn(`DNS check: ${name} failed: ${error?.message}`),
-					}),
+					}))();
+				byName.set(
+					name,
+					beforeDeadline(task, deadline, () => ({ ...unknownAnswer(name, "timeout"), late: true })),
 				);
 			}
 			return byName.get(name);
@@ -245,19 +318,17 @@ const internalDnsCheck = {
 			if (hostCheckCache.fresh(cached)) results.set(`${type}:${id}`, cached);
 			else needed.push({ type, id, row: rows.get(`${type}:${id}`) });
 		}
-		if (needed.length > 0) {
-			const wantsNames = needed.some(({ row }) => namesOf(row).length > 0);
-			const publicIp = {
-				ipv4: wantsNames ? await ipv4() : null,
-				ipv6,
-			};
-			for (const { type, id, row } of needed) {
-				const names = await Promise.all(namesOf(row).map((name) => checkOnce(name, publicIp)));
+		await Promise.all(
+			needed.map(async ({ type, id, row }) => {
+				const answers = await Promise.all(namesOf(row).map(checkOnce));
+				const late = answers.some((one) => one.late === true);
+				const names = answers.map(({ late: _late, ...one }) => one);
 				const entry = { checked_on: new Date().toISOString(), names };
-				hostCheckCache.set(type, id, scope, { ...entry, since });
+				// a host with a name the deadline cut is answered, not cached
+				if (!late) hostCheckCache.set(type, id, scope, { ...entry, since });
 				results.set(`${type}:${id}`, { type, id, ...entry });
-			}
-		}
+			}),
+		);
 		return wanted.map(({ type, id }) => publicView(results.get(`${type}:${id}`)));
 	},
 

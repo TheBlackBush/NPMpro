@@ -37,8 +37,9 @@ const answer = (name, state, extra = {}) => ({
  *                                        only when the name has AAAA records)
  * @param   {Function}  options.lookup    (name, type) -> { ok, values } | { ok: false, code }
  * @param   {Function}  options.coverage  (name, { dnsHere }) -> null (no provider read) or { record, wildcard,
- *                                        alias, error }: record { values, proxied } | null, wildcard { name, values,
- *                                        proxied } | null, error a scrubbed message when the read failed
+ *                                        alias, error, skipped }: record { values, proxied } | null, wildcard { name,
+ *                                        values, proxied } | null, error a scrubbed message when the read failed,
+ *                                        skipped the reason when the provider was not read (the DNS answer counts)
  * @returns {Promise<Object>}  { name, state, via, proxied, ipv4: { found, public }, ipv6: { found, public },
  *                             reason, message }
  */
@@ -95,7 +96,9 @@ const checkInner = async ({ name, publicIp, lookup, coverage }) => {
 			proxied = cover.wildcard.proxied === true;
 		}
 	}
-	const providerNote = cover?.error ? { reason: "provider-read-failed", message: cover.error } : {};
+	let providerNote = {};
+	if (cover?.error) providerNote = { reason: "provider-read-failed", message: cover.error };
+	else if (cover?.skipped) providerNote = { reason: cover.skipped };
 	if (found4.length === 0) base.ipv4.found = foundByProvider;
 
 	// a proxied record answers with the provider's own AAAA too: the family says nothing about this instance
@@ -112,6 +115,9 @@ const checkInner = async ({ name, publicIp, lookup, coverage }) => {
 	return answer(name, "elsewhere", { ...base, ...providerNote });
 };
 
+/** an unknown answer with only a reason (a name the request deadline cut: reason timeout) */
+const unknownAnswer = (name, reason) => answer(name, "unknown", { reason });
+
 /**
  * checkInner, with a failure of any injected function kept to this name: it answers unknown (reason check-failed, no
  * text) and calls onError with the error
@@ -125,4 +131,4 @@ const checkName = async (options) => {
 	}
 };
 
-export { canonical, checkName, hasAddress };
+export { canonical, checkName, hasAddress, unknownAnswer };

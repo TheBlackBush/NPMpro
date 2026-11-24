@@ -5,6 +5,7 @@ import path from "node:path";
 import { it } from "node:test";
 import { limitConcurrency } from "../lib/dns-check/limit.js";
 import { lookup } from "../lib/dns-check/lookup.js";
+import { checkTiming } from "../lib/dns-check/timing.js";
 
 const fakeResolver = (behaviour) => (options) => {
 	const calls = { options, servers: null };
@@ -28,7 +29,8 @@ const failure = (code) => Object.assign(new Error(code), { code });
 it("answers the values of each type and passes the resolvers, the timeout and the tries", async () => {
 	const make = fakeResolver({ A: ["192.0.2.1"], AAAA: ["2001:db8::1"], CAA: [{ critical: 0, issue: "ca.example" }] });
 	assert.deepEqual(await lookup("a.example", "A", ["9.9.9.9"], make), { ok: true, values: ["192.0.2.1"] });
-	assert.deepEqual(fakeResolver.last.options, { timeout: 3000, tries: 2 });
+	// one try per resolver: the second try is the lookup's own, with its own timer
+	assert.deepEqual(fakeResolver.last.options, { timeout: 3000, tries: 1 });
 	assert.deepEqual(fakeResolver.last.servers, ["9.9.9.9"]);
 	assert.deepEqual(await lookup("a.example", "AAAA", [], make), { ok: true, values: ["2001:db8::1"] });
 	assert.equal(fakeResolver.last.servers, null);
@@ -36,6 +38,63 @@ it("answers the values of each type and passes the resolvers, the timeout and th
 		ok: true,
 		values: [{ critical: 0, issue: "ca.example" }],
 	});
+});
+
+it("races each try against its timer and makes a second try after a timeout, then answers timeout", async () => {
+	const saved = { ...checkTiming };
+	Object.assign(checkTiming, { tryMs: 40, tries: 2 });
+	try {
+		let made = 0;
+		let cancelled = 0;
+		const never = () => {
+			made += 1;
+			return {
+				setServers: () => {},
+				cancel: () => {
+					cancelled += 1;
+				},
+				resolve4: () => new Promise(() => {}),
+			};
+		};
+		const started = Date.now();
+		assert.deepEqual(await lookup("a.example", "A", ["192.0.2.53"], never), { ok: false, code: "timeout" });
+		const took = Date.now() - started;
+		assert.equal(made, 2);
+		assert.equal(cancelled, 2);
+		assert.ok(took >= 70 && took < 1000, `${took} ms`);
+
+		// the resolver's own timeout counts as a timed out try too; the second try answers
+		let tries = 0;
+		const secondAnswers = () => ({
+			setServers: () => {},
+			resolve4: () => {
+				tries += 1;
+				return tries === 1 ? Promise.reject(failure("ETIMEOUT")) : Promise.resolve(["192.0.2.1"]);
+			},
+		});
+		assert.deepEqual(await lookup("a.example", "A", [], secondAnswers), { ok: true, values: ["192.0.2.1"] });
+		assert.equal(tries, 2);
+
+		// any other failure is not tried again
+		let refused = 0;
+		const refuses = () => ({
+			setServers: () => {},
+			resolve4: () => {
+				refused += 1;
+				return Promise.reject(failure("ENOTFOUND"));
+			},
+		});
+		assert.deepEqual(await lookup("a.example", "A", [], refuses), { ok: false, code: "nxdomain" });
+		assert.equal(refused, 1);
+		assert.deepEqual(
+			await lookup("a.example", "A", ["bad"], () => {
+				throw failure("EINVAL");
+			}),
+			{ ok: false, code: "error" },
+		);
+	} finally {
+		Object.assign(checkTiming, saved);
+	}
 });
 
 it("maps the resolver's errors to codes", async () => {
@@ -67,6 +126,8 @@ it("reads the test map under the test outbound mode and never the network", asyn
 			"b.example|A": { code: "timeout" },
 			"c.example|A": [],
 			"e.example|A": { cname: "a.example" },
+			"f.example|A": { delay: 10, answer: ["192.0.2.6"] },
+			"g.example|A": { delay: 10, answer: { code: "servfail" } },
 		}),
 	);
 	const saved = { ...process.env };
@@ -80,6 +141,9 @@ it("reads the test map under the test outbound mode and never the network", asyn
 		assert.deepEqual(await lookup("c.example", "A", [], refuse), { ok: false, code: "nodata" });
 		assert.deepEqual(await lookup("d.example", "A", [], refuse), { ok: false, code: "nxdomain" });
 		assert.deepEqual(await lookup("e.example", "A", [], refuse), { ok: true, values: ["192.0.2.1"] });
+		// a late answer of the map, for the tests of the timers
+		assert.deepEqual(await lookup("f.example", "A", [], refuse), { ok: true, values: ["192.0.2.6"] });
+		assert.deepEqual(await lookup("g.example", "A", [], refuse), { ok: false, code: "servfail" });
 		process.env.NPMPRO_TEST_DNS = path.join(dir, "missing.json");
 		assert.deepEqual(await lookup("a.example", "A", [], refuse), { ok: false, code: "nxdomain" });
 	} finally {

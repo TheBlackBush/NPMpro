@@ -52,7 +52,7 @@
 									}
 								}
 							},
-							"description": "The hosts to check, 1 to 50"
+							"description": "The hosts to check, 1 to 50, with at most 200 names across them"
 						}
 					}
 				},
@@ -110,7 +110,7 @@
 			}
 		},
 		"400": {
-			"description": "No host, or more than 50",
+			"description": "No host, more than 50, or more than 200 names across the hosts (`error.dns-check-too-many-names`)",
 			"content": {
 				"application/json": {
 					"schema": {
@@ -130,5 +130,5 @@
 			}
 		}
 	},
-	"description": "Looks up the A and AAAA records of each name through the check resolver and compares them with this instance's public addresses. A user who manages certificates also gets the record at the provider of a visible DNS credential that covers the name (always for Cloudflare, else only when the DNS answer is not this instance's address). A host checked within the last 30 seconds answers from the cache. Wildcard and regular expression names are skipped.\n\nNeeds: the view right of each host type"
+	"description": "Looks up the A and AAAA records of each name through the check resolver and compares them with this instance's public addresses. A user who manages certificates also gets the record at the provider of a visible DNS credential that covers the name (always for Cloudflare, else only when the DNS answer is not this instance's address). A host checked within the last 30 seconds answers from the cache. Wildcard and regular expression names are skipped. A request ends within 60 seconds: a name not checked by then answers `unknown` with the reason `timeout`, and its host is not cached. At most 50 provider reads are made per request, and none more for a credential after it answered 429; the other names keep their DNS answer with the reason `provider-read-skipped`.\n\nNeeds: the view right of each host type"
 }
