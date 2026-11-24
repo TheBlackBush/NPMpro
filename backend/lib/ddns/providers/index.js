@@ -1,5 +1,6 @@
 import { DdnsProviderError } from "../errors.js";
 import { providerFetch } from "../provider-fetch.js";
+import bunny from "./bunny.js";
 import cloudflare from "./cloudflare.js";
 import custom from "./custom.js";
 import desec from "./desec.js";
@@ -7,7 +8,9 @@ import digitalocean from "./digitalocean.js";
 import duckdns from "./duckdns.js";
 import dynu from "./dynu.js";
 import gandi from "./gandi.js";
+import godaddy from "./godaddy.js";
 import hetznerCloud from "./hetzner-cloud.js";
+import ionos from "./ionos.js";
 import linode from "./linode.js";
 import namecheap from "./namecheap.js";
 import noip from "./noip.js";
@@ -33,6 +36,9 @@ const PROVIDERS = Object.freeze([
 	powerdns,
 	linode,
 	vultr,
+	bunny,
+	ionos,
+	godaddy,
 ]);
 
 const providerById = (id) => PROVIDERS.find((provider) => provider.id === id) ?? null;
@@ -51,7 +57,7 @@ const zoneLister = (credentialProvider) => {
 
 const listsDomains = (credentialProvider) => zoneLister(credentialProvider) !== null;
 
-/** The providers that can read and write records (PowerDNS, Linode and Vultr only list zones) */
+/** The providers that can read and write records (PowerDNS, Linode, Vultr, Bunny, IONOS and GoDaddy only list zones) */
 const updaterFor = (credentialProvider) => {
 	const provider = providerForCredential(credentialProvider);
 	return typeof provider?.read === "function" && typeof provider?.write === "function" ? provider : null;

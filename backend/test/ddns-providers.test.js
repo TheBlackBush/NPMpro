@@ -1312,8 +1312,8 @@ describe("porkbun", () => {
 		assert.equal(await run("read", base), null);
 	});
 
-	it("has no zone fetch", () => {
-		assert.equal(providerById("porkbun").listZones, undefined);
+	it("has a zone fetch", () => {
+		assert.equal(typeof providerById("porkbun").listZones, "function");
 	});
 });
 

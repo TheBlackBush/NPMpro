@@ -110,6 +110,39 @@ const CASES = {
 		}),
 		perPage: 500,
 	},
+	bunny: {
+		fields: { dns_bunny_api_key: TOKEN },
+		host: "api.bunny.net",
+		headers: { accesskey: TOKEN },
+		path: (page) => `/dnszone?page=${page}&perPage=500`,
+		body: (names, page = 1, total = 1) => ({
+			Items: names.map((Domain) => ({ Domain })),
+			CurrentPage: page,
+			TotalItems: names.length,
+			HasMoreItems: page < total,
+		}),
+		perPage: 500,
+	},
+	// X-API-Key is <prefix>.<secret>; the answer is a plain array without paging
+	ionos: {
+		fields: { dns_ionos_prefix: "pre1", dns_ionos_secret: TOKEN },
+		host: "api.hosting.ionos.com",
+		headers: { "x-api-key": `pre1.${TOKEN}` },
+		path: () => "/dns/v1/zones",
+		body: (names) => names.map((name) => ({ name })),
+		perPage: 1100,
+		single: true,
+	},
+	// marker paging: the marker is the last domain of the previous page (pages start at z0000)
+	godaddy: {
+		fields: { dns_godaddy_key: TOKEN, dns_godaddy_secret: TOKEN },
+		host: "api.godaddy.com",
+		headers: { authorization: `sso-key ${TOKEN}:${TOKEN}` },
+		path: (page) =>
+			`/v1/domains?limit=500${page === 1 ? "" : `&marker=z${String((page - 1) * 500 - 1).padStart(4, "0")}.example.org`}`,
+		body: (names) => names.map((domain) => ({ domain })),
+		perPage: 500,
+	},
 	// the Link header of the answer holds the cursor URL of the next page
 	desec: {
 		fields: { dns_desec_token: TOKEN },
@@ -138,8 +171,8 @@ for (const [id, c] of Object.entries(CASES)) {
 		assert.deepEqual(await run(id, c.fields), ["a.example.com", "b.example.org"]);
 	});
 
-	it(`${id}: two pages`, async () => {
-		const first = zoneNames(1, c.perPage);
+	it(`${id}: two pages`, { skip: c.single === true }, async () => {
+		const first = zoneNames(0, c.perPage);
 		const second = ["last.example.org"];
 		intercept(c.host, c.path(1), c.headers).reply(200, c.body(first, 1, 2), replyOf(c, 1, 2));
 		intercept(c.host, c.path(2), c.headers).reply(200, c.body(second, 2, 2), replyOf(c, 2, 2));
@@ -197,7 +230,7 @@ for (const [id, c] of Object.entries(CASES)) {
 	});
 }
 
-for (const id of ["linode", "vultr", "desec"]) {
+for (const id of ["linode", "vultr", "desec", "bunny", "ionos", "godaddy"]) {
 	it(`${id}: a 401 is forbidden`, async () => {
 		const c = CASES[id];
 		intercept(c.host, c.path(1), c.headers).reply(401, { detail: "Invalid token." }, json);
@@ -208,8 +241,8 @@ for (const id of ["linode", "vultr", "desec"]) {
 	});
 }
 
-it("linode, vultr: zone listing only, no DDNS updater", () => {
-	for (const id of ["linode", "vultr"]) {
+it("linode, vultr, bunny, ionos, godaddy: zone listing only, no DDNS updater", () => {
+	for (const id of ["linode", "vultr", "bunny", "ionos", "godaddy"]) {
 		assert.equal(updaterFor(id), null);
 		assert.equal(listsDomains(id), true);
 		assert.ok(!PROVIDER_LIST.some((p) => p.id === id));
@@ -287,6 +320,190 @@ for (const endpoint of ["http://dns.example.org/v1", "https://127.0.0.1/v1"]) {
 		);
 	});
 }
+
+it("godaddy: a 401 with an empty body is forbidden", async () => {
+	const c = CASES.godaddy;
+	intercept(c.host, c.path(1), c.headers).reply(401, "");
+	await assert.rejects(
+		run("godaddy", c.fields),
+		(err) => err.code === "forbidden" && err.providerStatus === 401 && Boolean(err.hint),
+	);
+});
+
+it("godaddy: key, secret and the joined form are scrubbed, the marker is URL-encoded", async () => {
+	const fields = { dns_godaddy_key: "gk-KEY-1234", dns_godaddy_secret: "gs-SECRET-5678" };
+	const headers = { authorization: "sso-key gk-KEY-1234:gs-SECRET-5678" };
+	const secrets = ["gk-KEY-1234", "gs-SECRET-5678"];
+	const gd = CASES.godaddy;
+	const first = gd.path(1);
+	intercept(gd.host, first, headers).reply(
+		403,
+		{ code: "ACCESS_DENIED", message: "sso-key gk-KEY-1234:gs-SECRET-5678 no, gs-SECRET-5678 neither" },
+		json,
+	);
+	await assert.rejects(run("godaddy", fields, secrets), (err) => {
+		assert.equal(err.code, "forbidden");
+		for (const secret of secrets) assert.ok(!err.message.includes(secret));
+		return true;
+	});
+	const page = Array.from({ length: 500 }, (_, i) => ({ domain: `a${i}.example.org` }));
+	page[499] = { domain: "bücher.example" };
+	intercept(gd.host, first, headers).reply(200, page, json);
+	intercept(gd.host, `${first}&marker=b%C3%BCcher.example`, headers).reply(200, [], json);
+	assert.equal((await run("godaddy", fields, secrets)).length, 500);
+	mock.assertNoPendingInterceptors();
+});
+
+it("godaddy: a full page without a usable last name ends the list", async () => {
+	const c = CASES.godaddy;
+	const page = Array.from({ length: 500 }, (_, i) => ({ domain: `a${i}.example.org` }));
+	page[499] = {};
+	intercept(c.host, c.path(1), c.headers).reply(200, page, json);
+	assert.equal((await run("godaddy", c.fields)).length, 499);
+});
+
+const IONOS = { dns_ionos_prefix: "pre1", dns_ionos_secret: TOKEN };
+
+it("ionos: the joined key is scrubbed from an echoed body, the prefix alone is not", async () => {
+	const c = CASES.ionos;
+	intercept(c.host, c.path(1), c.headers).reply(
+		403,
+		{ message: `key pre1.${TOKEN} refused for pre1, ${TOKEN}` },
+		json,
+	);
+	await assert.rejects(run("ionos", IONOS, [TOKEN, `pre1.${TOKEN}`]), (err) => {
+		assert.equal(err.code, "forbidden");
+		assert.ok(!err.message.includes(TOKEN));
+		assert.ok(err.message.includes("pre1"));
+		return true;
+	});
+});
+
+it("ionos: a custom https endpoint is used, an http or private one is refused before any request", async () => {
+	mock.get("https://dns.example.org")
+		.intercept({ path: "/ionos/dns/v1/zones", method: "GET", headers: CASES.ionos.headers })
+		.reply(200, [{ name: "x.example.org" }], json);
+	assert.deepEqual(
+		[...(await run("ionos", { ...IONOS, dns_ionos_endpoint: "https://dns.example.org/ionos/" }))],
+		["x.example.org"],
+	);
+	for (const dns_ionos_endpoint of ["http://dns.example.org", "https://127.0.0.1", "nope"]) {
+		await assert.rejects(run("ionos", { ...IONOS, dns_ionos_endpoint }), (err) => err instanceof DdnsProviderError);
+	}
+});
+
+const PB = { dns_porkbun_key: "pk1-KEY-1234", dns_porkbun_secret: "sk1-SECRET-5678" };
+const PB_SECRETS = Object.values(PB);
+const pbList = (start = 0) =>
+	mock.get("https://api.porkbun.com").intercept({
+		path: "/api/json/v3/domain/listAll",
+		method: "POST",
+		body: (raw) => {
+			const body = JSON.parse(raw);
+			return (
+				body.apikey === PB.dns_porkbun_key &&
+				body.secretapikey === PB.dns_porkbun_secret &&
+				body.start === start
+			);
+		},
+	});
+const pbDomains = (from, count) =>
+	Array.from({ length: count }, (_, i) => ({
+		domain: `p${String(from + i).padStart(4, "0")}.example.org`,
+		apiAccess: 1,
+	}));
+const pbOk = (domains) => ({ status: "SUCCESS", count: domains.length, domains });
+
+it("porkbun: credentials in the body, domains without API access left out, sorted, IDN as punycode", async () => {
+	pbList().reply(
+		200,
+		pbOk([
+			{ domain: "b.example.org", apiAccess: "1" },
+			{ domain: "off.example.org", apiAccess: 0 },
+			{ domain: "off2.example.org", apiAccess: "0" },
+			{ domain: "bücher.example", apiAccess: 1 },
+			{ domain: "a.example.org" },
+		]),
+		json,
+	);
+	const zones = await run("porkbun", PB, PB_SECRETS);
+	assert.deepEqual([...zones], ["a.example.org", "b.example.org", "xn--bcher-kva.example"]);
+	assert.equal(zones.truncated, undefined);
+});
+
+it("porkbun: a full page of 1000 asks the next start, a short page ends the list", async () => {
+	pbList(0).reply(200, pbOk(pbDomains(0, 1000)), json);
+	pbList(1000).reply(200, pbOk(pbDomains(1000, 5)), json);
+	const zones = await run("porkbun", PB, PB_SECRETS);
+	assert.equal(zones.length, 1000);
+	assert.equal(zones.truncated, true);
+	mock.assertNoPendingInterceptors();
+});
+
+it("porkbun: an empty page after a full one ends the list", async () => {
+	pbList(0).reply(200, pbOk(pbDomains(0, 1000)), json);
+	pbList(1000).reply(200, pbOk([]), json);
+	const zones = await run("porkbun", PB, PB_SECRETS);
+	assert.equal(zones.length, 1000);
+	assert.equal(zones.truncated, undefined);
+});
+
+it("porkbun: 25 full pages stop with truncated, domains without API access still count for the page size", async () => {
+	for (let page = 0; page < 25; page++) {
+		const off = Array.from({ length: 999 }, (_, i) => ({ domain: `off${page}-${i}.example.org`, apiAccess: 0 }));
+		pbList(page * 1000).reply(200, pbOk([{ domain: `p${page}.example.org`, apiAccess: 1 }, ...off]), json);
+	}
+	const zones = await run("porkbun", PB, PB_SECRETS);
+	assert.equal(zones.length, 25);
+	assert.equal(zones.truncated, true);
+	mock.assertNoPendingInterceptors();
+});
+
+it("porkbun: a bad key (400 INVALID_API_KEYS_001) is forbidden with the hint and both secrets scrubbed", async () => {
+	pbList().reply(
+		400,
+		{
+			status: "ERROR",
+			code: "INVALID_API_KEYS_001",
+			message: `Invalid API key. (001) ${PB.dns_porkbun_key} ${PB.dns_porkbun_secret}`,
+		},
+		json,
+	);
+	await assert.rejects(run("porkbun", PB, PB_SECRETS), (err) => {
+		assert.equal(err.code, "forbidden");
+		assert.equal(err.providerStatus, 400);
+		assert.ok(err.hint);
+		for (const secret of PB_SECRETS) assert.ok(!err.message.includes(secret));
+		return true;
+	});
+});
+
+for (const code of ["INSUFFICIENT_SCOPE", "IP_NOT_ALLOWED", "DOMAIN_NOT_ALLOWED"]) {
+	it(`porkbun: ${code} is forbidden with the hint`, async () => {
+		pbList().reply(403, { status: "ERROR", code, message: "no" }, json);
+		await assert.rejects(
+			run("porkbun", PB, PB_SECRETS),
+			(err) => err.code === "forbidden" && err.hint.includes("IP list") && err.providerStatus === 403,
+		);
+	});
+}
+
+it("porkbun: a 500 is failed, a bad shape is failed, an error status on 200 is failed", async () => {
+	pbList().reply(500, "<html>boom</html>");
+	await assert.rejects(
+		run("porkbun", PB, PB_SECRETS),
+		(err) => err.code === "failed" && err.message.includes("boom"),
+	);
+	pbList().reply(200, { status: "SUCCESS", domains: "x" }, json);
+	await assert.rejects(run("porkbun", PB, PB_SECRETS), (err) => err.code === "failed");
+	pbList().reply(200, { nope: true }, json);
+	await assert.rejects(run("porkbun", PB, PB_SECRETS), (err) => err.code === "failed");
+	pbList().reply(200, { status: "ERROR", message: `odd ${PB.dns_porkbun_secret}` }, json);
+	await assert.rejects(
+		run("porkbun", PB, PB_SECRETS),
+		(err) => err.code === "failed" && !err.message.includes(PB.dns_porkbun_secret),
+	);
+});
 
 it("cloudflare: the global key group sends X-Auth-Email and X-Auth-Key", async () => {
 	const fields = { dns_cloudflare_email: "me@example.org", dns_cloudflare_api_key: "globalkey-9999" };
@@ -372,6 +589,9 @@ it("the registry is ordered and looks providers up", () => {
 			"powerdns",
 			"linode",
 			"vultr",
+			"bunny",
+			"ionos",
+			"godaddy",
 		],
 	);
 	assert.equal(providerById("gandi").label, "Gandi");
