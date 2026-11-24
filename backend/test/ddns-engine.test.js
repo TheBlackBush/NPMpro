@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createDdnsEngine, HISTORY_LIMIT } from "../lib/ddns/engine.js";
+import { createDdnsEngine, HISTORY_LIMIT, REASSERT_MS, STALE_ANSWER_NOTE } from "../lib/ddns/engine.js";
 import { DdnsProviderError } from "../lib/ddns/errors.js";
 
 const MIN = 60_000;
@@ -16,6 +16,7 @@ const CNAME_AT_NAME = /CNAME record/u;
 const SUFFIX = /suffix/u;
 const STARS = /\*\*\*/u;
 const TOKEN_FOUND = /tok-secret/u;
+const BADAUTH = /badauth/u;
 
 const makeClock = () => {
 	let time = START;
@@ -798,13 +799,88 @@ describe("ddns engine: zoneless provider", () => {
 		assert.equal(h.historyRows[0].old_ip, IP4_NEW);
 	});
 
-	it("writes again without a history row when the address is the one last written and DNS never answers", async () => {
-		const h = harness({ zoneless: true, records: [record({ last_ipv4: IP4 })], resolver: () => null });
+	it("does not write again within a day when the address is the one last written, and notes the DNS answer", async () => {
+		const lastWrite = new Date(START - 2 * HOUR);
+		const h = harness({
+			zoneless: true,
+			records: [record({ last_ipv4: IP4, last_changed_on: lastWrite })],
+			resolver: () => [IP4_NEW],
+		});
+		await h.engine.cycle();
+		assert.equal(writes(h).length, 0);
+		assert.equal(h.row().state, "ok");
+		assert.equal(h.row().meta.note_i18n, STALE_ANSWER_NOTE);
+		assert.equal(h.row().last_changed_on.getTime(), lastWrite.getTime());
+		assert.equal(h.historyRows.length, 0);
+		// still a day after the write: one cycle later, no write either
+		h.clock.advance(21 * HOUR);
+		await h.engine.cycle({ force: true });
+		assert.equal(writes(h).length, 0);
+	});
+
+	it("re-asserts the address a day after the last write while the DNS answer differs, without a history row", async () => {
+		const lastWrite = new Date(START - REASSERT_MS);
+		const h = harness({
+			zoneless: true,
+			records: [record({ last_ipv4: IP4, last_changed_on: lastWrite, meta: { note_i18n: STALE_ANSWER_NOTE } })],
+			resolver: () => null,
+		});
 		await h.engine.cycle();
 		assert.equal(writes(h).length, 1);
 		assert.equal(h.row().state, "ok");
+		assert.equal(h.row().meta.note_i18n, undefined);
 		assert.equal(h.historyRows.length, 0);
-		assert.ok(h.row().last_changed_on);
+		assert.equal(h.row().last_changed_on.getTime(), START);
+	});
+
+	it("writes at once when the wanted address differs from the one last written, and drops the note", async () => {
+		const h = harness({
+			zoneless: true,
+			records: [
+				record({
+					last_ipv4: IP4_NEW,
+					last_changed_on: new Date(START - HOUR),
+					meta: { note_i18n: STALE_ANSWER_NOTE },
+				}),
+			],
+			resolver: () => [IP4_NEW],
+		});
+		await h.engine.cycle();
+		assert.equal(writes(h).length, 1);
+		assert.equal(writes(h)[0].ip, IP4);
+		assert.equal(h.row().meta.note_i18n, undefined);
+		assert.deepEqual(
+			h.historyRows.map((row) => [row.kind, row.old_ip, row.new_ip]),
+			[["changed", IP4_NEW, IP4]],
+		);
+	});
+
+	it("drops the note once the DNS answer is the address", async () => {
+		const h = harness({
+			zoneless: true,
+			records: [
+				record({
+					last_ipv4: IP4,
+					last_changed_on: new Date(START - HOUR),
+					meta: { note_i18n: STALE_ANSWER_NOTE },
+				}),
+			],
+			resolver: () => [IP4],
+		});
+		await h.engine.cycle();
+		assert.equal(writes(h).length, 0);
+		assert.equal(h.row().meta.note_i18n, undefined);
+	});
+
+	it("Update now writes the address last written although it was written within a day", async () => {
+		const h = harness({
+			zoneless: true,
+			records: [record({ last_ipv4: IP4, last_changed_on: new Date(START - HOUR) })],
+			resolver: () => [IP4_NEW],
+		});
+		await h.engine.updateRecord(1);
+		assert.equal(writes(h).length, 1);
+		assert.equal(h.row().meta.note_i18n, undefined);
 	});
 
 	it("does not write when the DNS answer is already the address, even for a record never written", async () => {
@@ -836,6 +912,8 @@ describe("ddns engine: zoneless provider", () => {
 		assert.equal(h.row().state, "ok");
 		await assert.rejects(h.engine.updateRecord(1), (err) => err.message_i18n === "error.ddns-cooldown");
 		h.clock.advance(10 * MIN);
+		// a new public address after the cooldown is written at once
+		h.states[4] = { address: "81.2.69.162", error: null, error_i18n: null };
 		await h.engine.cycle({ force: true });
 		assert.equal(writes(h).length, 2);
 	});
@@ -848,5 +926,48 @@ describe("ddns engine: zoneless provider", () => {
 		assert.match(h.row().error, STARS);
 		assert.doesNotMatch(h.row().error, TOKEN_FOUND);
 		assert.equal(h.row().failures, 1);
+	});
+});
+
+describe("ddns engine: a provider that says to stop", () => {
+	const refused = () => new DdnsProviderError({ code: "forbidden", message: "badauth", retry: false, stop: true });
+
+	it("leaves the record failed with no next try, and no cycle tries it again, forced or not", async () => {
+		const h = harness({ records: [recordRow()], zone: {} });
+		h.dns.writeError = refused();
+		await h.engine.cycle();
+		assert.equal(h.row().state, "failed");
+		assert.equal(h.row().meta.stopped, true);
+		assert.equal(h.row().next_try_on, null);
+		assert.match(h.row().error, BADAUTH);
+		const tried = h.calls.length;
+		h.clock.advance(7 * HOUR);
+		await h.engine.cycle();
+		await h.engine.cycle({ force: true });
+		await h.engine.cycle({ force: true, ids: [1] });
+		assert.equal(h.calls.length, tried);
+	});
+
+	it("Update now runs a stopped record, and a success ends the stop", async () => {
+		const h = harness({ records: [recordRow()], zone: {} });
+		h.dns.writeError = refused();
+		await h.engine.cycle();
+		h.dns.writeError = null;
+		h.clock.advance(10 * MIN);
+		await h.engine.updateRecord(1);
+		assert.equal(h.row().state, "ok");
+		assert.equal(h.row().meta.stopped, undefined);
+		h.dns.A = null;
+		h.clock.advance(10 * MIN);
+		await h.engine.cycle();
+		assert.equal(writes(h).length, 3);
+	});
+
+	it("a refusal without a stop keeps its retry floor and the next try", async () => {
+		const h = harness({ records: [recordRow()], zone: {} });
+		h.dns.writeError = new DdnsProviderError({ code: "forbidden", message: "no", retryAfterMs: 6 * HOUR });
+		await h.engine.cycle();
+		assert.equal(h.row().meta.stopped, undefined);
+		assert.equal(h.row().next_try_on.getTime(), START + 6 * HOUR);
 	});
 });

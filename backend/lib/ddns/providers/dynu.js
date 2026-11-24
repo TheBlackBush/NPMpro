@@ -27,12 +27,15 @@ const REFUSED_WAIT_MS = 6 * 60 * MINUTE;
 const SERVER_ERROR_WAIT_MS = 10 * MINUTE;
 // the answers a later try can fix
 const RETRY = new Set(["911", "servererror", "dnserr"]);
+// the answers about the account (a refused sign-in, an unknown host, a blocked client): no more updates until the user
+// acts, as the protocol asks of a client
+const STOPPED = new Set(["nohost", "badauth", "abuse", "!donator"]);
 
-// how long the engine leaves the record alone: 10 minutes after a 911, 6 hours after an account answer, no floor for the
-// other retried answers
+// how long the engine leaves the record alone: 10 minutes after a 911, 6 hours after another refusal, no floor for the
+// other retried answers (a stopped record waits for the user)
 const waitOf = (code) => {
 	if (code === "911") return SERVER_ERROR_WAIT_MS;
-	return RETRY.has(code) ? undefined : REFUSED_WAIT_MS;
+	return RETRY.has(code) || STOPPED.has(code) ? undefined : REFUSED_WAIT_MS;
 };
 
 /**
@@ -84,6 +87,7 @@ export default {
 				message: `${MESSAGES[code]} (${code})`,
 				retry: RETRY.has(code),
 				retryAfterMs: waitOf(code),
+				stop: STOPPED.has(code),
 				secrets,
 			});
 		}

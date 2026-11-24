@@ -106,6 +106,13 @@ it("lets only an administrator create, change, delete and update a custom record
 	const shown = await manager.get(`${RECORDS}/${record.id}`);
 	assert.equal(shown.status, 200, shown.text);
 	assert.equal(shown.body.url_set, true);
+	// the call's method and expected text are for administrators too
+	assert.equal(shown.body.method, null);
+	assert.equal(shown.body.expect, null);
+	const listed = (await manager.get(RECORDS)).body.find((row) => row.id === record.id);
+	assert.equal(listed.method, null);
+	assert.equal(listed.expect, null);
+	assert.equal((await admin.get(`${RECORDS}/${record.id}`)).body.method, "POST");
 	assert.equal((await manager.put(`${RECORDS}/${record.id}`, { enabled: false })).status, 403);
 	assert.equal((await manager.put(`${RECORDS}/${record.id}`, { url: `${DYN}/other` })).status, 403);
 	assert.equal((await manager.delete(`${RECORDS}/${record.id}`)).status, 403);

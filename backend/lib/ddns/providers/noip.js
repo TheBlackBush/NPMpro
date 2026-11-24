@@ -11,11 +11,11 @@ const GOOD = /^(?:good|nochg)(?:\s|$)/u;
 const WHITESPACE = /\s/u;
 const LINE_BREAK = /\r?\n/u;
 const MINUTE = 60_000;
-// an account answer is not worth asking again soon: the engine waits at least this long (an edit of the record starts over)
+// an HTTP refusal without a No-IP code: the engine waits at least this long (an edit of the record starts over)
 const REFUSED_WAIT_MS = 6 * 60 * MINUTE;
 // No-IP asks for no retry sooner than 30 minutes after a 911
 const SERVER_ERROR_WAIT_MS = 30 * MINUTE;
-// the answers about the account or the client
+// the answers about the account or the client: No-IP asks for no more updates until the user acts
 const STOPPED = new Set(["nohost", "badauth", "badagent", "!donator", "abuse"]);
 const MESSAGES = {
 	nohost: "The host does not belong to this account",
@@ -27,9 +27,10 @@ const MESSAGES = {
 };
 
 /**
- * No-IP: one GET with the host and the address, the account's user name and password as Basic auth. The failure shows
- * in the body (a wrong password is a 401 with `badauth`). `911` leaves the record alone for 30 minutes and the account
- * answers (`nohost`, `badauth`, `badagent`, `!donator`, `abuse`) for 6 hours (a floor on the engine's backoff).
+ * No-IP: one GET with the host and the addresses, the account's user name and password as Basic auth. A record of
+ * both families sends `myip` and `myipv6` in the same call. The failure shows in the body (a wrong password is a 401
+ * with `badauth`). `911` leaves the record alone for 30 minutes; the account answers (`nohost`, `badauth`, `badagent`,
+ * `!donator`, `abuse`) stop the record until the user acts, as No-IP's response rules ask.
  * A record of IPv6 alone is refused at save: No-IP documents no way to keep the IPv4 part unchanged.
  */
 export default {
@@ -45,8 +46,10 @@ export default {
 	zoneless: true,
 	preset: true,
 	ipv6Alone: false,
+	// a record of both families makes one call with both addresses, not one per family
+	oneCall: true,
 	read: () => Promise.resolve(null),
-	async write({ name, type, ip, fields, fetch, meta }) {
+	async write({ name, type, ip, addresses, fields, fetch, meta }) {
 		refuseWildcard(name);
 		const secrets = presetSecrets(fields);
 		if (typeof fields.username !== "string" || fields.username === "" || typeof fields.password !== "string") {
@@ -56,9 +59,12 @@ export default {
 				retry: false,
 			});
 		}
+		const ipv4 = addresses?.ipv4 ?? (type === "AAAA" ? undefined : ip);
+		const ipv6 = addresses?.ipv6 ?? (type === "AAAA" ? ip : undefined);
 		const query = [
 			`hostname=${encodeURIComponent(name)}`,
-			`${type === "AAAA" ? "myipv6" : "myip"}=${encodeURIComponent(ip)}`,
+			...(ipv4 ? [`myip=${encodeURIComponent(ipv4)}`] : []),
+			...(ipv6 ? [`myipv6=${encodeURIComponent(ipv6)}`] : []),
 		].join("&");
 		const basic = Buffer.from(`${fields.username}:${fields.password}`).toString("base64");
 		const res = await fetch(`${ENDPOINT}?${query}`, {
@@ -73,7 +79,8 @@ export default {
 				code: code === "911" ? "failed" : "forbidden",
 				message: `${MESSAGES[code]} (${code})`,
 				retry: code === "911",
-				retryAfterMs: code === "911" ? SERVER_ERROR_WAIT_MS : REFUSED_WAIT_MS,
+				retryAfterMs: code === "911" ? SERVER_ERROR_WAIT_MS : undefined,
+				stop: code !== "911",
 				secrets,
 			});
 		}

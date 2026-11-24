@@ -118,24 +118,36 @@ const proxiedOf = (meta) => {
 	return flags.length === 0 ? null : flags.includes(true);
 };
 
-/** The API form of a row: no meta or secret, ISO times, the engine's translatable error and the proxied flag */
-const toPublic = (row) => {
+/**
+ * The API form of a row: no meta or secret, ISO times, the engine's translatable error and note, and the proxied flag
+ *
+ * @param   {Object}  row
+ * @param   {Access}  access  a custom record's method and expected text are shown to administrators only
+ * @returns {Object}
+ */
+const toPublic = (row, access) => {
 	const { meta, ...json } = row.toJSON();
 	for (const key of TIME_KEYS) json[key] = iso(row[key]);
 	// an alias follows no address: the column keeps its NOT NULL default, the answer says none
 	if (json.kind === "alias") Object.assign(json, { ip_version: null, ipv6_suffix: null });
-	// the URL itself never leaves: only whether one is stored, and the call's method and expected text
+	// the URL itself never leaves: only whether one is stored, and (to administrators) the method and expected text
 	const custom = row.provider === CUSTOM ? openCustom(row.secret) : null;
+	const callShown = access?.isAdmin === true;
 	// a preset's password and user name never leave either: only whether they are stored, and the domain (Namecheap)
 	const preset = isPreset(row.provider) ? openPreset(row.secret) : null;
 	return {
 		...json,
 		...(row.provider === CUSTOM
-			? { url_set: custom !== null, method: custom?.method ?? null, expect: custom?.expect ?? null }
+			? {
+					url_set: custom !== null,
+					method: callShown ? (custom?.method ?? null) : null,
+					expect: callShown ? (custom?.expect ?? null) : null,
+				}
 			: {}),
 		...(isPreset(row.provider) ? { secret_set: preset !== null, domain: preset?.domain ?? null } : {}),
 		error_i18n: meta?.error_i18n ?? null,
 		error_values: meta?.error_values ?? null,
+		note_i18n: meta?.note_i18n ?? null,
 		proxied: proxiedOf(meta),
 	};
 };
@@ -387,6 +399,14 @@ const resolvePreset = (access, data, row, updater) => {
 	}
 	const enabled = data.enabled ?? row?.enabled ?? true;
 	const missing = wanted.some((key) => fields[key] === null);
+	// a record without saved details (a restore without secrets) takes all of them at once: a part would be lost
+	if (row !== null && stored === null && missing && wanted.some((key) => typedField(data, key) !== null)) {
+		throw refusal(
+			`The record has no saved account details: enter all of them for ${updater.label}`,
+			"error.ddns-preset-incomplete",
+			{ provider: updater.label },
+		);
+	}
 	if (missing && (row === null || enabled)) {
 		throw refusal(`Enter the account details of ${updater.label}`, "error.ddns-preset-required", {
 			provider: updater.label,
@@ -612,7 +632,7 @@ const internalDdnsRecord = {
 			]);
 		}
 		if (expandOf(expand)) rows.withGraphFetched(expandOf(expand));
-		return (await rows).map(toPublic);
+		return (await rows).map((row) => toPublic(row, access));
 	},
 
 	/** The row of a record the user may see; 404 otherwise. No permission check (callers do it). */
@@ -626,7 +646,7 @@ const internalDdnsRecord = {
 
 	get: async (access, { id, expand = null }) => {
 		access.can("certificates:view");
-		return toPublic(await internalDdnsRecord.rowOf(access, id, { expand }));
+		return toPublic(await internalDdnsRecord.rowOf(access, id, { expand }), access);
 	},
 
 	create: async (access, data) => {
@@ -654,7 +674,7 @@ const internalDdnsRecord = {
 			object_id: row.id,
 			meta: auditMeta(row, credential),
 		});
-		return toPublic(row);
+		return toPublic(row, access);
 	},
 
 	update: async (access, data) => {
@@ -687,7 +707,14 @@ const internalDdnsRecord = {
 						Object.assign(patch, { last_ipv4: null, last_ipv6: null, last_checked_on: null });
 					}
 					if (patch.state === "pending") {
-						const { error_i18n: _key, error_values: _values, ...rest } = row.meta ?? {};
+						// a save with a change, or enabling, also ends a stop after a provider's refusal
+						const {
+							error_i18n: _key,
+							error_values: _values,
+							note_i18n: _note,
+							stopped: _stopped,
+							...rest
+						} = row.meta ?? {};
 						Object.assign(patch, { failures: 0, next_try_on: null, error: null });
 						if (!identityChanged) patch.meta = rest;
 					}
@@ -712,7 +739,7 @@ const internalDdnsRecord = {
 			object_id: saved.id,
 			meta,
 		});
-		return toPublic(await internalDdnsRecord.rowOf(access, saved.id, { expand: data.expand }));
+		return toPublic(await internalDdnsRecord.rowOf(access, saved.id, { expand: data.expand }), access);
 	},
 
 	delete: async (access, { id }) => {
@@ -734,7 +761,7 @@ const internalDdnsRecord = {
 			object_id: id,
 			meta: auditMeta(row, credential),
 		});
-		return toPublic(row);
+		return toPublic(row, access);
 	},
 
 	/** @returns {Promise<Object[]>}  the history of a record, newest first */

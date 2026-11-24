@@ -33,13 +33,16 @@ class DdnsProviderError extends Error {
 	name = "DdnsProviderError";
 	public = true;
 
-	constructor({ providerStatus = 0, code, message, retry = true, retryAfterMs, secrets = [] }) {
+	constructor({ providerStatus = 0, code, message, retry = true, retryAfterMs, stop = false, secrets = [] }) {
 		super(scrubSecrets(message, secrets));
 		this.providerStatus = providerStatus;
 		this.code = code;
 		this.retry = retry;
 		// a provider that says how long to leave the record alone: the engine never tries sooner (a floor, not a stop)
 		if (Number.isFinite(retryAfterMs) && retryAfterMs > 0) this.retryAfterMs = retryAfterMs;
+		// a provider that says to send no more updates until the user acts (a refused account, a blocked client): the
+		// engine makes no automatic try until the record is saved with a change, enabled again or updated by hand
+		if (stop === true) this.stop = true;
 	}
 }
 

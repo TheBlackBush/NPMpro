@@ -10,7 +10,12 @@ const PRESET_FIELDS = Object.freeze({
 
 const isPreset = (id) => typeof id === "string" && Object.hasOwn(PRESET_FIELDS, id);
 
-/** The values of a preset's sealed secret that must never be shown (scrubbed from every message) */
+/**
+ * The values of a preset's sealed secret that must never be shown (scrubbed from every message). scrubSecrets skips a
+ * value under 4 characters, so a short user name (Dynu allows 3) is not scrubbed. That is safe today because the user
+ * name only travels in the Basic auth header: no preset puts it into a URL or into a message of its own, and the
+ * providers do not echo it back. Keep it that way, or revisit the minimum.
+ */
 const presetSecrets = (fields) =>
 	[fields?.password, fields?.username].filter((value) => typeof value === "string" && value !== "");
 

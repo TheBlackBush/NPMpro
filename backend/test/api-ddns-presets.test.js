@@ -311,26 +311,74 @@ it("refuses a No-IP record of IPv6 alone, allows both, and a password shorter th
 	assert.equal((await admin.put(`${RECORDS}/${record.id}`, { password: "abc" })).status, 400);
 });
 
-it("leaves a record alone for the provider's wait after a refusal, and a saved password starts over", async () => {
+it("stops a record after an account refusal until it is saved with a change, enabled again or updated now", async () => {
 	const record = await addOk(noip("floor.example.net"));
 	answer.status = 401;
 	answer.body = "badauth";
-	const started = Date.now();
 	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);
 	const failed = (await admin.get(`${RECORDS}/${record.id}`)).body;
 	assert.equal(failed.state, "failed");
-	const wait = Date.parse(failed.next_try_on) - started;
-	assert.ok(wait >= 6 * 60 * 60_000 - 5000, `next try in ${wait} ms`);
+	assert.ok(failed.error.includes("badauth"));
+	assert.equal(failed.next_try_on, null);
+	assert.equal(seen.length, 1);
+	// no automatic try: Check now and a save that changes nothing leave it stopped
+	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);
+	assert.equal((await admin.put(`${RECORDS}/${record.id}`, { enabled: true })).body.state, "failed");
+	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);
+	assert.equal(seen.length, 1);
+	// Update now asks the provider again
+	const pressed = await admin.post(`${RECORDS}/${record.id}/update`);
+	assert.equal(pressed.body.state, "failed", pressed.text);
+	assert.equal(seen.length, 2);
+	// disabled and enabled again: the next cycle tries it
+	await admin.put(`${RECORDS}/${record.id}`, { enabled: false });
+	const enabled = await admin.put(`${RECORDS}/${record.id}`, { enabled: true });
+	assert.equal(enabled.body.state, "pending");
 	answer.body = "911";
 	answer.status = 200;
+	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);
+	assert.equal(seen.length, 3);
+	// 911 keeps its floor and is no stop
+	const again = (await admin.get(`${RECORDS}/${record.id}`)).body;
+	const wait911 = Date.parse(again.next_try_on) - Date.now();
+	assert.ok(wait911 >= 30 * 60_000 - 5000 && wait911 < 60 * 60_000, `next try in ${wait911} ms`);
+	// a refusal again, then a saved password starts over
+	answer.status = 401;
+	answer.body = "badauth";
+	await api.db("npmpro_ddns_record").where({ id: record.id }).update({ next_try_on: null });
+	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);
+	assert.equal((await admin.get(`${RECORDS}/${record.id}`)).body.next_try_on, null);
 	const saved = await admin.put(`${RECORDS}/${record.id}`, { password: NEW_PASSWORD });
 	assert.equal(saved.body.state, "pending");
 	assert.equal(saved.body.next_try_on, null);
 	assert.equal(saved.body.failures, 0);
+	answer.status = 200;
+	answer.body = "good 81.2.69.160";
+	await api.db("npmpro_ddns_record").where({ id: record.id }).update({ last_changed_on: null });
 	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);
-	const again = (await admin.get(`${RECORDS}/${record.id}`)).body;
-	const wait911 = Date.parse(again.next_try_on) - Date.now();
-	assert.ok(wait911 >= 30 * 60_000 - 5000 && wait911 < 60 * 60_000, `next try in ${wait911} ms`);
+	assert.equal((await admin.get(`${RECORDS}/${record.id}`)).body.state, "ok");
+});
+
+it("refuses part of the details for a record that has none saved, enabled or not", async () => {
+	const record = await addOk(noip("partial.example.net"));
+	await api
+		.db("npmpro_ddns_record")
+		.where({ id: record.id })
+		.update({
+			secret: null,
+			enabled: 0,
+			state: "disabled",
+			meta: JSON.stringify({ error_i18n: "error.ddns-secret-missing" }),
+		});
+	const part = await admin.put(`${RECORDS}/${record.id}`, { password: NEW_PASSWORD });
+	assert.equal(part.status, 400, part.text);
+	assert.equal(part.body.error.message_i18n, "error.ddns-preset-incomplete");
+	assert.equal((await admin.get(`${RECORDS}/${record.id}`)).body.secret_set, false);
+	const all = await admin.put(`${RECORDS}/${record.id}`, { username: USER, password: NEW_PASSWORD });
+	assert.equal(all.status, 200, all.text);
+	assert.equal(all.body.secret_set, true);
+	// with details saved, one field alone is a change of that field
+	assert.equal((await admin.put(`${RECORDS}/${record.id}`, { password: PASSWORD })).status, 200);
 });
 
 it("keeps another owner's preset details out of a page export of a user who sees all records", async () => {
@@ -346,4 +394,15 @@ it("keeps another owner's preset details out of a page export of a user who sees
 	assert.deepEqual(full.secret, { username: USER, password: PASSWORD });
 	const adminsFull = JSON.parse(await exportedDdns(admin, adminsOwn.id, true)).npmpro_ddns_record[0];
 	assert.deepEqual(adminsFull.secret, { username: USER, password: PASSWORD });
+});
+
+it("shows the engine's note on a record, and a save with a change drops it", async () => {
+	const record = await addOk(noip("note.example.net"));
+	await api
+		.db("npmpro_ddns_record")
+		.where({ id: record.id })
+		.update({ state: "ok", meta: JSON.stringify({ note_i18n: "ddns.note.resolver-stale" }) });
+	assert.equal((await admin.get(`${RECORDS}/${record.id}`)).body.note_i18n, "ddns.note.resolver-stale");
+	const saved = await admin.put(`${RECORDS}/${record.id}`, { password: NEW_PASSWORD });
+	assert.equal(saved.body.note_i18n, null);
 });

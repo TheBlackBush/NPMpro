@@ -1317,9 +1317,10 @@ describe("porkbun", () => {
 	});
 });
 
+const DYNU_STOPPED = new Set(["nohost", "badauth", "abuse", "!donator"]);
 const dynuWait = (body, retry) => {
 	if (body === "911") return 10 * 60_000;
-	return retry ? undefined : 6 * 60 * 60_000;
+	return retry || DYNU_STOPPED.has(body) ? undefined : 6 * 60 * 60_000;
 };
 
 describe("update-URL presets (namecheap, noip, dynu)", () => {
@@ -1372,7 +1373,7 @@ describe("update-URL presets (namecheap, noip, dynu)", () => {
 			mock.assertNoPendingInterceptors();
 		});
 
-		it("takes ErrCount above 0 as a refusal with the first error text, not retried", async () => {
+		it("takes ErrCount above 0 as a refusal with the first error text that stops the record", async () => {
 			nc()
 				.intercept({ path: pathOf("home"), method: "GET" })
 				.reply(200, xml(1, "<Err1>Passwords do not match</Err1>"));
@@ -1381,7 +1382,8 @@ describe("update-URL presets (namecheap, noip, dynu)", () => {
 				(err) =>
 					err.code === "forbidden" &&
 					err.retry === false &&
-					err.retryAfterMs === 6 * 60 * 60_000 &&
+					err.stop === true &&
+					err.retryAfterMs === undefined &&
 					err.message.includes("Passwords do not match") &&
 					noLeak(err),
 			);
@@ -1440,7 +1442,7 @@ describe("update-URL presets (namecheap, noip, dynu)", () => {
 		const run = (method, args) => call("noip", method, args, secrets);
 		const basic = `Basic ${Buffer.from(`${USER}:${PASSWORD}`).toString("base64")}`;
 		const send = (ipKey = "myip", ip = "5.6.7.8") => ({
-			path: `/nic/update?hostname=home.example.net&${ipKey}=${encodeURIComponent(ip)}`,
+			path: `/nic/update?hostname=home.example.net&${ipKey}=${typeof ip === "string" ? encodeURIComponent(ip) : ip.raw}`,
 			method: "GET",
 			headers: (headers) =>
 				headers.authorization === basic &&
@@ -1460,7 +1462,25 @@ describe("update-URL presets (namecheap, noip, dynu)", () => {
 			mock.assertNoPendingInterceptors();
 		});
 
-		it("tells each failure answer and retries only 911", async () => {
+		it("makes one call per record: a both record sends myip and myipv6 together, an A record myip only", async () => {
+			assert.equal(providerById("noip").oneCall, true);
+			const v6 = encodeURIComponent("2001:db8::1");
+			np()
+				.intercept(send("myip", { raw: `5.6.7.8&myipv6=${v6}` }))
+				.reply(200, "good 5.6.7.8,2001:db8::1");
+			assert.deepEqual(await run("write", { ...base, addresses: { ipv4: "5.6.7.8", ipv6: "2001:db8::1" } }), {
+				meta: {},
+				created: false,
+			});
+			np().intercept(send()).reply(200, "good 5.6.7.8");
+			assert.deepEqual(await run("write", { ...base, addresses: { ipv4: "5.6.7.8" } }), {
+				meta: {},
+				created: false,
+			});
+			mock.assertNoPendingInterceptors();
+		});
+
+		it("tells each failure answer, retries only 911 and stops on the account answers", async () => {
 			const cases = [
 				["nohost", 200, "forbidden", false],
 				["badauth", 401, "forbidden", false],
@@ -1475,9 +1495,9 @@ describe("update-URL presets (namecheap, noip, dynu)", () => {
 					run("write", base),
 					(err) =>
 						err.code === code &&
-						err.retryAfterMs === (body === "911" ? 30 * 60_000 : 6 * 60 * 60_000) &&
 						err.retry === retry &&
-						err.retryAfterMs === (body === "911" ? 30 * 60_000 : 6 * 60 * 60_000) &&
+						err.retryAfterMs === (body === "911" ? 30 * 60_000 : undefined) &&
+						(err.stop === true) === (body !== "911") &&
 						err.message.includes(body) &&
 						err.providerStatus === status,
 					body,
@@ -1559,7 +1579,8 @@ describe("update-URL presets (namecheap, noip, dynu)", () => {
 						err.code === code &&
 						err.retry === retry &&
 						err.message.includes(body) &&
-						err.retryAfterMs === dynuWait(body, retry),
+						err.retryAfterMs === dynuWait(body, retry) &&
+						(err.stop === true) === DYNU_STOPPED.has(body),
 					body,
 				);
 			}

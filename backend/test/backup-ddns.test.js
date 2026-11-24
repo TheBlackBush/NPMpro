@@ -74,9 +74,9 @@ const bothData = (credentials, records) => ({
 	...ddnsData(records),
 });
 
-const merge = async (knex, { data, types = ["ddns"], choices, items, scope = SCOPE }) => {
+const merge = async (knex, { data, types = ["ddns"], choices, items, scope = SCOPE, secrets = true }) => {
 	const instance = { ...(await readInstanceRows(knex)), files: {} };
-	const plan = planMerge({ data, instance, stageFiles: {}, types, items, choices, scope, secrets: true });
+	const plan = planMerge({ data, instance, stageFiles: {}, types, items, choices, scope, secrets });
 	const result = await mergeTypes({
 		knex,
 		data,
@@ -85,7 +85,7 @@ const merge = async (knex, { data, types = ["ddns"], choices, items, scope = SCO
 		importerId: 1,
 		page: scope.page,
 		box,
-		secrets: true,
+		secrets,
 		now: NOW,
 	});
 	return { plan, result };
@@ -664,6 +664,58 @@ it("a preset record restored without its details comes back disabled and asks fo
 		const [kept] = await knex("npmpro_ddns_record");
 		assert.deepEqual(box.decrypt(kept.secret), { username: "me@example.com", password: "PRESET-pass-4321" });
 		assert.equal(Number(kept.enabled), 1);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a merge replace from a backup without secrets keeps the sealed details of a record of the same provider", async () => {
+	const knex = await open();
+	try {
+		await knex("npmpro_ddns_record").insert([
+			customRecord(4, "c.example.com", { state: "ok" }),
+			presetRecord(6, "p.example.com", { state: "ok" }),
+		]);
+		const stripped = TYPES.ddns.secrets.strip(
+			ddnsData([customRecord(5, "c.example.com"), presetRecord(7, "p.example.com")]).ddns,
+		);
+		await merge(knex, {
+			data: { ddns: stripped },
+			choices: { "ddns:5": "replace", "ddns:7": "replace" },
+			secrets: false,
+		});
+		const custom = await knex("npmpro_ddns_record").where({ name: "c.example.com" }).first();
+		assert.equal(custom.id, 4);
+		assert.deepEqual(box.decrypt(custom.secret), {
+			url: "https://dyn.test/u/TOKEN-9876",
+			method: "POST",
+			expect: "good",
+		});
+		assert.equal(Number(custom.enabled), 1);
+		assert.equal(custom.state, "pending");
+		assert.notEqual(JSON.parse(custom.meta).error_i18n, "error.ddns-custom-url-missing");
+		const preset = await knex("npmpro_ddns_record").where({ name: "p.example.com" }).first();
+		assert.deepEqual(box.decrypt(preset.secret), { username: "me@example.com", password: "PRESET-pass-4321" });
+		assert.equal(Number(preset.enabled), 1);
+		assert.equal(preset.state, "pending");
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a merge replace from a backup without secrets onto a record of another provider stores it disabled, asking again", async () => {
+	const knex = await open();
+	try {
+		await knex("npmpro_ddns_record").insert(customRecord(4, "c.example.com", { state: "ok" }));
+		const stripped = TYPES.ddns.secrets.strip(ddnsData([presetRecord(5, "c.example.com")]).ddns);
+		await merge(knex, { data: { ddns: stripped }, choices: { "ddns:5": "replace" }, secrets: false });
+		const [row] = await knex("npmpro_ddns_record");
+		assert.equal(row.id, 4);
+		assert.equal(row.provider, "noip");
+		assert.equal(row.secret, null);
+		assert.equal(Number(row.enabled), 0);
+		assert.equal(row.state, "disabled");
+		assert.equal(JSON.parse(row.meta).error_i18n, "error.ddns-secret-missing");
 	} finally {
 		await knex.destroy();
 	}

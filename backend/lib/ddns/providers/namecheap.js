@@ -6,7 +6,7 @@ import { failAnswer } from "./zone-common.js";
 const ENDPOINT = "https://dynamicdns.park-your-domain.com/update";
 const HINT =
 	"Check the domain and its Dynamic DNS password (Advanced DNS tab), and that the host exists as an A + Dynamic DNS record";
-// an answer about the account: the engine waits at least this long (an edit of the record starts over)
+// an HTTP refusal without an answer document: the engine waits at least this long (an edit of the record starts over)
 const REFUSED_WAIT_MS = 6 * 60 * 60_000;
 const DECLARATION = /^\s*<\?xml[^>]*\?>/iu;
 const ERR_COUNT = /<ErrCount>\s*(?<count>\d+)\s*<\/ErrCount>/iu;
@@ -53,7 +53,10 @@ export default {
 	zoneless: true,
 	preset: true,
 	read: () => Promise.resolve(null),
-	/** A 2xx answer with ErrCount 0 is a success; ErrCount above 0 is a refusal with its first message */
+	/**
+	 * A 2xx answer with ErrCount 0 is a success; ErrCount above 0 is a refusal with its first message (a wrong password,
+	 * a host that is not a Dynamic DNS record, a domain that is not active), which stops the record until the user acts
+	 */
 	async write({ name, type, ip, fields, fetch, meta }) {
 		const secrets = presetSecrets(fields);
 		if (type !== "A") {
@@ -86,7 +89,7 @@ export default {
 				code: "forbidden",
 				message: `Access refused (${res.status}): ${answer.message ?? "Namecheap reported an error"}`,
 				retry: false,
-				retryAfterMs: REFUSED_WAIT_MS,
+				stop: true,
 				secrets,
 			});
 		}
