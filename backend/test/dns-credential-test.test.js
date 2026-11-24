@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { DdnsProviderError } from "../lib/ddns/errors.js";
 import cloudflare from "../lib/ddns/providers/cloudflare.js";
+import desec from "../lib/ddns/providers/desec.js";
 import digitalocean from "../lib/ddns/providers/digitalocean.js";
 import gandi from "../lib/ddns/providers/gandi.js";
 import hetzner from "../lib/ddns/providers/hetzner-cloud.js";
 import ovh from "../lib/ddns/providers/ovh.js";
+import porkbun from "../lib/ddns/providers/porkbun.js";
 import { testCredential } from "../lib/dns-check/credential-test.js";
 
 const TOKEN = "do-token-1234567890";
@@ -80,19 +82,6 @@ describe("testCredential", () => {
 		assert.equal(calls.length, 1);
 	});
 
-	it("counts a record read of an unknown zone (404) as works", async () => {
-		const result = await run(
-			[
-				[ZONES, page],
-				[RECORDS, { status: 404, json: { message: "not found" } }],
-			],
-			{
-				domains: ["example.com"],
-			},
-		);
-		assert.equal(result.state, "works");
-	});
-
 	it("maps 401 and 403 of DigitalOcean to wrong-key and missing-right with the right named", async () => {
 		const wrong = await run([[ZONES, { status: 401, json: { message: `bad ${TOKEN}` } }]]);
 		assert.equal(wrong.state, "wrong-key");
@@ -133,6 +122,76 @@ describe("testCredential", () => {
 		});
 		assert.equal(gandi401.state, "wrong-key");
 		assert.equal(ovh.apex, false);
+	});
+
+	it("makes no record read for OVH, which has no apex read", async () => {
+		const calls = [];
+		const result = await testCredential({
+			provider: ovh,
+			fields: {
+				dns_ovh_endpoint: "ovh-eu",
+				dns_ovh_application_key: "ak-12345",
+				dns_ovh_application_secret: "as-12345",
+				dns_ovh_consumer_key: "ck-12345",
+			},
+			secrets: ["as-12345", "ck-12345"],
+			domains: ["example.com"],
+			fetch: fakeFetch(
+				[
+					["https://eu.api.ovh.com/1.0/auth/time", { json: 1700000000 }],
+					["https://eu.api.ovh.com/1.0/domain/zone", { json: ["example.com"] }],
+				],
+				calls,
+			),
+		});
+		assert.equal(result.state, "works");
+		assert.ok(
+			calls.every((url) => !url.includes("/record")),
+			calls.join(" "),
+		);
+	});
+
+	it("says refused for a 403 of OVH and deSEC, missing-right for Porkbun 403 and wrong-key for 400", async () => {
+		const any = (status) =>
+			fakeFetch([["https://", { status, json: { message: "no", status: "ERROR", code: "INVALID_API_KEYS" } }]]);
+		const ovhFields = {
+			dns_ovh_endpoint: "ovh-eu",
+			dns_ovh_application_key: "ak-12345",
+			dns_ovh_application_secret: "as-12345",
+			dns_ovh_consumer_key: "ck-12345",
+		};
+		const ovh403 = await testCredential({ provider: ovh, fields: ovhFields, secrets: [], fetch: any(403) });
+		assert.equal(ovh403.state, "refused");
+		const desec403 = await testCredential({
+			provider: desec,
+			fields: { dns_desec_token: "desec-token-1234" },
+			secrets: [],
+			fetch: any(403),
+		});
+		assert.equal(desec403.state, "refused");
+		const pb = { dns_porkbun_key: "pk-12345", dns_porkbun_secret: "sk-12345" };
+		assert.equal(
+			(await testCredential({ provider: porkbun, fields: pb, secrets: [], fetch: any(403) })).state,
+			"missing-right",
+		);
+		assert.equal(
+			(await testCredential({ provider: porkbun, fields: pb, secrets: [], fetch: any(400) })).state,
+			"wrong-key",
+		);
+	});
+
+	it("maps a zone the account does not have (404 of a record read) to failed for DigitalOcean", async () => {
+		const result = await run(
+			[
+				[ZONES, page],
+				[RECORDS, { status: 404, json: { message: "not found" } }],
+			],
+			{
+				domains: ["example.com"],
+			},
+		);
+		assert.equal(result.state, "failed");
+		assert.ok(result.message.length > 0);
 	});
 
 	it("maps Hetzner 401 and 403", async () => {
@@ -192,6 +251,25 @@ describe("testCredential", () => {
 			]),
 		});
 		assert.equal(result.state, "refused");
+	});
+
+	it("rethrows a bug in the Cloudflare verify call instead of reading it as refused", async () => {
+		const token = "cf-token-1234567890";
+		await assert.rejects(
+			testCredential({
+				provider: cloudflare,
+				fields: { dns_cloudflare_api_token: token },
+				secrets: [token],
+				fetch: fakeFetch([
+					[
+						"https://api.cloudflare.com/client/v4/zones",
+						{ status: 403, json: { success: false, errors: [{ code: 9109, message: "Invalid" }] } },
+					],
+					["https://api.cloudflare.com/client/v4/user/tokens/verify", new TypeError("bug")],
+				]),
+			}),
+			TypeError,
+		);
 	});
 
 	it("maps timeout and network to unreachable, blocked to blocked, the rest to failed", async () => {

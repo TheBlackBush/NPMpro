@@ -37,14 +37,7 @@ const testCredential = async ({ provider, fields, secrets, domains = [], fetch =
 		zonesSeen = zones.length;
 		const [apex] = domains;
 		if (typeof apex === "string" && typeof provider.read === "function" && provider.apex !== false) {
-			try {
-				await provider.read({ zone: apex, name: apex, type: "A", fields, fetch: call, meta: {} });
-			} catch (error) {
-				// a zone the provider does not know under this name: the read right is not what failed
-				if (!(error?.name === "DdnsProviderError" && error.code === "failed" && error.providerStatus === 404)) {
-					throw error;
-				}
-			}
+			await provider.read({ zone: apex, name: apex, type: "A", fields, fetch: call, meta: {} });
 		}
 		return { supported: true, state: "works", zones_seen: zonesSeen, needs: null, message: null };
 	} catch (error) {
@@ -56,7 +49,8 @@ const testCredential = async ({ provider, fields, secrets, domains = [], fetch =
 			if (state === "refused" && typeof provider.verifyRefusal === "function") {
 				try {
 					state = await provider.verifyRefusal({ fields, fetch: call });
-				} catch {
+				} catch (verifyError) {
+					if (verifyError?.name !== "DdnsProviderError") throw verifyError;
 					state = "refused";
 				}
 			}

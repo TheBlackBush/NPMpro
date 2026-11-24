@@ -1,6 +1,6 @@
 import { createColumnHelper } from "@tanstack/react-table";
 import { Activity, Eye, KeyRound, Plus, SquarePen, Trash2 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { useAppTable } from "src/components/Table/useAppTable";
@@ -87,11 +87,17 @@ function DnsCredentialActions({ credential, onDelete, onEdit }) {
 	const { data: providers } = useDnsProviders();
 	const { mutateAsync: testCredential } = useTestDnsCredential();
 	const supported = providers?.find((p) => p.id === credential.provider)?.listsDomains === true;
+	const running = useRef(false);
 	const test = async () => {
+		// a second select while a test of this credential runs sends nothing
+		if (running.current) return;
+		running.current = true;
 		try {
 			showTestResult(credential, await testCredential(credential.id));
 		} catch (err) {
 			showApiError(err);
+		} finally {
+			running.current = false;
 		}
 	};
 	const inUse = (credential.certificates?.length ?? 0) > 0;

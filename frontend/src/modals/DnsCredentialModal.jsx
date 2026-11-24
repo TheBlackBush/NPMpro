@@ -1,5 +1,5 @@
 import { Activity } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
 import {
 	ApiErrorContent,
@@ -157,8 +157,20 @@ function TestCredential({ id, supported }) {
 	const [failure, setFailure] = useState(null);
 	const { disabled, reasonId } = testAvailability({ supported, dirty: isDirty });
 	const shown = testStateOf(answer);
+	const running = useRef(false);
+
+	// a changed form: the result no longer describes what is shown
+	useEffect(() => {
+		if (isDirty) {
+			setAnswer(null);
+			setFailure(null);
+		}
+	}, [isDirty]);
 
 	const run = async () => {
+		// the button keeps focus while a test runs, so a second click is refused here
+		if (running.current) return;
+		running.current = true;
 		setFailure(null);
 		try {
 			setAnswer(await mutateAsync(id));
@@ -166,6 +178,8 @@ function TestCredential({ id, supported }) {
 			setAnswer(null);
 			setFailure(<ApiErrorContent error={err} />);
 			showApiError(err);
+		} finally {
+			running.current = false;
 		}
 	};
 
@@ -176,7 +190,8 @@ function TestCredential({ id, supported }) {
 					variant="outline"
 					size="sm"
 					onClick={run}
-					disabled={disabled || isPending}
+					disabled={disabled}
+					aria-busy={isPending}
 					aria-describedby={reasonId ? "dnsCredentialTestNote" : undefined}
 				>
 					<Activity aria-hidden="true" />

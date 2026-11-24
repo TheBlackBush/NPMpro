@@ -77,7 +77,10 @@ it("reads the first domain's apex record after the zone page", async () => {
 		success: true,
 		result: [{ id: "z1", name: "read.example" }],
 	});
-	intercept("/client/v4/zones/z1/dns_records?type=A&name.exact=read.example", 200, { success: true, result: [] });
+	intercept(["/client/v4/zones/z1/dns_records", "?type=A&name.exact=read.example"].join(""), 200, {
+		success: true,
+		result: [],
+	});
 	const res = await admin.post(url(mine.id));
 	assert.equal(res.status, 200, res.text);
 	assert.equal(res.body.state, "works");
@@ -158,4 +161,14 @@ it("hides another owner's credential with 404 and an unknown id", async () => {
 	const own = await api.limited({ visibility: "user", certificates: "manage" });
 	assert.equal((await own.post(url(mine.id))).status, 404);
 	assert.equal((await admin.post(url(999999))).status, 404);
+});
+
+it("answers the decrypt error for a credential that cannot be decrypted, without any request", async () => {
+	const mine = await credential(admin);
+	await api.db("npmpro_dns_credential").where({ id: mine.id }).update({ values: "v1:bad:bad:bad" });
+	zones(["x.example"]);
+	const res = await admin.post(url(mine.id));
+	assert.equal(res.status, 400, res.text);
+	assert.ok(res.body.error.message.includes("cannot be decrypted"));
+	assert.ok(await untouched(), "no request was made");
 });
