@@ -1,0 +1,201 @@
+{
+	"type": "object",
+	"description": "The effective Dynamic DNS settings: each value, the fields an environment variable sets, and when a change takes effect",
+	"additionalProperties": false,
+	"required": [
+		"period",
+		"cooldown",
+		"ipv4_services",
+		"ipv6_services",
+		"resolver",
+		"locked",
+		"locked_by",
+		"locked_reason",
+		"applies",
+		"restart_pending"
+	],
+	"properties": {
+		"period": {
+			"type": "string",
+			"pattern": "^(?:[0-9]+|(?:[0-9]+w)?(?:[0-9]+d)?(?:[0-9]+h)?(?:[0-9]+m)?(?:[0-9]+s)?)$",
+			"minLength": 1,
+			"maxLength": 32,
+			"description": "How often the dynamic DNS records are checked, a time from 1m to 24h such as 5m or 1h30m (env DDNS_PERIOD); a change restarts the timer",
+			"example": "5m"
+		},
+		"cooldown": {
+			"type": "string",
+			"pattern": "^(?:[0-9]+|(?:[0-9]+w)?(?:[0-9]+d)?(?:[0-9]+h)?(?:[0-9]+m)?(?:[0-9]+s)?)$",
+			"minLength": 1,
+			"maxLength": 32,
+			"description": "The shortest time between two changes of one record, a time from 1m to 24h (env DDNS_COOLDOWN)",
+			"example": "5m"
+		},
+		"ipv4_services": {
+			"type": "array",
+			"minItems": 1,
+			"maxItems": 10,
+			"items": {
+				"type": "string",
+				"minLength": 9,
+				"maxLength": 200,
+				"pattern": "^https://"
+			},
+			"description": "The services asked for the instance's public IPv4 address, https:// URLs; a new list needs at least 2, since a new address counts only when a second service confirms it (a stored list of one is kept while a save leaves it unchanged); a literal address the server may not call, or a name that resolves to one, is refused (env DDNS_IPV4_SERVICES)",
+			"example": [
+				"https://api.ipify.org",
+				"https://ipv4.icanhazip.com",
+				"https://v4.ident.me"
+			]
+		},
+		"ipv6_services": {
+			"type": "array",
+			"minItems": 1,
+			"maxItems": 10,
+			"items": {
+				"type": "string",
+				"minLength": 9,
+				"maxLength": 200,
+				"pattern": "^https://"
+			},
+			"description": "The services asked for the instance's public IPv6 address, https:// URLs; a new list needs at least 2, since a new address counts only when a second service confirms it (a stored list of one is kept while a save leaves it unchanged); a literal address the server may not call, or a name that resolves to one, is refused (env DDNS_IPV6_SERVICES)",
+			"example": [
+				"https://api6.ipify.org",
+				"https://ipv6.icanhazip.com",
+				"https://v6.ident.me"
+			]
+		},
+		"resolver": {
+			"type": "array",
+			"maxItems": 8,
+			"items": {
+				"type": "string",
+				"minLength": 1,
+				"maxLength": 64
+			},
+			"description": "DNS servers the updater asks for a record's current address, IPv4 addresses or IPv6 addresses in brackets with an optional :port; empty uses the container's own resolvers (env DDNS_RESOLVER)",
+			"example": [
+				"1.1.1.1"
+			]
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"period",
+					"cooldown",
+					"ipv4_services",
+					"ipv6_services",
+					"resolver"
+				]
+			},
+			"description": "Fields that cannot be changed because an environment variable sets them (see locked_by). A save ignores them (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"description": "For each locked field, the environment variable that sets it (read only)",
+			"additionalProperties": false,
+			"properties": {
+				"period": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the period: DDNS_PERIOD"
+				},
+				"cooldown": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the cooldown: DDNS_COOLDOWN"
+				},
+				"ipv4_services": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the ipv4 services: DDNS_IPV4_SERVICES"
+				},
+				"ipv6_services": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the ipv6 services: DDNS_IPV6_SERVICES"
+				},
+				"resolver": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the resolver: DDNS_RESOLVER"
+				}
+			}
+		},
+		"locked_reason": {
+			"type": "object",
+			"description": "Always empty: no field of this section is locked by the variable of another setting",
+			"additionalProperties": false,
+			"properties": {}
+		},
+		"applies": {
+			"type": "object",
+			"description": "When a change of each field takes effect",
+			"additionalProperties": false,
+			"required": [
+				"period",
+				"cooldown",
+				"ipv4_services",
+				"ipv6_services",
+				"resolver"
+			],
+			"properties": {
+				"period": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					],
+					"description": "When a change of the period takes effect: on save, without a reload"
+				},
+				"cooldown": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					],
+					"description": "When a change of the cooldown takes effect: on save, without a reload"
+				},
+				"ipv4_services": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					],
+					"description": "When a change of the ipv4 services takes effect: on save, without a reload"
+				},
+				"ipv6_services": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					],
+					"description": "When a change of the ipv6 services takes effect: on save, without a reload"
+				},
+				"resolver": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					],
+					"description": "When a change of the resolver takes effect: on save, without a reload"
+				}
+			}
+		},
+		"restart_pending": {
+			"type": "array",
+			"description": "Always empty: every Dynamic DNS setting applies without a container restart",
+			"items": {
+				"type": "string"
+			},
+			"maxItems": 0
+		}
+	}
+}

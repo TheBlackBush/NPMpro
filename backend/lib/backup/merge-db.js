@@ -23,6 +23,7 @@ const ROW_ACTIONS = {
 	users: new Set(["add", "replace", "existing", "skip"]),
 	link: new Set(["add", "existing", "skip"]),
 	host: new Set(["add", "replace", "skip"]),
+	record: new Set(["add", "replace", "skip"]),
 	setting: new Set(["take", "keep"]),
 	schedule: new Set(["add", "keep", "take"]),
 };
@@ -38,6 +39,7 @@ const LINKS = {
 	npmpro_mtls_certificate_id: ["certificate", 0],
 	access_list_id: ["access_list", 0],
 	npmpro_dns_credential_id: ["npmpro_dns_credential", null],
+	dns_credential_id: ["npmpro_dns_credential", null],
 	[`${LINK_TABLE}.access_list_id`]: ["access_list", null],
 };
 const HOST_LINKS = ["certificate_id", "npmpro_mtls_certificate_id", "access_list_id"];
@@ -57,6 +59,7 @@ const isLink = (value) => Number(value) > 0;
 const kindOf = (typeId) => {
 	if (typeId === SCHEDULE_TYPE) return "schedule";
 	if (typeId === "users") return "users";
+	if (typeId === "ddns") return "record";
 	if (LINK_TYPES.includes(typeId)) return "link";
 	return HOST_TYPES.includes(typeId) ? "host" : "setting";
 };
@@ -374,6 +377,51 @@ const mergeTypes = async ({
 			count(item.type);
 		};
 
+		// a DDNS record is written through its credential: the plan skips one whose credential is not added or matched,
+		// and so does the apply; it restarts like a restored one (the next cycle checks it)
+		const skippedRecords = [];
+		const writeRecord = async (item) => {
+			if (item.action === "skip") return;
+			const { table } = ITEM_TYPES.ddns;
+			const source = rowOf(item);
+			const hasCredential = isLink(source.dns_credential_id);
+			const credentialId = hasCredential ? maps.npmpro_dns_credential.get(key(source.dns_credential_id)) : null;
+			if (credentialId === undefined) {
+				skippedRecords.push({ name: source.name, why: "its DNS credential is not here" });
+				return;
+			}
+			// a record only joins a credential of its own provider, and belongs to the credential's owner
+			const credential =
+				credentialId === null
+					? null
+					: await trx("npmpro_dns_credential").where({ id: credentialId }).first("provider", "owner_user_id");
+			if (credential && credential.provider !== source.provider) {
+				skippedRecords.push({ name: source.name, why: "its DNS credential is of another provider" });
+				return;
+			}
+			// a record without a credential (the custom provider): a replaced one stays with its owner
+			let recordOwner = credential?.owner_user_id;
+			if (!credential) {
+				const target =
+					item.action === "replace"
+						? await trx(table).where({ id: item.target.id }).first("owner_user_id")
+						: null;
+				recordOwner = target ? target.owner_user_id : ownerOf(source.owner_user_id);
+			}
+			const [row] = TYPES.ddns.restoreRows({
+				[table]: [{ ...source, dns_credential_id: credentialId, owner_user_id: recordOwner }],
+			})[table];
+			let recordId;
+			if (item.action === "add") {
+				recordId = await inserter.insertWithNewId(table, row);
+			} else {
+				recordId = item.target.id;
+				await updateRow(table, recordId, row);
+			}
+			maps[table].set(key(item.id), recordId);
+			count(item.type);
+		};
+
 		const settingIds = new Map();
 		const writeSetting = async (item) => {
 			if (item.action === "keep") return;
@@ -443,11 +491,15 @@ const mergeTypes = async ({
 				}
 			} else if (kind === "link") await writeLinked(item);
 			else if (kind === "host") await writeHost(item);
+			else if (kind === "record") await writeRecord(item);
 			else if (kind === "schedule") await writeSchedule(item);
 			else await writeSetting(item);
 		}
 		if (skippedDomains.length > 0) {
 			logger.info(`Merge: ${skippedDomains.length} DNS domain(s) skipped, their owner keeps the name already`);
+		}
+		if (skippedRecords.length > 0) {
+			logger.info(`Merge: ${skippedRecords.length} DDNS record(s) skipped, their DNS credential does not fit`);
 		}
 		return {
 			counts,
@@ -457,6 +509,7 @@ const mergeTypes = async ({
 			avatarMoves,
 			cleared: cleared.size,
 			skipped_domains: skippedDomains,
+			skipped_records: skippedRecords,
 		};
 	});
 };

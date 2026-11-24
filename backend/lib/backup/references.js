@@ -3,10 +3,11 @@
 // npmpro_mtls_certificate_id are NOT NULL DEFAULT 0 columns, npmpro_dns_credential_id is nullable.
 
 const HOST_TABLES = ["proxy_host", "redirection_host", "dead_host", "stream"];
-const OWNED_TABLES = [...HOST_TABLES, "certificate", "access_list", "npmpro_dns_credential"];
+const OWNED_TABLES = [...HOST_TABLES, "certificate", "access_list", "npmpro_dns_credential", "npmpro_ddns_record"];
 const LINK_TABLE = "npmpro_proxy_host_access_list";
 const CREDENTIAL_TABLE = "npmpro_dns_credential";
 const DOMAIN_TABLE = "npmpro_dns_domain";
+const RECORD_TABLE = "npmpro_ddns_record";
 // npmpro_dns_credential.name is a varchar(255), unique per owner
 const MAX_NAME = 255;
 
@@ -57,6 +58,40 @@ const splitOrphanDomains = (domains, credentials) => {
 	for (const row of domains) {
 		if (credentialIds.has(key(row.dns_credential_id))) kept.push(row);
 		else orphans.push(domainChange(row, `DNS domain ${row.name}: credential #${row.dns_credential_id} not found`));
+	}
+	return { kept, orphans };
+};
+
+const recordChange = (row, why) => ({
+	table: RECORD_TABLE,
+	id: row.id,
+	column: "*",
+	remove: true,
+	from: row.dns_credential_id,
+	to: null,
+	label: `DDNS record ${row.name}: DNS credential #${row.dns_credential_id} ${why}`,
+});
+
+/**
+ * The DDNS record rows whose credential is not in the given credential rows, or belongs to another provider than the
+ * record, as removals with their note. The owner is not compared: a record belongs to its credential's owner (who sees
+ * it follows the credential). A record without a credential (the custom provider) has nothing to resolve.
+ *
+ * @param   {Array<Object>}  records
+ * @param   {Array<Object>}  credentials
+ * @returns {{ kept: Array<Object>, orphans: Array<Object> }}
+ */
+const splitOrphanRecords = (records, credentials) => {
+	const byId = new Map((credentials ?? []).map((row) => [key(row.id), row]));
+	const kept = [];
+	const orphans = [];
+	for (const row of records ?? []) {
+		const value = row.dns_credential_id;
+		const credential = byId.get(key(value));
+		if (value === null || value === undefined) kept.push(row);
+		else if (!credential) orphans.push(recordChange(row, "not found"));
+		else if (credential.provider !== row.provider) orphans.push(recordChange(row, "is of another provider"));
+		else kept.push(row);
 	}
 	return { kept, orphans };
 };
@@ -159,6 +194,9 @@ const planReferences = ({ finalRows, adminUserId }) => {
 		}
 	}
 
+	// the DDNS records: one whose credential is gone is removed (the engine has nothing to write it with)
+	changes.push(...splitOrphanRecords(rows(RECORD_TABLE), rows(CREDENTIAL_TABLE)).orphans);
+
 	// the domains: a name is kept once per owner, on the credential with the lowest id (a credential handed to the admin
 	// may now share an owner with one that has the name)
 	const { kept, orphans } = splitOrphanDomains(rows(DOMAIN_TABLE), rows(CREDENTIAL_TABLE));
@@ -217,4 +255,4 @@ const applyReferences = async (trx, changes) => {
 	for (const { table, id, values } of updates.values()) await trx(table).where({ id }).update(values);
 };
 
-export { applyReferences, freeName, planReferences, splitOrphanDomains };
+export { applyReferences, freeName, planReferences, splitOrphanDomains, splitOrphanRecords };

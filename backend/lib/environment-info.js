@@ -98,6 +98,7 @@ const LOCK_GROUP_ORDER = [
 	"monitoring",
 	"geoip",
 	"advanced",
+	"ddns",
 ];
 
 /**

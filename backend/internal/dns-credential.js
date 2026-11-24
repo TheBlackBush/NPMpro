@@ -6,6 +6,7 @@ import errs from "../lib/error.js";
 import { rooted } from "../lib/paths.js";
 import { defaultSecretBox, SecretBoxError } from "../lib/secret-box.js";
 import certificateModel from "../models/certificate.js";
+import ddnsRecordModel from "../models/ddns_record.js";
 import dnsCredentialModel from "../models/dns_credential.js";
 import internalAuditLog from "./audit-log.js";
 import internalDnsDomain from "./dns-domain.js";
@@ -121,6 +122,7 @@ const internalDnsCredential = {
 				if (provider !== row.provider && (await internalDnsCredential.countCertificates(row.id, trx)) > 0) {
 					throw new errs.ValidationError("The provider cannot change while certificates use this credential");
 				}
+				if (provider !== row.provider) await internalDnsCredential.assertNoDdnsRecords(row.id, trx);
 				if (data.name !== undefined && data.name !== row.name) {
 					await internalDnsCredential.assertNameFree(row.owner_user_id, data.name, trx);
 				}
@@ -153,6 +155,7 @@ const internalDnsCredential = {
 				const inUse = await internalDnsCredential.countCertificates(row.id, trx);
 				if (inUse > 0)
 					throw new errs.ValidationError(`DNS credential is still used by ${inUse} certificate(s)`);
+				await internalDnsCredential.assertNoDdnsRecords(row.id, trx);
 				const names = await internalDnsDomain.namesOf(row.id, trx);
 				await internalDnsDomain.removeAllLocked(row.id, trx);
 				await dnsCredentialModel.query(trx).deleteById(row.id);
@@ -169,6 +172,18 @@ const internalDnsCredential = {
 	},
 
 	countCertificates: (id, trx) => certificateModel.query(trx).where("npmpro_dns_credential_id", id).resultSize(),
+
+	// a credential that dynamic DNS records use keeps its provider and cannot be deleted
+	assertNoDdnsRecords: async (id, trx) => {
+		const count = await ddnsRecordModel.query(trx).where("dns_credential_id", id).resultSize();
+		if (count > 0) {
+			throw new errs.ValidationError(
+				`The DNS credential is still used by ${count} dynamic DNS record(s)`,
+				"error.dns-credential-in-use-ddns",
+				{ values: { count } },
+			);
+		}
+	},
 
 	assertNameFree: async (ownerUserId, name, trx) => {
 		const taken = await dnsCredentialModel.query(trx).where({ owner_user_id: ownerUserId, name }).resultSize();

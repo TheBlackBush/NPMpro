@@ -58,9 +58,9 @@ const manifestView = ({ files: _files, ...rest }) => rest;
 
 /**
  * Everything it touches is in deps: knex, box (secret box), dataDir, store (createBackupStore), dbVersion,
- * dbMigrations, npmproVersion, instanceKey, audit, nginx { test, reload }, renewals { pause, resume }, regenerate,
- * runtime, hostname, and the optional reloadSettings, dnsCredentials { write, remove }, exclusive (the runtime
- * settings queue), maxUpload, maxImport, clock { now } and log.
+ * dbMigrations, npmproVersion, instanceKey, audit, nginx { test, reload }, renewals { pause, resume },
+ * ddns { pause, resume }, regenerate, runtime, hostname, and the optional reloadSettings,
+ * dnsCredentials { write, remove }, exclusive (the runtime settings queue), maxUpload, maxImport, clock { now } and log.
  */
 const createBackupService = ({
 	knex,
@@ -74,6 +74,7 @@ const createBackupService = ({
 	audit,
 	nginx,
 	renewals,
+	ddns,
 	regenerate,
 	runtime,
 	reloadSettings = {},
@@ -120,6 +121,7 @@ const createBackupService = ({
 		audit,
 		nginx,
 		renewals,
+		ddns,
 		regenerate,
 		runtime,
 		reloadSettings,
@@ -432,7 +434,13 @@ const createBackupService = ({
 					// outside the runtime queue: a running renewal queues its stapling recovery there and must be able
 					// to finish before the pause returns
 					await renewals.pause();
-					return await exclusive(() => runRestore({ access, adminUserId, entry, types: chosen }));
+					// the dynamic DNS cycle is awaited too; resumed first, in reverse order of the pauses
+					await ddns.pause();
+					try {
+						return await exclusive(() => runRestore({ access, adminUserId, entry, types: chosen }));
+					} finally {
+						ddns.resume();
+					}
 				} finally {
 					renewals.resume();
 					await withoutStage(entry.stageDir);

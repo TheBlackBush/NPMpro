@@ -35,6 +35,7 @@ const SECTION_OF_GROUP = {
 	monitoring: "monitoring",
 	geoip: "geoip",
 	advanced: "advanced",
+	ddns: "dynamic-dns",
 };
 
 // the label of each setting, the same text as in its settings section
@@ -72,6 +73,11 @@ const LABELS = {
 	"certificates/custom_ocsp_stapling": "settings.certificates.custom-ocsp-stapling",
 	"certificates/default_certificate_id": "settings.certificates.default-certificate",
 	"certificates/ech_rotation_interval": "settings.certificates.ech-interval",
+	"ddns/period": "settings.dynamic-dns.period",
+	"ddns/cooldown": "settings.dynamic-dns.cooldown",
+	"ddns/ipv4_services": "settings.dynamic-dns.ipv4-services",
+	"ddns/ipv6_services": "settings.dynamic-dns.ipv6-services",
+	"ddns/resolver": "settings.dynamic-dns.resolver",
 	"network/trusted_ips": "settings.network.trusted-ips",
 	"network/trust_cloudflare": "settings.network.trust-cloudflare",
 	"nginx/worker_processes": "settings.nginx.workers",

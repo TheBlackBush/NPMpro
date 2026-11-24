@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
+import { DEFAULT_IPV4_SERVICES, DEFAULT_IPV6_SERVICES } from "../lib/ddns/public-ip.js";
+import { ddnsSettingsOf } from "../lib/ddns/settings.js";
 import {
 	ACME_ENV_KEYS,
 	ENVIRONMENT_GROUPS,
@@ -12,6 +14,7 @@ import {
 } from "../lib/environment-info.js";
 import { mergeMonitoringConfig } from "../lib/monitoring-rules.js";
 import { isResolverAddress } from "../lib/resolver-address.js";
+import { createRuntimeConfig } from "../lib/runtime-config.js";
 import { RUNTIME_RULES } from "../lib/runtime-rule-table.js";
 import { RUNTIME_ENV_NAMES, userSetEnvNames } from "../lib/runtime-rules.js";
 
@@ -483,4 +486,81 @@ it("lists Write log files as locked by CROWDSEC_ENABLED like GOA, and not when C
 		{ group: "logs", key: "write_log_files", env: "CROWDSEC_ENABLED", reason: "crowdsec" },
 	]);
 	assert.deepEqual(lock("crowdsec-setting").locked_runtime, []);
+});
+
+it("lists the DDNS names as runtime names, each locking its own ddns key", () => {
+	const listed = RUNTIME_LINE.exec(readFileSync(ENVS_SH, "utf8"))?.groups.names.split(" ") ?? [];
+	for (const [key, env] of [
+		["period", "DDNS_PERIOD"],
+		["cooldown", "DDNS_COOLDOWN"],
+		["ipv4_services", "DDNS_IPV4_SERVICES"],
+		["ipv6_services", "DDNS_IPV6_SERVICES"],
+		["resolver", "DDNS_RESOLVER"],
+	]) {
+		assert.ok(RUNTIME_ENV_NAMES.includes(env), env);
+		assert.ok(listed.includes(env), env);
+		assert.deepEqual(environmentInfo({}, [{ group: "ddns", key }]).locked_runtime, [
+			{ group: "ddns", key, env, reason: null },
+		]);
+	}
+});
+
+it("envs.sh has no check for a DDNS_ variable: an invalid value never stops the start", () => {
+	const text = readFileSync(ENVS_SH, "utf8");
+	// only the runtime names list mentions them: no export, no check, no sleep inf for them
+	assert.deepEqual(
+		text.split("\n").filter((line) => line.includes("DDNS_") && !line.startsWith("NPMPRO_RUNTIME_ENVS=")),
+		[],
+	);
+});
+
+it("drops an invalid DDNS_ env value, falls back to the default and logs one warning at startup", async () => {
+	const bad = {
+		DDNS_PERIOD: "30s",
+		DDNS_COOLDOWN: "soon",
+		DDNS_IPV4_SERVICES: "http://a.example",
+		DDNS_IPV6_SERVICES: "nope",
+		DDNS_RESOLVER: "dns.example",
+	};
+	const env = { ...bad, NPMPRO_USER_ENV: Object.keys(bad).join(" ") };
+	const warnings = [];
+	const config = createRuntimeConfig({
+		readStored: async () => ({}),
+		env,
+		log: { warn: (line) => warnings.push(line) },
+	});
+	const { values, locked } = await config.getRuntimeConfig("ddns");
+	assert.equal(values.period, "5m");
+	assert.equal(values.cooldown, "5m");
+	assert.deepEqual(values.ipv4_services, DEFAULT_IPV4_SERVICES);
+	assert.deepEqual(values.ipv6_services, DEFAULT_IPV6_SERVICES);
+	assert.deepEqual(values.resolver, []);
+	assert.deepEqual(locked, []);
+	assert.deepEqual(
+		warnings,
+		["period", "cooldown", "ipv4_services", "ipv6_services", "resolver"].map(
+			(key) =>
+				`Runtime setting ddns.${key}: the env value cannot be used, the stored value or the default applies`,
+		),
+	);
+	await config.getRuntimeConfig("ddns");
+	assert.equal(warnings.length, 5);
+});
+
+it("gives the updater the stored value an invalid DDNS_ env value leaves in place, like the view", async () => {
+	const env = { DDNS_COOLDOWN: "30s", NPMPRO_USER_ENV: "DDNS_COOLDOWN" };
+	const warnings = [];
+	const config = createRuntimeConfig({
+		readStored: async () => ({ cooldown: "20m" }),
+		env,
+		log: { warn: (line) => warnings.push(line) },
+	});
+	const view = await config.getRuntimeConfig("ddns");
+	assert.equal(view.values.cooldown, "20m");
+	assert.deepEqual(view.locked, []);
+	assert.equal(ddnsSettingsOf(config.effectiveEnv()).cooldownMs, 20 * 60_000);
+	await config.getRuntimeConfig("ddns");
+	assert.deepEqual(warnings, [
+		"Runtime setting ddns.cooldown: the env value cannot be used, the stored value or the default applies",
+	]);
 });

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
 	appendEntries,
 	canCreate,
+	commitTyped,
 	createFirstActive,
 	exactFirst,
 	filterOptions,
@@ -13,6 +14,7 @@ import {
 	partitionEntries,
 	removeLast,
 	splitEntries,
+	tabStep,
 } from "./Combobox.js";
 import { domainSuggestions } from "./DomainSuggestions.js";
 
@@ -202,4 +204,28 @@ describe("createFirstActive", () => {
 		assert.equal(createFirstActive({ ...base, keys: [], query: "" }), "");
 		assert.equal(createFirstActive({ ...base, keys: [], query: "a.example.com" }), "");
 	});
+});
+
+it("commitTyped takes valid typed text, refuses the rest and ignores a field that cannot take it", () => {
+	const valid = (text) => text.endsWith(".test");
+	assert.deepEqual(commitTyped({ text: " a.test ", creatable: true, locked: false, isValidNew: valid }), {
+		value: "a.test",
+	});
+	assert.deepEqual(commitTyped({ text: "nope", creatable: true, locked: false, isValidNew: valid }), {
+		refused: ["nope"],
+	});
+	assert.deepEqual(commitTyped({ text: "x", creatable: true, locked: false }), { value: "x" });
+	assert.equal(commitTyped({ text: "  ", creatable: true, locked: false }), null);
+	assert.equal(commitTyped({ text: "a.test", creatable: false, locked: false }), null);
+	assert.equal(commitTyped({ text: "a.test", creatable: true, locked: true }), null);
+});
+
+it("tabStep commits typed text with a commitRef and keeps refused text; without one Tab drops it", () => {
+	const valid = (text) => text.endsWith(".test");
+	const base = { commits: true, creatable: true, locked: false, isValidNew: valid };
+	assert.deepEqual(tabStep({ ...base, text: " home.a.test " }), { value: "home.a.test" });
+	assert.equal(tabStep({ ...base, text: "bad name" }), "keep");
+	assert.equal(tabStep({ ...base, text: "" }), "keep");
+	assert.equal(tabStep({ ...base, locked: true, text: "a.test" }), "keep");
+	assert.equal(tabStep({ ...base, commits: false, text: "a.test" }), "clear");
 });

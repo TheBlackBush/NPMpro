@@ -112,7 +112,8 @@
 							"logs",
 							"monitoring",
 							"geoip",
-							"advanced"
+							"advanced",
+							"ddns"
 						],
 						"description": "The settings section the locked setting belongs to"
 					},

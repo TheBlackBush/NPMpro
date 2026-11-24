@@ -65,6 +65,7 @@ it("restores proxy hosts and custom nginx files from a backup with secrets", TIM
 		assert.equal(ctx.calls.regenerate, 1);
 		assert.equal(ctx.calls.applyAll, 1);
 		assert.deepEqual([ctx.calls.pause, ctx.calls.resume, ctx.isPaused()], [1, 1, false]);
+		assert.deepEqual([ctx.calls.ddnsPause, ctx.calls.ddnsResume, ctx.isDdnsPaused()], [1, 1, false]);
 		const auto = await readdir(path.join(ctx.backupsDir, "auto"));
 		assert.equal(auto.length, 1);
 		assert.match(auto[0], AUTO_NAME);

@@ -418,6 +418,7 @@ it("reads the instance rows with only the columns the planner needs", async () =
 				"certificate",
 				"dead_host",
 				"npmpro_backup_schedule",
+				"npmpro_ddns_record",
 				"npmpro_dns_credential",
 				"proxy_host",
 				"redirection_host",

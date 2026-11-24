@@ -5,6 +5,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import app from "./app.js";
 import { internalBackupSchedules } from "./internal/backup-service.js";
 import { registerMoveWriter } from "./internal/database-service.js";
+import { pauseDdns, resumeDdns } from "./internal/ddns.js";
 import { stopMonitoringServices } from "./internal/monitoring-services.js";
 import { createBackupScheduler } from "./lib/backup/scheduler.js";
 import { startupRetryLog } from "./lib/config.js";
@@ -40,6 +41,7 @@ async function appStart() {
 				pause: (options) => backupScheduler.pause(options),
 				resume: () => backupScheduler.resume(),
 			});
+			registerMoveWriter({ name: "Dynamic DNS", pause: pauseDdns, resume: resumeDdns });
 			moveWriterRegistered = true;
 		}
 		backupScheduler.start();

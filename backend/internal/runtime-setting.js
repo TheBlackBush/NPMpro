@@ -1,4 +1,6 @@
+import { SERVICE_KEYS } from "../lib/ddns/settings.js";
 import errs from "../lib/error.js";
+import { assertAllowedHost } from "../lib/outbound-guard.js";
 import { probeResolvers } from "../lib/resolver-probe.js";
 import { getRuntimeConfig, invalidate, prime } from "../lib/runtime-config.js";
 import { isRuntimeGroup } from "../lib/runtime-rules.js";
@@ -16,6 +18,7 @@ const NAMES = {
 	logs: "Logs",
 	advanced: "Advanced",
 	nginx: "Nginx",
+	ddns: "Dynamic DNS",
 };
 
 const noApply = async () => {};
@@ -94,11 +97,31 @@ const resolverWarnings = async (prevValues, values) => {
 
 const findCertificate = (id) => certificateModel.query().findById(id).select("id", "provider");
 
+// Dynamic DNS: a service name that resolves to an address the server may not call is refused on save (a literal
+// address is refused by the rule); an unchanged list is never checked, so a stored one is kept
+const checkDdnsServices = async (group, changed) => {
+	if (group !== "ddns") return;
+	for (const key of SERVICE_KEYS) {
+		for (const url of changed[key] ?? []) {
+			try {
+				await assertAllowedHost(url);
+			} catch (err) {
+				if (err.code !== "EBLOCKED") throw err;
+				// the answer names the field and the refused URL, so the UI shows the message under that field
+				throw new errs.ValidationError(`${key}: ${err.message}`, "error.ddns-service-blocked", {
+					values: { key, url },
+				});
+			}
+		}
+	}
+};
+
 const updateRuntimeStored = createRuntimeUpdater({
 	readStored,
 	saveStored,
 	getApply: () => applyHook,
 	findCertificate,
+	checkChanges: checkDdnsServices,
 	onSaved: (group, cfg) => prime(group, cfg),
 	serialize: runtimeQueue,
 });

@@ -6,10 +6,11 @@ import Ajv from "ajv/dist/2020.js";
 import { runtimeExclusive, runtimeQueue } from "../internal/runtime-queue.js";
 import { createRuntimeUpdater, runtimeView, withCpuCount } from "../internal/runtime-update.js";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
-import { mergeRuntimeConfig, RUNTIME_GROUPS } from "../lib/runtime-rules.js";
+import { mergeRuntimeConfig, RUNTIME_GROUPS, RUNTIME_RULES } from "../lib/runtime-rules.js";
 import { getCompiledSchema } from "../schema/index.js";
 
 const BOOT_ENV = { NPMPRO_USER_ENV: "PATH", ACME_SERVER: "https://acme-v02.api.letsencrypt.org/directory" };
+const REFUSED_BY_TEST = /resolver_addresses: refused by the test/u;
 const BAD_IP = /^trusted_ips: "bad"/u;
 const BAD_UPSTREAM = /^anubis_upstream: /u;
 const BAD_SIZE = /^key_size: must be 2048, 3072, 4096 for rsa/u;
@@ -400,5 +401,25 @@ it("a host config write during a runtime save waits for it and renders with the 
 		assert.equal(result instanceof Error ? result.message : "saved", saveFails ? "db down" : "saved");
 		// the host edit is the last write and follows the values in effect after the save
 		assert.equal(hostConf, `host edit stapling ${saveFails ? "false" : "true"}`);
+	}
+});
+
+it("skips validateSave for a list the save keeps (a stored list is compared by value), and runs it for a changed one", async () => {
+	const rule = RUNTIME_RULES.find((entry) => entry.key === "resolver_addresses");
+	const seen = [];
+	rule.validateSave = (value) => {
+		seen.push(value);
+		return "refused by the test";
+	};
+	try {
+		const store = fakeStore({ nginx: { resolver_addresses: ["1.1.1.1", "9.9.9.9"] } });
+		const update = updater(store);
+		const out = await update("nginx", { resolver_addresses: ["1.1.1.1", "9.9.9.9"], worker_connections: 600 });
+		assert.deepEqual(out.values.resolver_addresses, ["1.1.1.1", "9.9.9.9"]);
+		assert.deepEqual(seen, []);
+		await assert.rejects(update("nginx", { resolver_addresses: ["1.1.1.1"] }), REFUSED_BY_TEST);
+		assert.deepEqual(seen, [["1.1.1.1"]]);
+	} finally {
+		delete rule.validateSave;
 	}
 });

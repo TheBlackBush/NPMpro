@@ -4,6 +4,7 @@ import { it } from "node:test";
 import {
 	appliesMessageId,
 	defaultKeySize,
+	fieldOfApiError,
 	fieldOfError,
 	formFieldOf,
 	GROUP_KEYS,
@@ -146,7 +147,7 @@ it("GROUP_KEYS match the backend response schemas", () => {
 		);
 		assert.deepEqual([...GROUP_KEYS[group]].sort(), props.map(camel).sort(), group);
 	}
-	assert.equal(Object.keys(GROUP_KEYS).length, 6);
+	assert.equal(Object.keys(GROUP_KEYS).length, 7);
 });
 
 it("appliesMessageId maps the applies values to their translation ids", () => {
@@ -272,4 +273,16 @@ it("warningTexts gives the text of each known warning with its camelCase key", (
 	]);
 	assert.deepEqual(warningTexts({}, known, format), []);
 	assert.deepEqual(warningTexts(undefined, known, format), []);
+});
+
+it("fieldOfApiError finds the field a blocked service names in its message values", () => {
+	const apiError = { message_values: { key: "ipv4_services", url: "https://lan.test/" } };
+	assert.deepEqual(fieldOfApiError("ddns", apiError, "https://lan.test/ points to an address"), {
+		key: "ipv4Services",
+		message: "https://lan.test/ points to an address",
+	});
+	// the prefix still wins, another group's key and a missing key give nothing
+	assert.equal(fieldOfApiError("ddns", apiError, "period: bad").key, "period");
+	assert.equal(fieldOfApiError("network", apiError, "text"), null);
+	assert.equal(fieldOfApiError("ddns", undefined, "text"), null);
 });

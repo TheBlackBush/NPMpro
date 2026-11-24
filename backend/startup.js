@@ -10,6 +10,7 @@ import { startExpirySweep } from "./internal/api-token.js";
 import { backupStore } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
 import { logCrowdsecBlock, setCrowdsecHooks, startCrowdsec } from "./internal/crowdsec-setting.js";
+import { initDdnsTimer, restartDdnsTimer } from "./internal/ddns.js";
 import internalIpRanges from "./internal/ip_ranges.js";
 import { startLandingPages } from "./internal/landing-pages.js";
 import {
@@ -83,7 +84,7 @@ const prepareApp = async ({ background = true } = {}) => {
 	const runtimeApplier = createRuntimeApplier({
 		nginx: { test: internalNginx.test, reload: internalNginx.reload },
 		renderHosts: renderRuntimeHosts,
-		timers: { restartRenewal: internalCertificate.restartTimer },
+		timers: { restartRenewal: internalCertificate.restartTimer, restartDdns: restartDdnsTimer },
 		// an mTLS CA certificate cannot serve as the default certificate
 		listCertificates: () => certificateModel.query().select("id").whereNot("provider", "mtls"),
 		ocsp: { fetch: internalNginx.fetchOcsp },
@@ -122,6 +123,8 @@ const prepareApp = async ({ background = true } = {}) => {
 	await getCompiledSchema();
 
 	if (background) internalCertificate.initTimer();
+	// the first cycle runs a minute later; with no enabled record a cycle does nothing
+	if (background) initDdnsTimer();
 	if (background) startExpirySweep();
 	if (background) void syncEnvEmail().catch((err) => logger.warn(`ACME email sync failed: ${err.message}`));
 

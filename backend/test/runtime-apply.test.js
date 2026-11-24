@@ -222,6 +222,43 @@ it("restarts the renewal timer with the new interval", async () => {
 	assert.equal(await readFile(paths.certbotIni, "utf8"), "old ini\n");
 });
 
+const ddnsValues = (overrides = {}) => ({ ...mergeRuntimeConfig("ddns", {}, BOOT_ENV).values, ...overrides });
+
+it("restarts the Dynamic DNS timer with the new period and writes nothing", async () => {
+	const { paths } = await setup();
+	const periods = [];
+	const a = applier(paths, { timers: { restartDdns: (ms) => periods.push(ms) } });
+	const prev = ddnsValues();
+	const result = await a.applyGroup("ddns", { ...prev, period: "10m", cooldown: "15m" }, prev);
+	assert.deepEqual(result, { changed: ["period", "cooldown"], reloaded: false });
+	assert.deepEqual(periods, [600_000]);
+	assert.deepEqual(a.nginx.calls, []);
+});
+
+it("leaves the Dynamic DNS timer alone for a change of the other keys, and without a timer hook", async () => {
+	const { paths } = await setup();
+	const periods = [];
+	const a = applier(paths, { timers: { restartDdns: (ms) => periods.push(ms) } });
+	const prev = ddnsValues();
+	await a.applyGroup(
+		"ddns",
+		{ ...prev, cooldown: "15m", resolver: ["1.1.1.1"], ipv4_services: ["https://a.example"] },
+		prev,
+	);
+	assert.deepEqual(periods, []);
+	const bare = applier(paths, { timers: {} });
+	await bare.applyGroup("ddns", { ...prev, period: "10m" }, prev);
+	assert.deepEqual(bare.nginx.calls, []);
+});
+
+it("sets the Dynamic DNS timer period at startup", async () => {
+	const { paths } = await setup();
+	const periods = [];
+	const a = applier(paths, { timers: { restartDdns: (ms) => periods.push(ms) } });
+	await a.applyGroup("ddns", ddnsValues({ period: "1h" }));
+	assert.deepEqual(periods, [3_600_000]);
+});
+
 it("rewrites the ECH crontab line and keeps the other lines", async () => {
 	const { paths } = await setup();
 	const a = applier(paths);
@@ -455,7 +492,7 @@ it("startup tests nginx only when an nginx file changed, and a failing group doe
 		Object.keys(failed).toSorted((x, y) => x.localeCompare(y)),
 		["certificates", "network"],
 	);
-	assert.equal(groups.length, 6);
+	assert.equal(groups.length, 7);
 	assert.deepEqual(nginx.calls, ["test"]);
 	await assert.rejects(readFile(host, "utf8"), { code: "ENOENT" });
 	assert.equal(a.log.lines.filter((line) => line.includes("at startup")).length, 2);

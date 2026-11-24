@@ -16,6 +16,7 @@ import { createBackupService } from "./backup.js";
 import { createScheduleService } from "./backup-schedules.js";
 import internalCertificate from "./certificate.js";
 import { reloadCrowdsecAfterRestore } from "./crowdsec-setting.js";
+import { pauseDdns, resumeDdns } from "./ddns.js";
 import internalDnsCredential from "./dns-credential.js";
 import { reloadLandingPagesAfterRestore } from "./landing-pages.js";
 import internalNginx from "./nginx.js";
@@ -53,6 +54,7 @@ const internalBackup = createBackupService({
 	audit: (access, data) => internalAuditLog.add(access, data),
 	nginx: internalNginx,
 	renewals: { pause: internalCertificate.pauseRenewals, resume: internalCertificate.resumeRenewals },
+	ddns: { pause: pauseDdns, resume: resumeDdns },
 	regenerate: { loadEnabledHosts, rebuildAccessListFiles, regenerateAllHostsNow, regenerateDefaultSite },
 	runtime: { loadRuntimeConfig, applyAllRuntime },
 	reloadSettings: {

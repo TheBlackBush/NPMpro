@@ -1,6 +1,7 @@
 import { up as createScheduleTable } from "../../migrations/20261028120000_backup_schedules.js";
 import { up as createAcmeAccountTable } from "../../migrations/20261119120000_acme_accounts.js";
 import { up as createDnsDomainTable } from "../../migrations/20261123120000_dns_domains.js";
+import { up as createDdnsTables } from "../../migrations/20261124120000_ddns_records.js";
 
 export const createSchema = async (knex) => {
 	const hostTable = (name, extra = () => {}) =>
@@ -115,9 +116,11 @@ export const createSchema = async (knex) => {
 		t.increments("id");
 		t.integer("owner_user_id").notNull().defaultTo(1);
 		t.string("name").notNull();
+		t.string("provider").notNull().defaultTo("cloudflare");
 		t.text("values").notNull();
 	});
 	await createDnsDomainTable(knex);
+	await createDdnsTables(knex);
 	await knex.schema.createTable("setting", (t) => {
 		t.string("id").primary();
 		t.string("name").notNull().defaultTo("");

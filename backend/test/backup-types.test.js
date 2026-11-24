@@ -21,6 +21,7 @@ it("selects the runtime setting groups", () => {
 	assert.equal(table, "setting");
 	where(qb);
 	assert.deepEqual(ids, ["id", [...RUNTIME_GROUPS, "acme"]]);
+	assert.ok(ids[1].includes("ddns"));
 });
 
 it("lists the account table after the certificate table, and never exports the EAB pair", () => {

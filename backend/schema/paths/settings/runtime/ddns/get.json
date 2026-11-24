@@ -1,0 +1,58 @@
+{
+	"operationId": "getRuntimeDdnsSettings",
+	"summary": "Get the Dynamic DNS settings",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The Dynamic DNS settings as they are now",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"period": "5m",
+								"cooldown": "5m",
+								"ipv4_services": [
+									"https://api.ipify.org",
+									"https://ipv4.icanhazip.com",
+									"https://v4.ident.me"
+								],
+								"ipv6_services": [
+									"https://api6.ipify.org",
+									"https://ipv6.icanhazip.com",
+									"https://v6.ident.me"
+								],
+								"resolver": [],
+								"locked": [],
+								"locked_by": {},
+								"locked_reason": {},
+								"applies": {
+									"period": "immediately",
+									"cooldown": "immediately",
+									"ipv4_services": "immediately",
+									"ipv6_services": "immediately",
+									"resolver": "immediately"
+								},
+								"restart_pending": []
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/runtime-ddns-setting-object.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Returns the Dynamic DNS settings: how often the records are checked, the cooldown between two changes of a record, the public IP services and the DNS servers the updater asks. A value an environment variable sets is shown as locked.\n\nNeeds: an administrator (a token needs its Administrator switch)"
+}

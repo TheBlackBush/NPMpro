@@ -64,6 +64,8 @@ const setup = async ({
 		reload: 0,
 		pause: 0,
 		resume: 0,
+		ddnsPause: 0,
+		ddnsResume: 0,
 		regenerate: 0,
 		applyAll: 0,
 		reloaded: [],
@@ -72,6 +74,7 @@ const setup = async ({
 		removedCredentials: [],
 	};
 	let paused = false;
+	let ddnsPaused = false;
 	const store = createBackupStore({ dir: backupsDir, clock, tokenTtlMs: 60_000 });
 	const service = createBackupService({
 		knex,
@@ -105,6 +108,17 @@ const setup = async ({
 			resume: () => {
 				calls.resume++;
 				paused = false;
+			},
+		},
+		ddns: {
+			pause: () => {
+				calls.ddnsPause++;
+				ddnsPaused = true;
+				return Promise.resolve();
+			},
+			resume: () => {
+				calls.ddnsResume++;
+				ddnsPaused = false;
 			},
 		},
 		regenerate: {
@@ -156,7 +170,19 @@ const setup = async ({
 		await knex.destroy();
 		if (!root) await rm(base, { recursive: true, force: true });
 	};
-	return { base, dataDir, backupsDir, knex, clock, calls, store, service, isPaused: () => paused, cleanup };
+	return {
+		base,
+		dataDir,
+		backupsDir,
+		knex,
+		clock,
+		calls,
+		store,
+		service,
+		isPaused: () => paused,
+		isDdnsPaused: () => ddnsPaused,
+		cleanup,
+	};
 };
 
 export { box, MIGRATIONS, setup };

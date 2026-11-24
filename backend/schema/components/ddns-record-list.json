@@ -1,0 +1,7 @@
+{
+	"type": "array",
+	"description": "The dynamic DNS records",
+	"items": {
+		"$ref": "./ddns-record-object.json"
+	}
+}

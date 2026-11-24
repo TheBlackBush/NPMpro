@@ -1,16 +1,17 @@
 import { ChevronsUpDownIcon, XIcon } from "lucide-react";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import { Command, CommandInput } from "src/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
 import { cn } from "src/lib/utils";
 import { intl } from "src/locale";
-import { isEmptyValue } from "src/modules/Combobox";
+import { commitTyped, isEmptyValue, tabStep } from "src/modules/Combobox";
 import { ComboboxItems, keepScroll, listFor, optionKey, popoverClass, useElementId } from "./ComboboxParts";
 
 /**
- * One value from a list: a button that opens the list, with a search box (unless searchable is false)
+ * One value from a list: a button that opens the list, with a search box (unless searchable is false). With a
+ * commitRef text typed in the search box and left by closing the list stays pending until a save commits it
  */
 export function SingleCombobox({
 	id,
@@ -33,6 +34,8 @@ export function SingleCombobox({
 	createText,
 	isValidNew,
 	filter,
+	onQueryChange,
+	commitRef,
 	onBlur,
 	aria,
 	className,
@@ -60,11 +63,27 @@ export function SingleCombobox({
 		filter,
 	});
 
+	const changeQuery = (text) => {
+		setQuery(text);
+		onQueryChange?.(text);
+	};
 	const changeOpen = (next, seed = "") => {
 		if (next && locked) return;
-		setQuery(next ? seed : "");
+		changeQuery(next ? seed : "");
 		setOpen(next);
 	};
+	// the form commits typed text before a save (HookForm's usePendingEntry): the refused parts, none without text
+	useLayoutEffect(() => {
+		if (!commitRef) return;
+		commitRef.current = () => {
+			const done = commitTyped({ text: query, creatable, locked, isValidNew });
+			if (done === null) return [];
+			if (done.refused) return done.refused;
+			onChange(done.value, null);
+			changeQuery("");
+			return [];
+		};
+	});
 	const pick = (option) => {
 		onChange(getOptionValue(option), option);
 		changeOpen(false);
@@ -88,12 +107,18 @@ export function SingleCombobox({
 			onChange(null, null);
 		}
 	};
-	// Tab inside the list closes it (focus goes back to the button) instead of leaving the window's focus scope
+	// Tab inside the list closes it (focus goes back to the button) instead of leaving the window's focus scope; with a
+	// commitRef it first commits the typed text as Enter on "Add ..." does, or keeps refused text for the save
 	const onListKeyDown = (event) => {
-		if (event.key === "Tab") {
-			event.preventDefault();
-			changeOpen(false);
+		if (event.key !== "Tab") return;
+		event.preventDefault();
+		const step = tabStep({ commits: Boolean(commitRef), text: query, creatable, locked, isValidNew });
+		if (step === "keep") {
+			setOpen(false);
+			return;
 		}
+		if (step !== "clear") onChange(step.value, null);
+		changeOpen(false);
 	};
 	// focus the search box with the caret after a seeded character (Radix would select the text), or the list itself
 	const onOpenAutoFocus = (event) => {
@@ -108,7 +133,11 @@ export function SingleCombobox({
 	};
 
 	return (
-		<Popover open={open} onOpenChange={(next) => changeOpen(next)}>
+		<Popover
+			open={open}
+			// with a commitRef a dismissed list keeps the typed text for the save to commit
+			onOpenChange={(next) => (next || !commitRef ? changeOpen(next) : setOpen(false))}
+		>
 			<div className={cn("relative w-full", className)}>
 				<PopoverTrigger asChild>
 					<Button
@@ -170,7 +199,7 @@ export function SingleCombobox({
 						<CommandInput
 							ref={searchRef}
 							value={query}
-							onValueChange={setQuery}
+							onValueChange={changeQuery}
 							placeholder={intl.formatMessage({ id: "search" })}
 						/>
 					) : null}

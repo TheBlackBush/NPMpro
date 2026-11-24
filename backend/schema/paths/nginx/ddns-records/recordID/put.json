@@ -1,0 +1,217 @@
+{
+	"operationId": "updateDdnsRecord",
+	"summary": "Change a dynamic DNS record",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "recordID",
+			"description": "ID of the dynamic DNS record, as the list shows it",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"required": true,
+			"example": 1
+		}
+	],
+	"requestBody": {
+		"description": "The fields to change",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"allOf": [
+						{
+							"if": {
+								"required": [
+									"kind"
+								],
+								"properties": {
+									"kind": {
+										"const": "alias"
+									}
+								}
+							},
+							"then": {
+								"required": [
+									"target"
+								],
+								"properties": {
+									"target": {
+										"type": "string"
+									},
+									"ipv6_suffix": {
+										"type": "null"
+									}
+								}
+							}
+						},
+						{
+							"if": {
+								"required": [
+									"kind"
+								],
+								"properties": {
+									"kind": {
+										"const": "address"
+									}
+								}
+							},
+							"then": {
+								"properties": {
+									"target": {
+										"type": "null"
+									}
+								}
+							}
+						}
+					],
+					"properties": {
+						"name": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 253,
+							"example": "home.example.com",
+							"description": "The record name, such as `home.example.com`; `*.example.com` only where the provider allows wildcards. A name that exists answers 400"
+						},
+						"dns_credential_id": {
+							"type": "integer",
+							"minimum": 1,
+							"example": 1,
+							"description": "ID of the DNS credential to write the record with; its provider must have an updater"
+						},
+						"provider": {
+							"type": "string",
+							"maxLength": 64,
+							"example": "cloudflare",
+							"description": "The updater provider; it defaults from the credential and must match it when given"
+						},
+						"zone": {
+							"type": "string",
+							"maxLength": 253,
+							"example": "example.com",
+							"description": "The zone, used only when none of the credential's domains covers the name; it must cover the name"
+						},
+						"kind": {
+							"type": "string",
+							"enum": [
+								"address",
+								"alias"
+							],
+							"example": "address",
+							"description": "`address` (the default): A and AAAA records that follow the public IP; `alias`: a CNAME to `target`"
+						},
+						"target": {
+							"type": [
+								"string",
+								"null"
+							],
+							"minLength": 1,
+							"maxLength": 253,
+							"example": "lb.example.net",
+							"description": "The CNAME target of an alias (required for one); an address record takes none (null is the same as none). It cannot be the record's own name"
+						},
+						"ip_version": {
+							"type": [
+								"string",
+								"null"
+							],
+							"enum": [
+								"ipv4",
+								"ipv6",
+								"both",
+								null
+							],
+							"example": "ipv4",
+							"description": "For an address record: `ipv4` (the default), `ipv6` or `both`; an alias takes none (null or left out)"
+						},
+						"ipv6_suffix": {
+							"type": [
+								"string",
+								"null"
+							],
+							"maxLength": 64,
+							"example": null,
+							"description": "An IPv6 interface id such as `::1` that replaces the last 64 bits of the detected address; only with `ipv6` or `both`, and not for an alias"
+						},
+						"ttl": {
+							"type": [
+								"integer",
+								"null"
+							],
+							"minimum": 30,
+							"maximum": 86400,
+							"example": null,
+							"description": "The TTL in seconds, at least the provider's `min_ttl`; null keeps the provider's default or the record's current TTL"
+						},
+						"enabled": {
+							"type": "boolean",
+							"example": true,
+							"description": "Whether NPMpro keeps the record up to date (the default is true)"
+						}
+					}
+				},
+				"example": {
+					"ttl": 300
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "The changed record",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"id": 1,
+								"created_on": "2026-11-24T09:30:00.000Z",
+								"modified_on": "2026-11-24T09:35:00.000Z",
+								"owner_user_id": 1,
+								"dns_credential_id": 1,
+								"provider": "cloudflare",
+								"name": "home.example.com",
+								"zone": "example.com",
+								"kind": "address",
+								"target": null,
+								"ip_version": "ipv4",
+								"ipv6_suffix": null,
+								"ttl": 300,
+								"enabled": true,
+								"state": "ok",
+								"last_ipv4": "81.2.69.160",
+								"last_ipv6": null,
+								"last_checked_on": "2026-11-24T09:35:00.000Z",
+								"last_changed_on": "2026-11-24T09:30:00.000Z",
+								"next_try_on": null,
+								"failures": 0,
+								"error": null,
+								"error_i18n": null,
+								"error_values": null,
+								"proxied": false
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/ddns-record-object.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Changes a record; only the fields sent change. A changed name, credential or zone clears what NPMpro learned about the record and sets it pending; turning it off sets it disabled. A value the record already has is never refused again on a save that keeps it.\n\nNeeds: Certificates manage"
+}

@@ -1,0 +1,73 @@
+{
+	"type": "array",
+	"description": "The providers that can write dynamic DNS records",
+	"items": {
+		"type": "object",
+		"required": [
+			"id",
+			"label",
+			"credential_provider",
+			"record_types",
+			"proxied",
+			"ipv6",
+			"admin_only",
+			"wildcards",
+			"min_ttl"
+		],
+		"additionalProperties": false,
+		"properties": {
+			"id": {
+				"type": "string",
+				"example": "cloudflare",
+				"description": "ID of the updater provider"
+			},
+			"label": {
+				"type": "string",
+				"example": "Cloudflare",
+				"description": "Name of the provider"
+			},
+			"credential_provider": {
+				"type": "string",
+				"example": "cloudflare",
+				"description": "ID of the DNS credential provider whose saved credential it uses"
+			},
+			"record_types": {
+				"type": "array",
+				"items": {
+					"type": "string"
+				},
+				"example": [
+					"A",
+					"AAAA",
+					"CNAME"
+				],
+				"description": "The record types it writes"
+			},
+			"proxied": {
+				"type": "boolean",
+				"example": true,
+				"description": "Whether it has a proxied flag NPMpro reads and never changes"
+			},
+			"ipv6": {
+				"type": "boolean",
+				"example": true,
+				"description": "Whether it writes AAAA records"
+			},
+			"admin_only": {
+				"type": "boolean",
+				"example": false,
+				"description": "Whether only administrators may use it"
+			},
+			"wildcards": {
+				"type": "boolean",
+				"example": true,
+				"description": "Whether a wildcard record name (`*.example.com`) is allowed"
+			},
+			"min_ttl": {
+				"type": "integer",
+				"example": 60,
+				"description": "The lowest TTL in seconds the provider takes; a record's TTL below it is refused"
+			}
+		}
+	}
+}

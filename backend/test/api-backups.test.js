@@ -19,6 +19,7 @@ const ALL_TYPES = [
 	"certificates",
 	"access_lists",
 	"dns_credentials",
+	"ddns",
 	"users",
 	"settings_runtime",
 	"settings_default_site",
@@ -71,7 +72,7 @@ it("answers the backup types with the categories, the counts of what exists and 
 	assert.deepEqual(empty.body.categories.flatMap((category) => category.types).sort(), [...ALL_TYPES].sort());
 	assert.deepEqual(
 		empty.body.categories.map((category) => category.id),
-		["hosts", "certificates", "access_lists", "dns_credentials", "users", "settings", "custom_files"],
+		["hosts", "certificates", "access_lists", "dns_credentials", "ddns", "users", "settings", "custom_files"],
 	);
 	assert.equal(empty.body.counts.proxy_hosts, 0);
 	assert.equal(empty.body.counts.users, 1);
@@ -384,6 +385,37 @@ it("a backup of DNS credentials restores their domains", async () => {
 	assert.equal(done.status, 200, done.text);
 	const restored = await admin.get("/nginx/dns-domains");
 	assert.deepEqual(restored.body.map((row) => row.name).sort(), ["bk-one.example", "bk-two.example"]);
+});
+
+it("a backup of DNS credentials and DDNS records restores the records, checked again, with no history", async () => {
+	const created = await admin.post("/nginx/dns-credentials", {
+		name: "Backed up DDNS",
+		provider: "cloudflare",
+		fields: [{ key: "dns_cloudflare_api_token", value: "t".repeat(40) }],
+		domains: ["ddns-bk.example"],
+	});
+	assert.equal(created.status, 201, created.text);
+	const record = await admin.post("/nginx/ddns-records", {
+		name: "home.ddns-bk.example",
+		dns_credential_id: created.body.id,
+		enabled: false,
+	});
+	assert.equal(record.status, 201, record.text);
+	await api
+		.db("npmpro_ddns_record")
+		.where({ id: record.body.id })
+		.update({ failures: 3, error: "old error", state: "failed" });
+	const entry = await keep({ types: ["dns_credentials", "ddns"] });
+	assert.equal((await admin.delete(`/nginx/ddns-records/${record.body.id}`)).status, 200);
+	const { token } = await inspect(entry.name);
+	const done = await admin.post(`${BASE}/restore/${token}`, { types: ["dns_credentials", "ddns"], confirm: true });
+	assert.equal(done.status, 200, done.text);
+	const [restored] = await api.db("npmpro_ddns_record").where({ name: "home.ddns-bk.example" });
+	assert.equal(restored.dns_credential_id, created.body.id);
+	assert.equal(restored.failures, 0);
+	assert.equal(restored.error, null);
+	assert.equal(restored.state, "disabled");
+	assert.equal((await api.db("npmpro_ddns_history")).length, 0);
 });
 
 it("cancels a restore session, after which its token has expired", async () => {

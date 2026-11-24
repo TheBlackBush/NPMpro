@@ -2,8 +2,9 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import { isIP } from "node:net";
 import { fetch } from "undici";
 import pjson from "../package.json" with { type: "json" };
+import { isBlockedAddress } from "./blocked-address.js";
 import errs from "./error.js";
-import { blockedError, guardedAgent, isBlockedAddress } from "./outbound-guard.js";
+import { blockedError, guardedAgent } from "./outbound-guard.js";
 import { rooted } from "./paths.js";
 
 const ICON_MAX_BYTES = 256 * 1024;
@@ -171,7 +172,7 @@ const readLimited = async (response) => {
 	const reader = response.body.getReader();
 	const chunks = [];
 	let size = 0;
-	for (;;) {
+	while (true) {
 		const { done, value } = await reader.read();
 		if (done) break;
 		size += value.length;

@@ -1,0 +1,147 @@
+{
+	"type": "object",
+	"description": "The state of the dynamic DNS updater",
+	"required": [
+		"ipv4",
+		"ipv6",
+		"next_run_on",
+		"paused",
+		"running",
+		"records"
+	],
+	"additionalProperties": false,
+	"properties": {
+		"ipv4": {
+			"type": "object",
+			"required": [
+				"address",
+				"service",
+				"checked_on",
+				"error",
+				"error_i18n"
+			],
+			"additionalProperties": false,
+			"description": "The public address of one family",
+			"properties": {
+				"address": {
+					"type": [
+						"string",
+						"null"
+					],
+					"example": "81.2.69.160",
+					"description": "The confirmed public address; null until one was found"
+				},
+				"service": {
+					"type": [
+						"string",
+						"null"
+					],
+					"example": "https://api.ipify.org",
+					"description": "The echo service that gave the address"
+				},
+				"checked_on": {
+					"type": [
+						"string",
+						"null"
+					],
+					"example": "2026-11-24T09:35:00.000Z",
+					"description": "When the family was last checked, as an ISO time"
+				},
+				"error": {
+					"type": [
+						"string",
+						"null"
+					],
+					"example": null,
+					"description": "Why the last check failed, in English; null when it worked"
+				},
+				"error_i18n": {
+					"type": [
+						"string",
+						"null"
+					],
+					"example": null,
+					"description": "The translation key of the failure (`error.ddns-ip-failed`, `error.ddns-ip-disagree` or `error.ddns-ip-unconfirmed`)"
+				}
+			}
+		},
+		"ipv6": {
+			"type": "object",
+			"required": [
+				"address",
+				"service",
+				"checked_on",
+				"error",
+				"error_i18n"
+			],
+			"additionalProperties": false,
+			"description": "The public address of one family",
+			"properties": {
+				"address": {
+					"type": [
+						"string",
+						"null"
+					],
+					"example": null,
+					"description": "The confirmed public address; null until one was found"
+				},
+				"service": {
+					"type": [
+						"string",
+						"null"
+					],
+					"example": null,
+					"description": "The echo service that gave the address"
+				},
+				"checked_on": {
+					"type": [
+						"string",
+						"null"
+					],
+					"example": null,
+					"description": "When the family was last checked, as an ISO time"
+				},
+				"error": {
+					"type": [
+						"string",
+						"null"
+					],
+					"example": null,
+					"description": "Why the last check failed, in English; null when it worked"
+				},
+				"error_i18n": {
+					"type": [
+						"string",
+						"null"
+					],
+					"example": null,
+					"description": "The translation key of the failure (`error.ddns-ip-failed`, `error.ddns-ip-disagree` or `error.ddns-ip-unconfirmed`)"
+				}
+			}
+		},
+		"next_run_on": {
+			"type": [
+				"string",
+				"null"
+			],
+			"example": "2026-11-24T09:40:00.000Z",
+			"description": "When the next cycle runs, as an ISO time; null while the updater is not running"
+		},
+		"paused": {
+			"type": "boolean",
+			"example": false,
+			"description": "True during a restore or a database move: Update now and Check now answer 409"
+		},
+		"running": {
+			"type": "boolean",
+			"example": false,
+			"description": "True while a cycle is going on"
+		},
+		"records": {
+			"type": "integer",
+			"minimum": 0,
+			"example": 2,
+			"description": "The number of enabled records the user can see"
+		}
+	}
+}

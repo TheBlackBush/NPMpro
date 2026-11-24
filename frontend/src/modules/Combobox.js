@@ -212,3 +212,39 @@ export function createFirstActive({ keys, createKey, items, query, getLabel, get
 	const key = exact ? keyOf(getValue(exact)) : "";
 	return keys.includes(key) ? key : "";
 }
+
+/**
+ * What a save does with the text typed in a single-value field's search box (its commitRef): nothing for no text, a
+ * field that is not creatable or is locked; the value when isValidNew takes it; else the text is refused.
+ *
+ * @param   {Object}   input
+ * @param   {string}   input.text
+ * @param   {boolean}  input.creatable
+ * @param   {boolean}  input.locked
+ * @param   {Function} [input.isValidNew]  (text, values) => whether a typed value may be added
+ * @returns {{ value: string } | { refused: string[] } | null}
+ */
+export function commitTyped({ text, creatable, locked, isValidNew }) {
+	const typed = String(text ?? "").trim();
+	if (!creatable || locked || typed === "") return null;
+	return !isValidNew || isValidNew(typed, []) ? { value: typed } : { refused: [typed] };
+}
+
+/**
+ * What Tab in the open list of a single-value field does with the typed text. Without a commitRef the list closes and
+ * the text is dropped ("clear"); with one, Tab commits the typed text the way the save does: the value when the field
+ * takes it, else the list closes with the text kept for the save to name ("keep").
+ *
+ * @param   {Object}   input
+ * @param   {boolean}  input.commits      whether the field has a commitRef
+ * @param   {string}   input.text
+ * @param   {boolean}  input.creatable
+ * @param   {boolean}  input.locked
+ * @param   {Function} [input.isValidNew]
+ * @returns {{ value: string } | "keep" | "clear"}
+ */
+export function tabStep({ commits, text, creatable, locked, isValidNew }) {
+	if (!commits) return "clear";
+	const done = commitTyped({ text, creatable, locked, isValidNew });
+	return done?.value === undefined ? "keep" : { value: done.value };
+}

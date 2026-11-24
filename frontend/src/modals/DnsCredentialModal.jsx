@@ -89,12 +89,21 @@ function ProviderSelect({ providers, options, locked }) {
 	const { setValue, clearErrors } = useFormContext();
 	const { field, fieldState } = useController({ name: "provider" });
 	const readOnly = useReadOnly();
+	const usableForDdns = Boolean(providers.find((p) => p.id === field.value)?.ddns);
 	return (
 		<FormField
 			id="dnsCredentialProvider"
 			label={<T id="certificates.dns.provider" />}
 			required
-			hint={locked ? <T id="dns-credentials.provider-locked" /> : undefined}
+			hint={
+				locked || usableForDdns ? (
+					<>
+						{locked ? <T id="dns-credentials.provider-locked" /> : null}
+						{locked && usableForDdns ? " " : null}
+						{usableForDdns ? <T id="dns-credentials.ddns-note" /> : null}
+					</>
+				) : undefined
+			}
 			error={fieldState.error?.message ?? null}
 		>
 			{(control) => (

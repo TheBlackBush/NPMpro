@@ -15,6 +15,7 @@ it("gives every section but settings an accent and everything else the primary l
 	assert.equal(sectionAccent("proxyHosts").bg, "bg-section-proxy/15");
 	assert.equal(sectionAccent("dnsCredentials"), sectionAccent("certificates"));
 	assert.equal(sectionAccent("dnsDomains"), sectionAccent("certificates"));
+	assert.equal(sectionAccent("ddns"), sectionAccent("certificates"));
 	assert.equal(sectionAccent("auditLog"), sectionAccent("users"));
 	assert.equal(sectionAccent("settings"), PRIMARY_ACCENT);
 	assert.equal(sectionAccent(undefined), PRIMARY_ACCENT);

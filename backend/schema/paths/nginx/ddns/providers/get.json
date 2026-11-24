@@ -1,0 +1,49 @@
+{
+	"operationId": "getDdnsProviders",
+	"summary": "List dynamic DNS providers",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The providers",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"id": "cloudflare",
+									"label": "Cloudflare",
+									"credential_provider": "cloudflare",
+									"record_types": [
+										"A",
+										"AAAA",
+										"CNAME"
+									],
+									"proxied": true,
+									"ipv6": true,
+									"admin_only": false,
+									"wildcards": true,
+									"min_ttl": 60
+								}
+							]
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/ddns-providers-list.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Lists the providers that can write records, with what each supports.\n\nNeeds: Certificates view"
+}

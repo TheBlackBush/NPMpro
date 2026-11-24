@@ -4,7 +4,7 @@ import { global as logger } from "../../logger.js";
 import { normalizeDomainName } from "../dns-domain-name.js";
 import { withValidPages } from "../landing-pages/backup-rows.js";
 import { BackupError } from "./format.js";
-import { applyReferences, planReferences, splitOrphanDomains } from "./references.js";
+import { applyReferences, planReferences, splitOrphanDomains, splitOrphanRecords } from "./references.js";
 import { coerceRow } from "./rows.js";
 import { ITEM_TYPES } from "./select.js";
 import { RESTORE_ORDER, TYPES } from "./types.js";
@@ -22,6 +22,7 @@ const REFERENCE_TABLES = [
 	"access_list",
 	"npmpro_dns_credential",
 	"npmpro_dns_domain",
+	"npmpro_ddns_record",
 	...HOST_TABLES,
 	"npmpro_proxy_host_access_list",
 ];
@@ -36,6 +37,7 @@ const REFERENCE_COLUMNS = [
 	"npmpro_mtls_certificate_id",
 	"npmpro_dns_credential_id",
 	"dns_credential_id",
+	"provider",
 	"proxy_host_id",
 	"location_id",
 	"access_list_id",
@@ -303,7 +305,49 @@ const keptOfBackup = (typeId, rowsByTable) => ({
 		typeId === "settings_runtime" && !(rowsByTable.setting ?? []).some((row) => row.id === "acme") ? "acme" : null,
 });
 
+const RECORD_TABLE = "npmpro_ddns_record";
+
+// A record points to its credential by a foreign key, so the credentials cannot be replaced under it. The records of
+// the instance are either replaced too (deleted now) or taken off their credentials, which are put back afterwards
+// for those the new credentials still hold (reattachRecords).
+const detachRecords = async (trx, replaced) => {
+	if (replaced) {
+		await trx("npmpro_ddns_history").del();
+		await trx(RECORD_TABLE).del();
+		return [];
+	}
+	const linked = await trx(RECORD_TABLE)
+		.whereNotNull("dns_credential_id")
+		.select("id", "name", "dns_credential_id", "provider", "owner_user_id");
+	if (linked.length > 0)
+		await trx(RECORD_TABLE).whereNotNull("dns_credential_id").update({ dns_credential_id: null });
+	return linked;
+};
+
+const reattachRecords = async (trx, detached) => {
+	const credentials = await trx("npmpro_dns_credential").select("id", "provider", "owner_user_id");
+	const ownerOf = new Map(credentials.map((row) => [key(row.id), row.owner_user_id]));
+	const { kept, orphans } = splitOrphanRecords(detached, credentials);
+	// a record belongs to its credential's owner, also when the restored credential has another one
+	for (const row of kept) {
+		await trx(RECORD_TABLE)
+			.where({ id: row.id })
+			.update({
+				dns_credential_id: row.dns_credential_id,
+				owner_user_id: ownerOf.get(key(row.dns_credential_id)),
+			});
+	}
+	const gone = orphans.map((change) => change.id);
+	if (gone.length > 0) {
+		await trx("npmpro_ddns_history").whereIn("ddns_record_id", gone).del();
+		await trx(RECORD_TABLE).whereIn("id", gone).del();
+	}
+	return orphans;
+};
+
 const deleteType = async (trx, typeId, adminUserId, kept = {}) => {
+	// the update history of the records goes with them (it is never part of a backup)
+	if (typeId === "ddns") await trx("npmpro_ddns_history").del();
 	// the restored users replace these rows, and an id may now name someone else: their API tokens go too
 	const revokedTokens = [];
 	if (typeId === "users") {
@@ -419,6 +463,10 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 		const revokedTokens = [];
 		// domains of a credential the backup does not hold: dropped before the insert (MySQL and Postgres enforce the key)
 		const droppedDomains = [];
+		// DDNS records of the instance that were taken off their credentials, and records of the backup whose
+		// credential does not exist
+		let detachedRecords = [];
+		const droppedRecords = [];
 		for (const typeId of chosen) {
 			const type = TYPES[typeId];
 			const sealed = type.secrets.seal(remapOwners(prepared[typeId], idMap), box);
@@ -426,6 +474,7 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 				? type.restoreRows(sealed, { adminUserId, nowMs: (now ?? Math.floor(Date.now() / 1000)) * 1000 })
 				: sealed;
 			const kept = keptOfBackup(typeId, typeData(data, typeId));
+			if (typeId === "dns_credentials") detachedRecords = await detachRecords(trx, chosen.includes("ddns"));
 			revokedTokens.push(...(await deleteType(trx, typeId, adminUserId, kept)));
 			if (typeId === "users") {
 				const result = await insertUsers({ trx, inserter, rowsByTable, adminUserId, now });
@@ -443,11 +492,24 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 				rowsByTable.npmpro_dns_domain = domains;
 				droppedDomains.push(...orphans);
 			}
+			if (typeId === "ddns") {
+				const credentials = await trx("npmpro_dns_credential").select("id", "provider", "owner_user_id");
+				const { kept: records, orphans } = splitOrphanRecords(rowsByTable[RECORD_TABLE], credentials);
+				// a record belongs to its credential's owner
+				const ownerOf = new Map(credentials.map((row) => [key(row.id), row.owner_user_id]));
+				rowsByTable[RECORD_TABLE] = records.map((row) =>
+					ownerOf.has(key(row.dns_credential_id))
+						? { ...row, owner_user_id: ownerOf.get(key(row.dns_credential_id)) }
+						: row,
+				);
+				droppedRecords.push(...orphans);
+			}
 			for (const { table, where } of type.tables) {
 				if (table === kept.table) continue;
 				await inserter.insert(table, rowsByTable[table]);
 				if (where) await checkTypeRows(trx, table, where, rowsByTable[table]);
 			}
+			if (typeId === "dns_credentials") droppedRecords.push(...(await reattachRecords(trx, detachedRecords)));
 			counts[typeId] = rowsByTable[type.tables[0].table].length;
 		}
 		for (const table of inserter.touched) await inserter.resetSequence(table);
@@ -455,7 +517,7 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 		for (const table of REFERENCE_TABLES) finalRows[table] = await readReferenceRows(trx, table);
 		const planned = planReferences({ finalRows, adminUserId });
 		await applyReferences(trx, planned);
-		const references = [...droppedDomains, ...planned];
+		const references = [...droppedDomains, ...droppedRecords, ...planned];
 		return { references, skippedUsers, counts, users, revokedTokens };
 	});
 };

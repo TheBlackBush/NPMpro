@@ -1,0 +1,52 @@
+{
+	"operationId": "checkDdnsNow",
+	"summary": "Check dynamic DNS now",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The status after the cycle",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"ipv4": {
+									"address": "81.2.69.160",
+									"service": "https://api.ipify.org",
+									"checked_on": "2026-11-24T09:35:00.000Z",
+									"error": null,
+									"error_i18n": null
+								},
+								"ipv6": {
+									"address": null,
+									"service": null,
+									"checked_on": null,
+									"error": null,
+									"error_i18n": null
+								},
+								"next_run_on": "2026-11-24T09:40:00.000Z",
+								"paused": false,
+								"running": false,
+								"records": 2
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/ddns-status-object.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Detects the public address again and runs one cycle now over every enabled record. The cooldown holds: a record written recently is not written again. The answer is 409 while the updater is paused.\n\nNeeds: Certificates manage"
+}

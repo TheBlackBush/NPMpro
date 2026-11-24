@@ -1,4 +1,5 @@
 import { availableParallelism } from "node:os";
+import { isDeepStrictEqual } from "node:util";
 import errs from "../lib/error.js";
 import { readCpusAllowed } from "../lib/nginx-core.js";
 import {
@@ -49,6 +50,9 @@ const withCpuCount = (view) => ({ ...view, cpu_count: availableParallelism(), cp
  *                                               update; runs before the save, a throw saves nothing and is
  *                                               rethrown; when the save fails it runs again with the values swapped
  *                                               and { revert: true }, so the files match the stored values
+ * @param   {Function}  [deps.checkChanges]      async (group, changes, prevValues) => void, after the rules checked the
+ *                                               changes: throws to refuse the save (a name that resolves to a blocked
+ *                                               address); only keys whose value changed are in changes
  * @param   {Function}  [deps.findCertificate]   (id) => { id, provider } | undefined
  * @param   {Function}  [deps.onSaved]           (group, { values, locked }) => void, after the save with the merged
  *                                               values (cache refresh)
@@ -63,6 +67,7 @@ const createRuntimeUpdater = ({
 	saveStored,
 	getApply,
 	findCertificate = async (id) => ({ id, provider: "letsencrypt" }),
+	checkChanges = async () => {},
 	onSaved = () => {},
 	serialize = createSerializer(),
 	env,
@@ -99,10 +104,14 @@ const createRuntimeUpdater = ({
 			const message = rule.validate(changes[rule.key], target);
 			if (message !== null) throw new errs.ValidationError(`${rule.key}: ${message}`);
 			// a value the save keeps is never refused (the CPUs of the container may have changed)
-			if (changes[rule.key] === prev.values[rule.key]) continue;
+			if (isDeepStrictEqual(changes[rule.key], prev.values[rule.key])) continue;
 			const saveMessage = rule.validateSave?.(changes[rule.key], target) ?? null;
 			if (saveMessage !== null) throw new errs.ValidationError(`${rule.key}: ${saveMessage}`);
 		}
+		const changed = Object.fromEntries(
+			Object.entries(changes).filter(([key, value]) => !isDeepStrictEqual(value, prev.values[key])),
+		);
+		await checkChanges(group, changed, prev.values);
 		const certId = changes.default_certificate_id;
 		if (Number.isInteger(certId) && certId !== 0) {
 			const certificate = await findCertificate(certId);

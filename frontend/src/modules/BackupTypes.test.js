@@ -142,4 +142,14 @@ it("arrangeRows pairs boxes of a similar size and leaves missing categories out"
 		[["hosts"], ["users"], ["other"]],
 	);
 	assert.deepEqual(arrangeRows([]), []);
+	// the Dynamic DNS category has no box of its own in the grid: it is placed after the known ones
+	assert.deepEqual(
+		arrangeRows([...all, cat("ddns")]).map((row) => row.map((category) => category.id)),
+		[
+			["hosts", "settings"],
+			["custom_files", "certificates"],
+			["access_lists", "dns_credentials", "users"],
+			["ddns"],
+		],
+	);
 });

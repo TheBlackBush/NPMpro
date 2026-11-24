@@ -8,7 +8,7 @@ import { intl, T } from "src/locale";
 import { formatApiError } from "src/modules/ApiError";
 import {
 	appliesMessageId,
-	fieldOfError,
+	fieldOfApiError,
 	formFieldOf,
 	GROUP_KEYS,
 	isEmptyPayload,
@@ -156,7 +156,7 @@ function useSaveError() {
  */
 const reportSaveError = (group, err, { setErrorMsg, setError, lead }) => {
 	const { message } = formatApiError(err, hasMessage, formatMessage);
-	const field = fieldOfError(group, message);
+	const field = fieldOfApiError(group, err?.payload?.error, message);
 	const text = field ? field.message : message;
 	setErrorMsg(<SaveErrorContent message={text} lead={lead} />);
 	showError(<SaveErrorContent message={text} lead={lead} />);

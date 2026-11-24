@@ -53,6 +53,11 @@ When a saved setting applies:
 | nginx | Answer names from /etc/hosts (default `true`) | `NGINX_RESOLVER_HOSTS` | on save, with an nginx reload; also Settings, nginx, DNS resolver; a set variable locks the field |
 | nginx | Ask for IPv6 addresses too (default `true`) | `NGINX_RESOLVER_IPV6` | on save, with an nginx reload; also Settings, nginx, DNS resolver; a set variable locks the field |
 | nginx | How long nginx keeps an answer: seconds, or parts with units such as `30s`, `5m` or `1h30m` (never `ms`, not a bare `0`). Empty (the default): the record's TTL; `0s` or another zero such as `0m` means the same as empty | `NGINX_RESOLVER_VALID` | on save, with an nginx reload; also Settings, nginx, DNS resolver; a set variable locks the field |
+| Dynamic DNS | Check every (default `5m`): a time from `1m` to `24h` such as `5m` or `1h30m` | `DDNS_PERIOD` | at once, also Settings, Dynamic DNS; a set variable locks the field |
+| Dynamic DNS | Least time between two writes of one record (default `5m`): a time from `1m` to `24h` | `DDNS_COOLDOWN` | at once, also Settings, Dynamic DNS; a set variable locks the field |
+| Dynamic DNS | Services that tell the public IPv4 address, space separated, `https://` only (2 to 10, as a new address needs a second service to confirm it, each at most 200 characters; a single URL is ignored with a warning; default `https://api.ipify.org https://ipv4.icanhazip.com https://v4.ident.me`) | `DDNS_IPV4_SERVICES` | at once, also Settings, Dynamic DNS; a set variable locks the field |
+| Dynamic DNS | Services that tell the public IPv6 address, same format (default `https://api6.ipify.org https://ipv6.icanhazip.com https://v6.ident.me`) | `DDNS_IPV6_SERVICES` | at once, also Settings, Dynamic DNS; a set variable locks the field |
+| Dynamic DNS | DNS servers for the check of a record's name, space separated (IPv4 or [IPv6], optional :port, at most 8). Empty (the default): the container's resolver. Use it when your network answers your own names with a LAN address | `DDNS_RESOLVER` | at once, also Settings, Dynamic DNS; a set variable locks the field |
 | Advanced | Format nginx configs | `DISABLE_NGINX_BEAUTIFIER` (inverted) | immediately |
 | Advanced | Gravatar profile pictures (a real photo only; a user without one, or with Gravatar off, gets their initials drawn by NPMpro) | `DISABLE_GRAVATAR` (inverted) | immediately (a user's picture is refreshed when the user is created (also by the first OIDC sign-in) or saved) |
 | Advanced | Time zone | `TZ` | after a restart |
@@ -62,6 +67,8 @@ The proxies in Trusted proxy IPs (and Cloudflare's ranges with Trust Cloudflare)
 Pin workers to CPUs is off by default (the kernel places the nginx workers). **Automatic** binds the workers in turn to the CPUs the container may use (`Cpus_allowed_list` in `/proc/self/status`, also inside a Docker `--cpuset-cpus`). **Custom CPUs** takes a list such as `16-19` or `16,18,20`, and a save is refused when the list names CPUs the container may not use. A stored list is cut to the allowed CPUs when nginx starts or reloads; when nothing is left (or the CPU list cannot be read), nothing is pinned and the log says so once.
 
 Turning on post-quantum only (by `NGINX_FORCE_X25519MLKEM768` or in Settings) overrides `NGINX_DISABLE_TLS12` and `NGINX_TRUST_SECPR1`; the stored TLS 1.2 and P curve settings are not changed.
+
+The five `DDNS_*` variables configure the dynamic DNS updater (see [DNS](DNS)). An invalid value never stops the container: it is ignored with a warning in the log, and the stored setting or the default applies, with the field unlocked.
 
 Changes that need an nginx reload are tested with `nginx -t` first: if the test fails, nothing is saved, the previous files are kept and the nginx message is shown.
 

@@ -19,6 +19,7 @@ const PAGE_KINDS = {
 	certificates: { permission: "certificates", objectType: "certificate" },
 	access_lists: { permission: "access_lists", objectType: "access-list" },
 	dns_credentials: { permission: "certificates", objectType: "dns-credential" },
+	ddns: { permission: "certificates", objectType: "ddns-record" },
 };
 // the kinds a page import or export brings along with its items
 const LINKED_KINDS = ["certificates", "access_lists", "dns_credentials"];
@@ -128,7 +129,10 @@ const createBackupPages = ({
 		const needed = linkedOf(data);
 		const certificates = await addLinked("certificates", needed.certificates);
 		await addLinked("access_lists", needed.access_lists);
-		const withCertificates = { certificates: { certificate: kind === "certificates" ? rows : certificates } };
+		const withCertificates = {
+			certificates: { certificate: kind === "certificates" ? rows : certificates },
+			ddns: kind === "ddns" ? data.ddns : undefined,
+		};
 		await addLinked("dns_credentials", linkedOf(withCertificates).dns_credentials);
 		return { rows, linked };
 	};
