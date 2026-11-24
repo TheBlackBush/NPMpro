@@ -57,7 +57,7 @@ const zoneLister = (credentialProvider) => {
 
 const listsDomains = (credentialProvider) => zoneLister(credentialProvider) !== null;
 
-/** The providers that can read and write records (PowerDNS, Linode, Vultr, Bunny, IONOS and GoDaddy only list zones) */
+/** The providers that can read and write records (PowerDNS, Linode, Vultr, bunny.net, IONOS and GoDaddy only list zones) */
 const updaterFor = (credentialProvider) => {
 	const provider = providerForCredential(credentialProvider);
 	return typeof provider?.read === "function" && typeof provider?.write === "function" ? provider : null;
