@@ -46,7 +46,9 @@ import {
 	ddnsRulesInput,
 	IP_VERSIONS,
 	minTtlOf,
+	missingDetailsOf,
 	normalizeRecordName,
+	providerSwitchReset,
 	suggestedZone,
 	zoneFor,
 } from "src/modules/DdnsForms";
@@ -364,14 +366,15 @@ function TargetField({ zones, names }) {
 	);
 }
 
-// the provider: a saved DNS credential, or a service that takes its details in the record; fixed on an edit
-function ProviderField({ choices, isNew }) {
+// the provider: a saved DNS credential, or a service that takes its details in the record; fixed on an edit. The
+// custom provider is named to administrators only, who alone can choose it.
+function ProviderField({ choices, isNew, isAdmin }) {
 	return (
 		<SelectField
 			name="providerId"
 			id="ddnsProvider"
 			label={<T id="ddns.provider" />}
-			hint={<T id="ddns.provider.hint" />}
+			hint={<T id={isAdmin ? "ddns.provider.hint" : "ddns.provider.hint-presets"} />}
 			disabled={!isNew}
 		>
 			<option value={CREDENTIAL}>{intl.formatMessage({ id: "ddns.provider.credential" })}</option>
@@ -384,11 +387,14 @@ function ProviderField({ choices, isNew }) {
 	);
 }
 
-// the account details of a preset and the custom provider's URL: write-only, a saved one stays when left empty
+// the account details of a preset and the custom provider's URL: write-only, a saved one stays when left empty. A
+// View window asks for nothing: no "leave empty" hint and no required marks.
 function AccountFields({ provider, stored }) {
+	const readOnly = useReadOnly();
 	const shown = providerFieldsOf(provider);
-	const saved = provider && isCustom(provider) ? stored?.urlSet === true : stored?.secretSet === true;
-	const keep = <T id="ddns.field.saved-keep" />;
+	const stays = provider && isCustom(provider) ? stored?.urlSet === true : stored?.secretSet === true;
+	const saved = stays || readOnly;
+	const keep = stays && !readOnly ? <T id="ddns.field.saved-keep" /> : undefined;
 	const common = { autoComplete: "off", spellCheck: false };
 	return (
 		<>
@@ -399,7 +405,7 @@ function AccountFields({ provider, stored }) {
 					id="ddnsDomain"
 					label={<T id="ddns.field.domain" />}
 					hint={<T id="ddns.field.domain.hint" />}
-					required
+					required={!readOnly}
 				/>
 			) : null}
 			{shown.fields.includes("username") ? (
@@ -408,7 +414,7 @@ function AccountFields({ provider, stored }) {
 					name="username"
 					id="ddnsUsername"
 					label={<T id="ddns.field.username" />}
-					hint={saved ? keep : undefined}
+					hint={keep}
 					required={!saved}
 				/>
 			) : null}
@@ -421,7 +427,7 @@ function AccountFields({ provider, stored }) {
 					label={
 						<T id={provider.id === "namecheap" ? "ddns.field.password-namecheap" : "ddns.field.password"} />
 					}
-					hint={saved ? keep : undefined}
+					hint={keep}
 					required={!saved}
 				/>
 			) : null}
@@ -434,7 +440,7 @@ function AccountFields({ provider, stored }) {
 					label={<T id="ddns.field.url" />}
 					hint={
 						<>
-							{saved ? <>{keep} </> : null}
+							{keep ? <>{keep} </> : null}
 							<T id="ddns.field.url.hint" data={{ placeholders: "{ip}, {ipv4}, {ipv6}, {name}" }} />
 						</>
 					}
@@ -471,10 +477,19 @@ function RecordFields({ stored, prefilled, providers, credentials, zones, names,
 	const note = providerNoteOf(provider);
 	const choices = useMemo(() => credentiallessChoices(providers, isAdmin), [providers, isAdmin]);
 	const canUse = useMemo(() => (c) => providers.some((p) => p.credentialProvider === c.provider), [providers]);
+	const { setValue } = useFormContext();
+	const lastProvider = useRef(providerId);
+	// on Add, another provider starts with empty details: one service's password or URL never goes to another (the
+	// provider of a saved record cannot change)
+	useEffect(() => {
+		if (stored || lastProvider.current === providerId) return;
+		lastProvider.current = providerId;
+		for (const [key, value] of Object.entries(providerSwitchReset())) setValue(key, value, { shouldDirty: false });
+	}, [providerId, stored, setValue]);
 	return (
 		<>
 			<NameField wildcards={shown.wildcard} zones={zones.suggestion} names={names} />
-			<ProviderField choices={choices} isNew={!stored} />
+			<ProviderField choices={choices} isNew={!stored} isAdmin={isAdmin} />
 			{own ? (
 				<AccountFields provider={provider} stored={stored} />
 			) : (
@@ -626,6 +641,12 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 					</AppModal.Header>
 					<AppModal.Body>
 						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
+						{/* a restore without secrets: the record asks for its URL or password again */}
+						{!customHidden && missingDetailsOf(stored) ? (
+							<NoticeAlert variant="warning" className="mb-3">
+								<T id={missingDetailsOf(stored)} />
+							</NoticeAlert>
+						) : null}
 						{/* a View window: the fields sit in a disabled fieldset */}
 						<fieldset disabled={viewOnly} className="m-0 min-w-0 border-0 p-0">
 							{customHidden ? (

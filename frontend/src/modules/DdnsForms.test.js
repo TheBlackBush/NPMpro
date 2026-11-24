@@ -11,7 +11,9 @@ import {
 	ddnsRulesInput,
 	isIpv6Suffix,
 	minTtlOf,
+	missingDetailsOf,
 	normalizeRecordName,
+	providerSwitchReset,
 	recordStateOf,
 	suggestedZone,
 	zoneFor,
@@ -559,4 +561,23 @@ it("every error key the backend raises has an English text in en.json", () => {
 		[...keys].filter((key) => !(key in en)),
 		[],
 	);
+});
+
+it("tells a record whose restore left it without its URL or password, and no other error", () => {
+	assert.equal(missingDetailsOf({ errorI18n: "error.ddns-custom-url-missing" }), "error.ddns-custom-url-missing");
+	assert.equal(missingDetailsOf({ errorI18n: "error.ddns-secret-missing" }), "error.ddns-secret-missing");
+	assert.equal(missingDetailsOf({ errorI18n: "error.ddns-multi-value" }), null);
+	assert.equal(missingDetailsOf({ errorI18n: null }), null);
+	assert.equal(missingDetailsOf(undefined), null);
+});
+
+it("a provider switch clears every account field and sets the method back to GET", () => {
+	assert.deepEqual(providerSwitchReset(), {
+		username: "",
+		password: "",
+		domain: "",
+		url: "",
+		expect: "",
+		method: "GET",
+	});
 });

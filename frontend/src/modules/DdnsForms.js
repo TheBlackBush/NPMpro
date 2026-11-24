@@ -432,6 +432,25 @@ const timeOf = (iso) => {
 	return Number.isNaN(time) ? null : time;
 };
 
+// the restore marks of a record whose sealed details did not come along (a backup without secrets)
+const MISSING_DETAILS = new Set(["error.ddns-custom-url-missing", "error.ddns-secret-missing"]);
+
+/**
+ * The key of "Enter the URL again" or "Enter the password again" when a restore left the record without its details,
+ * else null: the list shows it under the Disabled badge and the window as a warning
+ *
+ * @param   {{ errorI18n?: string | null } | null | undefined}  record  camelCase record of the API
+ * @returns {string | null}
+ */
+const missingDetailsOf = (record) => (MISSING_DETAILS.has(record?.errorI18n) ? record.errorI18n : null);
+
+/**
+ * The values a provider switch on Add puts back: one service's account details or URL never go to another
+ *
+ * @returns {{ username: string, password: string, domain: string, url: string, expect: string, method: "GET" }}
+ */
+const providerSwitchReset = () => ({ username: "", password: "", domain: "", url: "", expect: "", method: "GET" });
+
 /**
  * What the list shows for a record
  *
@@ -508,8 +527,10 @@ export {
 	IP_VERSIONS,
 	isIpv6Suffix,
 	minTtlOf,
+	missingDetailsOf,
 	normalizeRecordName,
 	providerOf,
+	providerSwitchReset,
 	recordStateOf,
 	suggestedZone,
 	zoneFor,

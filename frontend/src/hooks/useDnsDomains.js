@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createDnsDomains, getDnsDomains, getProviderDomains, updateDnsDomain } from "src/api/backend";
 
-// a save of domains changes the credentials' Domains column, the window of a credential and the picker
+// a save of domains changes the credentials' Domains column, the window of a credential, the picker and the Keep
+// updated suggestions of Dynamic DNS (a name is suggested with the credential whose domain covers it)
 const DOMAIN_KEYS = [
 	["dns-domains"],
 	["dns-credentials"],
 	["dns-credential"],
 	["dns-domain-suggestions"],
+	["ddns-suggestions"],
 	["audit-logs"],
 ];
 

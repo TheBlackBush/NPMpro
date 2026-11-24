@@ -20,7 +20,7 @@ import { showApiError, showError, showObjectSuccess, showSuccess } from "src/not
 import { CertificateTabs } from "../Tabs";
 import { ddnsApiErrorText, ddnsErrorText } from "./errorText";
 import { StatusCard } from "./StatusCard";
-import { SuggestionsBar } from "./SuggestionsBar";
+import { ADD_RECORD_FOCUS, SuggestionsBar } from "./SuggestionsBar";
 import Table, { useColumns } from "./Table";
 
 export default function TableWrapper() {
@@ -89,7 +89,12 @@ export default function TableWrapper() {
 			actions={
 				<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
 					{data?.length ? (
-						<Button color="primary" size="sm" onClick={() => showDdnsRecordModal()}>
+						<Button
+							color="primary"
+							size="sm"
+							data-focus-target={ADD_RECORD_FOCUS}
+							onClick={() => showDdnsRecordModal()}
+						>
 							<Plus data-icon="inline-start" aria-hidden="true" />
 							<T id="ddns.add" />
 						</Button>

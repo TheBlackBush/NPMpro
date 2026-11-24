@@ -15,12 +15,18 @@ it("refreshes the list and the host after an enable or disable", () => {
 	assert.deepEqual(toggleInvalidations("proxy", 4), [["proxy-hosts"], ["proxy-host", 4]]);
 });
 
-it("refreshes the certificates after a delete, and for a proxy host the access lists", () => {
-	assert.deepEqual(deleteInvalidations("dead", 4), [["dead-hosts"], ["dead-host", 4], ["certificates"]]);
+it("refreshes the certificates and the Keep updated suggestions after a delete, and for a proxy host the access lists", () => {
+	assert.deepEqual(deleteInvalidations("dead", 4), [
+		["dead-hosts"],
+		["dead-host", 4],
+		["certificates"],
+		["ddns-suggestions"],
+	]);
 	assert.deepEqual(deleteInvalidations("redirection", 4), [
 		["redirection-hosts"],
 		["redirection-host", 4],
 		["certificates"],
+		["ddns-suggestions"],
 	]);
 	assert.deepEqual(deleteInvalidations("stream", 4), [["streams"], ["stream", 4], ["certificates"]]);
 	assert.deepEqual(deleteInvalidations("proxy", 4), [
@@ -28,15 +34,28 @@ it("refreshes the certificates after a delete, and for a proxy host the access l
 		["proxy-host", 4],
 		["certificates"],
 		["access-lists"],
+		["ddns-suggestions"],
 	]);
 });
 
-it("refreshes the host, its list, the audit log, the host report and the certificates after a save", () => {
+it("refreshes the host, its list, the audit log, the host report, the certificates and the suggestions after a save", () => {
 	const common = [["audit-logs"], ["host-report"], ["certificates"]];
-	assert.deepEqual(saveInvalidations("dead", 4), [["dead-host", 4], ["dead-hosts"], ...common]);
-	assert.deepEqual(saveInvalidations("redirection", 4), [["redirection-host", 4], ["redirection-hosts"], ...common]);
+	const suggestions = ["ddns-suggestions"];
+	assert.deepEqual(saveInvalidations("dead", 4), [["dead-host", 4], ["dead-hosts"], ...common, suggestions]);
+	assert.deepEqual(saveInvalidations("redirection", 4), [
+		["redirection-host", 4],
+		["redirection-hosts"],
+		...common,
+		suggestions,
+	]);
 	assert.deepEqual(saveInvalidations("stream", 4), [["stream", 4], ["streams"], ...common]);
-	assert.deepEqual(saveInvalidations("proxy", 4), [["proxy-host", 4], ["proxy-hosts"], ...common, ["access-lists"]]);
+	assert.deepEqual(saveInvalidations("proxy", 4), [
+		["proxy-host", 4],
+		["proxy-hosts"],
+		...common,
+		["access-lists"],
+		suggestions,
+	]);
 });
 
 it("names the list keys, expand lists, sections and help documents of each type", () => {

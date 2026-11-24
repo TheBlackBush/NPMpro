@@ -1,5 +1,5 @@
 import { ChevronDown, Plus } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Button, HasPermission } from "src/components";
 import {
 	DropdownMenu,
@@ -12,7 +12,11 @@ import { useDdnsSuggestions } from "src/hooks";
 import { T } from "src/locale";
 import { showDdnsRecordModal } from "src/modals";
 import { recordPrefill, suggestionChoice } from "src/modules/DdnsSuggestions";
+import { FOCUS_TARGET_ATTR, restoreRowFocus } from "src/modules/FocusReturn";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
+
+// the key of the tab's Add record button (data-focus-target), where focus goes once the bar is gone
+export const ADD_RECORD_FOCUS = "ddns-add-record";
 
 // the record window opens once the menu has closed and returned focus, as the row action menus do
 const openLater = (suggestion) => setTimeout(() => showDdnsRecordModal(undefined, recordPrefill(suggestion)), 0);
@@ -21,7 +25,16 @@ const openLater = (suggestion) => setTimeout(() => showDdnsRecordModal(undefined
 export function SuggestionsBar() {
 	const { data } = useDdnsSuggestions();
 	const pending = useRef(null);
+	const shown = useRef(false);
 	const choice = suggestionChoice(data);
+	// the last suggestion saved: the bar and its button go, so focus moves to the tab's Add record button
+	useEffect(() => {
+		if (choice.kind !== "none") shown.current = true;
+		else if (shown.current) {
+			shown.current = false;
+			restoreRowFocus(ADD_RECORD_FOCUS, FOCUS_TARGET_ATTR);
+		}
+	}, [choice.kind]);
 	if (choice.kind === "none") return null;
 	return (
 		<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
@@ -37,6 +50,7 @@ export function SuggestionsBar() {
 						type="button"
 						color="primary"
 						size="sm"
+						data-focus-return={ADD_RECORD_FOCUS}
 						onClick={() => showDdnsRecordModal(undefined, recordPrefill(choice.first))}
 					>
 						<Plus data-icon="inline-start" aria-hidden="true" />
@@ -45,7 +59,7 @@ export function SuggestionsBar() {
 				) : (
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button type="button" color="primary" size="sm">
+							<Button type="button" color="primary" size="sm" data-focus-return={ADD_RECORD_FOCUS}>
 								<Plus data-icon="inline-start" aria-hidden="true" />
 								<T id="ddns.suggestions.add" />
 								<ChevronDown data-icon="inline-end" aria-hidden="true" />

@@ -8,7 +8,7 @@ import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
 import { useCanManage, useDdnsProviders, useIsAdmin } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDdnsRecordModal } from "src/modals";
-import { IP_VERSIONS, recordStateOf } from "src/modules/DdnsForms";
+import { IP_VERSIONS, missingDetailsOf, recordStateOf } from "src/modules/DdnsForms";
 import { ageOf, recordAddressOf } from "src/modules/DdnsStatus";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { ddnsErrorText } from "./errorText";
@@ -80,6 +80,9 @@ function RecordState({ record, updating }) {
 	}
 	const state = recordStateOf(record, Date.now());
 	const message = state.kind === "failed" ? ddnsErrorText(record) : null;
+	// why a restored record is disabled ("Enter the URL again"), and a note of the engine on a record that is up to date
+	const missing = state.kind === "disabled" ? missingDetailsOf(record) : null;
+	const note = state.kind === "ok" || state.kind === "updated" ? record.noteI18n : null;
 	const age = state.kind === "ok" ? ageOf(state.at, Date.now()) : null;
 	const labels = {
 		ok: age ? (
@@ -105,6 +108,16 @@ function RecordState({ record, updating }) {
 					</StatusBadge>
 				) : null}
 			</div>
+			{missing ? (
+				<span className="text-xs text-muted-foreground">
+					<T id={missing} />
+				</span>
+			) : null}
+			{note ? (
+				<span className="text-xs text-muted-foreground" data-ddns-note>
+					<T id={note} />
+				</span>
+			) : null}
 			{state.nextTry ? (
 				<span className="text-xs text-muted-foreground">
 					<T id="ddns.state.next-try" data={{ time: formatDateTime(state.nextTry) }} />
