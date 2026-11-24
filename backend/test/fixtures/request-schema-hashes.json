@@ -11,6 +11,7 @@
 	"get /nginx/certificates": "8b02a4d628041ad1dd1904eb3ca5e033b40b846a56e29e7f208726119e209dad",
 	"post /nginx/certificates": "91f94cc026cde3df7cc9f6ffa01952641c625f599583417e5b809ea040d7f383",
 	"post /nginx/certificates/validate": "db0489d50d05371a083d7937b21fbc9386b941ed35ac64f1dcb0fd99e1465ce7",
+	"post /nginx/certificates/caa-check": "fe0e6fffe5250cbacc7e42de1b51c94e49a77f01c675aa88d7e1a7c90664e960",
 	"post /nginx/certificates/test-http": "8551016693a8f701dbc8eff0bc4ca22c15d19642f8ae3ca6ca0ea6a82bca81ce",
 	"get /nginx/certificates/{certID}": "5f22edc3a4ca9634e7d89cc0fc5782182730e2a08334e0e77c1dfe901d5bf453",
 	"delete /nginx/certificates/{certID}": "5f22edc3a4ca9634e7d89cc0fc5782182730e2a08334e0e77c1dfe901d5bf453",

@@ -7,6 +7,7 @@ import multer from "multer";
 import dnsPlugins from "../../certbot/dns-plugins.json" with { type: "json" };
 import internalAcmeAccount from "../../internal/acme-account.js";
 import internalCertificate from "../../internal/certificate.js";
+import internalCertificateCaa from "../../internal/certificate-caa.js";
 import { cleansChallenges, listsDomains, updaterFor } from "../../lib/ddns/providers/index.js";
 import { getFieldDefinition } from "../../lib/dns-credential-values.js";
 import errs from "../../lib/error.js";
@@ -153,6 +154,31 @@ router
 
 		const result = await internalCertificate.testHttpsChallenge(res.locals.access, payload);
 		res.status(200).send(result);
+	});
+
+/**
+ * /api/nginx/certificates/caa-check
+ */
+router
+	.route("/caa-check")
+	.all(jwtdecode())
+
+	/** POST /api/nginx/certificates/caa-check */
+	.post(async (req, res) => {
+		const payload = apiValidator(getValidationSchema("/nginx/certificates/caa-check", "post"), req.body);
+		res.status(200).send(await internalCertificateCaa.check(res.locals.access, payload));
+	});
+
+/**
+ * /api/nginx/certificates/caa
+ */
+router
+	.route("/caa")
+	.all(jwtdecode())
+
+	/** GET /api/nginx/certificates/caa */
+	.get(async (_, res) => {
+		res.status(200).send(await internalCertificateCaa.list(res.locals.access));
 	});
 
 /**

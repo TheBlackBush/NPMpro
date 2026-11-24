@@ -205,6 +205,16 @@
 				"$ref": "./paths/nginx/certificates/validate/post.json"
 			}
 		},
+		"/nginx/certificates/caa-check": {
+			"post": {
+				"$ref": "./paths/nginx/certificates/caa-check/post.json"
+			}
+		},
+		"/nginx/certificates/caa": {
+			"get": {
+				"$ref": "./paths/nginx/certificates/caa/get.json"
+			}
+		},
 		"/nginx/certificates/test-http": {
 			"post": {
 				"$ref": "./paths/nginx/certificates/test-http/post.json"

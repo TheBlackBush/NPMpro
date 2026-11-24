@@ -1,0 +1,94 @@
+{
+	"operationId": "checkCertificateCaa",
+	"summary": "Check the CAA records of names",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "The names and the CA to check them for",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"domain_names"
+					],
+					"properties": {
+						"domain_names": {
+							"$ref": "../../../../common.json#/properties/domain_names"
+						},
+						"acme_server": {
+							"type": "string",
+							"maxLength": 255,
+							"pattern": "^https?://\\S+$",
+							"description": "The CA (an ACME directory URL) the certificate would be requested from; default the instance CA. It must be one an administrator has set up"
+						},
+						"dns_challenge": {
+							"type": "boolean",
+							"description": "True for the DNS challenge (`dns-01`), false for the HTTP challenge (`http-01`); a `validationmethods` parameter is compared with it",
+							"default": false
+						}
+					}
+				},
+				"example": {
+					"domain_names": [
+						"app.example.com",
+						"*.example.com"
+					],
+					"acme_server": "https://acme-v02.api.letsencrypt.org/directory",
+					"dns_challenge": true
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "One result per name",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"checked_on": "2026-11-24T09:00:00.000Z",
+								"names": [
+									{
+										"name": "app.example.com",
+										"state": "refused",
+										"reason": "not-listed",
+										"found_at": "example.com",
+										"record": "0 issue \"pki.goog\"",
+										"error_i18n": null
+									}
+								]
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/caa-check-object.json"
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "No name, more than 100, or a CA that is not set up",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/error.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Reads the CAA records (RFC 8659) of each name: the name itself, then each parent until a set is found, at most 10 levels; a wildcard starts at its base name. It compares them with the CAA identities of the chosen CA (the `caaIdentities` of its ACME directory, else a fixed list for the preset CAs). A name whose CA does not name an identity is `not-checked`. Nothing is written and nothing is cached.\n\nNeeds: Certificates view"
+}

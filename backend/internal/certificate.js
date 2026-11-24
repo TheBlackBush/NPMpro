@@ -27,6 +27,7 @@ import { getValidationSchema } from "../schema/index.js";
 import { allowedAcmeServers, instanceServer, withAccountLock, withRenewalLocks } from "./acme-account.js";
 import internalAuditLog from "./audit-log.js";
 import certificateAcme, { keyFileOf, renewalParamsOf, revokeBestEffort, runCertonly } from "./certificate-acme.js";
+import certificateCaa from "./certificate-caa.js";
 import certificateCustom, { ALLOWED_SSL_FILES } from "./certificate-custom.js";
 import certificateInfo from "./certificate-info.js";
 import internalDnsCredential from "./dns-credential.js";
@@ -199,6 +200,7 @@ const internalCertificate = {
 		} catch (err) {
 			logger.error(err);
 		} finally {
+			certificateCaa.clearAll();
 			internalCertificate.intervalProcessing = false;
 		}
 	},
@@ -853,5 +855,17 @@ const internalCertificate = {
 		});
 	},
 };
+
+// a save, re-issue, renewal or delete forgets the certificate's CAA result, also when it failed
+for (const name of ["update", "setDomains", "setDnsCredential", "renew", "reissue", "delete"]) {
+	const original = internalCertificate[name];
+	internalCertificate[name] = async (access, data) => {
+		try {
+			return await original(access, data);
+		} finally {
+			certificateCaa.clear(data.id);
+		}
+	};
+}
 
 export default internalCertificate;

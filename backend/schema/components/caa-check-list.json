@@ -1,0 +1,101 @@
+{
+	"type": "array",
+	"description": "The cached CAA results of the Let's Encrypt (ACME) certificates the user can view",
+	"items": {
+		"type": "object",
+		"additionalProperties": false,
+		"required": [
+			"certificate_id",
+			"state",
+			"checked_on",
+			"names"
+		],
+		"properties": {
+			"certificate_id": {
+				"type": "integer",
+				"minimum": 1,
+				"description": "The certificate's id"
+			},
+			"state": {
+				"type": "string",
+				"enum": [
+					"allowed",
+					"refused",
+					"limited",
+					"unknown",
+					"not-checked"
+				],
+				"description": "The worst state of the names: `refused`, then `limited`, `unknown`, `allowed`; `not-checked` when no result is cached yet"
+			},
+			"checked_on": {
+				"type": [
+					"string",
+					"null"
+				],
+				"format": "date-time",
+				"description": "When the names were last checked; null when no result is cached"
+			},
+			"names": {
+				"type": "array",
+				"items": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"name",
+						"state",
+						"reason",
+						"found_at",
+						"record",
+						"error_i18n"
+					],
+					"properties": {
+						"name": {
+							"type": "string",
+							"description": "The domain name as asked (a wildcard name keeps its `*.`)"
+						},
+						"state": {
+							"type": "string",
+							"enum": [
+								"allowed",
+								"refused",
+								"limited",
+								"unknown",
+								"not-checked"
+							],
+							"description": "`allowed`: no CAA set applies or it lets the CA issue. `refused`: the records do not let the CA issue (see `record`). `limited`: the record limits the CA's account (`accounturi`), which NPMpro does not compare. `unknown`: a lookup failed (see `reason`). `not-checked`: not looked at (a pattern name, an unknown CA identity, or no result cached yet)"
+						},
+						"reason": {
+							"type": [
+								"string",
+								"null"
+							],
+							"description": "A code: `none`, `no-issue-property`, `listed`, `listed-parameters-unchecked`, `not-listed`, `forbidden`, `validationmethods`, `accounturi`, `critical-unknown-tag`, `lookup-timeout`, `lookup-servfail`, `lookup-error`, `skipped-pattern` or `no-identity`"
+						},
+						"found_at": {
+							"type": [
+								"string",
+								"null"
+							],
+							"description": "The name whose CAA records apply (the name itself or a parent); null when there are none"
+						},
+						"record": {
+							"type": [
+								"string",
+								"null"
+							],
+							"description": "The relevant CAA record or records as text, at most 500 characters; null when there is none to show"
+						},
+						"error_i18n": {
+							"type": [
+								"string",
+								"null"
+							],
+							"description": "A translation key (`error.caa-no-identity`) when the CA does not name its CAA identity"
+						}
+					}
+				},
+				"description": "One result per domain name of the certificate; empty until checked"
+			}
+		}
+	}
+}
