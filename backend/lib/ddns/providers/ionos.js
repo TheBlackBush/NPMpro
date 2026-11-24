@@ -5,10 +5,13 @@ const DEFAULT_ENDPOINT = "https://api.hosting.ionos.com";
 const TRAILING_SLASHES = /\/+$/u;
 const HINT = "An API key of the IONOS DNS API, on an account that IONOS allows to use it";
 
-const keyOf = (fields) => `${fields.dns_ionos_prefix}.${fields.dns_ionos_secret}`;
+// a missing field is empty, never the text "undefined"
+const keyOf = (fields) => `${fields.dns_ionos_prefix ?? ""}.${fields.dns_ionos_secret ?? ""}`;
 // the prefix is not secret, but the whole key is: the secret and the joined key are scrubbed
 const secretsOf = (fields) =>
-	[fields.dns_ionos_secret, keyOf(fields)].filter((value) => typeof value === "string" && value !== "");
+	[fields.dns_ionos_secret, keyOf(fields)].filter(
+		(value) => typeof value === "string" && value !== "" && value !== ".",
+	);
 
 /**
  * The API origin: https only, origin and path only (no userinfo, query or hash). The outbound guard checks the

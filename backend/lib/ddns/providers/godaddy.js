@@ -3,12 +3,12 @@ import { collectZones, failAnswer, malformed } from "./zone-common.js";
 const LIMIT = 500;
 const HINT = "An API key with access to the domain API, on an account that GoDaddy allows to use it";
 
+// the key and secret as the sso-key header joins them; a missing field is empty, never the text "undefined"
+const pairOf = (fields) => `${fields.dns_godaddy_key ?? ""}:${fields.dns_godaddy_secret ?? ""}`;
 const secretsOf = (fields) =>
-	[
-		fields.dns_godaddy_key,
-		fields.dns_godaddy_secret,
-		`${fields.dns_godaddy_key}:${fields.dns_godaddy_secret}`,
-	].filter((value) => typeof value === "string" && value !== "" && value !== "undefined:undefined");
+	[fields.dns_godaddy_key, fields.dns_godaddy_secret, pairOf(fields)].filter(
+		(value) => typeof value === "string" && value !== "" && value !== ":",
+	);
 
 /**
  * Zone listing only: GoDaddy has no DDNS updater here. A page is a bare array; the next one starts after the
@@ -26,7 +26,7 @@ export default {
 				const query = `limit=${LIMIT}${marker === "" ? "" : `&marker=${encodeURIComponent(marker)}`}`;
 				const res = await fetch(`https://api.godaddy.com/v1/domains?${query}`, {
 					headers: {
-						Authorization: `sso-key ${fields.dns_godaddy_key}:${fields.dns_godaddy_secret}`,
+						Authorization: `sso-key ${pairOf(fields)}`,
 						Accept: "application/json",
 					},
 				});
