@@ -11,8 +11,10 @@ const LIST_PAGE = 1000;
 const LIST_HINT = "A valid API key and secret, API access switched on for the domain, and the IP list of the key";
 const LIST_REFUSED =
 	/^(?:INVALID_API_KEYS|MISSING_|API_KEY_REQUIRED|INSUFFICIENT_SCOPE|IP_NOT_ALLOWED|DOMAIN_NOT_ALLOWED)/u;
-// a domain without API access appears in the list but the credential cannot use it
+// a domain without API access, or not hosted at Porkbun (notLocal), appears in the list but the credential cannot use it
 const apiOff = (value) => value === 0 || value === "0" || value === false || value === "no";
+const notLocal = (value) => value === 1 || value === "1" || value === true || value === "yes";
+const unusable = (zone) => apiOff(zone?.apiAccess) || notLocal(zone?.notLocal);
 const MISSING_RECORD = /not found|could not find|cannot find|does not exist|no record|no such/iu;
 
 const secretsOf = (fields) =>
@@ -103,7 +105,7 @@ export default {
 				const { domains } = res.json;
 				start += domains.length;
 				return {
-					names: domains.map((zone) => (apiOff(zone?.apiAccess) ? "" : zone?.domain)),
+					names: domains.map((zone) => (unusable(zone) ? "" : zone?.domain)),
 					more: domains.length >= LIST_PAGE,
 				};
 			},

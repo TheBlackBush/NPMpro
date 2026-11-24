@@ -249,6 +249,76 @@ it("linode, vultr, bunny, ionos, godaddy: zone listing only, no DDNS updater", (
 	}
 });
 
+// the error bodies the providers really send (item-16-pr7-facts rows 5, 14, 22, 31): the window shows their text
+const ERROR_BODIES = {
+	linode: [
+		{ errors: [{ reason: `Invalid Token ${TOKEN}` }, { field: "x", reason: "Second" }] },
+		"Invalid Token ***; Second",
+	],
+	vultr: [{ error: `Invalid API token. ${TOKEN}`, status: 401 }, "Invalid API token. ***"],
+	desec: [{ detail: `Invalid token. ${TOKEN}`, code: "authentication_failed" }, "Invalid token. ***"],
+	bunny: [
+		{ Message: `Authorization has been denied for this request. ${TOKEN}` },
+		"Authorization has been denied for this request. ***",
+	],
+};
+
+for (const [id, [body, shown]] of Object.entries(ERROR_BODIES)) {
+	it(`${id}: the provider's own error text is the message, scrubbed, not the raw JSON`, async () => {
+		const c = CASES[id];
+		intercept(c.host, c.path(1), c.headers).reply(401, body, json);
+		await assert.rejects(run(id, c.fields), (err) => {
+			assert.equal(err.code, "forbidden");
+			assert.equal(err.message, `Access refused (401): ${shown}`);
+			return true;
+		});
+	});
+}
+
+it("bunny: the label is bunny.net", () => {
+	assert.equal(providerById("bunny").label, "bunny.net");
+});
+
+it("linode and ionos: secondary zones are left out", async () => {
+	const lin = CASES.linode;
+	intercept(lin.host, lin.path(1), lin.headers).reply(
+		200,
+		{
+			data: [
+				{ domain: "a.example.org", type: "master" },
+				{ domain: "sec.example.org", type: "slave" },
+			],
+			page: 1,
+			pages: 1,
+		},
+		json,
+	);
+	assert.deepEqual([...(await run("linode", lin.fields))], ["a.example.org"]);
+	const io = CASES.ionos;
+	intercept(io.host, io.path(1), io.headers).reply(
+		200,
+		[
+			{ name: "b.example.org", type: "NATIVE" },
+			{ name: "sec.example.org", type: "SLAVE" },
+		],
+		json,
+	);
+	assert.deepEqual([...(await run("ionos", io.fields))], ["b.example.org"]);
+});
+
+it("desec: a next link that is not a URL is a failed answer, not a crash", async () => {
+	const c = CASES.desec;
+	intercept(c.host, c.path(1), c.headers).reply(200, c.body(["a.example.org"]), {
+		headers: { ...json.headers, link: '<http://[x>; rel="next"' },
+	});
+	await assert.rejects(run("desec", c.fields), (err) => {
+		assert.ok(err instanceof DdnsProviderError);
+		assert.equal(err.code, "failed");
+		assert.equal(err.message, "Unexpected answer shape");
+		return true;
+	});
+});
+
 it("desec: a cursor URL of another host is refused as a bad shape", async () => {
 	const c = CASES.desec;
 	intercept(c.host, c.path(1), c.headers).reply(200, c.body(["a.example.org"]), {
@@ -414,20 +484,23 @@ const pbDomains = (from, count) =>
 	}));
 const pbOk = (domains) => ({ status: "SUCCESS", count: domains.length, domains });
 
-it("porkbun: credentials in the body, domains without API access left out, sorted, IDN as punycode", async () => {
+it("porkbun: credentials in the body, domains without API access or not at Porkbun left out, sorted, IDN as punycode", async () => {
 	pbList().reply(
 		200,
 		pbOk([
 			{ domain: "b.example.org", apiAccess: "1" },
 			{ domain: "off.example.org", apiAccess: 0 },
 			{ domain: "off2.example.org", apiAccess: "0" },
+			{ domain: "ext.example.org", apiAccess: 1, notLocal: 1 },
+			{ domain: "ext2.example.org", apiAccess: 1, notLocal: "1" },
+			{ domain: "c.example.org", apiAccess: 1, notLocal: 0 },
 			{ domain: "bücher.example", apiAccess: 1 },
 			{ domain: "a.example.org" },
 		]),
 		json,
 	);
 	const zones = await run("porkbun", PB, PB_SECRETS);
-	assert.deepEqual([...zones], ["a.example.org", "b.example.org", "xn--bcher-kva.example"]);
+	assert.deepEqual([...zones], ["a.example.org", "b.example.org", "c.example.org", "xn--bcher-kva.example"]);
 	assert.equal(zones.truncated, undefined);
 });
 

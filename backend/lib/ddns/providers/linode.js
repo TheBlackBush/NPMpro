@@ -19,7 +19,8 @@ export default {
 				if (!Array.isArray(res.json?.data)) throw malformed(res, secrets);
 				const pages = Number(res.json.pages);
 				return {
-					names: res.json.data.map((zone) => zone?.domain),
+					// a secondary zone takes no record through this token
+					names: res.json.data.map((zone) => (zone?.type === "slave" ? "" : zone?.domain)),
 					more: Number.isFinite(pages) && page < pages,
 				};
 			},

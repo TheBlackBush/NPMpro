@@ -3,10 +3,10 @@ import { collectZones, failAnswer, malformed } from "./zone-common.js";
 const PER_PAGE = 500;
 const HINT = "The account API key of bunny.net (dash.bunny.net, Account settings)";
 
-/** Zone listing only: Bunny has no DDNS updater here. HasMoreItems says whether a next page exists */
+/** Zone listing only: bunny.net has no DDNS updater here. HasMoreItems says whether a next page exists */
 export default {
 	id: "bunny",
-	label: "Bunny",
+	label: "bunny.net",
 	credentialProvider: "bunny",
 	listZones: ({ fields, fetch }) =>
 		collectZones({

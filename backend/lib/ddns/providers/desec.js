@@ -149,7 +149,12 @@ export default {
 		let url = null;
 		let firstTried = false;
 		const follow = (link, res, secrets) => {
-			const target = new URL(link, base);
+			let target;
+			try {
+				target = new URL(link, base);
+			} catch {
+				throw malformed(res, secrets);
+			}
 			if (target.origin !== base.origin) throw malformed(res, secrets);
 			return target.href;
 		};

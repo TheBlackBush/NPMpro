@@ -52,7 +52,8 @@ export default {
 				});
 				if (res.status !== 200) failAnswer(res, { hint: HINT, secrets });
 				if (!Array.isArray(res.json)) throw malformed(res, secrets);
-				return { names: res.json.map((zone) => zone?.name), more: false };
+				// a secondary zone takes no record through this key
+				return { names: res.json.map((zone) => (zone?.type === "SLAVE" ? "" : zone?.name)), more: false };
 			},
 		}),
 };
