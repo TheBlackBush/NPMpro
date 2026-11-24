@@ -351,6 +351,33 @@
 			]
 		},
 		{
+			"name": "challenge cleanup window",
+			"route": "/certificates/dns-credentials",
+			"steps": [
+				{ "seedDnsCredential": true },
+				{ "reload": true },
+				{ "click": "role=button[name='Actions for flow-csp-dns'] >> visible=true" },
+				{ "click": "role=menuitem[name='Clean up challenge records']" },
+				{ "waitFor": "[data-dns-challenges-window]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-dns-challenges-window]" }
+			]
+		},
+		{
+			"name": "host DNS card",
+			"route": "/nginx/proxy",
+			"steps": [
+				{ "seedProxyHost": true },
+				{ "reload": true },
+				{ "click": "role=button[name='Edit flow-csp.example'] >> visible=true" },
+				{ "click": "[role=dialog] [role=tab][data-tab=details]" },
+				{ "waitFor": "[data-dns-check-button]" },
+				{ "click": "[data-dns-check-button]" },
+				{ "waitFor": "[data-dns-state]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "access list window",
 			"route": "/access",
 			"steps": [

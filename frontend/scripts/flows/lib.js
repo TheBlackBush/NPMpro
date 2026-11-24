@@ -214,6 +214,8 @@ const ENABLED_CONTROLS = (root) =>
 				el.type !== "hidden" &&
 				el.getClientRects().length > 0 &&
 				!el.closest("[role=tablist]") &&
+				// the DNS card of a host window: its Check only reads and works in a View window (its own flow checks it)
+				!el.closest("[role=group][aria-labelledby^=dns-card-]") &&
 				!(el.disabled || el.closest("fieldset:disabled") || el.readOnly) &&
 				el.getAttribute("aria-readonly") !== "true" &&
 				el.getAttribute("aria-disabled") !== "true" &&

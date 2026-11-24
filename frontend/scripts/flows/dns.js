@@ -10,9 +10,11 @@ import {
 	rowShows,
 	saveWindow,
 	signIn,
+	uploadCertificate,
 	VIEWER_EMAIL,
 	windowClosed,
 	windowTitled,
+	withToast,
 } from "./lib.js";
 
 const NAME_A = "flow-dns-a";
@@ -642,9 +644,362 @@ async function fetchDomains({ admin }) {
 	}
 }
 
+// The DNS check and the challenge cleanup (PR 8a): the credential Test, the cleanup window, the host DNS card and list,
+// the CAA notes. CI calls no provider and no outside name: the cleanup list and the CAA answers are made by page.route,
+// the Test of PowerDNS meets the blocked address 127.0.0.1, the host names are under .example.
+const CHECK_HOST = "check.flow-check.example";
+const CHALLENGES_ROUTE = "**/api/nginx/dns-credentials/*/challenges";
+const CAA_CHECK_ROUTE = "**/api/nginx/certificates/caa-check";
+const CAA_LIST_ROUTE = "**/api/nginx/certificates/caa";
+const CERTIFICATES_LIST = /\/api\/nginx\/certificates(?:\?.*)?$/u;
+const CAA_NAME = "caa.flow-check.example";
+const CAA_RECORD = '0 issue "other-ca.flow-check.example"';
+
+const challengeItem = (key, name, ageSeconds, values) => ({
+	key,
+	name,
+	id: `id-${key}`,
+	values,
+	age_seconds: ageSeconds,
+	recent: ageSeconds !== null && ageSeconds < 600,
+	preselected: ageSeconds !== null && ageSeconds > 3600,
+});
+
+const challengeAnswer = (busy) => ({
+	supported: true,
+	busy,
+	truncated: false,
+	skipped_cnames: 1,
+	items: [
+		challengeItem("old", "_acme-challenge.flow-check.example", 7200, ["flow-old-value"]),
+		challengeItem("new", "_acme-challenge.www.flow-check.example", 120, ["flow-new-value"]),
+		challengeItem("unknown", "_acme-challenge.mail.flow-check.example", null, ["flow-unknown-value"]),
+	],
+});
+
+const caaAnswer = (names, state) => ({
+	checked_on: new Date().toISOString(),
+	names: names.map((name) => ({
+		name,
+		state,
+		reason: state === "refused" ? "not-listed" : "none",
+		found_at: state === "refused" ? "flow-check.example" : null,
+		record: state === "refused" ? CAA_RECORD : null,
+		error_i18n: null,
+	})),
+});
+
+const menuItem = (page, name) => page.getByRole("menuitem", { name: new RegExp(`^${name}`, "u") });
+const challengeBox = (dialog, key) => dialog.locator(`#dns-challenge-${key}`);
+const challengesWindow = (page) => page.locator("[data-dns-challenges-window]");
+
+async function expectTicked(dialog, expected, what) {
+	for (const [key, ticked] of Object.entries(expected)) {
+		// biome-ignore lint/performance/noAwaitInLoops: one box after the other
+		const actual = await challengeBox(dialog, key).isChecked();
+		if (actual !== ticked) throw new Error(`${what}: the box of ${key} is ${actual ? "ticked" : "not ticked"}`);
+	}
+}
+
+const DELETE_BUTTON = /^Delete \d+ records?$/u;
+const deleteButton = (dialog) => dialog.getByRole("button", { name: DELETE_BUTTON });
+
+// 1 and 2: the credential Test (a blocked address, the window's Test while a field is changed) and a provider without cleanup
+async function checkCredentials({ admin }) {
+	const { page, api } = admin;
+	try {
+		await api("POST", "/nginx/dns-credentials", {
+			name: "flow-check-pdns",
+			provider: "powerdns",
+			fields: [
+				{ key: "dns_pdns_endpoint", value: "https://127.0.0.1" },
+				{ key: "dns_pdns_api_key", value: "flow-key" },
+			],
+		});
+		await api("POST", "/nginx/dns-credentials", {
+			name: "flow-check-linode",
+			provider: "linode",
+			ini: "dns_linode_key=flow-key",
+		});
+		await page.goto("/certificates/dns-credentials");
+		await rowShows(page, "flow-check-pdns", "PowerDNS");
+		// the Test of the row menu: the loopback address is blocked
+		await withToast(page, "NPMpro does not send requests to this address", () =>
+			rowAction(page, "flow-check-pdns", "Test"),
+		);
+
+		// the window's Test: works while nothing is changed, is disabled with its reason once a field is changed
+		await rowAction(page, "flow-check-pdns", "Edit");
+		await windowTitled(page, "Edit DNS credential");
+		const dialog = page.getByRole("dialog");
+		const test = dialog.getByRole("button", { name: "Test", exact: true });
+		await test.waitFor();
+		await page.waitForFunction(() => document.querySelector("#dnsCredentialName")?.value === "flow-check-pdns");
+		if (await test.isDisabled()) throw new Error("the window's Test is disabled on an unchanged credential");
+		await test.click();
+		await dialog.getByText("NPMpro does not send requests to this address.", { exact: true }).waitFor();
+		await dialog.locator("#dnsCredentialName").fill("flow-check-pdns-changed");
+		await dialog.getByText("Save the credential first", { exact: true }).waitFor();
+		if (!(await test.isDisabled())) throw new Error("the window's Test is enabled while a field is changed");
+		await closeWindow(page, dialog);
+
+		// a provider with no challenge cleanup: the item is disabled and says why
+		await page.goto("/certificates/dns-credentials");
+		await revealMenu(page, "flow-check-linode");
+		const cleanup = menuItem(page, "Clean up challenge records");
+		await cleanup.waitFor();
+		if ((await cleanup.getAttribute("aria-disabled")) !== "true")
+			throw new Error("Clean up challenge records is enabled for Linode");
+		await cleanup.getByText("NPMpro cannot clean up challenge records at this provider", { exact: true }).waitFor();
+		await page.keyboard.press("Escape");
+		await page.getByRole("menu").waitFor({ state: "detached" });
+	} finally {
+		await cleanUp(api);
+	}
+}
+
+async function revealMenu(page, name) {
+	await rowShows(page, name, name);
+	await page
+		.getByRole("button", { name: `Actions for ${name}`, exact: true })
+		.filter({ visible: true })
+		.click();
+}
+
+// 3: the cleanup window with routed answers
+async function checkCleanup({ admin }) {
+	const { page, api } = admin;
+	let busy = false;
+	const deletes = [];
+	await page.route(CHALLENGES_ROUTE, (route) =>
+		route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(challengeAnswer(busy)) }),
+	);
+	page.on("request", (request) => {
+		if (request.method() === "POST" && request.url().includes("/challenges/delete")) deletes.push(request.url());
+	});
+	try {
+		await api("POST", "/nginx/dns-credentials", {
+			name: "flow-check-cf",
+			provider: "cloudflare",
+			ini: "dns_cloudflare_api_token=flow-token",
+			domains: ["flow-check.example"],
+		});
+		const open = async () => {
+			await page.goto("/certificates/dns-credentials");
+			await rowAction(page, "flow-check-cf", "Clean up challenge records");
+			await challengesWindow(page).waitFor();
+			await challengeBox(page.getByRole("dialog"), "old").waitFor();
+			return page.getByRole("dialog");
+		};
+
+		// only the old record is ticked; the unknown age says so; the skipped CNAME is noted
+		let dialog = await open();
+		await expectTicked(dialog, { old: true, new: false, unknown: false }, "the preselection");
+		await dialog.locator("[data-challenge-unknown-age]").waitFor();
+		await dialog.getByText("1 CNAME delegation at _acme-challenge is not touched.", { exact: true }).waitFor();
+		if ((await dialog.getByText("Recent", { exact: true }).count()) !== 1)
+			throw new Error("one record is not marked Recent");
+
+		// Select all ticks every record (none is in use), a second click clears them
+		const all = dialog.locator("#dns-challenges-all");
+		await all.click();
+		await expectTicked(dialog, { old: true, new: true, unknown: true }, "Select all");
+		await deleteButton(dialog).filter({ hasText: "Delete 3 records" }).waitFor();
+		await all.click();
+		await expectTicked(dialog, { old: false, new: false, unknown: false }, "Select all cleared");
+		if (!(await deleteButton(dialog).isDisabled())) throw new Error("Delete is enabled with nothing ticked");
+		await challengeBox(dialog, "old").click();
+
+		// Delete asks the question and sends nothing; Back returns to the list
+		await deleteButton(dialog).filter({ hasText: "Delete 1 record" }).click();
+		await dialog.locator("[data-challenge-confirm]").waitFor();
+		await dialog.getByText("Delete 1 record at flow-check-cf?", { exact: true }).waitFor();
+		if (deletes.length > 0) throw new Error("a delete was sent before the confirmation");
+		await dialog.getByRole("button", { name: "Back", exact: true }).click();
+		await expectTicked(dialog, { old: true, new: false, unknown: false }, "after Back");
+
+		// Cancel deletes nothing and the list is the same when the window is opened again
+		await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+		await windowClosed(page);
+		dialog = await open();
+		await expectTicked(dialog, { old: true, new: false, unknown: false }, "the reopened list");
+		if (deletes.length > 0) throw new Error("Cancel sent a delete");
+		await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+		await windowClosed(page);
+
+		// a certificate request runs: the banner, boxes and Delete are disabled, nothing is ticked
+		busy = true;
+		dialog = await open();
+		await dialog.locator("[data-challenge-busy]").waitFor();
+		await expectTicked(dialog, { old: false, new: false, unknown: false }, "the busy list");
+		if (!(await challengeBox(dialog, "old").isDisabled())) throw new Error("a box is enabled while a request runs");
+		if (!(await dialog.locator("#dns-challenges-all").isDisabled()))
+			throw new Error("Select all is enabled while a request runs");
+		if (!(await deleteButton(dialog).isDisabled())) throw new Error("Delete is enabled while a request runs");
+		await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+		await windowClosed(page);
+		if (deletes.length > 0) throw new Error("a delete was sent");
+	} finally {
+		await page.unroute(CHALLENGES_ROUTE);
+		await cleanUp(api);
+	}
+}
+
+// 4: the DNS card of a host window, the badge and Check DNS in the list, and the View window of a limited user
+async function checkHost({ admin, browser, base, viewerPassword }) {
+	const { page, api } = admin;
+	try {
+		await api("POST", "/nginx/proxy-hosts", {
+			domain_names: [CHECK_HOST],
+			forward_scheme: "http",
+			forward_host: "127.0.0.1",
+			forward_port: 8080,
+		});
+		await page.goto("/nginx/proxy");
+		await rowAction(page, CHECK_HOST, "Edit");
+		await windowTitled(page, "Edit Proxy Host");
+		let dialog = page.getByRole("dialog");
+		const line = dialog.locator(`[data-dns-name="${CHECK_HOST}"]`);
+		await line.waitFor();
+		await dialog.getByText("Not checked yet", { exact: true }).waitFor();
+		await dialog.locator("[data-dns-check-button]").click();
+		const state = line.locator("[data-dns-state]");
+		await state.waitFor();
+		const result = await state.getAttribute("data-dns-state");
+		if (!["here", "partly", "elsewhere", "none", "unknown"].includes(result))
+			throw new Error(`the check line shows ${result}`);
+		console.log(`dns check: ${CHECK_HOST} is ${result}`);
+		await closeWindow(page, dialog);
+		// the list shows the badge of the result
+		await page.locator("[data-dns-check]").filter({ visible: true }).first().waitFor();
+		// Check DNS on the list checks the page and says so
+		await withToast(page, "Checked 1 name", () =>
+			page.locator("[data-dns-check-page]").filter({ visible: true }).first().click(),
+		);
+
+		// a limited user: the fields stay disabled, Check works, there is no Save
+		const viewer = await signIn(browser, base, VIEWER_EMAIL, viewerPassword);
+		try {
+			await viewer.page.goto("/nginx/proxy");
+			await rowAction(viewer.page, CHECK_HOST, "View");
+			await windowTitled(viewer.page, "View Proxy Host");
+			dialog = viewer.page.getByRole("dialog");
+			const check = dialog.locator("[data-dns-check-button]");
+			await check.waitFor();
+			if (await check.isDisabled()) throw new Error("Check is disabled in the View window");
+			if ((await dialog.getByRole("button", { name: "Save" }).count()) !== 0)
+				throw new Error("the View window can save");
+			const enabled = await dialog.evaluate((root) =>
+				[...root.querySelectorAll("input, select, textarea, [role=switch], [role=combobox], [role=checkbox]")]
+					.filter(
+						(el) =>
+							el.type !== "hidden" &&
+							el.getClientRects().length > 0 &&
+							!(el.disabled || el.closest("fieldset:disabled") || el.readOnly) &&
+							el.getAttribute("aria-readonly") !== "true" &&
+							el.getAttribute("aria-disabled") !== "true",
+					)
+					.map((el) => `${el.tagName.toLowerCase()}#${el.id}`),
+			);
+			if (enabled.length > 0) throw new Error(`enabled fields in the View window: ${enabled.join(", ")}`);
+			await check.click();
+			await dialog.locator(`[data-dns-name="${CHECK_HOST}"] [data-dns-state]`).waitFor();
+			await viewer.page.keyboard.press("Escape");
+			await windowClosed(viewer.page);
+			if (viewer.errors.length > 0) throw new Error(`page error for the viewer: ${viewer.errors[0]}`);
+		} finally {
+			await viewer.context.close();
+		}
+	} finally {
+		await cleanUp(api);
+	}
+}
+
+// 5: the CAA note of the DNS certificate window and the badge of the certificate list, with routed answers
+async function checkCaa({ admin }) {
+	const { page, api } = admin;
+	let state = "refused";
+	await page.route(CAA_CHECK_ROUTE, (route) => {
+		const names = route.request().postDataJSON().domain_names;
+		return route.fulfill({
+			status: 200,
+			contentType: "application/json",
+			body: JSON.stringify(caaAnswer(names, state)),
+		});
+	});
+	try {
+		await page.goto("/certificates");
+		await page.getByRole("button", { name: "Add Certificate", exact: true }).first().click();
+		await page.getByRole("menuitem", { name: "Certbot via DNS", exact: true }).click();
+		const dialog = page.getByRole("dialog");
+		await dialog.locator("#domainNames").waitFor();
+		await addDomain(dialog, "caa.flow-check.example");
+		const note = dialog.locator("[data-caa=refused]");
+		await note.waitFor();
+		const text = await note.textContent();
+		if (!(text.includes(CAA_RECORD) && text.includes("flow-check.example")))
+			throw new Error(`the refused note does not name the record: ${text}`);
+		// an answer that allows the names: the note goes
+		state = "allowed";
+		await addDomain(dialog, "caa2.flow-check.example");
+		await dialog.locator("[data-caa]").waitFor({ state: "detached" });
+		await closeWindow(page, dialog);
+
+		// the list: a Let's Encrypt certificate with a refused cached entry shows the icon
+		const certificate = await uploadCertificate(api, "flow-check-caa");
+		await page.route(CERTIFICATES_LIST, async (route) => {
+			if (route.request().method() !== "GET") return route.fallback();
+			const answer = await route.fetch();
+			const rows = await answer.json();
+			for (const row of rows) {
+				if (row.nice_name === "flow-check-caa")
+					Object.assign(row, { provider: "letsencrypt", domain_names: [CAA_NAME] });
+			}
+			return route.fulfill({ response: answer, json: rows });
+		});
+		await page.route(CAA_LIST_ROUTE, (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify([
+					{
+						certificate_id: certificate.id,
+						state: "refused",
+						checked_on: new Date().toISOString(),
+						names: caaAnswer(["caa.flow-check.example"], "refused").names,
+					},
+				]),
+			}),
+		);
+		await page.goto("/certificates");
+		await rowShows(page, CAA_NAME, CAA_NAME);
+		await page
+			.locator("tbody tr")
+			.filter({ hasText: CAA_NAME })
+			.locator("[data-caa=refused]")
+			.filter({ visible: true })
+			.first()
+			.waitFor();
+	} finally {
+		await page.unroute(CAA_CHECK_ROUTE);
+		await page.unroute(CAA_LIST_ROUTE);
+		await page.unroute(CERTIFICATES_LIST);
+		await cleanUp(api);
+	}
+}
+
+// the four parts one after the other on the admin session; each removes what it made
+async function dnsCheck(env) {
+	await checkCredentials(env);
+	await checkCleanup(env);
+	await checkHost(env);
+	await checkCaa(env);
+}
+
 export const dnsFlows = [
 	{ name: "dns domains", run: dnsDomains },
 	{ name: "domain picker", run: domainPicker },
 	{ name: "dns challenge suggestion", run: dnsChallengeSuggestion },
 	{ name: "fetch domains", run: fetchDomains },
+	{ name: "dns check", run: dnsCheck },
 ];

@@ -10,7 +10,8 @@
 // the same when it is not on the page within 5 s, e.g. the map without GeoIP databases), seedAccessLists
 // (a number: that many access lists named flow-csp-NN are created through the API, so a list has a paging
 // bar; they are removed when the action ends), seedDnsCredential (true: a Cloudflare credential named
-// flow-csp-dns is created through the API and removed when the action ends), emptyProviderDomains (true: the zone
+// flow-csp-dns is created through the API and removed when the action ends), seedProxyHost (true: a proxy host
+// flow-csp.example is created through the API and removed when the action ends), emptyProviderDomains (true: the zone
 // list a provider answers is stubbed as empty, so no provider is called) or reload (the page is reloaded).
 // Usage: node scripts/csp-check.js <base URL> [chromium|webkit]
 // The browser flows (scripts/flows/run.js) run after it on the same instance.
@@ -35,6 +36,8 @@ const visited = new Set();
 const seeded = [];
 // the credentials an action made with seedDnsCredential
 const seededCredentials = [];
+// the proxy hosts an action made with seedProxyHost
+const seededHosts = [];
 // FLOWS_WEBKIT_WS (a remote Playwright WebKit server's WebSocket URL, local runs only) connects instead of launching
 // biome-ignore lint/style/noProcessEnv: the same switch as in flows/run.js
 const webkitWs = process.env.FLOWS_WEBKIT_WS;
@@ -102,7 +105,22 @@ async function seedDnsCredential() {
 	seededCredentials.push((await answer.json()).id);
 }
 
+async function seedProxyHost() {
+	const answer = await apiOf("POST", "/nginx/proxy-hosts", {
+		domain_names: ["flow-csp.example"],
+		forward_scheme: "http",
+		forward_host: "127.0.0.1",
+		forward_port: 8080,
+	});
+	if (!answer.ok()) throw new Error(`seeding a proxy host failed: ${answer.status()}`);
+	seededHosts.push((await answer.json()).id);
+}
+
 async function removeSeeded() {
+	for (const id of seededHosts.splice(0)) {
+		// biome-ignore lint/performance/noAwaitInLoops: one request after another
+		await apiOf("DELETE", `/nginx/proxy-hosts/${id}`).catch(() => undefined);
+	}
 	for (const id of seededCredentials.splice(0)) {
 		// biome-ignore lint/performance/noAwaitInLoops: one request after another
 		await apiOf("DELETE", `/nginx/dns-credentials/${id}`).catch(() => undefined);
@@ -214,6 +232,7 @@ try {
 				}
 				if (step.seedAccessLists) await seedAccessLists(step.seedAccessLists);
 				if (step.seedDnsCredential) await seedDnsCredential();
+				if (step.seedProxyHost) await seedProxyHost();
 				if (step.emptyProviderDomains)
 					await page.route("**/api/nginx/dns-credentials/*/provider-domains", (route) =>
 						route.fulfill({
