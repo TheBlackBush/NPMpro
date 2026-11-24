@@ -47,7 +47,7 @@ describe("registry", () => {
 	it("lists the five updater providers and finds them by credential provider", () => {
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.id),
-			["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh"],
+			["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh", "desec"],
 		);
 		assert.deepEqual(PROVIDER_LIST[0], {
 			id: "cloudflare",
@@ -64,20 +64,20 @@ describe("registry", () => {
 		});
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.min_ttl),
-			[60, 30, 60, 300, null],
+			[60, 30, 60, 300, null, 3600],
 		);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.aliases),
-			[true, true, true, true, false],
+			[true, true, true, true, false, false],
 		);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.apex),
-			[true, true, true, true, false],
+			[true, true, true, true, false, true],
 		);
 		assert.equal(PROVIDER_LIST.filter((p) => p.proxied).length, 1);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.wildcards),
-			[true, true, false, false, false],
+			[true, true, false, false, false, false],
 		);
 		assert.equal(updaterFor("gandi").id, "gandi");
 		assert.equal(updaterFor("ovh").id, "ovh");
@@ -857,5 +857,137 @@ describe("ovh", () => {
 			run("write", { ...base, ip: "5.6.7.8", existing: { values: ["1.1.1.1", "2.2.2.2"], ttl: 300 } }),
 			MORE_THAN_ONE,
 		);
+	});
+});
+
+describe("desec", () => {
+	const DESEC_TOKEN = ["desec", "tok", "9876"].join("-");
+	const desecFields = { dns_desec_token: DESEC_TOKEN };
+	const secrets = [DESEC_TOKEN];
+	const base = { zone: "example.com", name: "home.example.com", type: "A", fields: desecFields };
+	const pool = () => api("desec.io");
+	const run = (method, args) => call("desec", method, args, secrets);
+	const RRSET = "/api/v1/domains/example.com/rrsets/home/A/";
+	const authOk = { authorization: `Token ${DESEC_TOKEN}` };
+
+	it("reads the RRset with the token header", async () => {
+		pool()
+			.intercept({ path: RRSET, method: "GET", headers: authOk })
+			.reply(200, { subname: "home", type: "A", records: ["1.2.3.4"], ttl: 3600 }, json);
+		assert.deepEqual(await run("read", base), { values: ["1.2.3.4"], ttl: 3600, meta: {} });
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("reads the apex as @ and reports every value of a multi-value set", async () => {
+		pool()
+			.intercept({ path: "/api/v1/domains/example.com/rrsets/@/A/", method: "GET" })
+			.reply(200, { records: ["1.1.1.1", "2.2.2.2"], ttl: 7200 }, json);
+		assert.deepEqual(await run("read", { ...base, name: "example.com" }), {
+			values: ["1.1.1.1", "2.2.2.2"],
+			ttl: 7200,
+			meta: {},
+		});
+	});
+
+	it("answers null for a missing RRset and creates it with a POST", async () => {
+		pool().intercept({ path: RRSET, method: "GET" }).reply(404, { detail: "Not found." }, json);
+		assert.equal(await run("read", base), null);
+		pool()
+			.intercept({
+				path: "/api/v1/domains/example.com/rrsets/",
+				method: "POST",
+				body: bodyIs({ subname: "home", type: "A", records: ["5.6.7.8"], ttl: 3600 }),
+			})
+			.reply(201, { subname: "home" }, json);
+		assert.deepEqual(await run("write", { ...base, ip: "5.6.7.8", existing: null }), { meta: {}, created: true });
+		pool()
+			.intercept({
+				path: "/api/v1/domains/example.com/rrsets/",
+				method: "POST",
+				body: bodyIs({ type: "AAAA", records: ["2001:db8::1"], ttl: 7200 }),
+			})
+			.reply(201, {}, json);
+		await run("write", {
+			...base,
+			name: "example.com",
+			type: "AAAA",
+			ip: "2001:db8::1",
+			ttl: 7200,
+			existing: null,
+		});
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("changes an existing RRset with a PATCH that never empties the records", async () => {
+		pool()
+			.intercept({ path: RRSET, method: "PATCH", body: bodyIs({ records: ["5.6.7.8"], ttl: 7200 }) })
+			.reply(200, {}, json);
+		const existing = { values: ["1.2.3.4"], ttl: 3600 };
+		assert.deepEqual(await run("write", { ...base, ip: "5.6.7.8", ttl: 7200, existing }), {
+			meta: {},
+			created: false,
+		});
+		pool()
+			.intercept({ path: RRSET, method: "PATCH", body: bodyIs({ records: ["5.6.7.8"] }) })
+			.reply(200, {}, json);
+		await run("write", { ...base, ip: "5.6.7.8", existing });
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("refuses a record set with two values, a wildcard and a TTL under 3600", async () => {
+		const failed = (err) => err.code === "failed" && err.retry === false;
+		await assert.rejects(
+			run("write", { ...base, ip: "5.6.7.8", existing: { values: ["1.1.1.1", "2.2.2.2"], ttl: 3600 } }),
+			MORE_THAN_ONE,
+		);
+		await assert.rejects(run("read", { ...base, name: "*.example.com" }), failed);
+		await assert.rejects(run("write", { ...base, ip: "5.6.7.8", ttl: 600, existing: null }), failed);
+	});
+
+	it("takes only an https endpoint that passes the guard", async () => {
+		const custom = { ...desecFields, dns_desec_endpoint: "https://desec.example.net/custom/v1" };
+		api("desec.example.net")
+			.intercept({ path: "/custom/v1/domains/example.com/rrsets/home/A/", method: "GET" })
+			.reply(404, {}, json);
+		assert.equal(await run("read", { ...base, fields: custom }), null);
+		const refused = (code) => (err) => err.code === code && err.retry === false;
+		await assert.rejects(
+			run("read", {
+				...base,
+				fields: { ...desecFields, dns_desec_endpoint: "http://desec.example.net/api/v1/" },
+			}),
+			refused("not-https"),
+		);
+		await assert.rejects(
+			run("read", { ...base, fields: { ...desecFields, dns_desec_endpoint: "not a url" } }),
+			refused("not-https"),
+		);
+		await assert.rejects(
+			run("read", { ...base, fields: { ...desecFields, dns_desec_endpoint: "https://127.0.0.1/api/v1/" } }),
+			refused("blocked"),
+		);
+	});
+
+	it("reports a 401 as forbidden without the token, and never retries it", async () => {
+		pool()
+			.intercept({ path: RRSET, method: "GET" })
+			.reply(401, { detail: `bad ${DESEC_TOKEN}` }, json);
+		await assert.rejects(run("read", base), (err) => {
+			assert.equal(err.code, "forbidden");
+			assert.equal(err.retry, false);
+			assert.ok(!err.message.includes(DESEC_TOKEN));
+			return true;
+		});
+		pool()
+			.intercept({ path: RRSET, method: "PATCH" })
+			.reply(400, [{ ttl: [`low ${DESEC_TOKEN}`] }], json);
+		await assert.rejects(
+			run("write", { ...base, ip: "5.6.7.8", existing: { values: ["1.2.3.4"], ttl: 3600 } }),
+			(err) => err.code === "failed" && !err.message.includes(DESEC_TOKEN),
+		);
+	});
+
+	it("has no zone fetch", () => {
+		assert.equal(providerById("desec").listZones, undefined);
 	});
 });
