@@ -152,3 +152,29 @@ it("needs the view permission of certificates and stops at 100 names", async () 
 	assert.equal(done.body.length, 100);
 	assert.equal(done.body[99].name, "h099.many.example");
 });
+
+it("reads a trailing-dot host name as the name without the dot", async () => {
+	await clear();
+	const made = await credential(admin, ["example.com"]);
+	await host("proxy_host", 1, ["dotted.example.com."]);
+	assert.deepEqual((await admin.get(URL)).body, [
+		{ name: "dotted.example.com", zone: "example.com", dns_credential_id: made.id, credential_name: made.name },
+	]);
+});
+
+it("takes the first credential (lowest zone row) when two credentials hold the same zone", async () => {
+	await clear();
+	const own = await api.limited({
+		visibility: "user",
+		certificates: "manage",
+		proxy_hosts: "view",
+		access_lists: "view",
+	});
+	const first = await credential(admin, ["tie.example"]);
+	await credential(own, ["tie.example"]);
+	await host("proxy_host", 1, ["a.tie.example"]);
+	const done = await admin.get(URL);
+	assert.deepEqual(done.body, [
+		{ name: "a.tie.example", zone: "tie.example", dns_credential_id: first.id, credential_name: first.name },
+	]);
+});

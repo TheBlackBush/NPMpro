@@ -7,9 +7,10 @@ import { recordPrefill, suggestionsFor } from "src/modules/DdnsSuggestions";
 import { CERTIFICATES } from "src/modules/Permissions";
 
 /**
- * Under the domain names of a host window: a "Keep updated" button beside each saved name that no Dynamic DNS
- * record has yet and that a credential of the user could update. It opens the record window with the name and the
- * credential filled in. Input help only: nothing shows without a suggestion or without Certificates manage.
+ * Under the domain names of a host window: a "Keep updated" button beside each name typed in the window (saved or
+ * not) that no Dynamic DNS record has yet and that a credential of the user could update. It opens the record window with the name and the
+ * credential filled in. The server suggests at most 100 names, so a name past that cap gets no hint (accepted).
+ * Input help only: nothing shows without a suggestion or without Certificates manage.
  *
  * @param {Object} props
  * @param {(id?: number, prefill?: Object) => void} props.onOpen  opens the record window (showDdnsRecordModal)

@@ -335,7 +335,7 @@ function TargetField({ zones, names }) {
 	);
 }
 
-function RecordFields({ stored, providers, credentials, zones, names, ownerUserId, userId }) {
+function RecordFields({ stored, prefilled, providers, credentials, zones, names, ownerUserId, userId }) {
 	const { register } = useFormContext();
 	const credentialId = useWatch({ name: "credentialId" });
 	const kind = useWatch({ name: "kind" });
@@ -351,7 +351,8 @@ function RecordFields({ stored, providers, credentials, zones, names, ownerUserI
 				zones={zones.suggestion}
 				credentials={credentials}
 				userId={userId}
-				isNew={!stored}
+				// a credential a suggestion filled in stays chosen: the automatic pick only fills an empty one
+				isNew={!(stored || prefilled)}
 			/>
 			<ZoneField zones={zones.match} credentials={credentials} stored={stored} />
 			<KindField />
@@ -458,6 +459,7 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 						<fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
 							<RecordFields
 								stored={stored}
+								prefilled={prefill?.credentialId !== undefined}
 								providers={providers}
 								credentials={credentials}
 								zones={zones}
