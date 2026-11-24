@@ -40,6 +40,8 @@ below as its release notes.
 - **CrowdSec:** log files for CrowdSec parsing: more access and stream log fields, a JSON log format, a TLS handshake
   log and a request id in AppSec alerts, for NPMpro's own CrowdSec parser and scenarios (submitted to the CrowdSec hub
   as `TheBlackBush/npmpro`).
+- **CrowdSec:** `scripts/crowdsec-npmpro.sh` installs NPMpro's parser, scenarios and alert context into the CrowdSec
+  container as local items until they are on the CrowdSec hub (`--remove` takes them out again).
 - **Monitoring:** traffic and CrowdSec statistics in the UI, unique visitors (off by default, keyed hashes), traffic
   per host, recent requests and a world map; an off switch that deletes the stored statistics.
 - **Backup and restore:** encrypted backups with a choice of items, replace and merge restore, single items, page
