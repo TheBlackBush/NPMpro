@@ -5,8 +5,10 @@ import {
 	addDomain,
 	cleanUp,
 	openTab,
+	revealRow,
 	rowAction,
 	rowGone,
+	rowOf,
 	rowShows,
 	saveWindow,
 	signIn,
@@ -648,6 +650,8 @@ async function fetchDomains({ admin }) {
 // the CAA notes. CI calls no provider and no outside name: the cleanup list and the CAA answers are made by page.route,
 // the Test of PowerDNS meets the blocked address 127.0.0.1, the host names are under .example.
 const CHECK_HOST = "check.flow-check.example";
+// the toast of Check DNS, whatever the number of names on the page
+const CHECKED_TOAST = /Checked \d+ names?:/u;
 const CHALLENGES_ROUTE = "**/api/nginx/dns-credentials/*/challenges";
 const CAA_CHECK_ROUTE = "**/api/nginx/certificates/caa-check";
 const CAA_LIST_ROUTE = "**/api/nginx/certificates/caa";
@@ -849,7 +853,7 @@ async function checkCleanup({ admin }) {
 async function checkHost({ admin, browser, base, viewerPassword }) {
 	const { page, api } = admin;
 	try {
-		await api("POST", "/nginx/proxy-hosts", {
+		const created = await api("POST", "/nginx/proxy-hosts", {
 			domain_names: [CHECK_HOST],
 			forward_scheme: "http",
 			forward_host: "127.0.0.1",
@@ -870,12 +874,22 @@ async function checkHost({ admin, browser, base, viewerPassword }) {
 			throw new Error(`the check line shows ${result}`);
 		console.log(`dns check: ${CHECK_HOST} is ${result}`);
 		await closeWindow(page, dialog);
-		// the list shows the badge of the result
-		await page.locator("[data-dns-check]").filter({ visible: true }).first().waitFor();
-		// Check DNS on the list checks the page and says so
-		await withToast(page, "Checked 1 name", () =>
+		// the list shows the badge of the result in the host's own row (other hosts may be on the page too)
+		await revealRow(page, CHECK_HOST);
+		await rowOf(page, CHECK_HOST).locator("[data-dns-check]").first().waitFor();
+		// Check DNS on the list checks the page (with any other host on it) and says so; the request holds this host
+		const host = created.id;
+		const sent = page.waitForRequest(
+			(request) =>
+				request.method() === "POST" &&
+				request.url().endsWith("/api/nginx/dns-check/hosts") &&
+				(request.postDataJSON()?.hosts ?? []).some((one) => one.type === "proxy" && one.id === host),
+		);
+		await withToast(page, CHECKED_TOAST, () =>
 			page.locator("[data-dns-check-page]").filter({ visible: true }).first().click(),
 		);
+		await sent;
+		await rowOf(page, CHECK_HOST).locator("[data-dns-check]").first().waitFor();
 
 		// a limited user: the fields stay disabled, Check works, there is no Save
 		const viewer = await signIn(browser, base, VIEWER_EMAIL, viewerPassword);

@@ -12,7 +12,9 @@
 // bar; they are removed when the action ends), seedDnsCredential (true: a Cloudflare credential named
 // flow-csp-dns is created through the API and removed when the action ends), seedProxyHost (true: a proxy host
 // flow-csp.example is created through the API and removed when the action ends), emptyProviderDomains (true: the zone
-// list a provider answers is stubbed as empty, so no provider is called) or reload (the page is reloaded).
+// list a provider answers is stubbed as empty, so no provider is called), routeChallenges (true: the challenge list of
+// a credential is stubbed with three records and a zone that failed, so the cleanup window shows its list, notes and
+// confirm step without a provider call; a delete is never sent) or reload (the page is reloaded).
 // Usage: node scripts/csp-check.js <base URL> [chromium|webkit]
 // The browser flows (scripts/flows/run.js) run after it on the same instance.
 // A fresh instance gets its first user through the setup page (a random password); for an instance that is already
@@ -31,6 +33,30 @@ const VIOLATION = /Content Security Policy/iu;
 const problems = [];
 // the paths opened and the paths they ended on (/settings redirects to /settings/landing-pages)
 const visited = new Set();
+
+// the challenge list of routeChallenges: an old record (ticked in advance), a recent one and one of unknown age
+const challengeItem = (name, extra) => ({
+	key: `${name}|set`,
+	name,
+	id: null,
+	values: [`${"t".repeat(48)}-${name.length}`],
+	age_seconds: 7200,
+	recent: false,
+	preselected: true,
+	...extra,
+});
+const CHALLENGES_ANSWER = {
+	supported: true,
+	busy: false,
+	items: [
+		challengeItem("_acme-challenge.a.flow-csp.example"),
+		challengeItem("_acme-challenge.b.flow-csp.example", { age_seconds: 120, recent: true, preselected: false }),
+		challengeItem("_acme-challenge.c.flow-csp.example", { age_seconds: null, preselected: false }),
+	],
+	skipped_cnames: 1,
+	truncated: true,
+	failed_zones: [{ zone: "other.flow-csp.example", message: "The zone was not found for this credential" }],
+};
 
 // the access lists an action made with seedAccessLists, removed when it ends
 const seeded = [];
@@ -239,6 +265,14 @@ try {
 							status: 200,
 							contentType: "application/json",
 							body: JSON.stringify({ supported: true, truncated: false, zones: [] }),
+						}),
+					);
+				if (step.routeChallenges)
+					await page.route("**/api/nginx/dns-credentials/*/challenges", (route) =>
+						route.fulfill({
+							status: 200,
+							contentType: "application/json",
+							body: JSON.stringify(CHALLENGES_ANSWER),
 						}),
 					);
 				if (step.reload) await page.reload();

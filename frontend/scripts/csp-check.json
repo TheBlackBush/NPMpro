@@ -364,6 +364,25 @@
 			]
 		},
 		{
+			"name": "challenge cleanup window with records",
+			"route": "/certificates/dns-credentials",
+			"steps": [
+				{ "seedDnsCredential": true },
+				{ "routeChallenges": true },
+				{ "reload": true },
+				{ "click": "role=button[name='Actions for flow-csp-dns'] >> visible=true" },
+				{ "click": "role=menuitem[name='Clean up challenge records']" },
+				{ "waitFor": "[data-challenge-key]" },
+				{ "waitFor": "[data-challenge-failed-zones]" },
+				{ "hover": "[data-dns-challenges-window] code" },
+				{ "waitFor": "[data-slot=tooltip-content]" },
+				{ "click": "[data-challenge-delete]" },
+				{ "waitFor": "[data-challenge-confirm]" },
+				{ "press": "Escape" },
+				{ "gone": "[data-dns-challenges-window]" }
+			]
+		},
+		{
 			"name": "host DNS card",
 			"route": "/nginx/proxy",
 			"steps": [

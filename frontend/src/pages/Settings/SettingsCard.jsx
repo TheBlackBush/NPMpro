@@ -52,6 +52,7 @@ function CardFrame({
 							<TapTooltip content={info}>
 								<button
 									type="button"
+									data-card-info=""
 									aria-labelledby={titleId}
 									className="relative z-10 inline-flex shrink-0 cursor-help items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
 								>
