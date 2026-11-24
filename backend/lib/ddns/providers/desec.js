@@ -205,16 +205,32 @@ export default {
 		assertChallengeItem(zone, item);
 		const secrets = secretsOf(fields);
 		const url = `${rrsetsUrl(fields, zone)}${pathName(zone, item.name)}/TXT/`;
-		const read = await fetch(url, { headers: headersOf(fields) });
-		if (read.status === 404) return { gone: true };
-		if (read.status !== 200) failAnswer(read, { hint: HINT, secrets });
-		if (!Array.isArray(read.json?.records)) throw malformed(read, secrets);
-		if (!sameValues(read.json.records.map(unquote), item.values)) return changedSet();
+		// null: the RRset is not there; a 404 may also be a missing domain, which the domain's own list tells (a failure)
+		const read = async () => {
+			const res = await fetch(url, { headers: headersOf(fields) });
+			if (res.status === 404) {
+				const zoneRes = await fetch(
+					`${rrsetsUrl(fields, zone)}?type=TXT&subname=${encodeURIComponent(PREFIX)}`,
+					{
+						headers: headersOf(fields),
+					},
+				);
+				if (zoneRes.status === 404) throw zoneNotFound(zoneRes, secrets);
+				if (zoneRes.status !== 200) failAnswer(zoneRes, { hint: HINT, secrets });
+				return null;
+			}
+			if (res.status !== 200) failAnswer(res, { hint: HINT, secrets });
+			if (!Array.isArray(res.json?.records)) throw malformed(res, secrets);
+			return res.json.records;
+		};
+		const current = await read();
+		if (current === null) return { gone: true };
+		if (!sameValues(current.map(unquote), item.values)) return changedSet();
 		const res = await fetch(url, { method: "DELETE", headers: headersOf(fields) });
 		return settleDelete({
 			res,
 			ok: (answer) => answer.status === 204,
-			gone: (answer) => answer.status === 404,
+			recheck: async () => (await read()) === null,
 			fail: (answer) => failAnswer(answer, { hint: HINT, secrets }),
 		});
 	},

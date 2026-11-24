@@ -1,6 +1,16 @@
 import { createHash } from "node:crypto";
 import { DdnsProviderError } from "../errors.js";
-import { assertChallengeItem, collectChallenges, fullName, PREFIX, settleDelete } from "./challenge-common.js";
+import {
+	assertChallengeItem,
+	changedSet,
+	collectChallenges,
+	fullName,
+	PREFIX,
+	requireId,
+	sameValues,
+	settleDelete,
+	unquote,
+} from "./challenge-common.js";
 import {
 	plainTarget,
 	recordGone,
@@ -262,11 +272,26 @@ export default {
 			},
 		});
 	},
-	/** Deletes the record by id, then refreshes the zone: a failed refresh is a failure */
+	/**
+	 * Reads the record first and deletes only the TXT record with the listed name and value, then refreshes the zone
+	 * (a failed refresh is a failure)
+	 */
 	async removeChallenge({ zone, item, fields, fetch }) {
 		assertChallengeItem(zone, item);
+		requireId(item, (id) => Number.isInteger(id) && id > 0);
 		const secrets = secretsOf(fields);
 		const path = `${zonePath(zone)}/record/${item.id}`;
+		const read = await ovhRequest({ fields, fetch, path });
+		if (read.status === 404) return { gone: true };
+		if (read.status !== 200) failAnswer(read, { hint: HINT, secrets });
+		const record = read.json;
+		if (
+			record?.fieldType !== "TXT" ||
+			fullName(zone, record.subDomain, true) !== item.name ||
+			!sameValues([unquote(record.target)], item.values)
+		) {
+			return changedSet();
+		}
 		const res = await ovhRequest({ fields, fetch, method: "DELETE", path });
 		const done = await settleDelete({
 			res,

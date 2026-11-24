@@ -1,5 +1,15 @@
 import { DdnsProviderError } from "../errors.js";
-import { assertChallengeItem, collectChallenges, fullName, PREFIX, settleDelete } from "./challenge-common.js";
+import {
+	assertChallengeItem,
+	changedSet,
+	collectChallenges,
+	fullName,
+	PREFIX,
+	requireId,
+	sameValues,
+	settleDelete,
+	unquote,
+} from "./challenge-common.js";
 import { jsonHeaders, plainTarget, refuseMultiple, zoneNotFound } from "./record-common.js";
 import { bearer, collectZones, failAnswer, malformed } from "./zone-common.js";
 
@@ -21,6 +31,7 @@ const isAuthRefusal = (body) => body?.errors?.some?.((error) => AUTH_CODES.has(e
 const secretsOf = (fields) =>
 	[fields.dns_cloudflare_api_token, fields.dns_cloudflare_api_key].filter((value) => typeof value === "string");
 
+const HEX_ID = /^[0-9a-f]{32}$/u;
 const API = "https://api.cloudflare.com/client/v4";
 
 const check = (res, fields, okStatuses = [200]) => {
@@ -175,25 +186,39 @@ export default {
 			},
 		});
 	},
-	/** Deletes the record by id; an answer that is not a success is checked by a new list (no documented gone answer) */
+	/**
+	 * Reads the records at the item's name first and deletes only the TXT record with the listed id and value (another
+	 * record, name or value is "changed", an absent one "gone"); an answer that is not a success is checked by a new read.
+	 */
 	async removeChallenge({ zone, item, fields, fetch }) {
 		assertChallengeItem(zone, item);
+		requireId(item, (id) => typeof id === "string" && HEX_ID.test(id));
 		const zoneId = await zoneIdOf({ zone, fields, fetch });
-		const res = await fetch(`${API}/zones/${zoneId}/dns_records/${encodeURIComponent(item.id)}`, {
+		const find = async () => {
+			const res = await fetch(`${API}/zones/${zoneId}/dns_records?name.exact=${encodeURIComponent(item.name)}`, {
+				headers: authHeaders(fields),
+			});
+			check(res, fields);
+			if (!Array.isArray(res.json?.result)) throw malformed(res, secretsOf(fields));
+			return res.json.result.find((entry) => entry?.id === item.id) ?? null;
+		};
+		const record = await find();
+		if (record === null) return { gone: true };
+		if (
+			record.type !== "TXT" ||
+			fullName(zone, record.name) !== item.name ||
+			!sameValues([unquote(record.content)], item.values)
+		) {
+			return changedSet();
+		}
+		const res = await fetch(`${API}/zones/${zoneId}/dns_records/${item.id}`, {
 			method: "DELETE",
 			headers: authHeaders(fields),
 		});
 		return settleDelete({
 			res,
 			ok: (answer) => answer.status === 200 && answer.json?.success !== false,
-			recheck: async () => {
-				const again = await fetch(
-					`${API}/zones/${zoneId}/dns_records?type=TXT&name.exact=${encodeURIComponent(item.name)}`,
-					{ headers: authHeaders(fields) },
-				);
-				check(again, fields);
-				return Array.isArray(again.json?.result) && !again.json.result.some((record) => record?.id === item.id);
-			},
+			recheck: async () => (await find()) === null,
 			fail: (answer) => check(answer, fields),
 		});
 	},

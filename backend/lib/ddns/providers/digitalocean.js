@@ -1,5 +1,14 @@
 import { DdnsProviderError } from "../errors.js";
-import { assertChallengeItem, collectChallenges, fullName, PREFIX, settleDelete } from "./challenge-common.js";
+import {
+	assertChallengeItem,
+	changedSet,
+	collectChallenges,
+	fullName,
+	PREFIX,
+	requireId,
+	sameValues,
+	settleDelete,
+} from "./challenge-common.js";
 import { dotted, jsonHeaders, plainTarget, refuseMultiple, relativeName, zoneNotFound } from "./record-common.js";
 import { bearer, collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
@@ -110,17 +119,34 @@ export default {
 			},
 		});
 	},
-	/** DELETE by id: 204; 404 is the documented "not found" */
+	/**
+	 * Reads the records at the item's name first and deletes only the TXT record with the listed id and value; a
+	 * delete that fails is read again (a missing zone is a failure, never "gone")
+	 */
 	async removeChallenge({ zone, item, fields, fetch }) {
 		assertChallengeItem(zone, item);
-		const res = await fetch(`${recordsUrl(zone)}/${encodeURIComponent(item.id)}`, {
-			method: "DELETE",
-			headers: bearer(fields.dns_digitalocean_token),
-		});
+		requireId(item, (id) => Number.isInteger(id) && id > 0);
+		const headers = bearer(fields.dns_digitalocean_token);
+		const find = async () => {
+			const res = await fetch(`${recordsUrl(zone)}?name=${encodeURIComponent(item.name)}`, { headers });
+			check(res, fields);
+			if (!Array.isArray(res.json?.domain_records)) throw malformed(res, secretsOf(fields));
+			return res.json.domain_records.find((entry) => entry?.id === item.id) ?? null;
+		};
+		const record = await find();
+		if (record === null) return { gone: true };
+		if (
+			record.type !== "TXT" ||
+			fullName(zone, record.name, true) !== item.name ||
+			!sameValues([String(record.data ?? "")], item.values)
+		) {
+			return changedSet();
+		}
+		const res = await fetch(`${recordsUrl(zone)}/${item.id}`, { method: "DELETE", headers });
 		return settleDelete({
 			res,
 			ok: (answer) => answer.status === 204 || answer.status === 200,
-			gone: (answer) => answer.status === 404,
+			recheck: async () => (await find()) === null,
 			fail: (answer) => failAnswer(answer, { hint: HINT, secrets: secretsOf(fields) }),
 		});
 	},

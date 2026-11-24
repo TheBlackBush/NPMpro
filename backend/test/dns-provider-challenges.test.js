@@ -37,6 +37,7 @@ const SECRET = "sec-secret-5678";
 const TIME = "2026-11-01T10:00:00.000Z";
 const bearerOf = { authorization: `Bearer ${TOKEN}` };
 const api = (host) => mock.get(`https://${host}`);
+const cfId = (n) => n.toString(16).padStart(32, "0");
 const full = (n) => `${n}.${ZONE}`;
 
 // a challenge record of the tests: n is relative to the zone, id and v its identity and value, t its time
@@ -61,7 +62,7 @@ const CASES = {
 		secrets: [TOKEN],
 		pageSize: 100,
 		hasTime: true,
-		id: (r) => `id${r.id}`,
+		id: (r) => cfId(r.id),
 		setList({ pages, noise, cname }) {
 			const pool = api("api.cloudflare.com");
 			pool.intercept({ path: `/client/v4/zones?name=${ZONE}`, method: "GET", headers: bearerOf }).reply(
@@ -71,7 +72,7 @@ const CASES = {
 			);
 			pages.forEach((page, i) => {
 				const result = page.map((r) => ({
-					id: `id${r.id}`,
+					id: cfId(r.id),
 					type: "TXT",
 					name: full(r.n),
 					content: `"${r.v}"`,
@@ -103,7 +104,7 @@ const CASES = {
 		recheck(item, present) {
 			api("api.cloudflare.com")
 				.intercept({
-					path: `/client/v4/zones/zid/dns_records?type=TXT&name.exact=${item.name}`,
+					path: `/client/v4/zones/zid/dns_records?name.exact=${item.name}`,
 					method: "GET",
 				})
 				.reply(200, { success: true, result: present ? [{ id: item.id }] : [] }, json);
@@ -222,7 +223,12 @@ const CASES = {
 				json,
 			);
 		},
-		readSet(item, values, status = 200) {
+		readSet(item, values, status = 200, zoneStatus = 200) {
+			if (status === 404) {
+				api("api.gandi.net")
+					.intercept({ path: `/v5/livedns/domains/${ZONE}/records?rrset_type=TXT&per_page=1`, method: "GET" })
+					.reply(zoneStatus, zoneStatus === 200 ? [] : { message: "no zone" }, json);
+			}
 			api("api.gandi.net")
 				.intercept({
 					path: `/v5/livedns/domains/${ZONE}/records/${item.name.replace(`.${ZONE}`, "")}/TXT`,
@@ -333,7 +339,15 @@ const CASES = {
 				json,
 			);
 		},
-		readSet(item, values, status = 200) {
+		readSet(item, values, status = 200, zoneStatus = 200) {
+			if (status === 404) {
+				api("desec.io")
+					.intercept({
+						path: `/api/v1/domains/${ZONE}/rrsets/?type=TXT&subname=_acme-challenge`,
+						method: "GET",
+					})
+					.reply(zoneStatus, zoneStatus === 200 ? [] : { detail: "Not found." }, json);
+			}
 			api("desec.io")
 				.intercept({
 					path: `/api/v1/domains/${ZONE}/rrsets/${item.name.replace(`.${ZONE}`, "")}/TXT/`,
@@ -411,6 +425,94 @@ const expectedItem = (c, r) => {
 	return { key: `${name}|${id ?? "set"}`, name, id, values: [r.v], changed_on: c.hasTime ? TIME : null };
 };
 const itemOf = (c, r) => expectedItem(c, r);
+
+const BAD_ID = /valid record id/u;
+const rel = (name) => name.replace(`.${ZONE}`, "");
+const ovhTime = () =>
+	api("eu.api.ovh.com").intercept({ path: "/1.0/auth/time", method: "GET" }).reply(200, "1700000000", json);
+const ovhRefresh = (status, body = "") => {
+	ovhTime();
+	api("eu.api.ovh.com")
+		.intercept({ path: `${OVH_BASE}/refresh`, method: "POST" })
+		.reply(status, body, json);
+};
+// the read of a record before its delete: over.absent (not there), over.type, over.name, over.value (what it shows)
+const pre = (id, item, over = {}) => {
+	const c = CASES[id];
+	const type = over.type ?? "TXT";
+	const name = over.name ?? item.name;
+	const value = over.value ?? item.values[0];
+	if (c.set) {
+		c.readSet(item, [c.quote(item.values[0])], over.absent ? 404 : 200);
+	} else if (id === "cloudflare") {
+		c.lookup();
+		api("api.cloudflare.com")
+			.intercept({ path: `/client/v4/zones/zid/dns_records?name.exact=${item.name}`, method: "GET" })
+			.reply(
+				200,
+				{ success: true, result: over.absent ? [] : [{ id: item.id, type, name, content: `"${value}"` }] },
+				json,
+			);
+	} else if (id === "digitalocean") {
+		api("api.digitalocean.com")
+			.intercept({ path: `/v2/domains/${ZONE}/records?name=${item.name}`, method: "GET" })
+			.reply(
+				200,
+				{ domain_records: over.absent ? [] : [{ id: item.id, type, name: rel(name), data: value }] },
+				json,
+			);
+	} else if (id === "ovh") {
+		ovhTime();
+		api("eu.api.ovh.com")
+			.intercept({ path: `${OVH_BASE}/record/${item.id}`, method: "GET" })
+			.reply(
+				over.absent ? 404 : 200,
+				over.absent
+					? { message: "gone" }
+					: { id: item.id, fieldType: type, subDomain: rel(name), target: `"${value}"` },
+				json,
+			);
+	} else {
+		api("api.porkbun.com")
+			.intercept({
+				path: `/api/json/v3/dns/retrieveByNameType/${ZONE}/TXT/_acme-challenge`,
+				method: "POST",
+			})
+			.reply(
+				200,
+				{ status: "SUCCESS", records: over.absent ? [] : [{ id: item.id, type, name, content: value }] },
+				json,
+			);
+	}
+};
+// the second read after a delete that failed: the record is no longer there
+const again = (id, item) => {
+	const c = CASES[id];
+	if (c.set) c.readSet(item, [], 404);
+	else if (id === "cloudflare") c.recheck(item, false);
+	else if (id === "ovh") {
+		ovhTime();
+		api("eu.api.ovh.com")
+			.intercept({ path: `${OVH_BASE}/record/${item.id}`, method: "GET" })
+			.reply(404, {}, json);
+	} else if (id === "digitalocean") {
+		api("api.digitalocean.com")
+			.intercept({ path: `/v2/domains/${ZONE}/records?name=${item.name}`, method: "GET" })
+			.reply(200, { domain_records: [] }, json);
+	} else {
+		api("api.porkbun.com")
+			.intercept({
+				path: `/api/json/v3/dns/retrieveByNameType/${ZONE}/TXT/_acme-challenge`,
+				method: "POST",
+			})
+			.reply(200, { status: "SUCCESS", records: [] }, json);
+	}
+};
+const delMock = (id, item, status, body) => {
+	const d = CASES[id].del(item);
+	if (id === "ovh") ovhTime();
+	api(d.host).intercept({ path: d.path, method: d.method }).reply(status, body, json);
+};
 
 describe("challenge helpers", () => {
 	it("unquote strips one or several quoted strings and keeps an unquoted value", () => {
@@ -491,29 +593,16 @@ for (const [id, c] of Object.entries(CASES)) {
 
 		it("deletes one item", async () => {
 			const item = itemOf(c, rec(0));
-			const pool = api(c.del(item).host);
-			if (id === "cloudflare") c.lookup();
-			if (id === "ovh") pool.intercept({ path: "/1.0/auth/time", method: "GET" }).reply(200, "1700000000", json);
-			if (c.set) c.readSet(item, [c.quote(item.values[0])]);
-			pool.intercept({ path: c.del(item).path, method: c.del(item).method }).reply(c.ok[0], c.ok[1], json);
-			if (id === "ovh") {
-				pool.intercept({ path: "/1.0/auth/time", method: "GET" }).reply(200, "1700000000", json);
-				pool.intercept({ path: `${OVH_BASE}/refresh`, method: "POST" }).reply(200, "", json);
-			}
+			pre(id, item);
+			delMock(id, item, c.ok[0], c.ok[1]);
+			if (id === "ovh") ovhRefresh(200);
 			assert.deepEqual(await removeOf(id, item), { gone: false });
 		});
 
 		it("a 403 is forbidden with the secrets scrubbed", async () => {
 			const item = itemOf(c, rec(0));
-			const pool = api(c.del(item).host);
-			if (id === "cloudflare") c.lookup();
-			if (id === "ovh") pool.intercept({ path: "/1.0/auth/time", method: "GET" }).reply(200, "1700000000", json);
-			if (c.set) c.readSet(item, [c.quote(item.values[0])]);
-			pool.intercept({ path: c.del(item).path, method: c.del(item).method }).reply(
-				c.forbidden[0],
-				c.forbidden[1],
-				json,
-			);
+			pre(id, item);
+			delMock(id, item, c.forbidden[0], c.forbidden[1]);
 			await assert.rejects(removeOf(id, item), (err) => {
 				assert.ok(err instanceof DdnsProviderError);
 				assert.equal(err.code, "forbidden");
@@ -524,42 +613,63 @@ for (const [id, c] of Object.entries(CASES)) {
 			});
 		});
 
-		if (c.gone) {
-			it("a missing record is already gone", async () => {
-				const item = itemOf(c, rec(0));
-				const pool = api(c.del(item).host);
-				if (id === "cloudflare") c.lookup();
-				if (id === "ovh")
-					pool.intercept({ path: "/1.0/auth/time", method: "GET" }).reply(200, "1700000000", json);
-				pool.intercept({ path: c.del(item).path, method: c.del(item).method }).reply(
-					c.gone[0],
-					c.gone[1],
-					json,
-				);
-				if (id === "cloudflare") c.recheck(item, false);
-				if (id === "ovh") {
-					pool.intercept({ path: "/1.0/auth/time", method: "GET" }).reply(200, "1700000000", json);
-					pool.intercept({ path: `${OVH_BASE}/record/${item.id}`, method: "GET" }).reply(
-						404,
-						{ message: "gone" },
-						json,
-					);
-				}
-				assert.deepEqual(await removeOf(id, item), { gone: true });
-			});
-		}
+		it("a failed delete (404 or not) is read again and an absent record is gone", async () => {
+			const item = itemOf(c, rec(0));
+			pre(id, item);
+			delMock(id, item, 404, { status: "ERROR", message: "not here" });
+			again(id, item);
+			assert.deepEqual(await removeOf(id, item), { gone: true });
+		});
+
+		it("a record that is no longer there is gone without a delete", async () => {
+			const item = itemOf(c, rec(0));
+			pre(id, item, { absent: true });
+			assert.deepEqual(await removeOf(id, item), { gone: true });
+		});
 
 		if (c.set) {
-			it("a set that is already gone is gone without a delete", async () => {
-				const item = itemOf(c, rec(0));
-				c.readSet(item, [], 404);
-				assert.deepEqual(await removeOf(id, item), { gone: true });
-			});
-
 			it("a value added since the list keeps the set: changed, nothing deleted", async () => {
 				const item = itemOf(c, rec(0));
 				c.readSet(item, [c.quote(item.values[0]), c.quote("another-client")]);
 				assert.deepEqual(await removeOf(id, item), { gone: false, changed: true });
+			});
+		} else {
+			const WRONG = [
+				["a record of another type", { type: "A" }],
+				["a record at another name", { name: "www.example.org" }],
+				["a TXT with another value", { value: "another-value" }],
+			];
+			for (const [label, over] of WRONG) {
+				// Porkbun reads only TXT records, so the type is not part of its answer
+				it(`an id that points at ${label} deletes nothing: changed`, {
+					skip: id === "porkbun" && over.type,
+				}, async () => {
+					const item = itemOf(c, rec(0));
+					pre(id, item, over);
+					assert.deepEqual(await removeOf(id, item), { gone: false, changed: true });
+				});
+			}
+
+			it("a bad id makes no request", async () => {
+				for (const bad of [
+					null,
+					undefined,
+					"",
+					"1/../x",
+					0,
+					-1,
+					1.5,
+					{},
+					[1],
+					"abc",
+					typeof c.id(rec(0)) === "number" ? "7" : 7,
+				]) {
+					const item = { ...itemOf(c, rec(0)), id: bad };
+					await assert.rejects(
+						removeOf(id, item),
+						(err) => err instanceof DdnsProviderError && BAD_ID.test(err.message),
+					);
+				}
 			});
 		}
 
@@ -572,14 +682,55 @@ for (const [id, c] of Object.entries(CASES)) {
 	});
 }
 
+describe("a missing zone is a failure, never gone", () => {
+	const missing = (err) => err instanceof DdnsProviderError && err.code === "failed" && err.providerStatus === 404;
+	it("digitalocean: the read of the name answers 404", async () => {
+		const item = itemOf(CASES.digitalocean, rec(0));
+		api("api.digitalocean.com")
+			.intercept({ path: `/v2/domains/${ZONE}/records?name=${item.name}`, method: "GET" })
+			.reply(404, { id: "not_found" }, json);
+		await assert.rejects(removeOf("digitalocean", item), missing);
+	});
+	it("gandi: a 404 on the set and on the zone", async () => {
+		const c = CASES.gandi;
+		const item = itemOf(c, rec(0));
+		c.readSet(item, [], 404, 404);
+		await assert.rejects(removeOf("gandi", item), missing);
+	});
+	it("gandi: a delete that answers 404 while the zone list answers 404 is a failure", async () => {
+		const c = CASES.gandi;
+		const item = itemOf(c, rec(0));
+		c.readSet(item, [c.quote(item.values[0])]);
+		delMock("gandi", item, 404, { message: "no" });
+		c.readSet(item, [], 404, 404);
+		await assert.rejects(removeOf("gandi", item), missing);
+	});
+	it("desec: a 404 on the RRset and on the domain", async () => {
+		const c = CASES.desec;
+		const item = itemOf(c, rec(0));
+		c.readSet(item, [], 404, 404);
+		await assert.rejects(removeOf("desec", item), missing);
+	});
+});
+
+describe("desec challenge list", () => {
+	it("a next link of another origin is refused and never followed", async () => {
+		api("desec.io")
+			.intercept({ path: `/api/v1/domains/${ZONE}/rrsets/?type=TXT`, method: "GET" })
+			.reply(200, [], { headers: { ...json.headers, link: '<https://evil.example/x?cursor=c1>; rel="next"' } });
+		await assert.rejects(
+			listOf("desec"),
+			(err) => err instanceof DdnsProviderError && err.message === "Unexpected answer shape",
+		);
+	});
+});
+
 describe("cloudflare delete details", () => {
 	it("a failed delete that is still listed stays a failure", async () => {
 		const c = CASES.cloudflare;
 		const item = itemOf(c, rec(0));
-		c.lookup();
-		api("api.cloudflare.com")
-			.intercept({ path: c.del(item).path, method: "DELETE" })
-			.reply(500, { success: false, errors: [{ message: "boom" }] }, json);
+		pre("cloudflare", item);
+		delMock("cloudflare", item, 500, { success: false, errors: [{ message: "boom" }] });
 		c.recheck(item, true);
 		await assert.rejects(
 			removeOf("cloudflare", item),
@@ -588,32 +739,12 @@ describe("cloudflare delete details", () => {
 	});
 });
 
-describe("hetzner delete details", () => {
-	it("a delete that answers 404 after the read is gone when the set is no longer there", async () => {
-		const c = CASES["hetzner-cloud"];
-		const item = itemOf(c, rec(0));
-		c.readSet(item, [c.quote(item.values[0])]);
-		api("api.hetzner.cloud")
-			.intercept({ path: c.del(item).path, method: "DELETE" })
-			.reply(404, { error: { code: "not_found" } }, json);
-		c.readSet(item, [], 404);
-		assert.deepEqual(await removeOf("hetzner-cloud", item), { gone: true });
-	});
-});
-
 describe("ovh delete details", () => {
 	it("refreshes the zone after the delete and a failed refresh is a failure", async () => {
-		const c = CASES.ovh;
-		const item = itemOf(c, rec(0));
-		const pool = api("eu.api.ovh.com");
-		pool.intercept({ path: "/1.0/auth/time", method: "GET" }).reply(200, "1700000000", json);
-		pool.intercept({ path: c.del(item).path, method: "DELETE" }).reply(200, "", json);
-		pool.intercept({ path: "/1.0/auth/time", method: "GET" }).reply(200, "1700000000", json);
-		pool.intercept({ path: `${OVH_BASE}/refresh`, method: "POST" }).reply(
-			500,
-			{ message: `no ${OVH_SECRET}` },
-			json,
-		);
+		const item = itemOf(CASES.ovh, rec(0));
+		pre("ovh", item);
+		delMock("ovh", item, 200, "");
+		ovhRefresh(500, { message: `no ${OVH_SECRET}` });
 		await assert.rejects(removeOf("ovh", item), (err) => {
 			assert.match(err.message, DELETED_REFRESH_FAILED);
 			assert.equal(err.message.includes(OVH_SECRET), false);
@@ -623,19 +754,11 @@ describe("ovh delete details", () => {
 });
 
 describe("porkbun delete details", () => {
-	it("an unnamed failure that is no longer listed is gone", async () => {
+	it("the documented INVALID_RECORD_ID answer is gone without another read", async () => {
 		const c = CASES.porkbun;
 		const item = itemOf(c, rec(0));
-		const pool = api("api.porkbun.com");
-		pool.intercept({ path: c.del(item).path, method: "POST" }).reply(
-			500,
-			{ status: "ERROR", message: "oops" },
-			json,
-		);
-		pool.intercept({
-			path: `/api/json/v3/dns/retrieveByNameType/${ZONE}/TXT/_acme-challenge`,
-			method: "POST",
-		}).reply(200, { status: "SUCCESS", records: [] }, json);
+		pre("porkbun", item);
+		delMock("porkbun", item, c.gone[0], c.gone[1]);
 		assert.deepEqual(await removeOf("porkbun", item), { gone: true });
 	});
 });

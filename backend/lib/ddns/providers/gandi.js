@@ -109,9 +109,15 @@ export default {
 		assertChallengeItem(zone, item);
 		const headers = bearer(fields.dns_gandi_token);
 		const url = rrsetUrl(zone, item.name, "TXT");
+		// a 404 on the set may also be a missing zone: the zone's own list tells, and a missing zone is a failure
 		const read = async () => {
 			const res = await fetch(url, { headers });
-			if (res.status === 404) return null;
+			if (res.status === 404) {
+				const zoneRes = await fetch(`${recordsUrl(zone)}?rrset_type=TXT&per_page=1`, { headers });
+				if (zoneRes.status === 404) throw zoneNotFound(zoneRes, secretsOf(fields));
+				if (zoneRes.status !== 200) failAnswer(zoneRes, { hint: HINT, secrets: secretsOf(fields) });
+				return null;
+			}
 			if (res.status !== 200) failAnswer(res, { hint: HINT, secrets: secretsOf(fields) });
 			if (!Array.isArray(res.json?.rrset_values)) throw malformed(res, secretsOf(fields));
 			return res.json.rrset_values;

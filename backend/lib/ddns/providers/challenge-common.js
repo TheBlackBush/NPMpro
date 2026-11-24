@@ -137,6 +137,17 @@ const settleDelete = async ({ res, ok, gone, recheck, fail }) => {
 	return fail(res);
 };
 
+/** A record id in the form the provider documents; anything else is refused before a call (it would become part of a path) */
+const requireId = (item, valid) => {
+	if (!valid(item?.id)) {
+		throw new DdnsProviderError({
+			code: "failed",
+			message: "Not a valid record id for this provider",
+			retry: false,
+		});
+	}
+};
+
 /** The delete of a set that is not what the list showed is not done: the caller reports it as changed */
 const changedSet = () => ({ gone: false, changed: true });
 
@@ -159,6 +170,7 @@ export {
 	isChallengeName,
 	isoOrNull,
 	PREFIX,
+	requireId,
 	sameValues,
 	settleDelete,
 	unquote,
