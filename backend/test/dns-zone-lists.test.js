@@ -8,8 +8,16 @@ process.env.NPMPRO_TEST_ROOT = "/nonexistent-dns-zone-lists-test";
 process.env.NPMPRO_TEST_OUTBOUND = "mock";
 const { providerFetch } = await import("../lib/ddns/provider-fetch.js");
 const { DdnsProviderError } = await import("../lib/ddns/errors.js");
-const { PROVIDERS, providerById, providerForCredential, listsDomains, listProviderZones, ZONE_LIST_DEADLINE_MS } =
-	await import("../lib/ddns/providers/index.js");
+const {
+	PROVIDERS,
+	providerById,
+	providerForCredential,
+	listsDomains,
+	listProviderZones,
+	ZONE_LIST_DEADLINE_MS,
+	PROVIDER_LIST,
+	updaterFor,
+} = await import("../lib/ddns/providers/index.js");
 
 const realLookup = dns.lookup;
 dns.lookup = (_hostname, options, callback) => {
@@ -77,22 +85,64 @@ const CASES = {
 		body: (names) => names.map((fqdn) => ({ fqdn })),
 		perPage: 100,
 	},
+	linode: {
+		fields: { dns_linode_key: TOKEN },
+		host: "api.linode.com",
+		headers: bearerOf(TOKEN),
+		path: (page) => `/v4/domains?page=${page}&page_size=100`,
+		body: (names, page = 1, total = 1) => ({
+			data: names.map((domain) => ({ domain })),
+			page,
+			pages: total,
+			results: names.length,
+		}),
+		perPage: 100,
+	},
+	// cursor paging: page N asks with the cursor "c<N-1>" the answer of page N-1 gave
+	vultr: {
+		fields: { dns_vultr_key: TOKEN },
+		host: "api.vultr.com",
+		headers: bearerOf(TOKEN),
+		path: (page) => `/v2/domains?per_page=500${page === 1 ? "" : `&cursor=c${page - 1}`}`,
+		body: (names, page = 1, total = 1) => ({
+			domains: names.map((domain) => ({ domain })),
+			meta: { total: names.length, links: { next: page < total ? `c${page}` : "", prev: "" } },
+		}),
+		perPage: 500,
+	},
+	// the Link header of the answer holds the cursor URL of the next page
+	desec: {
+		fields: { dns_desec_token: TOKEN },
+		host: "desec.io",
+		headers: { authorization: `Token ${TOKEN}` },
+		path: (page) => `/api/v1/domains/${page === 1 ? "" : `?cursor=c${page - 1}`}`,
+		body: (names) => names.map((name) => ({ name })),
+		replyHeaders: (page, total) =>
+			page < total ? { link: `<https://desec.io/api/v1/domains/?cursor=c${page}>; rel="next"` } : {},
+		perPage: 500,
+	},
 };
+
+const replyOf = (c, page, total) => ({ headers: { ...json.headers, ...c.replyHeaders?.(page, total) } });
 
 const zoneNames = (from, count) =>
 	Array.from({ length: count }, (_, i) => `z${String(from + i).padStart(4, "0")}.example.org`);
 
 for (const [id, c] of Object.entries(CASES)) {
 	it(`${id}: one page, sorted and normalized`, async () => {
-		intercept(c.host, c.path(1), c.headers).reply(200, c.body(["b.example.org", "A.Example.com."]), json);
+		intercept(c.host, c.path(1), c.headers).reply(
+			200,
+			c.body(["b.example.org", "A.Example.com."]),
+			replyOf(c, 1, 1),
+		);
 		assert.deepEqual(await run(id, c.fields), ["a.example.com", "b.example.org"]);
 	});
 
 	it(`${id}: two pages`, async () => {
 		const first = zoneNames(1, c.perPage);
 		const second = ["last.example.org"];
-		intercept(c.host, c.path(1), c.headers).reply(200, c.body(first, 1, 2), json);
-		intercept(c.host, c.path(2), c.headers).reply(200, c.body(second, 2, 2), json);
+		intercept(c.host, c.path(1), c.headers).reply(200, c.body(first, 1, 2), replyOf(c, 1, 2));
+		intercept(c.host, c.path(2), c.headers).reply(200, c.body(second, 2, 2), replyOf(c, 2, 2));
 		const zones = await run(id, c.fields);
 		assert.equal(zones.length, c.perPage + 1);
 		assert.equal(zones.truncated, undefined);
@@ -102,7 +152,7 @@ for (const [id, c] of Object.entries(CASES)) {
 		const total = Math.ceil(1100 / c.perPage);
 		for (let page = 1; page <= total; page++) {
 			const chunk = zoneNames((page - 1) * c.perPage, c.perPage);
-			intercept(c.host, c.path(page), c.headers).reply(200, c.body(chunk, page, total), json);
+			intercept(c.host, c.path(page), c.headers).reply(200, c.body(chunk, page, total), replyOf(c, page, total));
 			if (page * c.perPage > 1000) break;
 		}
 		const zones = await run(id, c.fields);
@@ -146,6 +196,42 @@ for (const [id, c] of Object.entries(CASES)) {
 		assert.deepEqual(await run(id, c.fields), ["ok.org", "xn--bcher-kva.example"]);
 	});
 }
+
+for (const id of ["linode", "vultr", "desec"]) {
+	it(`${id}: a 401 is forbidden`, async () => {
+		const c = CASES[id];
+		intercept(c.host, c.path(1), c.headers).reply(401, { detail: "Invalid token." }, json);
+		await assert.rejects(
+			run(id, c.fields),
+			(err) => err.code === "forbidden" && err.hint && err.providerStatus === 401,
+		);
+	});
+}
+
+it("linode, vultr: zone listing only, no DDNS updater", () => {
+	for (const id of ["linode", "vultr"]) {
+		assert.equal(updaterFor(id), null);
+		assert.equal(listsDomains(id), true);
+		assert.ok(!PROVIDER_LIST.some((p) => p.id === id));
+	}
+});
+
+it("desec: a cursor URL of another host is refused without a second request", async () => {
+	const c = CASES.desec;
+	intercept(c.host, c.path(1), c.headers).reply(200, c.body(["a.example.org"]), {
+		headers: { ...json.headers, link: '<https://evil.example/api/v1/domains/?cursor=x>; rel="next"' },
+	});
+	await assert.rejects(run("desec", c.fields), (err) => err.code === "failed");
+});
+
+it("desec: a custom endpoint is used for the list", async () => {
+	mock.get("https://dns.example.org")
+		.intercept({ path: "/v1/domains/", method: "GET" })
+		.reply(200, [{ name: "x.example.org" }], json);
+	assert.deepEqual(await run("desec", { ...CASES.desec.fields, dns_desec_endpoint: "https://dns.example.org/v1" }), [
+		"x.example.org",
+	]);
+});
 
 it("cloudflare: the global key group sends X-Auth-Email and X-Auth-Key", async () => {
 	const fields = { dns_cloudflare_email: "me@example.org", dns_cloudflare_api_key: "globalkey-9999" };
@@ -229,6 +315,8 @@ it("the registry is ordered and looks providers up", () => {
 			"dynu",
 			"custom",
 			"powerdns",
+			"linode",
+			"vultr",
 		],
 	);
 	assert.equal(providerById("gandi").label, "Gandi");

@@ -8,11 +8,13 @@ import duckdns from "./duckdns.js";
 import dynu from "./dynu.js";
 import gandi from "./gandi.js";
 import hetznerCloud from "./hetzner-cloud.js";
+import linode from "./linode.js";
 import namecheap from "./namecheap.js";
 import noip from "./noip.js";
 import ovh from "./ovh.js";
 import porkbun from "./porkbun.js";
 import powerdns from "./powerdns.js";
+import vultr from "./vultr.js";
 
 /** The providers with an API, in the order the UI shows them */
 const PROVIDERS = Object.freeze([
@@ -29,6 +31,8 @@ const PROVIDERS = Object.freeze([
 	dynu,
 	custom,
 	powerdns,
+	linode,
+	vultr,
 ]);
 
 const providerById = (id) => PROVIDERS.find((provider) => provider.id === id) ?? null;
@@ -39,7 +43,7 @@ const providerForCredential = (credentialProvider) =>
 		? (PROVIDERS.find((provider) => provider.credentialProvider === credentialProvider) ?? null)
 		: null;
 
-/** A provider without listZones (deSEC) updates records but has no zone fetch */
+/** A provider without listZones (Namecheap, No-IP) updates records but has no zone fetch */
 const zoneLister = (credentialProvider) => {
 	const provider = providerForCredential(credentialProvider);
 	return typeof provider?.listZones === "function" ? provider : null;
@@ -47,7 +51,7 @@ const zoneLister = (credentialProvider) => {
 
 const listsDomains = (credentialProvider) => zoneLister(credentialProvider) !== null;
 
-/** The providers that can read and write records (PowerDNS only lists zones) */
+/** The providers that can read and write records (PowerDNS, Linode and Vultr only list zones) */
 const updaterFor = (credentialProvider) => {
 	const provider = providerForCredential(credentialProvider);
 	return typeof provider?.read === "function" && typeof provider?.write === "function" ? provider : null;

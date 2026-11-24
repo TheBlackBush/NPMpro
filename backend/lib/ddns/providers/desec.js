@@ -1,6 +1,6 @@
 import { DdnsProviderError } from "../errors.js";
 import { pathName, recordGone, refuseMultiple, refuseWildcard, relativeName, zoneNotFound } from "./record-common.js";
-import { failAnswer, malformed } from "./zone-common.js";
+import { collectZones, failAnswer, malformed } from "./zone-common.js";
 
 const DEFAULT_ENDPOINT = "https://desec.io/api/v1/";
 const HINT = "A token that may read and change the RRsets of the domain";
@@ -8,6 +8,9 @@ const HINT = "A token that may read and change the RRsets of the domain";
 const MIN_TTL = 3600;
 const MAX_TTL = 86_400;
 const TRAILING_SLASHES = /\/+$/u;
+
+const LIST_HINT = "A token that may read the domains of the account";
+const NEXT_LINK = /<(?<url>[^>]+)>\s*;[^,]*\brel="?next"?/iu;
 
 const secretsOf = (fields) => [fields.dns_desec_token].filter((value) => typeof value === "string" && value !== "");
 
@@ -118,5 +121,24 @@ export default {
 		if (res.status === 404) throw zoneNotFound(res, secrets);
 		if (res.status !== 201 && res.status !== 200) failAnswer(res, { hint: HINT, secrets });
 		return { meta: { ...meta }, created: true };
+	},
+	/** The domains, newest first; the cursor of the Link header (rel="next") is followed when present */
+	listZones: ({ fields, fetch }) => {
+		const base = baseOf(fields.dns_desec_endpoint);
+		let url = `${base}domains/`;
+		return collectZones({
+			fetchPage: async () => {
+				const secrets = secretsOf(fields);
+				const res = await fetch(url, { headers: headersOf(fields) });
+				if (res.status !== 200) failAnswer(res, { hint: LIST_HINT, secrets });
+				if (!Array.isArray(res.json)) throw malformed(res, secrets);
+				const link = NEXT_LINK.exec(res.headers?.get?.("link") ?? "")?.groups.url;
+				// a cursor URL of another origin would send the token elsewhere: it ends the list as malformed
+				if (link !== undefined && new URL(link, base).origin !== new URL(base).origin)
+					throw malformed(res, secrets);
+				if (link !== undefined) url = new URL(link, base).href;
+				return { names: res.json.map((zone) => zone?.name), more: link !== undefined };
+			},
+		});
 	},
 };

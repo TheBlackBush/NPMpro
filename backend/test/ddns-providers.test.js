@@ -1033,8 +1033,8 @@ describe("desec", () => {
 		);
 	});
 
-	it("has no zone fetch", () => {
-		assert.equal(providerById("desec").listZones, undefined);
+	it("has a zone fetch", () => {
+		assert.equal(typeof providerById("desec").listZones, "function");
 	});
 });
 
