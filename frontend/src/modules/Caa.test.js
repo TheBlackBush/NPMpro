@@ -18,6 +18,26 @@ it("asks only with a usable name", () => {
 	assert.equal(caaRequest({ names: ["~^a\\.example\\.com$", "host:8080", " ", "a b"] }), null);
 });
 
+it("does not ask for a name with a bad label", () => {
+	const bad = [
+		"a..example.com",
+		".example.com",
+		"-x.example.com",
+		"x-.example.com",
+		"a.-x.com",
+		`${"a".repeat(64)}.example.com`,
+	];
+	for (const name of bad) assert.equal(caaRequest({ names: [name] }), null, name);
+	const good = [
+		`${"a".repeat(63)}.example.com`,
+		"x-y.example.com",
+		"_acme.example.com",
+		"*.a-b.example.com",
+		"example.com.",
+	];
+	assert.equal(caaRequest({ names: good }).domainNames.length, good.length);
+});
+
 it("builds the request with the usable names once each", () => {
 	assert.deepEqual(
 		caaRequest({

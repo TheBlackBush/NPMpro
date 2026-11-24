@@ -23,6 +23,19 @@ const caText = (server) => {
 export function CaaBadge({ badge, server, instanceServer }) {
 	const ca = caText(server || instanceServer);
 	const { lines, more } = caaLines(badge.results);
+	const stateText = intl.formatMessage({ id: `certificates.caa.state.${badge.state}` });
+	// the accessible name carries the lines of the tooltip, which a focused icon would not read
+	const label = [
+		intl.formatMessage({ id: "certificates.caa.badge-label" }, { state: stateText }),
+		...lines.map(({ name, line }) =>
+			[
+				`${name}: ${intl.formatMessage({ id: line.messageId }, { ...line.values, ca })}`,
+				line.reasonId ? intl.formatMessage({ id: line.reasonId }) : "",
+			]
+				.filter(Boolean)
+				.join(" "),
+		),
+	].join(". ");
 	const Icon = badge.state === "refused" ? CircleAlertIcon : TriangleAlertIcon;
 	return (
 		<TapTooltip
@@ -56,10 +69,7 @@ export function CaaBadge({ badge, server, instanceServer }) {
 			<span
 				data-caa={badge.state}
 				role="img"
-				aria-label={intl.formatMessage(
-					{ id: "certificates.caa.badge-label" },
-					{ state: intl.formatMessage({ id: `certificates.caa.state.${badge.state}` }) },
-				)}
+				aria-label={label}
 				className={cn(
 					"mr-2 inline-flex size-6 items-center justify-center rounded-full",
 					badge.tone === "destructive" ? "text-destructive" : "text-warning",

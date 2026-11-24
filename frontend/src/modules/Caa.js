@@ -12,6 +12,20 @@ export const CAA_MAX_LINES = 5;
 // a name worth asking about: a host or wildcard name (no regular expression, port or nginx syntax character)
 const ASKABLE = /^(?:\*\.)?[^\s/;{}"'\\#~:*]+$/u;
 const MAX_NAME_LENGTH = 253;
+const MAX_LABEL_LENGTH = 63;
+const LEADING_WILDCARD = /^\*\./u;
+const TRAILING_DOT = /\.$/u;
+
+// every label is 1 to 63 characters and neither starts nor ends with a hyphen (a trailing root dot is allowed)
+const labelsFit = (name) =>
+	name
+		.replace(LEADING_WILDCARD, "")
+		.replace(TRAILING_DOT, "")
+		.split(".")
+		.every(
+			(label) =>
+				label.length >= 1 && label.length <= MAX_LABEL_LENGTH && !label.startsWith("-") && !label.endsWith("-"),
+		);
 
 // the states that warn, worst first, with the tone of the note and the badge
 const WARNING_TONES = { refused: "destructive", limited: "warning", unknown: "warning" };
@@ -50,7 +64,13 @@ export function caaRequest({ names, server, dnsChallenge, needsServer = false })
 	const domainNames = [];
 	for (const raw of Array.isArray(names) ? names : []) {
 		const name = String(raw ?? "").trim();
-		if (name !== "" && name.length <= MAX_NAME_LENGTH && ASKABLE.test(name) && !seen.has(name.toLowerCase())) {
+		if (
+			name !== "" &&
+			name.length <= MAX_NAME_LENGTH &&
+			ASKABLE.test(name) &&
+			labelsFit(name) &&
+			!seen.has(name.toLowerCase())
+		) {
 			seen.add(name.toLowerCase());
 			domainNames.push(name);
 		}

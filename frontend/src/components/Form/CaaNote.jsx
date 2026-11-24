@@ -1,9 +1,10 @@
 import { NoticeAlert } from "src/components/NoticeAlert";
-import { useAcmeServers, useCaaCheck } from "src/hooks";
+import { useAcmeServers, useCaaCheck, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import { acmeServerLabel } from "src/modules/AcmeAccount";
 import { defaultCa } from "src/modules/AcmeServers";
 import { caaLines, caaRequest, worstCaa } from "src/modules/Caa";
+import { CERTIFICATES, hasPermission, VIEW } from "src/modules/Permissions";
 
 // the CA's name as the select shows it: a preset's name or the host of its directory
 const caText = (server) => {
@@ -27,7 +28,10 @@ const caText = (server) => {
  */
 export function CaaNote({ names, server, dnsChallenge, needsServer, className }) {
 	const { data: servers } = useAcmeServers();
-	const request = caaRequest({ names, server, dnsChallenge, needsServer });
+	const { data: user } = useUser("me");
+	// the check needs certificates:view: without it no request is sent
+	const mayCheck = hasPermission(CERTIFICATES, VIEW, user?.permissions, user?.roles);
+	const request = mayCheck ? caaRequest({ names, server, dnsChallenge, needsServer }) : null;
 	const checked = useCaaCheck(request);
 	const worst = worstCaa(checked?.names);
 	const ca = caText(server || defaultCa(servers));

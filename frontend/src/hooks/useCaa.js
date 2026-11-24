@@ -1,12 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { checkCaa, getCertificateCaa } from "src/api/backend";
 import { CAA_DEBOUNCE_MS } from "src/modules/Caa";
 
 /**
- * The CAA check of a window's names: asks CAA_DEBOUNCE_MS after the request last changed, and answers nothing for a
- * request that has not been asked yet (an old answer would describe other names). A failed check answers nothing: the
- * note is a help, never a block.
+ * The CAA check of a window's names: asks CAA_DEBOUNCE_MS after the request last changed. The previous answer stays
+ * until the new one arrives (no flicker while typing), then it is replaced; nothing shows while there is nothing to
+ * ask. A failed check answers nothing: the note is a help, never a block.
  *
  * @param   {Object|null} request  caaRequest of the window; null: nothing to ask
  * @returns {{ names: Array, checkedOn: string }|undefined}
@@ -29,8 +29,9 @@ const useCaaCheck = (request) => {
 		staleTime: 30 * 1000,
 		retry: false,
 		refetchOnWindowFocus: false,
+		placeholderData: keepPreviousData,
 	});
-	return key !== null && settled === key ? data : undefined;
+	return key === null ? undefined : data;
 };
 
 // the cached results of the certificates (the server keeps them in memory and refreshes a few old ones per call): the
