@@ -1,6 +1,6 @@
 import errs from "../error.js";
 import { createKeyedLock } from "../keyed-lock.js";
-import { scrubSecrets } from "./errors.js";
+import { DdnsProviderError, scrubSecrets } from "./errors.js";
 import { canonicalIpv6, withSuffix } from "./ipv6.js";
 import { providerFetch } from "./provider-fetch.js";
 import { plainTarget } from "./providers/record-common.js";
@@ -268,7 +268,10 @@ const createDdnsEngine = ({
 	const failurePatch = (record, err, secrets, { countTry }) => {
 		const failures = (record.failures ?? 0) + (countTry ? 1 : 0);
 		const delay = Math.min(settings().periodMs * 2 ** Math.max(failures - 1, 0), MAX_BACKOFF_MS);
-		const meta = cleanMeta(record.meta);
+		// a provider error may carry meta the next run needs (OVH: the zone refresh is still to do); only the
+		// provider's own error type is trusted, and a provider puts ids and flags there, never a secret
+		const carried = err instanceof DdnsProviderError && err.meta && typeof err.meta === "object" ? err.meta : {};
+		const meta = { ...cleanMeta(record.meta), ...carried };
 		const patch = {
 			state: "failed",
 			error: scrubSecrets(err?.message, secrets),

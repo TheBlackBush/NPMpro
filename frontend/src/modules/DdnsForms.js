@@ -219,7 +219,12 @@ const ddnsRecordValidate = (values, { providers, credentials, zones, stored = nu
 		const min = minTtlOf(provider);
 		const ttlChanged = stored === null || ttl !== stored.ttl || credentialChanged;
 		if (!(ttl >= 0 && ttl <= MAX_TTL)) errors.ttl = problem("ddns.error.ttl-range");
-		else if (ttl < min && ttlChanged) errors.ttl = problem("error.ddns-ttl-min", { min, provider: provider.label });
+		else if (ttl < min && ttlChanged) {
+			// a provider without a documented minimum (min_ttl null) only has the schema's floor: no provider message
+			errors.ttl = Number.isInteger(provider.minTtl)
+				? problem("error.ddns-ttl-min", { min, provider: provider.label })
+				: problem("ddns.error.ttl-range");
+		}
 	}
 	return errors;
 };

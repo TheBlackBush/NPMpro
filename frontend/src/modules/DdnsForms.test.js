@@ -161,6 +161,12 @@ it("refuses an alias and a name at the apex for a provider without them (the bac
 	);
 });
 
+it("a provider without min_ttl gets the generic TTL message under the schema floor", () => {
+	assert.equal(check({ credentialId: 4, name: "home.example.net", ttl: 10 }).ttl.id, "ddns.error.ttl-range");
+	assert.equal(check({ credentialId: 4, name: "home.example.net", ttl: 30 }).ttl, undefined);
+	assert.equal(check({ ttl: 10 }).ttl.id, "error.ddns-ttl-min");
+});
+
 it("needs a zone when no domain covers the name, and a typed zone must cover it", () => {
 	const none = check({ name: "home.example.net" });
 	assert.deepEqual(none.zone, {

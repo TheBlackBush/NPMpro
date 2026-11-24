@@ -529,6 +529,35 @@ describe("ddns engine: failure, backoff and recovery", () => {
 		);
 	});
 
+	it("keeps the meta a provider error carries, and hands it to the next read (a pending refresh)", async () => {
+		const stale = Object.assign(new DdnsProviderError({ code: "failed", message: "refresh failed" }), {
+			meta: { record_id: "r-A", refresh_pending: true },
+		});
+		const h = harness({ zone: { A: [IP4_NEW], writeError: stale } });
+		await h.engine.cycle();
+		assert.equal(h.row().state, "failed");
+		assert.equal(h.row().meta.refresh_pending, true);
+		// the zone shows the pending value: the next read gets the flag, clears it and the record is ok
+		h.dns.writeError = null;
+		h.dns.A = [IP4];
+		h.dns.meta = { refresh_pending: false };
+		h.clock.advance(5 * MIN);
+		await h.engine.cycle();
+		assert.equal(h.calls.filter((call) => call.op === "read").at(-1).meta.refresh_pending, true);
+		assert.equal(h.row().state, "ok");
+		assert.equal(h.row().meta.refresh_pending, false);
+		// only the failed write of the first cycle
+		assert.equal(writes(h).length, 1);
+	});
+
+	it("takes meta only from a provider error", async () => {
+		const plain = Object.assign(new Error("boom"), { meta: { refresh_pending: true } });
+		const h = harness({ zone: { A: [IP4_NEW], writeError: plain } });
+		await h.engine.cycle();
+		assert.equal(h.row().state, "failed");
+		assert.equal(h.row().meta.refresh_pending, undefined);
+	});
+
 	it("stores a provider message with the token scrubbed", async () => {
 		const h = harness({ zone: { readError: new Error(`bad token ${TOKEN} refused`) } });
 		await h.engine.cycle();

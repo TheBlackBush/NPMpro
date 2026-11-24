@@ -700,7 +700,11 @@ describe("ovh", () => {
 	it("reads one record by type and sub domain", async () => {
 		list([11]);
 		record(11, "1.2.3.4");
-		assert.deepEqual(await run("read", base), { values: ["1.2.3.4"], ttl: 300, meta: { record_id: 11 } });
+		assert.deepEqual(await run("read", base), {
+			values: ["1.2.3.4"],
+			ttl: 300,
+			meta: { record_id: 11, refresh_pending: false },
+		});
 		mock.assertNoPendingInterceptors();
 	});
 
@@ -712,7 +716,7 @@ describe("ovh", () => {
 		assert.deepEqual(await run("read", base), {
 			values: ["1.2.3.4", "5.5.5.5"],
 			ttl: 300,
-			meta: { record_id: 11 },
+			meta: { record_id: 11, refresh_pending: false },
 		});
 		list([]);
 		assert.equal(await run("read", base), null);
@@ -735,7 +739,7 @@ describe("ovh", () => {
 			existing: { values: ["1.2.3.4"], ttl: 300, meta: { record_id: 11 } },
 			meta: { record_id: 11 },
 		});
-		assert.deepEqual(done, { meta: { record_id: 11 }, created: false });
+		assert.deepEqual(done, { meta: { record_id: 11, refresh_pending: false }, created: false });
 		mock.assertNoPendingInterceptors();
 	});
 
@@ -761,9 +765,42 @@ describe("ovh", () => {
 				assert.equal(err.retry, true);
 				assert.match(err.message, REFRESH_FAILED);
 				assert.ok(!err.message.includes(SECRET));
+				assert.ok(!err.message.includes(CONSUMER));
+				assert.deepEqual(err.meta, { record_id: 11, refresh_pending: true });
 				return true;
 			},
 		);
+	});
+
+	it("a pending refresh is done first by the next read and cleared; a failing one throws and keeps the flag", async () => {
+		refresh(500);
+		await assert.rejects(run("read", { ...base, meta: { refresh_pending: true } }), REFRESH_FAILED);
+		refresh();
+		list([11]);
+		record(11, "1.2.3.4");
+		const done = await run("read", { ...base, meta: { record_id: 11, refresh_pending: true } });
+		assert.deepEqual(done.meta, { record_id: 11, refresh_pending: false });
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("a refresh that says 404 keeps the saved-but-not-refreshed message, a 404 on the PUT says the record is gone", async () => {
+		time();
+		pool()
+			.intercept({ path: "/1.0/domain/zone/example.com/record/11", method: "PUT" })
+			.reply(404, { message: "gone" }, json);
+		await assert.rejects(
+			run("write", {
+				...base,
+				ip: "5.6.7.8",
+				existing: { values: ["1.2.3.4"], ttl: 300 },
+				meta: { record_id: 11 },
+			}),
+			(err) => err.retry === true && err.message.includes("created again"),
+		);
+		time();
+		pool().intercept({ path: "/1.0/domain/zone/example.com/record", method: "POST" }).reply(200, { id: 5 }, json);
+		refresh(404);
+		await assert.rejects(run("write", { ...base, ip: "5.6.7.8", existing: null }), REFRESH_FAILED);
 	});
 
 	it("creates the record and then refreshes the zone", async () => {
@@ -781,7 +818,7 @@ describe("ovh", () => {
 			);
 		refresh();
 		assert.deepEqual(await run("write", { ...base, ip: "5.6.7.8", existing: null }), {
-			meta: { record_id: 77 },
+			meta: { record_id: 77, refresh_pending: false },
 			created: true,
 		});
 		mock.assertNoPendingInterceptors();

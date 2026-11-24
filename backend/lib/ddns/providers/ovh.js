@@ -74,7 +74,7 @@ const HINT = "A right on /domain/zone/{zone}/record and /domain/zone/{zone}/refr
 const MAX_RECORDS = 20;
 const zonePath = (zone) => `/domain/zone/${encodeURIComponent(zone)}`;
 
-/** The apex is refused until OVH documents how it is spelled (the spec only says subDomain is a nullable string) */
+/** The API refuses new apex names, so this is reached only for a stored apex record. The apex is refused until OVH documents how it is spelled (the spec only says subDomain is a nullable string) */
 const refuseApex = (zone, name) => {
 	if (name.toLowerCase() === zone.toLowerCase()) {
 		throw new DdnsProviderError({
@@ -93,16 +93,33 @@ const refusals = (zone, name) => {
 /** Applies the pending record changes: OVH shows a change in the zone only after this call */
 const refreshZone = async ({ zone, fields, fetch }) => {
 	const res = await ovhRequest({ fields, fetch, method: "POST", path: `${zonePath(zone)}/refresh` });
-	if (res.status === 404) throw zoneNotFound(res, secretsOf(fields));
-	if (res.status < 200 || res.status >= 300) {
-		try {
-			failAnswer(res, { hint: HINT, secrets: secretsOf(fields) });
-		} catch (err) {
-			err.message = `The record was saved but the zone refresh failed: ${err.message}`;
-			throw err;
-		}
+	if (res.status >= 200 && res.status < 300) return;
+	try {
+		if (res.status === 404) throw zoneNotFound(res, secretsOf(fields));
+		failAnswer(res, { hint: HINT, secrets: secretsOf(fields) });
+	} catch (err) {
+		err.message = `The record was saved but the zone refresh failed: ${err.message}`;
+		throw err;
 	}
 };
+
+/** The refresh after a saved change: when it fails the error carries refresh_pending, so the next run refreshes first */
+const refreshAfterSave = async ({ zone, fields, fetch, meta, recordId }) => {
+	try {
+		await refreshZone({ zone, fields, fetch });
+	} catch (err) {
+		err.meta = { ...meta, record_id: recordId, refresh_pending: true };
+		throw err;
+	}
+};
+
+const recordGone = (res, secrets) =>
+	new DdnsProviderError({
+		providerStatus: res.status,
+		code: "failed",
+		message: "The record was removed at the provider; it is created again on the next check",
+		secrets,
+	});
 
 export { ovhEndpoint, ovhRequest, ovhSignature };
 
@@ -124,6 +141,8 @@ export default {
 	async read({ zone, name, type, fields, fetch, meta }) {
 		refusals(zone, name);
 		const secrets = secretsOf(fields);
+		// an earlier change was saved but its refresh failed: do it first, a failure here keeps the flag and backs off
+		if (meta?.refresh_pending === true) await refreshZone({ zone, fields, fetch });
 		const sub = relativeName(zone, name);
 		const list = await ovhRequest({
 			fields,
@@ -152,7 +171,7 @@ export default {
 		return {
 			values: records.map((record) => (type === "CNAME" ? plainTarget(record.target) : record.target)),
 			ttl: Number.isInteger(first.ttl) && first.ttl > 0 ? first.ttl : null,
-			meta: { ...meta, record_id: first.id },
+			meta: { ...meta, record_id: first.id, refresh_pending: false },
 		};
 	},
 	/** A change (PUT) or a create (POST) only becomes visible after the refresh, and a failed refresh is a failure */
@@ -163,13 +182,6 @@ export default {
 		const recordId = meta?.record_id ?? existing?.meta?.record_id;
 		const ttlPart = Number.isInteger(ttl) && ttl > 0 ? { ttl } : {};
 		if (existing) {
-			if (!recordId) {
-				throw new DdnsProviderError({
-					code: "failed",
-					message: "The record id is not known; the record is read again on the next check",
-					secrets,
-				});
-			}
 			const res = await ovhRequest({
 				fields,
 				fetch,
@@ -177,10 +189,10 @@ export default {
 				path: `${zonePath(zone)}/record/${recordId}`,
 				body: { target: ip, ...ttlPart },
 			});
-			if (res.status === 404) throw zoneNotFound(res, secrets);
+			if (res.status === 404) throw recordGone(res, secrets);
 			if (res.status < 200 || res.status >= 300) failAnswer(res, { hint: HINT, secrets });
-			await refreshZone({ zone, fields, fetch });
-			return { meta: { ...meta, record_id: recordId }, created: false };
+			await refreshAfterSave({ zone, fields, fetch, meta, recordId });
+			return { meta: { ...meta, record_id: recordId, refresh_pending: false }, created: false };
 		}
 		const res = await ovhRequest({
 			fields,
@@ -191,8 +203,9 @@ export default {
 		});
 		if (res.status === 404) throw zoneNotFound(res, secrets);
 		if (res.status < 200 || res.status >= 300) failAnswer(res, { hint: HINT, secrets });
-		await refreshZone({ zone, fields, fetch });
-		return { meta: { ...meta, record_id: Number.isInteger(res.json?.id) ? res.json.id : null }, created: true };
+		const createdId = Number.isInteger(res.json?.id) ? res.json.id : null;
+		await refreshAfterSave({ zone, fields, fetch, meta, recordId: createdId });
+		return { meta: { ...meta, record_id: createdId, refresh_pending: false }, created: true };
 	},
 	listZones: ({ fields, fetch }) =>
 		collectZones({
