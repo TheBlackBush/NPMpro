@@ -15,7 +15,9 @@ import internalDnsDomain from "./dns-domain.js";
 // removes only what the user ticked, under every CA lock and never while a certbot run of this instance is counted.
 
 const CONCURRENCY = 4;
-const PROVIDER_DEADLINE_MS = 60_000;
+const OPERATION_DEADLINE_MS = 300_000;
+const ZONE_DEADLINE_MS = 60_000;
+const MAX_ZONES = 100;
 const RECENT_SECONDS = 600;
 const PRESELECT_SECONDS = 3600;
 
@@ -23,17 +25,26 @@ const keyOf = ({ name, id }) => `${name}|${id ?? "set"}`;
 
 const unsupported = () => ({ supported: false, busy: false, items: [], skipped_cnames: 0, truncated: false });
 
-/** the credential's zones, lower case and without a wildcard, each once */
-const zonesOf = async (row) => [
-	...new Set((await internalDnsDomain.namesOf(row.id)).map(bareName).filter((name) => name !== "")),
-];
+/** the credential's zones, lower case and without a wildcard, each once; at most MAX_ZONES (truncated says more) */
+const zonesOf = async (row) => {
+	const all = [...new Set((await internalDnsDomain.namesOf(row.id)).map(bareName).filter((name) => name !== ""))];
+	return { zones: all.slice(0, MAX_ZONES), truncated: all.length > MAX_ZONES };
+};
 
-/** a provider call of one operation: the credential's secrets scrubbed, one deadline for the whole operation */
+/**
+ * The provider calls of one operation: the credential's secrets scrubbed, one overall deadline and, per zone, its own
+ * shorter one inside it (a slow zone does not fail the others)
+ */
 const callerOf = (row) => {
 	const fields = credentialFields(internalDnsCredential.openValues(row));
 	const secrets = secretValuesOf(row.provider, fields);
-	const deadline = AbortSignal.timeout(PROVIDER_DEADLINE_MS);
-	return { fields, fetch: (url, options) => providerFetch(url, { ...options, secrets, deadline }) };
+	const overall = AbortSignal.timeout(OPERATION_DEADLINE_MS);
+	return {
+		forZone: () => {
+			const deadline = AbortSignal.any([overall, AbortSignal.timeout(ZONE_DEADLINE_MS)]);
+			return { fields, fetch: (url, options) => providerFetch(url, { ...options, secrets, deadline }) };
+		},
+	};
 };
 
 /** a failed provider call of the list as a public 400 the UI shows; the message is already scrubbed */
@@ -53,7 +64,7 @@ const zoneOfName = (zones, name) => {
 
 const listZone = async (provider, caller, zone) => {
 	try {
-		return await provider.listChallenges({ zone, ...caller });
+		return await provider.listChallenges({ zone, ...caller.forZone() });
 	} catch (error) {
 		if (isProviderError(error)) throw failure(error);
 		throw error;
@@ -92,7 +103,7 @@ const internalDnsChallenges = {
 		if (!cleansChallenges(row.provider)) return unsupported();
 		const provider = providerForCredential(row.provider);
 		const busy = certbotRunning() > 0;
-		const zones = await zonesOf(row);
+		const { zones, truncated: tooMany } = await zonesOf(row);
 		if (zones.length === 0) {
 			return {
 				supported: true,
@@ -122,7 +133,7 @@ const internalDnsChallenges = {
 			busy,
 			items,
 			skipped_cnames: lists.reduce((sum, list) => sum + list.skipped_cnames, 0),
-			truncated: lists.some((list) => list.truncated === true),
+			truncated: tooMany || lists.some((list) => list.truncated === true),
 		};
 	},
 
@@ -138,18 +149,30 @@ const internalDnsChallenges = {
 			throw new errs.ValidationError("This provider cannot clean up challenge records");
 		}
 		// the provider lists names in lower case
-		const items = chosen.map((item) => ({ ...item, name: String(item.name).toLowerCase() }));
+		// and an item sent twice is one item
+		const items = [
+			...new Map(
+				chosen.map((item) => {
+					const named = { ...item, name: String(item.name).toLowerCase() };
+					return [keyOf(named), named];
+				}),
+			).values(),
+		];
 		const busy = () =>
 			new errs.ConflictError("A certificate request or renewal is running", "error.dns-cleanup-busy");
 		if (certbotRunning() > 0) throw busy();
 		const provider = providerForCredential(row.provider);
-		const zones = await zonesOf(row);
+		const { zones } = await zonesOf(row);
 
-		const results = await withRenewalLocks(async () => {
-			// a run counted outside the locks (a plugin install, an account registration) is seen here
-			if (certbotRunning() > 0) throw busy();
-			return await deleteItems({ provider, caller: callerOf(row), zones, items });
-		});
+		// never without the locks: a request could start beside the delete
+		const results = await withRenewalLocks(
+			async () => {
+				// a run counted outside the locks (a plugin install, an account registration) is seen here
+				if (certbotRunning() > 0) throw busy();
+				return await deleteItems({ provider, caller: callerOf(row), zones, items });
+			},
+			{ requireLocks: true },
+		);
 
 		// names and the count only: the values are challenge tokens
 		const deleted = results.filter((result) => result.result === "deleted");
@@ -194,9 +217,11 @@ const deleteItems = async ({ provider, caller, zones, items }) => {
 	await Promise.all(
 		[...byZone].map(([zone, chosen]) =>
 			limit(async () => {
+				// one deadline for the zone's list and its deletes
+				const call = caller.forZone();
 				let current;
 				try {
-					current = await provider.listChallenges({ zone, ...caller });
+					current = await provider.listChallenges({ zone, ...call });
 				} catch (error) {
 					if (!isProviderError(error)) throw error;
 					for (const item of chosen) results.set(item, resultOf(item, "failed", { message: error.message }));
@@ -213,7 +238,7 @@ const deleteItems = async ({ provider, caller, zones, items }) => {
 						results.set(item, resultOf(item, "skipped", { reason: "changed" }));
 						continue;
 					}
-					results.set(item, await removeOne({ provider, caller, zone, item, found }));
+					results.set(item, await removeOne({ provider, call, zone, item, found }));
 				}
 			}),
 		),
@@ -221,12 +246,12 @@ const deleteItems = async ({ provider, caller, zones, items }) => {
 	return items.map((item) => results.get(item));
 };
 
-const removeOne = async ({ provider, caller, zone, item, found }) => {
+const removeOne = async ({ provider, call, zone, item, found }) => {
 	try {
 		const done = await provider.removeChallenge({
 			zone,
 			item: { key: found.key, name: found.name, id: found.id, values: found.values },
-			...caller,
+			...call,
 		});
 		if (done.changed === true) return resultOf(item, "skipped", { reason: "changed" });
 		return resultOf(item, done.gone === true ? "gone" : "deleted");

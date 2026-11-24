@@ -291,3 +291,118 @@ it("holds the CA locks: a certificate request started during a delete waits for 
 	assert.equal(await certonly(), earlier + 1);
 	assert.ok(untouched());
 });
+
+it("refuses a delete when the CA locks cannot be taken, without a provider call", async () => {
+	const mine = await main();
+	const earlier = (await auditRows()).length;
+	const { default: accounts } = await import("../models/acme_account.js");
+	const query = accounts.query;
+	accounts.query = () => {
+		throw new Error("no accounts");
+	};
+	try {
+		const res = await del(mine.id, [item(1, "tok-a")]);
+		assert.equal(res.status, 409, res.text);
+		assert.equal(res.body.error.message_i18n, "error.dns-cleanup-no-locks");
+	} finally {
+		accounts.query = query;
+	}
+	assert.equal((await auditRows()).length, earlier);
+});
+
+it("sees a certbot run that started while the delete waited for a lock", async () => {
+	const mine = await main();
+	const { withAccountLock } = await import("../internal/acme-account.js");
+	let letGo;
+	const held = new Promise((resolve) => {
+		letGo = resolve;
+	});
+	let locked;
+	const taken = new Promise((resolve) => {
+		locked = resolve;
+	});
+	const holder = withAccountLock(ACME, () => {
+		locked();
+		return held;
+	});
+	await taken;
+	const deleting = del(mine.id, [item(1, "tok-a")]);
+	await new Promise((resolve) => setTimeout(resolve, 200));
+	await api.outside.hookCommand(
+		"certbot",
+		`#!/bin/sh\nwhile [ ! -f "${path.join(api.root, "fake/release-wait")}" ]; do sleep 0.05; done\n`,
+	);
+	const running = certbot.runCertbot(["renew"]);
+	letGo();
+	await holder;
+	const res = await deleting;
+	await writeFile(path.join(api.root, "fake/release-wait"), "0");
+	await running;
+	await certbotSucceeds(api, pair);
+	assert.equal(res.status, 409, res.text);
+	assert.equal(res.body.error.message_i18n, "error.dns-cleanup-busy");
+	assert.ok(untouched(), "the provider was asked");
+});
+
+it("skips an item the provider changed between the list and the delete", async () => {
+	const mine = await main();
+	zoneCall({ times: 2 });
+	listCall([record(1, NAME, "tok-a", minutesAgo(90))]);
+	findCall(NAME, [record(1, NAME, "tok-a-other", minutesAgo(90))]);
+	const res = await del(mine.id, [item(1, "tok-a")]);
+	assert.equal(res.status, 200, res.text);
+	assert.deepEqual(
+		res.body.results.map(({ result, reason }) => `${result}:${reason}`),
+		["skipped:changed"],
+	);
+	assert.ok(untouched());
+});
+
+it("merges an item sent twice and counts a record once in the audit", async () => {
+	const mine = await main();
+	const earlier = (await auditRows()).length;
+	zoneCall({ times: 2 });
+	listCall([record(1, NAME, "tok-a", minutesAgo(90))]);
+	findCall(NAME, [record(1, NAME, "tok-a", minutesAgo(90))]);
+	deleteCall(1);
+	const res = await del(mine.id, [item(1, "tok-a"), item(1, "tok-a")]);
+	assert.equal(res.status, 200, res.text);
+	assert.deepEqual(
+		res.body.results.map(({ result }) => result),
+		["deleted"],
+	);
+	const rows = await auditRows();
+	assert.equal(rows.length, earlier + 1);
+	const meta = typeof rows.at(-1).meta === "string" ? JSON.parse(rows.at(-1).meta) : rows.at(-1).meta;
+	assert.equal(meta.count, 1);
+	assert.ok(untouched());
+});
+
+it("lists at most 100 zones of a credential and says it is cut", async () => {
+	const many = await credential(
+		admin,
+		Array.from({ length: 100 }, (_, i) => `cap${i}.example.net`),
+		{ name: "Many zones" },
+	);
+	const added = await admin.post("/nginx/dns-domains", { dns_credential_id: many.id, names: ["cap100.example.net"] });
+	assert.equal(added.status, 201, added.text);
+	const zoneCalls = [];
+	api.outside.http
+		.get(HOST)
+		.intercept({ path: (url) => url.startsWith("/client/v4/zones?name="), method: "GET" })
+		.reply((options) => {
+			zoneCalls.push(options.path);
+			return { statusCode: 200, data: { success: true, result: [{ id: ZONE_ID }] }, responseOptions: json };
+		})
+		.times(100);
+	api.outside.http
+		.get(HOST)
+		.intercept({ path: (url) => url.includes("/dns_records?name.startswith="), method: "GET" })
+		.reply(200, { success: true, result: [], result_info: { page: 1, total_pages: 1 } }, json)
+		.times(100);
+	const res = await get(many.id);
+	assert.equal(res.status, 200, res.text);
+	assert.equal(res.body.truncated, true);
+	assert.equal(zoneCalls.length, 100);
+	assert.ok(untouched());
+});

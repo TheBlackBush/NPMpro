@@ -621,18 +621,27 @@ const prepareRenewals = async (confs, { access = null } = {}) => {
  * Runs fn, one certbot renewal of all due certificates, while holding the lock of every CA that has an account row or
  * a renewal conf (withAccountLocks): a Replace account of any of them waits for it, and it for a Replace account, so
  * certbot never writes back a conf naming a replaced account. The confs are prepared under the locks first. When the
- * CAs cannot be listed, fn runs without the locks and without the preparation.
+ * CAs cannot be listed, fn runs without the locks and without the preparation, unless requireLocks is set: then the
+ * call is refused (409 error.dns-cleanup-no-locks) and fn never runs.
  *
  * @param   {Function}  fn
+ * @param   {Object}    [options]
+ * @param   {boolean}   [options.requireLocks]
  * @returns {Promise<*>}  fn's result
  */
-const withRenewalLocks = async (fn) => {
+const withRenewalLocks = async (fn, { requireLocks = false } = {}) => {
 	let servers;
 	try {
 		const confs = await listRenewalConfs();
 		const rows = await acmeAccountModel.query();
 		servers = [...rows.map((row) => row.server), ...confs.map((conf) => conf.server ?? LETSENCRYPT_SERVER)];
 	} catch (err) {
+		if (requireLocks) {
+			logger.warn(`The ACME accounts and renewal confs could not be listed: ${err}`);
+			throw new errs.ConflictError("The certificate locks could not be taken", "error.dns-cleanup-no-locks", {
+				cause: err,
+			});
+		}
 		logger.warn(`The ACME accounts and renewal confs could not be listed, renewing without their checks: ${err}`);
 		return await fn();
 	}
