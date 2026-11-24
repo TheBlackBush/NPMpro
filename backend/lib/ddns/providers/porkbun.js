@@ -42,12 +42,13 @@ const call = async ({ fields, fetch, path, body = {}, missing }) => {
 		body: JSON.stringify({ apikey: fields.dns_porkbun_key, secretapikey: fields.dns_porkbun_secret, ...body }),
 	});
 	if (res.status >= 200 && res.status < 300 && res.json?.status === "SUCCESS") return res.json;
-	if (missing?.(res)) return null;
+	// the code is read before anything else: a refused key or an unknown domain is never "the record is gone"
 	const code = typeof res.json?.code === "string" ? res.json.code : "";
 	if (code === "INVALID_DOMAIN") throw zoneNotFound(res, secrets);
+	const refused = REFUSED_CODES.test(code) || res.status === 401 || res.status === 403;
+	if (!refused && missing?.(res)) return null;
 	if (res.status >= 200 && res.status < 300 && res.json?.status !== "ERROR") throw malformed(res, secrets);
-	failAnswer(res, { hint: HINT, secrets, refused: REFUSED_CODES.test(code) });
-	return null;
+	return failAnswer(res, { hint: HINT, secrets, refused });
 };
 
 const zonePart = (zone) => encodeURIComponent(zone);

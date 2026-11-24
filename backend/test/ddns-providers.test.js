@@ -1233,6 +1233,57 @@ describe("porkbun", () => {
 		});
 	});
 
+	it("reads the error code before a missing record", async () => {
+		const existing = { values: ["1.2.3.4"], ttl: 600 };
+		const w = () => run("write", { ...base, ip: "5.6.7.8", existing });
+		pool().intercept({ path: EDIT, method: "POST" }).reply(404, { status: "ERROR", message: "gone" }, json);
+		await assert.rejects(w(), (err) => err.retry !== false && REMOVED.test(err.message));
+		pool()
+			.intercept({ path: EDIT, method: "POST" })
+			.reply(400, { status: "ERROR", code: "INVALID_DOMAIN", message: "Invalid domain." }, json);
+		await assert.rejects(w(), (err) => err.retry === false && err.code === "failed" && !REMOVED.test(err.message));
+		pool()
+			.intercept({ path: EDIT, method: "POST" })
+			.reply(400, { status: "ERROR", code: "INVALID_API_KEYS_001", message: "Key not found" }, json);
+		await assert.rejects(w(), (err) => err.code === "forbidden" && err.retry === false);
+		pool()
+			.intercept({ path: EDIT, method: "POST" })
+			.reply(400, { status: "ERROR", code: "ZONE_RECORD_LIMIT", message: "Limit reached" }, json);
+		await assert.rejects(w(), (err) => err.code === "failed" && err.retry !== false && !REMOVED.test(err.message));
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("edits the apex without a subdomain in the URL", async () => {
+		pool()
+			.intercept({ path: "/api/json/v3/dns/editByNameType/example.com/A", method: "POST" })
+			.reply(200, { status: "SUCCESS" }, json);
+		const done = await run("write", {
+			...base,
+			name: "example.com",
+			ip: "5.6.7.8",
+			existing: { values: ["1.2.3.4"], ttl: null },
+		});
+		assert.equal(done.created, false);
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("keeps only the records of the asked name and type", async () => {
+		pool()
+			.intercept({ path: READ, method: "POST" })
+			.reply(
+				200,
+				{
+					status: "SUCCESS",
+					records: [
+						record({ name: "other.example.com", content: "9.9.9.9" }),
+						record({ type: "AAAA", content: "::1" }),
+					],
+				},
+				json,
+			);
+		assert.equal(await run("read", base), null);
+	});
+
 	it("has no zone fetch", () => {
 		assert.equal(providerById("porkbun").listZones, undefined);
 	});
