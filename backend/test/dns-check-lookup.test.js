@@ -62,7 +62,12 @@ it("reads the test map under the test outbound mode and never the network", asyn
 	const file = path.join(dir, "map.json");
 	await writeFile(
 		file,
-		JSON.stringify({ "a.example|A": ["192.0.2.1"], "b.example|A": { code: "timeout" }, "c.example|A": [] }),
+		JSON.stringify({
+			"a.example|A": ["192.0.2.1"],
+			"b.example|A": { code: "timeout" },
+			"c.example|A": [],
+			"e.example|A": { cname: "a.example" },
+		}),
 	);
 	const saved = { ...process.env };
 	Object.assign(process.env, { NPMPRO_TEST_ROOT: dir, NPMPRO_TEST_OUTBOUND: "mock", NPMPRO_TEST_DNS: file });
@@ -74,6 +79,7 @@ it("reads the test map under the test outbound mode and never the network", asyn
 		assert.deepEqual(await lookup("b.example", "A", [], refuse), { ok: false, code: "timeout" });
 		assert.deepEqual(await lookup("c.example", "A", [], refuse), { ok: false, code: "nodata" });
 		assert.deepEqual(await lookup("d.example", "A", [], refuse), { ok: false, code: "nxdomain" });
+		assert.deepEqual(await lookup("e.example", "A", [], refuse), { ok: true, values: ["192.0.2.1"] });
 		process.env.NPMPRO_TEST_DNS = path.join(dir, "missing.json");
 		assert.deepEqual(await lookup("a.example", "A", [], refuse), { ok: false, code: "nxdomain" });
 	} finally {

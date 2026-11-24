@@ -10,25 +10,36 @@ const API_TYPES = { proxy_host: "proxy", redirection_host: "redirection", dead_h
 
 const createHostCache = ({ now = () => Date.now() } = {}) => {
 	const entries = new Map();
+	let generation = 0;
 	const keyOf = (type, id, scope) => `${type}:${id}:${scope}`;
 
 	return {
 		/** @returns {Object|undefined}  the entry of that host and scope, fresh or not */
 		get: (type, id, scope) => entries.get(keyOf(type, id, scope)),
 		fresh: (entry) => entry !== undefined && now() - entry.at < REUSE_MS,
-		set: (type, id, scope, entry) => {
+		/** a number that changes at every clear: a check that started under another one does not write its result */
+		generation: () => generation,
+		set: (type, id, scope, { since = generation, ...entry }) => {
+			if (since !== generation) return false;
 			const key = keyOf(type, id, scope);
 			entries.delete(key);
 			entries.set(key, { ...entry, type, id, scope, at: now() });
 			while (entries.size > MAX_ENTRIES) entries.delete(entries.keys().next().value);
+			return true;
 		},
 		/** the entries of one scope */
 		ofScope: (scope) => [...entries.values()].filter((entry) => entry.scope === scope),
 		/** forget a host in every scope; the type is the API's (proxy) or the service's (proxy_host) */
 		clearHost: (type, id) => {
+			generation += 1;
 			const apiType = API_TYPES[type] ?? type;
 			for (const [key, entry] of entries)
 				if (entry.type === apiType && entry.id === Number(id)) entries.delete(key);
+		},
+		/** forget every host (a restore or a merge replaced the hosts) */
+		clearAll: () => {
+			generation += 1;
+			entries.clear();
 		},
 		size: () => entries.size,
 	};

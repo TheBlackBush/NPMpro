@@ -19,7 +19,9 @@ const CODES = new Map([
 
 const codeOf = (error) => CODES.get(error?.code) ?? "error";
 
-const fromMap = (name, type) => {
+const MAX_ALIASES = 5;
+
+const fromMap = (name, type, depth = 0) => {
 	let map = {};
 	try {
 		map = JSON.parse(readFileSync(process.env.NPMPRO_TEST_DNS ?? "", "utf8"));
@@ -28,6 +30,8 @@ const fromMap = (name, type) => {
 	}
 	const entry = map[`${String(name).toLowerCase()}|${type}`];
 	if (entry === undefined) return { ok: false, code: "nxdomain" };
+	// { cname: "target.example" }: the resolver follows the alias, as the real one does
+	if (typeof entry.cname === "string" && depth < MAX_ALIASES) return fromMap(entry.cname, type, depth + 1);
 	if (Array.isArray(entry)) return entry.length === 0 ? { ok: false, code: "nodata" } : { ok: true, values: entry };
 	return { ok: false, code: entry.code ?? "error" };
 };

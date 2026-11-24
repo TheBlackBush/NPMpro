@@ -8,7 +8,9 @@ const PUBLIC_IP = "81.2.69.160";
 const OTHER_IP = "81.2.69.100";
 const CHECK = "/nginx/dns-check/hosts";
 const ZONE_LOOKUP = /^\/client\/v4\/zones\?name=/u;
-const RECORD_LOOKUP = /^\/client\/v4\/zones\/zone1\/dns_records\?/u;
+// a name starting with slow- gets its own, delayed interceptor in the test that needs it
+const RECORD_LOOKUP = /^\/client\/v4\/zones\/zone1\/dns_records\?(?!.*name\.exact=slow-)/u;
+const SLOW_LOOKUP = /^\/client\/v4\/zones\/zone1\/dns_records\?.*name\.exact=slow-/u;
 const json = { headers: { "content-type": "application/json" } };
 const SECTIONS = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams", "access_lists", "certificates"];
 
@@ -56,12 +58,15 @@ const mockCloudflare = () => {
 		.persist();
 	pool.intercept({ path: RECORD_LOOKUP, method: "GET" })
 		.reply((options) => {
-			const name = decodeURIComponent(new URL(options.path, CF).searchParams.get("name.exact"));
-			cloudflare.reads.push(name);
+			const query = new URL(options.path, CF).searchParams;
+			const name = decodeURIComponent(query.get("name.exact"));
+			const type = query.get("type");
+			if (type === "A") cloudflare.reads.push(name);
 			if (cloudflare.failWith) {
 				return { statusCode: 403, data: cloudflare.failWith, responseOptions: json };
 			}
-			const record = cloudflare.records[name];
+			const found = cloudflare.records[name];
+			const record = found && (found.type ?? "A") === type ? found : null;
 			const result = record
 				? [{ id: `rec-${name}`, content: record.content, ttl: 1, proxied: record.proxied }]
 				: [];
@@ -271,4 +276,79 @@ it("answers a user with no host permission 404 and an empty list", async () => {
 	const listed = await none.get(CHECK);
 	assert.equal(listed.status, 200, listed.text);
 	assert.deepEqual(listed.body, []);
+});
+
+it("is here by a proxied Cloudflare CNAME whose target is here, and elsewhere when it is not", async () => {
+	await withCredential("alias.example");
+	const host = await proxyHost(["app.alias.example", "off.alias.example"]);
+	await dns("app.alias.example", ["104.16.0.1"]);
+	await dns("off.alias.example", ["104.16.0.1"]);
+	cloudflare.records["app.alias.example"] = { type: "CNAME", content: "home.alias.example", proxied: true };
+	cloudflare.records["home.alias.example"] = { content: PUBLIC_IP, proxied: false };
+	cloudflare.records["off.alias.example"] = { type: "CNAME", content: "away.example.net", proxied: true };
+	await dns("away.example.net", [OTHER_IP]);
+	const [here, away] = (await checkOne(admin, "proxy", host.id)).names;
+	assert.equal(here.state, "here");
+	assert.equal(here.via, "alias");
+	assert.equal(here.proxied, true);
+	assert.equal(away.state, "elsewhere");
+});
+
+it("is here by an alias in DNS: the resolver ends at this instance's address", async () => {
+	const host = await proxyHost(["cname.dnsalias.example"]);
+	await dns("cname.dnsalias.example", { cname: "home.dnsalias.example" });
+	await dns("home.dnsalias.example", [PUBLIC_IP]);
+	const entry = (await checkOne(admin, "proxy", host.id)).names[0];
+	assert.equal(entry.state, "here");
+	assert.equal(entry.via, "dns");
+});
+
+it("clears the cache after a restore and after a merge, and keeps a check that began before one out of it", async () => {
+	const host = await proxyHost(["app.restore.example"]);
+	await dns("app.restore.example", [PUBLIC_IP]);
+	const kept = await admin.post("/backups", { types: ["proxy_hosts"], secrets: false, keep: true });
+	if (kept.status !== 200) throw new Error(`backup answered ${kept.status}: ${kept.text}`);
+	const opened = async () => {
+		const done = await admin.post(`/backups/${kept.body.entry.name}/inspect`, {});
+		if (done.status !== 200) throw new Error(`inspect answered ${done.status}: ${done.text}`);
+		return done.body.token;
+	};
+
+	await checkOne(admin, "proxy", host.id);
+	assert.ok((await admin.get(CHECK)).body.length > 0);
+	const restored = await admin.post(`/backups/restore/${await opened()}`, { types: ["proxy_hosts"], confirm: true });
+	assert.equal(restored.status, 200, restored.text);
+	assert.deepEqual((await admin.get(CHECK)).body, []);
+
+	await checkOne(admin, "proxy", host.id);
+	const token = await opened();
+	const plan = await admin.post(`/backups/restore/${token}/plan`, { mode: "merge", types: ["proxy_hosts"] });
+	assert.equal(plan.status, 200, plan.text);
+	const merged = await admin.post(`/backups/restore/${token}`, {
+		mode: "merge",
+		types: ["proxy_hosts"],
+		plan_hash: plan.body.hash,
+	});
+	assert.equal(merged.status, 200, merged.text);
+	assert.deepEqual((await admin.get(CHECK)).body, []);
+});
+
+it("does not cache a result of a check that began before the host changed", async () => {
+	await withCredential("gen.example");
+	const host = await proxyHost(["slow-app.gen.example"]);
+	await dns("slow-app.gen.example", ["104.16.0.1"]);
+	cloudflare.records["slow-app.gen.example"] = { content: PUBLIC_IP, proxied: true };
+	api.outside.http
+		.get(CF)
+		.intercept({ path: SLOW_LOOKUP, method: "GET" })
+		.reply(200, { success: true, result: [] }, json)
+		.delay(400)
+		.persist();
+	const running = check(admin, [{ type: "proxy", id: host.id }]);
+	await new Promise((resolve) => setTimeout(resolve, 150));
+	const changed = await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 8082 });
+	assert.equal(changed.status, 200, changed.text);
+	const done = await running;
+	assert.equal(done.status, 200, done.text);
+	assert.ok(!(await admin.get(CHECK)).body.some((entry) => entry.id === host.id));
 });

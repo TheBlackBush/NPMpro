@@ -174,4 +174,61 @@ it("keeps a host's result for 30 s per scope, clears it by the service's or the 
 	assert.equal(cache.size(), MAX_ENTRIES);
 	assert.equal(cache.get("proxy", 1, "all"), undefined);
 	assert.ok(cache.get("proxy", MAX_ENTRIES + 5, "all"));
+	const since = cache.generation();
+	cache.clearHost("proxy", 3);
+	assert.equal(cache.set("proxy", 99999, "all", { names: [], since }), false, "a result of before a clear");
+	assert.equal(cache.get("proxy", 99999, "all"), undefined);
+	cache.clearAll();
+	assert.equal(cache.size(), 0);
+});
+
+it("is here by a proxied record that is a CNAME, through its own record or the lookup of its target", async () => {
+	const dns = { "app.example.com|A": ["104.16.0.1"] };
+	const byOwn = await run({
+		dns,
+		coverage: () =>
+			Promise.resolve({ alias: { target: "home.example.com", proxied: true, own: { values: [IP4] } } }),
+	});
+	assert.equal(byOwn.state, "here");
+	assert.equal(byOwn.via, "alias");
+	assert.equal(byOwn.proxied, true);
+	const byLookup = await run({
+		dns: { ...dns, "home.example.com|A": [IP4] },
+		coverage: () => Promise.resolve({ alias: { target: "home.example.com", proxied: true, own: null } }),
+	});
+	assert.equal(byLookup.via, "alias");
+	const away = await run({
+		dns: { ...dns, "home.example.com|A": ["198.51.100.9"] },
+		coverage: () => Promise.resolve({ alias: { target: "home.example.com", proxied: true, own: null } }),
+	});
+	assert.equal(away.state, "elsewhere");
+});
+
+it("keeps a failure of a lookup, the coverage or the IPv6 detection to its own name", async () => {
+	const errors = [];
+	const base = { name: "app.example.com", onError: (error) => errors.push(error.message) };
+	const boom = () => Promise.reject(new Error("boom"));
+	const a = await checkName({ ...base, publicIp: publicIp(), lookup: boom, coverage: noCoverage });
+	const b = await checkName({
+		...base,
+		publicIp: publicIp(),
+		lookup: fakeLookup({ "app.example.com|A": ["198.51.100.1"] }),
+		coverage: boom,
+	});
+	const c = await checkName({
+		...base,
+		publicIp: { ipv4: IP4, ipv6: boom },
+		lookup: fakeLookup({ "app.example.com|A": [IP4], "app.example.com|AAAA": [IP6] }),
+		coverage: noCoverage,
+	});
+	for (const result of [a, b, c]) {
+		assert.equal(result.state, "unknown");
+		assert.equal(result.reason, "check-failed");
+		assert.equal(result.message, null);
+	}
+	assert.deepEqual(errors, ["boom", "boom", "boom"]);
+	assert.equal(
+		(await checkName({ ...base, publicIp: publicIp(), lookup: boom, coverage: noCoverage })).name,
+		base.name,
+	);
 });

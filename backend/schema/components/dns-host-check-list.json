@@ -70,10 +70,11 @@
 							"enum": [
 								"dns",
 								"record",
+								"alias",
 								"wildcard",
 								null
 							],
-							"description": "How `here` or `partly` was found: the DNS answer, the provider's record, or the provider's wildcard record"
+							"description": "How `here` or `partly` was found: the DNS answer, the provider's record, the target of the provider's CNAME record (`alias`, one level), or the provider's wildcard record"
 						},
 						"proxied": {
 							"type": "boolean",
@@ -134,7 +135,7 @@
 								"string",
 								"null"
 							],
-							"description": "A code: `skipped-pattern`, `lookup-timeout`, `lookup-servfail`, `lookup-error`, `public-address-unknown`, `public-ipv6-unknown` or `provider-read-failed`"
+							"description": "A code: `skipped-pattern`, `lookup-timeout`, `lookup-servfail`, `lookup-error`, `public-address-unknown`, `public-ipv6-unknown`, `provider-read-failed` or `check-failed` (this name could not be checked)"
 						},
 						"message": {
 							"type": [

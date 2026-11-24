@@ -3,7 +3,7 @@ import { isIP } from "node:net";
 // Where one host name points: the pure rules of the host check. The lookups, the public addresses and the provider
 // read are passed in (lookup, publicIp, coverage), so nothing here touches the network.
 //
-// States: here (via dns, record or wildcard; proxied when the provider record is proxied), partly (one address
+// States: here (via dns, record, alias or wildcard; proxied when the provider record is proxied), partly (one address
 // family here, the other elsewhere), elsewhere, none (no A and no AAAA), unknown (reason says why), skipped.
 
 const HOSTNAME = /^[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?(?:\.[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?)*$/u;
@@ -37,12 +37,12 @@ const answer = (name, state, extra = {}) => ({
  *                                        only when the name has AAAA records)
  * @param   {Function}  options.lookup    (name, type) -> { ok, values } | { ok: false, code }
  * @param   {Function}  options.coverage  (name, { dnsHere }) -> null (no provider read) or { record, wildcard,
- *                                        error }: record { values, proxied } | null, wildcard { name, values,
+ *                                        alias, error }: record { values, proxied } | null, wildcard { name, values,
  *                                        proxied } | null, error a scrubbed message when the read failed
  * @returns {Promise<Object>}  { name, state, via, proxied, ipv4: { found, public }, ipv6: { found, public },
  *                             reason, message }
  */
-const checkName = async ({ name, publicIp, lookup, coverage }) => {
+const checkInner = async ({ name, publicIp, lookup, coverage }) => {
 	if (!HOSTNAME.test(name)) return answer(name, "skipped", { reason: "skipped-pattern" });
 
 	const [a, aaaa] = await Promise.all([lookup(name, "A"), lookup(name, "AAAA")]);
@@ -76,6 +76,17 @@ const checkName = async ({ name, publicIp, lookup, coverage }) => {
 			via = "record";
 			proxied = cover.record.proxied === true;
 		}
+	} else if (cover?.alias) {
+		// a record that is a CNAME (a flattened proxied name): its target counts, one level
+		const { alias } = cover;
+		const viaLookup = await lookup(alias.target, "A");
+		const values = alias.own?.values ?? (viaLookup.ok ? viaLookup.values : []);
+		foundByProvider = values;
+		if (hasAddress(values, ip4) || (viaLookup.ok && hasAddress(viaLookup.values, ip4))) {
+			here4 = true;
+			via = "alias";
+			proxied = alias.proxied === true;
+		}
 	} else if (cover?.wildcard) {
 		foundByProvider = cover.wildcard.values;
 		if (hasAddress(cover.wildcard.values, ip4)) {
@@ -99,6 +110,19 @@ const checkName = async ({ name, publicIp, lookup, coverage }) => {
 	}
 	if (base.ipv4.found.length === 0 && found6.length === 0) return answer(name, "none", { ...base, ...providerNote });
 	return answer(name, "elsewhere", { ...base, ...providerNote });
+};
+
+/**
+ * checkInner, with a failure of any injected function kept to this name: it answers unknown (reason check-failed, no
+ * text) and calls onError with the error
+ */
+const checkName = async (options) => {
+	try {
+		return await checkInner(options);
+	} catch (error) {
+		options.onError?.(error);
+		return answer(options.name, "unknown", { reason: "check-failed" });
+	}
 };
 
 export { canonical, checkName, hasAddress };

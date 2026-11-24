@@ -10,6 +10,7 @@ import { credentialFields, secretValuesOf } from "../lib/dns-credential-values.j
 import { bareName, coveringZone } from "../lib/dns-domain-match.js";
 import errs from "../lib/error.js";
 import { effectiveEnv } from "../lib/runtime-config.js";
+import { global as logger } from "../logger.js";
 import deadHostModel from "../models/dead_host.js";
 import dnsCredentialModel from "../models/dns_credential.js";
 import dnsDomainModel from "../models/dns_domain.js";
@@ -81,7 +82,7 @@ const createCoverage = (access, limit) => {
 		return await credentials.get(id);
 	};
 
-	const read = async (provider, args) => limit(() => provider.read({ ...args, type: "A", meta: {} }));
+	const read = async (provider, args, type = "A") => limit(() => provider.read({ ...args, type, meta: {} }));
 
 	return async (name, { dnsHere }) => {
 		if (!manage) return null;
@@ -109,6 +110,24 @@ const createCoverage = (access, limit) => {
 			const record = await read(provider, { zone: cover.zone, name: host, fields, fetch });
 			if (record !== null)
 				return { record: { values: record.values, proxied: record.proxied === true }, wildcard: null };
+			if (provider.aliases === true) {
+				const cname = await read(provider, { zone: cover.zone, name: host, fields, fetch }, "CNAME");
+				const target = cname === null ? null : bareName(cname.values[0]);
+				if (target) {
+					const own = inZone(cover.zone, target)
+						? await read(provider, { zone: cover.zone, name: target, fields, fetch })
+						: null;
+					return {
+						record: null,
+						wildcard: null,
+						alias: {
+							target,
+							proxied: cname.proxied === true,
+							own: own === null ? null : { values: own.values },
+						},
+					};
+				}
+			}
 			const parent = host.slice(host.indexOf(".") + 1);
 			if (provider.wildcards !== true || !host.includes(".") || !inZone(cover.zone, parent)) {
 				return { record: null, wildcard: null };
@@ -179,6 +198,8 @@ const internalDnsCheck = {
 		}
 
 		const scope = scopeOf(access);
+		// a clear (host change, restore) while this runs keeps its results out of the cache
+		const since = hostCheckCache.generation();
 		const limit = limitConcurrency(CONCURRENCY);
 		const servers = ddnsSettingsOf(effectiveEnv()).resolvers ?? [];
 		const once = (task) => {
@@ -188,15 +209,30 @@ const internalDnsCheck = {
 				return promise;
 			};
 		};
-		const ipv4 = once(() => publicAddressOf(4));
-		const ipv6 = once(() => publicAddressOf(6));
+		// an address that cannot be detected is an unknown address, not a failed request
+		const detect = (family) => async () => {
+			try {
+				return await publicAddressOf(family);
+			} catch (error) {
+				logger.warn(`DNS check: the IPv${family} detection failed: ${error?.message}`);
+				return null;
+			}
+		};
+		const ipv4 = once(detect(4));
+		const ipv6 = once(detect(6));
 		const coverage = createCoverage(access, limit);
 		const byName = new Map();
 		const checkOnce = (name, publicIp) => {
 			if (!byName.has(name)) {
 				byName.set(
 					name,
-					checkName({ name, publicIp, lookup: (n, type) => limit(() => lookup(n, type, servers)), coverage }),
+					checkName({
+						name,
+						publicIp,
+						lookup: (n, type) => limit(() => lookup(n, type, servers)),
+						coverage,
+						onError: (error) => logger.warn(`DNS check: ${name} failed: ${error?.message}`),
+					}),
 				);
 			}
 			return byName.get(name);
@@ -217,8 +253,9 @@ const internalDnsCheck = {
 			};
 			for (const { type, id, row } of needed) {
 				const names = await Promise.all(namesOf(row).map((name) => checkOnce(name, publicIp)));
-				hostCheckCache.set(type, id, scope, { checked_on: new Date().toISOString(), names });
-				results.set(`${type}:${id}`, hostCheckCache.get(type, id, scope));
+				const entry = { checked_on: new Date().toISOString(), names };
+				hostCheckCache.set(type, id, scope, { ...entry, since });
+				results.set(`${type}:${id}`, { type, id, ...entry });
 			}
 		}
 		return wanted.map(({ type, id }) => publicView(results.get(`${type}:${id}`)));
