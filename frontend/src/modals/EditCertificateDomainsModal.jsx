@@ -6,6 +6,7 @@ import {
 	ApiErrorContent,
 	AppModal,
 	Button,
+	CaaNote,
 	DomainNamesField,
 	ErrorAlert,
 	FormSubmit,
@@ -81,6 +82,12 @@ const EditCertificateDomainsModal = EasyModal.create(({ certificate, visible, re
 						<T id="certificate.edit-domains.note" />
 					</p>
 					<DomainNamesField isWildcardPermitted={dnsChallenge} dnsProviderWildcardSupported forCertificate />
+					<CaaNote
+						names={names}
+						server={certificate.npmproAcmeServer ?? undefined}
+						dnsChallenge={dnsChallenge}
+						className="mt-3"
+					/>
 					{uncovered.length > 0 ? (
 						<div data-uncovered-hosts="">
 							<NoticeAlert className="mt-3" role="status">

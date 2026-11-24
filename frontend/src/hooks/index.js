@@ -8,6 +8,7 @@ export * from "./useAuditLog";
 export * from "./useAuditLogs";
 export * from "./useBackupSchedules";
 export * from "./useBackups";
+export * from "./useCaa";
 export * from "./useCertificate";
 export * from "./useCertificates";
 export * from "./useCheckVersion";

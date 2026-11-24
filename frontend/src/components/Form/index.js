@@ -2,6 +2,7 @@ export * from "./AccessClientFields";
 export * from "./AccessFields";
 export * from "./AcmeServerField";
 export * from "./BasicAuthFields";
+export * from "./CaaNote";
 export * from "./ChoiceGroup";
 export * from "./CodeInput";
 export * from "./DirectoryField";

@@ -7,6 +7,7 @@ import {
 	ApiErrorContent,
 	AppModal,
 	Button,
+	CaaNote,
 	DNSProviderFields,
 	DomainNamesField,
 	ErrorAlert,
@@ -52,6 +53,8 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 		validate,
 	});
 	const { isSubmitting } = methods.formState;
+	const domains = useWatch({ control: methods.control, name: "domainNames" });
+	const server = useWatch({ control: methods.control, name: "npmproAcmeServer" });
 	const propagationSeconds = useWatch({ control: methods.control, name: "npmproPropagationSeconds" });
 
 	const onSubmit = async (values) => {
@@ -84,6 +87,7 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 					<DomainNamesField isWildcardPermitted dnsProviderWildcardSupported forCertificate />
 					<DNSProviderFields />
 					<AcmeServerField />
+					<CaaNote names={domains} server={server} dnsChallenge className="mb-3" />
 					<SwitchList className="mt-3">
 						<SwitchField
 							id="npmproReuseKey"
