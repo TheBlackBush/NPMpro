@@ -11,6 +11,7 @@ import process from "node:process";
 const FLOW_RECORD = /(?:^|\.)flow-/u;
 export const ADMIN_EMAIL = "admin@example.com";
 export const VIEWER_EMAIL = "flow-viewer@example.com";
+export const DDNS_MANAGER_EMAIL = "flow-ddns-manager@example.com";
 
 const CONTEXT = { ignoreHTTPSErrors: true, locale: "en-US", viewport: { width: 1440, height: 900 } };
 
@@ -333,14 +334,16 @@ export async function removeFlowData(api, withViewer = true) {
 			].map((path) => api("GET", path)),
 		);
 	const paths = [
-		...proxy.filter((row) => row.domain_names.some(isFlow)).map((row) => `/nginx/proxy-hosts/${row.id}`),
+		...proxy.filter((row) => row.domain_names.some(isFlowRecord)).map((row) => `/nginx/proxy-hosts/${row.id}`),
 		...redirection
 			.filter((row) => row.domain_names.some(isFlow))
 			.map((row) => `/nginx/redirection-hosts/${row.id}`),
 		...dead.filter((row) => row.domain_names.some(isFlow)).map((row) => `/nginx/dead-hosts/${row.id}`),
 		...streams.filter((row) => isFlow(row.npmpro_description)).map((row) => `/nginx/streams/${row.id}`),
 		...lists.filter((row) => isFlow(row.name)).map((row) => `/nginx/access-lists/${row.id}`),
-		...users.filter((row) => withViewer && row.email === VIEWER_EMAIL).map((row) => `/users/${row.id}`),
+		...users
+			.filter((row) => row.email === DDNS_MANAGER_EMAIL || (withViewer && row.email === VIEWER_EMAIL))
+			.map((row) => `/users/${row.id}`),
 		...certificates.filter((row) => isFlow(row.nice_name)).map((row) => `/nginx/certificates/${row.id}`),
 		...tokens.filter((row) => isFlow(row.name)).map((row) => `/api-tokens/${row.id}`),
 		// before the credentials they use

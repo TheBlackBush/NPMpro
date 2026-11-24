@@ -31,8 +31,14 @@
 									],
 									"proxied": true,
 									"ipv6": true,
+									"ipv6_alone": true,
 									"admin_only": false,
 									"wildcards": true,
+									"aliases": true,
+									"zoneless": false,
+									"preset": false,
+									"zone": null,
+									"apex": true,
 									"min_ttl": 60
 								}
 							]

@@ -1,23 +1,53 @@
 import { DdnsProviderError } from "../errors.js";
 import { providerFetch } from "../provider-fetch.js";
 import cloudflare from "./cloudflare.js";
+import custom from "./custom.js";
+import desec from "./desec.js";
 import digitalocean from "./digitalocean.js";
+import duckdns from "./duckdns.js";
+import dynu from "./dynu.js";
 import gandi from "./gandi.js";
 import hetznerCloud from "./hetzner-cloud.js";
+import namecheap from "./namecheap.js";
+import noip from "./noip.js";
 import ovh from "./ovh.js";
+import porkbun from "./porkbun.js";
 import powerdns from "./powerdns.js";
 
 /** The providers with an API, in the order the UI shows them */
-const PROVIDERS = Object.freeze([cloudflare, digitalocean, hetznerCloud, gandi, ovh, powerdns]);
+const PROVIDERS = Object.freeze([
+	cloudflare,
+	digitalocean,
+	hetznerCloud,
+	gandi,
+	ovh,
+	desec,
+	duckdns,
+	porkbun,
+	namecheap,
+	noip,
+	dynu,
+	custom,
+	powerdns,
+]);
 
 const providerById = (id) => PROVIDERS.find((provider) => provider.id === id) ?? null;
 
+// the custom provider has no credential: no credential provider is its
 const providerForCredential = (credentialProvider) =>
-	PROVIDERS.find((provider) => provider.credentialProvider === credentialProvider) ?? null;
+	typeof credentialProvider === "string"
+		? (PROVIDERS.find((provider) => provider.credentialProvider === credentialProvider) ?? null)
+		: null;
 
-const listsDomains = (credentialProvider) => providerForCredential(credentialProvider) !== null;
+/** A provider without listZones (deSEC) updates records but has no zone fetch */
+const zoneLister = (credentialProvider) => {
+	const provider = providerForCredential(credentialProvider);
+	return typeof provider?.listZones === "function" ? provider : null;
+};
 
-/** The providers that can read and write records (OVH and PowerDNS only list zones) */
+const listsDomains = (credentialProvider) => zoneLister(credentialProvider) !== null;
+
+/** The providers that can read and write records (PowerDNS only lists zones) */
 const updaterFor = (credentialProvider) => {
 	const provider = providerForCredential(credentialProvider);
 	return typeof provider?.read === "function" && typeof provider?.write === "function" ? provider : null;
@@ -25,17 +55,25 @@ const updaterFor = (credentialProvider) => {
 
 /** The updater providers as GET /nginx/ddns/providers shows them */
 const PROVIDER_LIST = Object.freeze(
-	PROVIDERS.filter((provider) => updaterFor(provider.credentialProvider)).map((provider) => ({
-		id: provider.id,
-		label: provider.label,
-		credential_provider: provider.credentialProvider,
-		record_types: provider.recordTypes,
-		proxied: provider.proxied,
-		ipv6: provider.ipv6,
-		admin_only: provider.adminOnly,
-		wildcards: provider.wildcards,
-		min_ttl: provider.minTtl,
-	})),
+	PROVIDERS.filter((provider) => typeof provider.read === "function" && typeof provider.write === "function").map(
+		(provider) => ({
+			id: provider.id,
+			label: provider.label,
+			credential_provider: provider.credentialProvider,
+			record_types: provider.recordTypes,
+			proxied: provider.proxied,
+			ipv6: provider.ipv6,
+			ipv6_alone: provider.ipv6Alone !== false,
+			admin_only: provider.adminOnly,
+			wildcards: provider.wildcards,
+			aliases: provider.aliases === true,
+			zoneless: provider.zoneless === true,
+			preset: provider.preset === true,
+			zone: provider.zone ?? null,
+			apex: provider.apex !== false,
+			min_ttl: provider.minTtl ?? null,
+		}),
+	),
 );
 
 /** One zone list, all its pages included, ends after this long */
@@ -80,4 +118,5 @@ export {
 	providerForCredential,
 	updaterFor,
 	ZONE_LIST_DEADLINE_MS,
+	zoneLister,
 };

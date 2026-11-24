@@ -1,12 +1,16 @@
+import { refusalOf, secretsOfUrl } from "../lib/ddns/custom-url.js";
 import { fromDbTime, toDbTime } from "../lib/ddns/db-time.js";
+import { EngineFailure } from "../lib/ddns/engine-failure.js";
 import { isIpv6Suffix } from "../lib/ddns/ipv6.js";
-import { updaterFor } from "../lib/ddns/providers/index.js";
+import { isPreset, PRESET_FIELDS, presetSecrets } from "../lib/ddns/presets.js";
+import { providerById, updaterFor } from "../lib/ddns/providers/index.js";
 import { credentialFields, secretValuesOf } from "../lib/dns-credential-values.js";
 import { ownerLock } from "../lib/dns-domain-lock.js";
 import { bareName, coveringZone } from "../lib/dns-domain-match.js";
 import { normalizeDomainName } from "../lib/dns-domain-name.js";
 import errs from "../lib/error.js";
 import { createKeyedLock } from "../lib/keyed-lock.js";
+import { defaultSecretBox } from "../lib/secret-box.js";
 import ddnsHistoryModel from "../models/ddns_history.js";
 import ddnsRecordModel from "../models/ddns_record.js";
 import dnsCredentialModel from "../models/dns_credential.js";
@@ -73,6 +77,37 @@ const visibleRecords = (access, trx) => {
 	return query;
 };
 
+const CUSTOM = "custom";
+// the restore marks of a record whose sealed details did not come along
+const MISSING_KEYS = new Set(["error.ddns-custom-url-missing", "error.ddns-secret-missing"]);
+const CUSTOM_LABEL = "Custom HTTP";
+
+/** What a custom record's sealed secret holds: { url, method, expect }; null when none or not readable */
+const openCustom = (secret) => {
+	if (typeof secret !== "string" || secret === "") return null;
+	try {
+		const opened = defaultSecretBox.decrypt(secret);
+		return typeof opened?.url === "string" && opened.url !== "" ? opened : null;
+	} catch {
+		return null;
+	}
+};
+
+/** What a preset record's sealed secret holds ({ domain?, username?, password }); null when none or not readable */
+const openPreset = (secret) => {
+	if (typeof secret !== "string" || secret === "") return null;
+	try {
+		const opened = defaultSecretBox.decrypt(secret);
+		return typeof opened?.password === "string" && opened.password !== "" ? opened : null;
+	} catch {
+		return null;
+	}
+};
+
+// Check now of a user who is no administrator does not call a custom URL
+const customOnlyForAdmin = (access, query) =>
+	access.isAdmin ? query : query.whereNot("npmpro_ddns_record.provider", CUSTOM);
+
 const iso = (value) => fromDbTime(value)?.toISOString() ?? null;
 
 // the engine keeps the flag per record type (proxied_a, proxied_aaaa, proxied_cname): true when any is proxied
@@ -83,16 +118,38 @@ const proxiedOf = (meta) => {
 	return flags.length === 0 ? null : flags.includes(true);
 };
 
-/** The API form of a row: no meta or secret, ISO times, the engine's translatable error and the proxied flag */
-const toPublic = (row) => {
+/**
+ * The API form of a row: no meta or secret, ISO times, the engine's translatable error and note, and the proxied flag
+ *
+ * @param   {Object}  row
+ * @param   {Access}  access  a custom record's method and expected text are shown to administrators only
+ * @returns {Object}
+ */
+const toPublic = (row, access) => {
 	const { meta, ...json } = row.toJSON();
 	for (const key of TIME_KEYS) json[key] = iso(row[key]);
 	// an alias follows no address: the column keeps its NOT NULL default, the answer says none
 	if (json.kind === "alias") Object.assign(json, { ip_version: null, ipv6_suffix: null });
+	// the URL itself never leaves: only whether one is stored, and (to administrators) the method and expected text
+	const custom = row.provider === CUSTOM ? openCustom(row.secret) : null;
+	const callShown = access?.isAdmin === true;
+	// a preset's password and user name never leave either: only whether they are stored, and the domain (Namecheap)
+	const preset = isPreset(row.provider) ? openPreset(row.secret) : null;
 	return {
 		...json,
+		...(row.provider === CUSTOM
+			? {
+					url_set: custom !== null,
+					method: callShown ? (custom?.method ?? null) : null,
+					expect: callShown ? (custom?.expect ?? null) : null,
+				}
+			: {}),
+		...(isPreset(row.provider) ? { secret_set: preset !== null, domain: preset?.domain ?? null } : {}),
 		error_i18n: meta?.error_i18n ?? null,
 		error_values: meta?.error_values ?? null,
+		note_i18n: meta?.note_i18n ?? null,
+		// a provider refused the account: no automatic try until the user acts
+		stopped: meta?.stopped === true,
 		proxied: proxiedOf(meta),
 	};
 };
@@ -147,6 +204,253 @@ const zoneFor = async (credential, name, typed) => {
 	});
 };
 
+const suffixOf = (data, row) => {
+	const input = data.ipv6_suffix !== undefined ? data.ipv6_suffix : (row?.ipv6_suffix ?? null);
+	return typeof input === "string" && input.trim() !== "" ? input.trim() : null;
+};
+
+/**
+ * The address-record values of a save, shared by both paths: no target, the IP version and the IPv6 suffix, the
+ * suffix checked only when it (or the kind) changed
+ */
+const addressValues = ({ data, row, kind, suffix }) => {
+	const kindChanged = row === null || kind !== row.kind;
+	if (typeof data.target === "string" && data.target.trim() !== "") {
+		throw refusal("An address record takes no target", "error.ddns-address-no-target");
+	}
+	const ipVersion = data.ip_version ?? (kindChanged ? "ipv4" : row.ip_version);
+	const suffixChanged = suffix !== (kindChanged ? null : (row?.ipv6_suffix ?? null));
+	if (suffix !== null && (suffixChanged || ipVersion !== row?.ip_version)) {
+		if (ipVersion === "ipv4") throw refusal("An IPv6 suffix needs IPv6 or both", "error.ddns-suffix-needs-ipv6");
+		if (suffixChanged && !isIpv6Suffix(suffix)) {
+			throw refusal(`'${suffix}' is not an IPv6 interface id of at most 64 bits`, "error.ddns-suffix-invalid", {
+				suffix,
+			});
+		}
+	}
+	return { target: null, ip_version: ipVersion, ipv6_suffix: suffix };
+};
+
+// <subdomain>.<zone> with one subdomain label
+const zonelessNameOk = (name, zone) => name.endsWith(`.${zone}`) && !name.slice(0, -(zone.length + 1)).includes(".");
+
+/**
+ * The save of a record of a zoneless provider: the zone is the provider's own, the name one label under it, the
+ * record an address record without a TTL
+ */
+const resolveZoneless = ({ updater, credential, credentialChanged, data, row, name, renamed }) => {
+	if ((renamed || credentialChanged) && !zonelessNameOk(name, updater.zone)) {
+		throw refusal(`${updater.label} records are named <subdomain>.${updater.zone}`, "error.ddns-zoneless-name", {
+			provider: updater.label,
+			zone: updater.zone,
+		});
+	}
+	const kind = data.kind ?? row?.kind ?? "address";
+	if (kind === "alias" && (row === null || kind !== row.kind || credentialChanged)) {
+		throw refusal(`${updater.label} does not allow alias (CNAME) records`, "error.ddns-alias-unsupported", {
+			provider: updater.label,
+		});
+	}
+	const ttl = data.ttl !== undefined ? data.ttl : (row?.ttl ?? null);
+	if (ttl !== null && (row === null || ttl !== row.ttl || credentialChanged)) {
+		throw refusal(`${updater.label} takes no TTL`, "error.ddns-ttl-unsupported", { provider: updater.label });
+	}
+	const address = addressValues({ data, row, kind, suffix: suffixOf(data, row) });
+	return {
+		values: {
+			owner_user_id: credential.owner_user_id,
+			dns_credential_id: credential.id,
+			provider: updater.id,
+			name,
+			zone: updater.zone,
+			kind,
+			ttl,
+			enabled: data.enabled ?? row?.enabled ?? true,
+			...address,
+		},
+		credential,
+		identityChanged: row !== null && (renamed || credentialChanged || updater.zone !== row.zone),
+	};
+};
+
+/**
+ * The save of a custom HTTP record: no credential and no zone, the name is the host whose DNS answer the engine
+ * compares, an address record without a TTL; the URL, the method and the expected text are sealed in `secret`.
+ */
+const resolveCustom = async (access, data, row) => {
+	if (data.dns_credential_id !== undefined && data.dns_credential_id !== null) {
+		throw refusal("The custom provider takes no DNS credential", "error.ddns-custom-no-credential");
+	}
+	const nameChanged = row === null || (data.name !== undefined && data.name !== row.name);
+	const name = nameChanged ? normalizeRecordName(data.name) : row.name;
+	const renamed = row === null || name !== row.name;
+	if (renamed && isWildcard(name)) {
+		throw refusal(`${CUSTOM_LABEL} does not support wildcard records`, "error.ddns-wildcard-unsupported", {
+			provider: CUSTOM_LABEL,
+		});
+	}
+	const kind = data.kind ?? row?.kind ?? "address";
+	if (kind === "alias") {
+		throw refusal(`${CUSTOM_LABEL} does not allow alias (CNAME) records`, "error.ddns-alias-unsupported", {
+			provider: CUSTOM_LABEL,
+		});
+	}
+	const ttl = data.ttl !== undefined ? data.ttl : (row?.ttl ?? null);
+	if (ttl !== null) {
+		throw refusal(`${CUSTOM_LABEL} takes no TTL`, "error.ddns-ttl-unsupported", { provider: CUSTOM_LABEL });
+	}
+	const stored = openCustom(row?.secret);
+	const typed = typeof data.url === "string" && data.url.trim() !== "" ? data.url.trim() : null;
+	if (typed !== null) {
+		const key = await refusalOf(typed);
+		if (key !== null) throw refusal("The URL is not accepted", key);
+	}
+	const url = typed ?? stored?.url ?? null;
+	const enabled = data.enabled ?? row?.enabled ?? true;
+	if (url === null && (row === null || enabled)) {
+		throw refusal("Enter the URL", "error.ddns-custom-url-required");
+	}
+	const expectInput = data.expect !== undefined ? data.expect : (stored?.expect ?? null);
+	const expect = typeof expectInput === "string" && expectInput.trim() !== "" ? expectInput.trim() : null;
+	const method = data.method ?? stored?.method ?? "GET";
+	const address = addressValues({ data, row, kind, suffix: suffixOf(data, row) });
+	const values = {
+		owner_user_id: row?.owner_user_id ?? access.token.getUserId(1),
+		dns_credential_id: null,
+		provider: CUSTOM,
+		name,
+		zone: "",
+		kind,
+		ttl,
+		enabled,
+		...address,
+	};
+	const sealedAgain =
+		url !== null &&
+		(typed !== null ||
+			stored === null ||
+			method !== (stored.method ?? "GET") ||
+			expect !== (stored.expect ?? null));
+	if (sealedAgain) values.secret = defaultSecretBox.encrypt({ url, method, expect });
+	return { values, credential: null, identityChanged: row !== null && renamed };
+};
+
+const PRESET_FIELD_NAMES = ["username", "password", "domain"];
+
+/** The typed text of a preset field, trimmed; null when none was typed */
+const typedField = (data, key) => (typeof data[key] === "string" && data[key].trim() !== "" ? data[key].trim() : null);
+
+/**
+ * The save of an update-URL preset record (Namecheap, No-IP, Dynu): no credential, no zone, an address record without
+ * a TTL, no wildcard; the account details are sealed in `secret` and an empty value keeps the stored one.
+ */
+const resolvePreset = (access, data, row, updater) => {
+	if (data.dns_credential_id !== undefined && data.dns_credential_id !== null) {
+		throw refusal(`${updater.label} takes no DNS credential`, "error.ddns-preset-no-credential", {
+			provider: updater.label,
+		});
+	}
+	if (data.url !== undefined || data.method !== undefined || data.expect !== undefined) {
+		throw refusal(
+			"Only the custom provider takes a URL, a method or an expected text",
+			"error.ddns-custom-fields-only",
+		);
+	}
+	const wanted = PRESET_FIELDS[updater.id];
+	const refused = PRESET_FIELD_NAMES.find((key) => !wanted.includes(key) && typedField(data, key) !== null);
+	if (refused !== undefined) {
+		throw refusal(`${updater.label} takes no ${refused}`, "error.ddns-preset-field", {
+			field: refused,
+			provider: updater.label,
+		});
+	}
+	const nameChanged = row === null || (data.name !== undefined && data.name !== row.name);
+	const name = nameChanged ? normalizeRecordName(data.name) : row.name;
+	const renamed = row === null || name !== row.name;
+	if (renamed && isWildcard(name)) {
+		throw refusal(`${updater.label} does not support wildcard records`, "error.ddns-wildcard-unsupported", {
+			provider: updater.label,
+		});
+	}
+	const kind = data.kind ?? row?.kind ?? "address";
+	if (kind === "alias") {
+		throw refusal(`${updater.label} does not allow alias (CNAME) records`, "error.ddns-alias-unsupported", {
+			provider: updater.label,
+		});
+	}
+	const ttl = data.ttl !== undefined ? data.ttl : (row?.ttl ?? null);
+	if (ttl !== null) {
+		throw refusal(`${updater.label} takes no TTL`, "error.ddns-ttl-unsupported", { provider: updater.label });
+	}
+	const stored = openPreset(row?.secret);
+	const fields = {};
+	let changed = stored === null;
+	for (const key of wanted) {
+		const typed = typedField(data, key);
+		fields[key] = typed ?? stored?.[key] ?? null;
+		if (typed !== null && typed !== (stored?.[key] ?? null)) changed = true;
+	}
+	if (typeof fields.domain === "string") {
+		const done = normalizeDomainName(fields.domain);
+		if (done.error) {
+			throw refusal(`'${fields.domain}' is not a valid domain`, "error.ddns-preset-domain-invalid", {
+				domain: fields.domain,
+			});
+		}
+		fields.domain = done.name;
+	}
+	const enabled = data.enabled ?? row?.enabled ?? true;
+	const missing = wanted.some((key) => fields[key] === null);
+	// a record without saved details (a restore without secrets) takes all of them at once: a part would be lost
+	if (row !== null && stored === null && missing && wanted.some((key) => typedField(data, key) !== null)) {
+		throw refusal(
+			`The record has no saved account details: enter all of them for ${updater.label}`,
+			"error.ddns-preset-incomplete",
+			{ provider: updater.label },
+		);
+	}
+	if (missing && (row === null || enabled)) {
+		throw refusal(`Enter the account details of ${updater.label}`, "error.ddns-preset-required", {
+			provider: updater.label,
+		});
+	}
+	if (typeof fields.domain === "string" && name !== fields.domain && !name.endsWith(`.${fields.domain}`)) {
+		throw refusal(`${name} is not inside the domain ${fields.domain}`, "error.ddns-zone-mismatch", {
+			name,
+			zone: fields.domain,
+		});
+	}
+	const address = addressValues({ data, row, kind, suffix: suffixOf(data, row) });
+	if (updater.ipv6 === false && address.ip_version !== "ipv4") {
+		throw refusal(`${updater.label} supports IPv4 only`, "error.ddns-ipv4-only", { provider: updater.label });
+	}
+	if (updater.ipv6Alone === false && address.ip_version === "ipv6") {
+		throw refusal(`${updater.label} does not take a record of IPv6 alone`, "error.ddns-ipv6-alone-unsupported", {
+			provider: updater.label,
+		});
+	}
+	const values = {
+		owner_user_id: row?.owner_user_id ?? access.token.getUserId(1),
+		dns_credential_id: null,
+		provider: updater.id,
+		name,
+		zone: "",
+		kind,
+		ttl,
+		enabled,
+		...address,
+	};
+	if (changed && !missing) values.secret = defaultSecretBox.encrypt(fields);
+	// the domain is part of the identity of the call: a changed one starts the record over
+	const domainChanged = (fields.domain ?? null) !== (stored?.domain ?? null);
+	return { values, credential: null, identityChanged: row !== null && (renamed || domainChanged) };
+};
+
+/** The custom provider is for administrators: creating, changing, deleting and updating such a record */
+const assertCustomAdmin = (access) => {
+	if (!access.isAdmin) throw new errs.PermissionError("Only an administrator may manage a custom HTTP record");
+};
+
 /**
  * The values a save stores. Rules run on new or changed values only: a stored value passes a save that keeps it.
  *
@@ -156,6 +460,40 @@ const zoneFor = async (credential, name, typed) => {
  * @returns {Promise<Object>}  { values, credential, changed }
  */
 const resolveSave = async (access, data, row) => {
+	const current = row?.provider ?? data.provider;
+	if (isPreset(current)) {
+		if (data.provider !== undefined && data.provider !== null && data.provider !== current) {
+			throw refusal(`The record's provider is ${current}, not ${data.provider}`, "error.ddns-provider-mismatch", {
+				provider: String(data.provider),
+			});
+		}
+		return resolvePreset(access, data, row, providerById(current));
+	}
+	const isCustom = current === CUSTOM;
+	if (isCustom) {
+		if (data.provider !== undefined && data.provider !== null && data.provider !== CUSTOM) {
+			throw refusal(`The record's provider is ${CUSTOM}, not ${data.provider}`, "error.ddns-provider-mismatch", {
+				provider: String(data.provider),
+			});
+		}
+		return await resolveCustom(access, data, row);
+	}
+	if (data.provider === CUSTOM) {
+		throw refusal(`The record's provider is ${row.provider}, not ${CUSTOM}`, "error.ddns-provider-mismatch", {
+			provider: CUSTOM,
+		});
+	}
+	if (
+		data.url !== undefined ||
+		data.method !== undefined ||
+		data.expect !== undefined ||
+		PRESET_FIELD_NAMES.some((key) => data[key] !== undefined)
+	) {
+		throw refusal(
+			"Only the custom provider takes a URL, a method or an expected text",
+			"error.ddns-custom-fields-only",
+		);
+	}
 	const credentialId = data.dns_credential_id ?? row?.dns_credential_id;
 	const credentialChanged = row === null || credentialId !== row.dns_credential_id;
 	const credential = await internalDnsCredential.get(access, { id: credentialId });
@@ -184,15 +522,42 @@ const resolveSave = async (access, data, row) => {
 		});
 	}
 
+	// a zoneless provider (DuckDNS) has one fixed zone and takes the name as <subdomain>.<zone>; no domain of the
+	// credential is looked up and none needs adding
+	if (updater.zoneless === true)
+		return resolveZoneless({ updater, credential, credentialChanged, data, row, name, renamed });
+
 	let zone = row?.zone;
 	const typedZone = data.zone !== undefined && data.zone !== null && data.zone !== "" ? data.zone : null;
 	if (row === null || renamed || credentialChanged) zone = await zoneFor(credential, name, typedZone);
 	else if (typedZone !== null && typedZone !== row.zone) zone = typedZoneFor(name, typedZone);
 
+	// OVH spells the apex in a way its documentation does not confirm: such a provider has no apex records
+	if (
+		updater.apex === false &&
+		name === zone &&
+		(row === null || renamed || credentialChanged || zone !== row.zone)
+	) {
+		throw refusal(`${updater.label} does not allow records at the zone apex`, "error.ddns-apex-unsupported", {
+			provider: updater.label,
+			name,
+		});
+	}
+
 	const kind = data.kind ?? row?.kind ?? "address";
 	const kindChanged = row === null || kind !== row.kind;
+	if (kind === "alias" && updater.aliases === false && (kindChanged || credentialChanged)) {
+		throw refusal(`${updater.label} does not allow alias (CNAME) records`, "error.ddns-alias-unsupported", {
+			provider: updater.label,
+		});
+	}
 	const ttl = data.ttl !== undefined ? data.ttl : (row?.ttl ?? null);
-	if (ttl !== null && ttl < updater.minTtl && (row === null || ttl !== row.ttl || credentialChanged)) {
+	if (
+		ttl !== null &&
+		Number.isInteger(updater.minTtl) &&
+		ttl < updater.minTtl &&
+		(row === null || ttl !== row.ttl || credentialChanged)
+	) {
 		throw refusal(`${updater.label} takes a TTL of at least ${updater.minTtl} seconds`, "error.ddns-ttl-min", {
 			min: updater.minTtl,
 			provider: updater.label,
@@ -210,8 +575,7 @@ const resolveSave = async (access, data, row) => {
 		enabled: data.enabled ?? row?.enabled ?? true,
 	};
 
-	const suffixInput = data.ipv6_suffix !== undefined ? data.ipv6_suffix : (row?.ipv6_suffix ?? null);
-	const suffix = typeof suffixInput === "string" && suffixInput.trim() !== "" ? suffixInput.trim() : null;
+	const suffix = suffixOf(data, row);
 	if (kind === "alias") {
 		const targetChanged = row === null || kindChanged || (data.target !== undefined && data.target !== row.target);
 		let target = row?.target ?? null;
@@ -246,25 +610,7 @@ const resolveSave = async (access, data, row) => {
 		}
 		Object.assign(values, { target, ip_version: "ipv4", ipv6_suffix: null });
 	} else {
-		const hasTarget = typeof data.target === "string" && data.target.trim() !== "";
-		if (hasTarget) throw refusal("An address record takes no target", "error.ddns-address-no-target");
-		const ipVersion = data.ip_version ?? (kindChanged ? "ipv4" : row.ip_version);
-		const suffixChanged = suffix !== (kindChanged ? null : (row?.ipv6_suffix ?? null));
-		if (suffix !== null && (suffixChanged || ipVersion !== row?.ip_version)) {
-			if (ipVersion === "ipv4") {
-				throw refusal("An IPv6 suffix needs IPv6 or both", "error.ddns-suffix-needs-ipv6");
-			}
-			if (suffixChanged && !isIpv6Suffix(suffix)) {
-				throw refusal(
-					`'${suffix}' is not an IPv6 interface id of at most 64 bits`,
-					"error.ddns-suffix-invalid",
-					{
-						suffix,
-					},
-				);
-			}
-		}
-		Object.assign(values, { target: null, ip_version: ipVersion, ipv6_suffix: suffix });
+		Object.assign(values, addressValues({ data, row, kind, suffix }));
 	}
 
 	const identityChanged = row !== null && (renamed || credentialChanged || zone !== row.zone);
@@ -288,7 +634,7 @@ const internalDdnsRecord = {
 			]);
 		}
 		if (expandOf(expand)) rows.withGraphFetched(expandOf(expand));
-		return (await rows).map(toPublic);
+		return (await rows).map((row) => toPublic(row, access));
 	},
 
 	/** The row of a record the user may see; 404 otherwise. No permission check (callers do it). */
@@ -302,17 +648,18 @@ const internalDdnsRecord = {
 
 	get: async (access, { id, expand = null }) => {
 		access.can("certificates:view");
-		return toPublic(await internalDdnsRecord.rowOf(access, id, { expand }));
+		return toPublic(await internalDdnsRecord.rowOf(access, id, { expand }), access);
 	},
 
 	create: async (access, data) => {
 		access.can("certificates:manage");
+		if (data.provider === CUSTOM) assertCustomAdmin(access);
 		const { values, credential } = await resolveSave(access, data, null);
 		// under the credential owner's lock, as a credential delete: an insert cannot slip in after its check
-		const row = await ownerLock(credential.owner_user_id, () =>
+		const row = await ownerLock(values.owner_user_id, () =>
 			nameLock("names", async () => {
 				// the credential may have been deleted while this waited for the lock
-				if (!(await dnsCredentialModel.query().findById(credential.id))) {
+				if (credential && !(await dnsCredentialModel.query().findById(credential.id))) {
 					throw new errs.ItemNotFoundError(credential.id);
 				}
 				await internalDdnsRecord.assertNameFree(values.name);
@@ -329,12 +676,13 @@ const internalDdnsRecord = {
 			object_id: row.id,
 			meta: auditMeta(row, credential),
 		});
-		return toPublic(row);
+		return toPublic(row, access);
 	},
 
 	update: async (access, data) => {
 		access.can("certificates:manage");
 		const current = await internalDdnsRecord.rowOf(access, data.id);
+		if (current.provider === CUSTOM) assertCustomAdmin(access);
 		// a move to another credential runs under its owner's lock (owner, then record), as a credential delete does
 		const movesTo =
 			data.dns_credential_id !== undefined && data.dns_credential_id !== current.dns_credential_id
@@ -348,9 +696,9 @@ const internalDdnsRecord = {
 					const row = await internalDdnsRecord.rowOf(access, data.id);
 					const { values, credential: next, identityChanged } = await resolveSave(access, data, row);
 					if (values.name !== row.name) await internalDdnsRecord.assertNameFree(values.name, row.id);
-					const configChanged = ["kind", "target", "ip_version", "ipv6_suffix", "ttl"].some(
-						(key) => values[key] !== row[key],
-					);
+					const configChanged =
+						"secret" in values ||
+						["kind", "target", "ip_version", "ipv6_suffix", "ttl"].some((key) => values[key] !== row[key]);
 					const patch = { ...values };
 					const turnedOn = values.enabled && !row.enabled;
 					if (!values.enabled) patch.state = "disabled";
@@ -361,9 +709,21 @@ const internalDdnsRecord = {
 						Object.assign(patch, { last_ipv4: null, last_ipv6: null, last_checked_on: null });
 					}
 					if (patch.state === "pending") {
-						const { error_i18n: _key, error_values: _values, ...rest } = row.meta ?? {};
+						// a save with a change, or enabling, also ends a stop after a provider's refusal
+						const {
+							error_i18n: _key,
+							error_values: _values,
+							note_i18n: _note,
+							stopped: _stopped,
+							...rest
+						} = row.meta ?? {};
 						Object.assign(patch, { failures: 0, next_try_on: null, error: null });
 						if (!identityChanged) patch.meta = rest;
+					}
+					// a new URL answers "Enter the URL again" of a restore (enabling stays the user's choice)
+					if ("secret" in values && !("meta" in patch) && MISSING_KEYS.has(row.meta?.error_i18n)) {
+						const { error_i18n: _key, error_values: _values, ...rest } = row.meta;
+						patch.meta = rest;
 					}
 					const done = await ddnsRecordModel.query().patchAndFetchById(row.id, patch);
 					return { saved: done, credential: next, toggled: row.enabled !== done.enabled };
@@ -381,12 +741,13 @@ const internalDdnsRecord = {
 			object_id: saved.id,
 			meta,
 		});
-		return toPublic(await internalDdnsRecord.rowOf(access, saved.id, { expand: data.expand }));
+		return toPublic(await internalDdnsRecord.rowOf(access, saved.id, { expand: data.expand }), access);
 	},
 
 	delete: async (access, { id }) => {
 		access.can("certificates:manage");
 		const row = await internalDdnsRecord.rowOf(access, id);
+		if (row.provider === CUSTOM) assertCustomAdmin(access);
 		const credential = await credentialOf(row);
 		await recordLock(id, async () => {
 			// SQLite does not run the foreign key's cascade: the history goes in code, in the same transaction
@@ -402,7 +763,7 @@ const internalDdnsRecord = {
 			object_id: id,
 			meta: auditMeta(row, credential),
 		});
-		return toPublic(row);
+		return toPublic(row, access);
 	},
 
 	/** @returns {Promise<Object[]>}  the history of a record, newest first */
@@ -419,9 +780,11 @@ const internalDdnsRecord = {
 
 	/** @returns {Promise<number[]>} the ids of the enabled records the user can see */
 	enabledIds: async (access) =>
-		(await visibleRecords(access).where("npmpro_ddns_record.enabled", true).select("npmpro_ddns_record.id")).map(
-			(row) => row.id,
-		),
+		(
+			await customOnlyForAdmin(access, visibleRecords(access).where("npmpro_ddns_record.enabled", true)).select(
+				"npmpro_ddns_record.id",
+			)
+		).map((row) => row.id),
 
 	/** The number of enabled records the user can see */
 	countEnabled: async (access) => {
@@ -477,8 +840,18 @@ const ddnsStore = {
 
 	/** @returns {Promise<{ fields: Object, secrets: String[] }>}  the opened credential, in memory for one run */
 	openCredential: async (record) => {
+		// a custom record has no credential: its sealed URL, method and expected text are the fields
+		if (record.provider === CUSTOM) {
+			const custom = openCustom(record.secret);
+			return { fields: custom ?? {}, secrets: custom === null ? [] : secretsOfUrl(custom.url) };
+		}
+		if (isPreset(record.provider)) {
+			const preset = openPreset(record.secret);
+			if (preset === null) throw new EngineFailure("Enter the password again", "error.ddns-secret-missing");
+			return { fields: preset, secrets: presetSecrets(preset) };
+		}
 		const row = await credentialOf(record);
-		if (row === null) throw new Error("The DNS credential of this record is gone");
+		if (!row) throw new Error("The DNS credential of this record is gone");
 		const fields = credentialFields(internalDnsCredential.openValues(row));
 		return { fields, secrets: secretValuesOf(row.provider, fields) };
 	},

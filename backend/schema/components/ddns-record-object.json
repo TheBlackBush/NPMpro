@@ -194,6 +194,19 @@
 			"example": null,
 			"description": "The placeholders of the translated error, with `error_i18n`"
 		},
+		"stopped": {
+			"type": "boolean",
+			"example": false,
+			"description": "Whether the provider refused the account (a wrong password, an unknown host, a blocked client): the record gets no automatic try until it is saved with a change, enabled again or updated now"
+		},
+		"note_i18n": {
+			"type": [
+				"string",
+				"null"
+			],
+			"example": null,
+			"description": "The translation key of a note on a record that is up to date at its provider, such as `ddns.note.resolver-stale` (the DNS check still answers an old address); null without a note"
+		},
 		"proxied": {
 			"type": [
 				"boolean",
@@ -230,6 +243,46 @@
 		"owner": {
 			"$ref": "./user-object.json",
 			"description": "The user who created the record; only with `expand=owner`"
+		},
+		"url_set": {
+			"type": "boolean",
+			"example": true,
+			"description": "Custom provider only: whether a URL is stored. The URL itself is never shown"
+		},
+		"method": {
+			"type": [
+				"string",
+				"null"
+			],
+			"enum": [
+				"GET",
+				"POST",
+				null
+			],
+			"example": "GET",
+			"description": "Custom provider only: the HTTP method of the update call; null for a user who is no administrator"
+		},
+		"expect": {
+			"type": [
+				"string",
+				"null"
+			],
+			"maxLength": 255,
+			"example": null,
+			"description": "Custom provider only: text the answer must contain, else the update counts as failed; null for a user who is no administrator"
+		},
+		"secret_set": {
+			"type": "boolean",
+			"example": true,
+			"description": "Presets only: whether the account details (password, user name) are stored. They are never shown"
+		},
+		"domain": {
+			"type": [
+				"string",
+				"null"
+			],
+			"example": "example.com",
+			"description": "Namecheap preset only: the domain of the record"
 		}
 	}
 }

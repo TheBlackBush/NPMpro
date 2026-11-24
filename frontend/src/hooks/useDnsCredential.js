@@ -26,6 +26,7 @@ const useSetDnsCredential = () => {
 				queryClient.invalidateQueries({ queryKey: ["certificates"] }),
 				queryClient.invalidateQueries({ queryKey: ["dns-domains"] }),
 				queryClient.invalidateQueries({ queryKey: ["dns-domain-suggestions"] }),
+				queryClient.invalidateQueries({ queryKey: ["ddns-suggestions"] }),
 				queryClient.invalidateQueries({ queryKey: ["audit-logs"] }),
 			]);
 		},

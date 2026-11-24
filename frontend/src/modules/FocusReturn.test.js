@@ -16,7 +16,7 @@ const fakeDoc = ({ active, buttons = [], heading = null } = {}) => {
 		activeElement: active === "body" ? body : active,
 		querySelectorAll: (selector) =>
 			buttons.filter((button) =>
-				["data-row-actions", "data-row-edit"].some(
+				["data-row-actions", "data-row-edit", "data-focus-target"].some(
 					(attr) =>
 						button.getAttribute(attr) !== null &&
 						selector === rowActionsSelector(button.getAttribute(attr), attr),
@@ -104,4 +104,14 @@ it("takes the last pressed control as the opener when Safari left the body focus
 	assert.equal(pickOpener(fakeDoc({ active: "body" }), pressed, 4000).isBody, true);
 	const focused = element();
 	assert.equal(pickOpener(fakeDoc({ active: focused }), pressed, 1500), focused);
+});
+
+it("falls back to the control a gone opener names, before the list heading", () => {
+	const captured = element({ key: "ddns-add", attr: "data-focus-return", connected: false });
+	const hiddenTarget = element({ key: "ddns-add", attr: "data-focus-target", visible: false });
+	const target = element({ key: "ddns-add", attr: "data-focus-target" });
+	const heading = element();
+	assert.equal(returnTarget(fakeDoc({ buttons: [hiddenTarget, target], heading }), captured), target);
+	assert.equal(returnTarget(fakeDoc({ heading }), captured), heading);
+	assert.equal(findRowActions(fakeDoc({ buttons: [target] }), "ddns-add", "data-focus-target"), target);
 });

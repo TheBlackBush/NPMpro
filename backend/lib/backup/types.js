@@ -1,4 +1,5 @@
 import path from "node:path";
+import { isPreset } from "../ddns/presets.js";
 import { RUNTIME_GROUPS } from "../runtime-rules.js";
 import { TABLE as SCHEDULE_TABLE, SCHEDULE_TYPE } from "./schedule-rows.js";
 import { nextRun } from "./schedule-time.js";
@@ -168,7 +169,8 @@ const withoutRunState = (rowsByTable) =>
 
 const hasText = (value) => typeof value === "string" && value !== "";
 
-// the engine's last error is kept in the meta next to the provider ids and the proxied flag: only that goes
+// the engine's last error, its note and the stop after a refusal are kept in the meta next to the provider ids and
+// the proxied flag: only those go, so a restored record is tried again and nothing hides a silent stop
 const restartedMeta = (meta) => {
 	let value = meta;
 	if (typeof meta === "string") {
@@ -179,19 +181,45 @@ const restartedMeta = (meta) => {
 		}
 	}
 	if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
-	const { error_i18n: _key, error_values: _values, ...rest } = value;
+	const { error_i18n: _key, error_values: _values, note_i18n: _note, stopped: _stopped, ...rest } = value;
 	return typeof meta === "string" ? JSON.stringify(rest) : rest;
 };
 
-// a restored DDNS record is checked again by the next cycle (a disabled one stays disabled)
-const restartedRecord = (row) => ({
-	...row,
-	state: Number(row.enabled) ? "pending" : "disabled",
-	failures: 0,
-	next_try_on: null,
-	error: null,
-	meta: restartedMeta(row.meta),
-});
+// a restored DDNS record is checked again by the next cycle (a disabled one stays disabled); a custom or preset record
+// whose sealed details did not come along (a backup without secrets) is disabled and says so
+const restartedRecord = (row) => {
+	const urlMissing = (row.provider === "custom" || isPreset(row.provider)) && !hasText(row.secret);
+	const enabled = Number(row.enabled) && !urlMissing;
+	const meta = restartedMeta(row.meta);
+	const marked = urlMissing
+		? {
+				...(typeof meta === "string" ? JSON.parse(meta) : meta),
+				error_i18n: row.provider === "custom" ? "error.ddns-custom-url-missing" : "error.ddns-secret-missing",
+			}
+		: meta;
+	return {
+		...row,
+		enabled: urlMissing ? 0 : row.enabled,
+		state: enabled ? "pending" : "disabled",
+		failures: 0,
+		next_try_on: null,
+		error: null,
+		meta: urlMissing && typeof meta === "string" ? JSON.stringify(marked) : marked,
+	};
+};
+
+// the custom provider's URL, method and expected text and a preset's account details are sealed in the record's secret column
+const ddnsSecrets = {
+	export: (rowsByTable, box) =>
+		mapRows(rowsByTable, "npmpro_ddns_record", (row) =>
+			isSealed(row.secret) ? { ...row, secret: box.decrypt(row.secret) } : row,
+		),
+	strip: (rowsByTable) => mapRows(rowsByTable, "npmpro_ddns_record", (row) => ({ ...row, secret: null })),
+	seal: (rowsByTable, box) =>
+		mapRows(rowsByTable, "npmpro_ddns_record", (row) =>
+			row.secret !== null && typeof row.secret === "object" ? { ...row, secret: box.encrypt(row.secret) } : row,
+		),
+};
 
 const scheduleSecrets = {
 	export: (rowsByTable, box) =>
@@ -283,12 +311,11 @@ const TYPES = {
 				),
 		},
 	},
-	// the records hold no secret yet (the custom provider's sealed URL comes with PR 6); the update history is not
-	// backed up. A restored record starts over: the next cycle checks it
+	// the update history is not backed up. A restored record starts over: the next cycle checks it
 	ddns: {
 		tables: [{ table: "npmpro_ddns_record" }],
 		files: NO_FILES,
-		secrets: NO_SECRETS,
+		secrets: ddnsSecrets,
 		restoreRows: (rowsByTable) => mapRows(rowsByTable, "npmpro_ddns_record", restartedRecord),
 	},
 	users: {

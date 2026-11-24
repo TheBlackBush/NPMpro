@@ -5,10 +5,14 @@ import { focusBack } from "./InputModality.js";
 // A row's action menu button carries data-row-actions="<key>" (for instance proxy-host-12), and the row's edit (or
 // view) button next to it data-row-edit="<key>". The row may re-render,
 // move after a re-sort or exist twice (the phone and the desktop copy, one hidden), so the button is found again by
-// its key: the first visible match. The list page heading (data-list-heading, tabIndex -1) is the last fallback.
+// its key: the first visible match. A control that may itself go away (a bar that is gone once its last item is
+// done) names another one: data-focus-return="<key>" on it, data-focus-target="<key>" on the control to fall back to.
+// The list page heading (data-list-heading, tabIndex -1) is the last fallback.
 
 const ROW_ACTIONS_ATTR = "data-row-actions";
 const ROW_EDIT_ATTR = "data-row-edit";
+const FOCUS_RETURN_ATTR = "data-focus-return";
+const FOCUS_TARGET_ATTR = "data-focus-target";
 const LIST_HEADING_SELECTOR = "[data-list-heading]";
 
 // CSS.escape exists in every supported browser; the fallback only serves the unit tests
@@ -80,14 +84,16 @@ function findRowActions(doc, key, attr = ROW_ACTIONS_ATTR) {
 
 /**
  * Where focus returns to after a window closes: the element that had focus when it opened if it is still in the
- * page, else the visible twin of that row action button, else the list page heading (null if there is none).
+ * page, else the visible twin of that row action button, else the control it names as its fallback, else the list
+ * page heading (null if there is none).
  */
 function returnTarget(doc, captured) {
 	const usable = captured && captured !== doc.body;
 	if (usable && captured.isConnected) return captured;
 	const twin = usable
 		? (findRowActions(doc, captured.getAttribute?.(ROW_ACTIONS_ATTR)) ??
-			findRowActions(doc, captured.getAttribute?.(ROW_EDIT_ATTR), ROW_EDIT_ATTR))
+			findRowActions(doc, captured.getAttribute?.(ROW_EDIT_ATTR), ROW_EDIT_ATTR) ??
+			findRowActions(doc, captured.getAttribute?.(FOCUS_RETURN_ATTR), FOCUS_TARGET_ATTR))
 		: null;
 	return twin ?? doc.querySelector(LIST_HEADING_SELECTOR);
 }
@@ -115,6 +121,8 @@ function restoreWindowFocus(captured) {
 }
 
 export {
+	FOCUS_RETURN_ATTR,
+	FOCUS_TARGET_ATTR,
 	findRowActions,
 	focusLost,
 	pickOpener,

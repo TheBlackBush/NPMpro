@@ -26,16 +26,39 @@ For Cloudflare, DigitalOcean, Hetzner Cloud, Gandi, OVH and PowerDNS credentials
 
 ## Dynamic DNS
 
-A dynamic DNS record keeps a DNS name pointed at this instance, so a home or office connection with a changing public IP stays reachable by name. Records live in the Dynamic DNS tab of Certificates & DNS. A record uses one of your saved DNS credentials for its provider, so there is nothing to enter twice. The providers are Cloudflare, DigitalOcean, Hetzner Cloud and Gandi; only credentials of these providers are offered. Settings, Dynamic DNS holds the settings of the updater, and the tab shows the public address found, the next check and a **Check now** button.
+A dynamic DNS record keeps a DNS name pointed at this instance, so a home or office connection with a changing public IP stays reachable by name. Records live in the Dynamic DNS tab of Certificates & DNS. A record uses one of your saved DNS credentials for its provider, so there is nothing to enter twice. The providers that use a saved DNS credential are Cloudflare, DigitalOcean, Hetzner Cloud, Gandi, OVH, deSEC, DuckDNS and Porkbun; only credentials of these providers are offered. Namecheap, No-IP, Dynu and Custom HTTP take their details in the record itself (see [Providers](#providers)). Settings, Dynamic DNS holds the settings of the updater, and the tab shows the public address found, the next check and a **Check now** button.
 
 ### Records
 
-A record has a full name (`home.example.com`), a credential, a zone (taken from the domains of the credential, or typed), an optional TTL (from the provider's minimum to 86400 seconds: 60 on Cloudflare and Hetzner Cloud, 30 on DigitalOcean, 300 on Gandi; empty keeps the provider's value) and an **Enabled** switch. There are two kinds:
+A record has a full name (`home.example.com`), a credential, a zone (taken from the domains of the credential, or typed), an optional TTL (from the provider's minimum to 86400 seconds: 60 on Cloudflare and Hetzner Cloud, 30 on DigitalOcean, 300 on Gandi, 600 on Porkbun, 3600 on deSEC; empty keeps the provider's value; the providers without zones take no TTL) and an **Enabled** switch. There are two kinds:
 
 - **Address (A, AAAA):** follows the public IP. The IP version is IPv4, IPv6 or both. IPv6 is off unless a record asks for it. An optional IPv6 suffix replaces the last 64 bits of the detected address, for a stable address of one host in the network.
 - **Alias (CNAME):** points the name at a fixed target name and follows no address. The usual pairing is one address record such as `home.example.com` plus an alias such as `*.example.com` pointing to `home.example.com`: only the address record ever changes.
 
-A wildcard name (`*.example.com`) is possible only on Cloudflare and DigitalOcean; Hetzner Cloud and Gandi refuse it when you save. A record that is missing at the provider is created. On Cloudflare the proxied setting is never changed: a new record is not proxied, and an existing one keeps what it has. A name whose record set at the provider has more than one value is never touched: the record is marked Failed instead. A name that already has a record of the other type at the provider (an address where an alias is wanted, or the reverse) is saved, and its first check marks it Failed with a message that says which record is in the way; nothing is written until that record is removed or the kind is changed. Deleting a record in NPMpro leaves the DNS entry at the provider as it is.
+A wildcard name (`*.example.com`) is possible only on Cloudflare and DigitalOcean; the other providers refuse it when you save, and so do alias (CNAME) records on OVH, deSEC, Porkbun, DuckDNS and the providers below that take no credential. A record that is missing at the provider is created. On Cloudflare the proxied setting is never changed: a new record is not proxied, and an existing one keeps what it has. A name whose record set at the provider has more than one value is never touched: the record is marked Failed instead. A name that already has a record of the other type at the provider (an address where an alias is wanted, or the reverse) is saved, and its first check marks it Failed with a message that says which record is in the way; nothing is written until that record is removed or the kind is changed. Deleting a record in NPMpro leaves the DNS entry at the provider as it is.
+
+### Providers
+
+Besides Cloudflare, DigitalOcean, Hetzner Cloud and Gandi (see the table in [DNS providers](DNS-providers)), these update records:
+
+- **OVH:** uses an OVH credential saved under DNS credentials (see [DNS challenge](#dns-challenge)) and the zone you type or pick. A record at the zone apex is refused. OVH applies a change only after the zone is refreshed, so NPMpro asks for a refresh after every write; if the refresh fails, the update counts as failed and the next check refreshes first.
+- **deSEC:** uses a deSEC credential saved under DNS credentials (see [DNS challenge](#dns-challenge)). The smallest TTL is 3600 seconds.
+- **Porkbun:** uses a Porkbun credential saved under DNS credentials (see [DNS challenge](#dns-challenge)). The smallest TTL is 600 seconds.
+- **DuckDNS:** uses a DuckDNS credential saved under DNS credentials; the token is on your account page at duckdns.org. The name is a single subdomain of `duckdns.org` (`home.duckdns.org`) and the zone is fixed. DuckDNS takes no TTL. An answer other than `OK` is a failure.
+- **Namecheap (preset):** no DNS credential. Choose **Namecheap** as the provider and enter the **Domain** and the **Dynamic DNS password** of that domain (shown in the Advanced DNS tab). Create the host first as an A + Dynamic DNS record in the Advanced DNS tab of the domain. IPv4 only.
+- **No-IP (preset):** no DNS credential. Enter the **User name** and **Password** of the No-IP account (the user name is its e-mail address); the host name is the name of the record and must belong to the account. IPv4 or both versions work; a record of IPv6 alone is not offered.
+- **Dynu (preset):** no DNS credential. Enter the **User name** and the IP update **Password** of the account (set in the Dynu control panel); the host must belong to it.
+- **Custom HTTP:** for any other service that updates a name with one web request. Only administrators can add, see or change such a record. Enter the **Update URL** (`https://` only), the **Method** (GET or POST; a POST sends no body) and, optionally, the text the answer must contain (**Answer must contain**; empty accepts any 2xx answer). The placeholders `{ip}` (the address of this call), `{ipv4}`, `{ipv6}` and `{name}` (the record name) may stand in the path and the query, never in the host part; each is filled URL-encoded. A record that follows both IP versions makes one call with both addresses; `{ipv4}` or `{ipv6}` is empty when the record has no address of that version. The host of the URL may not be this host, a link-local or a reserved address.
+
+DuckDNS, the presets and Custom HTTP take no TTL, wildcard or alias record, and none of them can read a record: NPMpro calls the service whenever the address in DNS differs from the wanted one.
+
+The passwords of the presets and the custom URL are stored encrypted and are never shown again: editing the record shows **Saved. Leave empty to keep it.** A preset password needs at least 4 characters. They never appear in the status, the history, the log or an error message.
+
+When a provider asks NPMpro to wait, NPMpro waits at least that long: No-IP after a 911 answer 30 minutes, Dynu after a 911 answer 10 minutes. When Namecheap, No-IP or Dynu refuse the account (a wrong password, an unknown host, a blocked client), NPMpro stops: the record shows the error and gets no more automatic tries, not even from **Check now**, until you save it with a change, disable and enable it again, or press **Update now**. Those providers ask a client to stop after such an answer and may block one that goes on.
+
+### Keep updated
+
+The Dynamic DNS tab suggests host names to keep updated: names of your proxy, redirection and 404 hosts that sit under a domain of one of your DNS credentials whose provider has zones and can update records (so not DuckDNS, and never the presets or Custom HTTP), and that have no record yet. Wildcard names are not suggested, and at most 100 names are listed. The tab shows how many names could be kept updated and an **Add** button: with one name it opens the record window filled with the name and the credential, with several it first lists them to choose from. The proxy host window shows **Keep updated** beside such a name, with the same effect; it needs the Certificates manage permission.
 
 ### How the address is found
 
@@ -44,6 +67,8 @@ NPMpro asks public echo services over `https://`, in turn, until one answers wit
 ### The check
 
 A check runs at start (one minute after) and then every period (default 5 minutes). For each enabled record NPMpro first looks up the name in DNS. When the answer already is the wanted address, nothing more happens. Only when the answer differs (or there is none) does it ask the provider's API, and it writes only when the record there really differs. A proxied Cloudflare record resolves to Cloudflare, so for it the provider is always asked. An alias is always compared at the provider.
+
+DuckDNS, the presets and Custom HTTP have no way to read a record, so for them the DNS answer is the only reading. NPMpro writes when the wanted address differs from the one it last wrote. When only the DNS answer differs, it writes that same address again at most once a day, and the record shows a note that the check still answers an old address: the providers ask for no repeated updates of an unchanged address.
 
 If the DNS server of your network answers with a LAN address for your own names (split horizon), set **DNS servers for checks** in Settings, Dynamic DNS (`DDNS_RESOLVER`) to a public resolver, so the lookup sees what the world sees. These servers are used only for this lookup of a record's name; the address services and the providers always use the container's resolvers.
 

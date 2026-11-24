@@ -1,0 +1,70 @@
+{
+	"operationId": "getDdnsSuggestions",
+	"summary": "Host names to keep updated",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The host names without a record",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"name": "home.example.com",
+									"zone": "example.com",
+									"dns_credential_id": 1,
+									"credential_name": "Cloudflare"
+								}
+							]
+						}
+					},
+					"schema": {
+						"type": "array",
+						"description": "At most 100 host names the user may view that fall under a zone of a credential with a Dynamic DNS provider and have no record yet",
+						"maxItems": 100,
+						"items": {
+							"type": "object",
+							"required": [
+								"name",
+								"zone",
+								"dns_credential_id",
+								"credential_name"
+							],
+							"additionalProperties": false,
+							"properties": {
+								"name": {
+									"type": "string",
+									"description": "The host name, lower case"
+								},
+								"zone": {
+									"type": "string",
+									"description": "The zone of the credential that covers the name (the longest one)"
+								},
+								"dns_credential_id": {
+									"type": "integer",
+									"description": "The DNS credential to keep the name updated with"
+								},
+								"credential_name": {
+									"type": "string",
+									"description": "The name of that credential"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"description": "Lists the proxy, redirection and 404 host names the user may view that a Dynamic DNS record could keep updated.\n\nNeeds: Certificates view"
+}

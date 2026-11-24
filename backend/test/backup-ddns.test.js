@@ -74,9 +74,9 @@ const bothData = (credentials, records) => ({
 	...ddnsData(records),
 });
 
-const merge = async (knex, { data, types = ["ddns"], choices, items, scope = SCOPE }) => {
+const merge = async (knex, { data, types = ["ddns"], choices, items, scope = SCOPE, secrets = true }) => {
 	const instance = { ...(await readInstanceRows(knex)), files: {} };
-	const plan = planMerge({ data, instance, stageFiles: {}, types, items, choices, scope, secrets: true });
+	const plan = planMerge({ data, instance, stageFiles: {}, types, items, choices, scope, secrets });
 	const result = await mergeTypes({
 		knex,
 		data,
@@ -85,7 +85,7 @@ const merge = async (knex, { data, types = ["ddns"], choices, items, scope = SCO
 		importerId: 1,
 		page: scope.page,
 		box,
-		secrets: true,
+		secrets,
 		now: NOW,
 	});
 	return { plan, result };
@@ -520,6 +520,223 @@ it("a merge skips a record whose matched credential is of another provider, and 
 			(await knex("npmpro_ddns_record")).map((row) => [row.name, row.dns_credential_id, row.owner_user_id]),
 			[["b.example.com", 2, 7]],
 		);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+const PROVIDER_REFUSED = /provider/u;
+const customRecord = (id, name, extra = {}) =>
+	record(id, null, name, {
+		provider: "custom",
+		zone: "",
+		secret: box.encrypt({ url: "https://dyn.test/u/TOKEN-9876", method: "POST", expect: "good" }),
+		...extra,
+	});
+
+it("a backup with secrets carries the custom URL in the archive rows, a backup without them none, and a restore seals it again", () => {
+	const rows = { npmpro_ddns_record: [customRecord(1, "c.example.com"), record(2, 1, "a.example.com")] };
+	const opened = TYPES.ddns.secrets.export(rows, box).npmpro_ddns_record;
+	assert.deepEqual(opened[0].secret, { url: "https://dyn.test/u/TOKEN-9876", method: "POST", expect: "good" });
+	assert.equal(opened[1].secret, null);
+	const stripped = TYPES.ddns.secrets.strip(rows).npmpro_ddns_record;
+	assert.deepEqual(
+		stripped.map((row) => row.secret),
+		[null, null],
+	);
+	assert.ok(!JSON.stringify(stripped).includes("TOKEN-9876"));
+	const sealed = TYPES.ddns.secrets.seal({ npmpro_ddns_record: opened }, box).npmpro_ddns_record;
+	assert.equal(typeof sealed[0].secret, "string");
+	assert.ok(sealed[0].secret.startsWith("v1:"));
+	assert.deepEqual(box.decrypt(sealed[0].secret), opened[0].secret);
+	assert.equal(sealed[1].secret, null);
+});
+
+it("a record stopped after a provider refusal is restored as pending, without the stop and the note", () => {
+	const [row] = TYPES.ddns.restoreRows({
+		npmpro_ddns_record: [
+			record(1, 1, "s.example.com", {
+				meta: JSON.stringify({
+					proxied: true,
+					stopped: true,
+					note_i18n: "ddns.note.resolver-old",
+					error_i18n: "x",
+				}),
+			}),
+		],
+	}).npmpro_ddns_record;
+	const meta = JSON.parse(row.meta);
+	assert.equal(row.state, "pending");
+	assert.equal(meta.stopped, undefined);
+	assert.equal(meta.note_i18n, undefined);
+	assert.equal(meta.error_i18n, undefined);
+	assert.equal(meta.proxied, true);
+});
+
+it("a custom record restored without its URL comes back disabled and asks for the URL again, one with it keeps running", () => {
+	const [without, withUrl, other] = TYPES.ddns.restoreRows({
+		npmpro_ddns_record: [
+			customRecord(1, "a.example.com", { secret: null }),
+			customRecord(2, "b.example.com"),
+			record(3, 1, "c.example.com"),
+		],
+	}).npmpro_ddns_record;
+	assert.equal(Number(without.enabled), 0);
+	assert.equal(without.state, "disabled");
+	assert.equal(JSON.parse(without.meta).error_i18n, "error.ddns-custom-url-missing");
+	assert.equal(JSON.parse(without.meta).proxied, true);
+	assert.equal(Number(withUrl.enabled), 1);
+	assert.equal(withUrl.state, "pending");
+	assert.equal(JSON.parse(withUrl.meta).error_i18n, undefined);
+	assert.equal(other.state, "pending");
+});
+
+it("a replace restore of a stripped backup brings a custom record back disabled, one with secrets keeps its sealed URL", async () => {
+	const knex = await open();
+	try {
+		const stripped = TYPES.ddns.secrets.strip(ddnsData([customRecord(1, "a.example.com")]).ddns);
+		const result = await replaceTypes({
+			knex,
+			data: { ddns: stripped },
+			types: ["ddns"],
+			adminUserId: 1,
+			box,
+			now: NOW,
+		});
+		assert.equal(result.counts.ddns, 1);
+		const [row] = await knex("npmpro_ddns_record");
+		assert.equal(row.secret, null);
+		assert.equal(Number(row.enabled), 0);
+		assert.equal(row.state, "disabled");
+		assert.equal(JSON.parse(row.meta).error_i18n, "error.ddns-custom-url-missing");
+
+		const full = TYPES.ddns.secrets.export(ddnsData([customRecord(1, "a.example.com")]).ddns, box);
+		await replaceTypes({ knex, data: { ddns: full }, types: ["ddns"], adminUserId: 1, box, now: NOW });
+		const [kept] = await knex("npmpro_ddns_record");
+		assert.deepEqual(box.decrypt(kept.secret), {
+			url: "https://dyn.test/u/TOKEN-9876",
+			method: "POST",
+			expect: "good",
+		});
+		assert.equal(Number(kept.enabled), 1);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a merge seals the custom URL of an archive with secrets, and a page import of a custom record by a user is refused", async () => {
+	const knex = await open();
+	try {
+		const full = TYPES.ddns.secrets.export(ddnsData([customRecord(1, "a.example.com")]).ddns, box);
+		const { plan } = await merge(knex, { data: { ddns: full } });
+		const [row] = await knex("npmpro_ddns_record");
+		assert.deepEqual(box.decrypt(row.secret), {
+			url: "https://dyn.test/u/TOKEN-9876",
+			method: "POST",
+			expect: "good",
+		});
+		await assert.rejects(
+			checkPageImport({ knex, plan: { items: plan.items }, data: { ddns: full } }),
+			PROVIDER_REFUSED,
+		);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+const presetRecord = (id, name, extra = {}) =>
+	record(id, null, name, {
+		provider: "noip",
+		zone: "",
+		secret: box.encrypt({ username: "me@example.com", password: "PRESET-pass-4321" }),
+		...extra,
+	});
+
+it("a backup with secrets carries a preset's details, a backup without them none, and a restore seals them again", () => {
+	const rows = { npmpro_ddns_record: [presetRecord(1, "p.example.com")] };
+	const opened = TYPES.ddns.secrets.export(rows, box).npmpro_ddns_record;
+	assert.deepEqual(opened[0].secret, { username: "me@example.com", password: "PRESET-pass-4321" });
+	const stripped = TYPES.ddns.secrets.strip(rows).npmpro_ddns_record;
+	assert.equal(stripped[0].secret, null);
+	assert.ok(!JSON.stringify(stripped).includes("PRESET-pass-4321"));
+	const sealed = TYPES.ddns.secrets.seal({ npmpro_ddns_record: opened }, box).npmpro_ddns_record;
+	assert.deepEqual(box.decrypt(sealed[0].secret), opened[0].secret);
+});
+
+it("a preset record restored without its details comes back disabled and asks for the password again", async () => {
+	const [without, withSecret] = TYPES.ddns.restoreRows({
+		npmpro_ddns_record: [presetRecord(1, "a.example.com", { secret: null }), presetRecord(2, "b.example.com")],
+	}).npmpro_ddns_record;
+	assert.equal(Number(without.enabled), 0);
+	assert.equal(without.state, "disabled");
+	assert.equal(JSON.parse(without.meta).error_i18n, "error.ddns-secret-missing");
+	assert.equal(Number(withSecret.enabled), 1);
+	assert.equal(withSecret.state, "pending");
+	const knex = await open();
+	try {
+		const stripped = TYPES.ddns.secrets.strip(ddnsData([presetRecord(1, "a.example.com")]).ddns);
+		await replaceTypes({ knex, data: { ddns: stripped }, types: ["ddns"], adminUserId: 1, box, now: NOW });
+		const [row] = await knex("npmpro_ddns_record");
+		assert.equal(row.secret, null);
+		assert.equal(Number(row.enabled), 0);
+		assert.equal(JSON.parse(row.meta).error_i18n, "error.ddns-secret-missing");
+		const full = TYPES.ddns.secrets.export(ddnsData([presetRecord(1, "a.example.com")]).ddns, box);
+		await replaceTypes({ knex, data: { ddns: full }, types: ["ddns"], adminUserId: 1, box, now: NOW });
+		const [kept] = await knex("npmpro_ddns_record");
+		assert.deepEqual(box.decrypt(kept.secret), { username: "me@example.com", password: "PRESET-pass-4321" });
+		assert.equal(Number(kept.enabled), 1);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a merge replace from a backup without secrets keeps the sealed details of a record of the same provider", async () => {
+	const knex = await open();
+	try {
+		await knex("npmpro_ddns_record").insert([
+			customRecord(4, "c.example.com", { state: "ok" }),
+			presetRecord(6, "p.example.com", { state: "ok" }),
+		]);
+		const stripped = TYPES.ddns.secrets.strip(
+			ddnsData([customRecord(5, "c.example.com"), presetRecord(7, "p.example.com")]).ddns,
+		);
+		await merge(knex, {
+			data: { ddns: stripped },
+			choices: { "ddns:5": "replace", "ddns:7": "replace" },
+			secrets: false,
+		});
+		const custom = await knex("npmpro_ddns_record").where({ name: "c.example.com" }).first();
+		assert.equal(custom.id, 4);
+		assert.deepEqual(box.decrypt(custom.secret), {
+			url: "https://dyn.test/u/TOKEN-9876",
+			method: "POST",
+			expect: "good",
+		});
+		assert.equal(Number(custom.enabled), 1);
+		assert.equal(custom.state, "pending");
+		assert.notEqual(JSON.parse(custom.meta).error_i18n, "error.ddns-custom-url-missing");
+		const preset = await knex("npmpro_ddns_record").where({ name: "p.example.com" }).first();
+		assert.deepEqual(box.decrypt(preset.secret), { username: "me@example.com", password: "PRESET-pass-4321" });
+		assert.equal(Number(preset.enabled), 1);
+		assert.equal(preset.state, "pending");
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a merge replace from a backup without secrets onto a record of another provider stores it disabled, asking again", async () => {
+	const knex = await open();
+	try {
+		await knex("npmpro_ddns_record").insert(customRecord(4, "c.example.com", { state: "ok" }));
+		const stripped = TYPES.ddns.secrets.strip(ddnsData([presetRecord(5, "c.example.com")]).ddns);
+		await merge(knex, { data: { ddns: stripped }, choices: { "ddns:5": "replace" }, secrets: false });
+		const [row] = await knex("npmpro_ddns_record");
+		assert.equal(row.id, 4);
+		assert.equal(row.provider, "noip");
+		assert.equal(row.secret, null);
+		assert.equal(Number(row.enabled), 0);
+		assert.equal(row.state, "disabled");
+		assert.equal(JSON.parse(row.meta).error_i18n, "error.ddns-secret-missing");
 	} finally {
 		await knex.destroy();
 	}

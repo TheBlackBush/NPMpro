@@ -5,6 +5,7 @@ import {
 	DomainNamesField,
 	FormSection,
 	ForwardFields,
+	KeepUpdatedHint,
 	LocationsFields,
 	ModalTabs,
 	NginxConfigField,
@@ -32,6 +33,7 @@ import {
 	proxyHostValidate,
 } from "src/modules/ProxyHostForms";
 import { validations } from "src/modules/Validations";
+import { showDdnsRecordModal } from "./DdnsRecordModal";
 import { createHostEditorModal } from "./HostEditorModal";
 
 // field name -> label for the note next to Save (no control has these names)
@@ -73,6 +75,7 @@ function ProxyHostFields({ isAdmin, hostId }) {
 		>
 			<TabPane id="details">
 				<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
+				<KeepUpdatedHint onOpen={showDdnsRecordModal} />
 				<TextField
 					name="npmproDescription"
 					label={<T id="host.description" />}

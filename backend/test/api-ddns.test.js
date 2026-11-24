@@ -443,18 +443,175 @@ it("counts only the enabled records the user can see, and lists the providers wi
 	const byId = Object.fromEntries(providers.body.map((provider) => [provider.id, provider]));
 	assert.deepEqual(
 		Object.keys(byId).sort((a, b) => a.localeCompare(b)),
-		["cloudflare", "digitalocean", "gandi", "hetzner-cloud"],
+		[
+			"cloudflare",
+			"custom",
+			"desec",
+			"digitalocean",
+			"duckdns",
+			"dynu",
+			"gandi",
+			"hetzner-cloud",
+			"namecheap",
+			"noip",
+			"ovh",
+			"porkbun",
+		],
 	);
 	assert.equal(byId.cloudflare.wildcards, true);
 	assert.equal(byId.digitalocean.wildcards, true);
 	assert.equal(byId["hetzner-cloud"].wildcards, false);
 	assert.equal(byId.gandi.wildcards, false);
+	assert.equal(byId.ovh.wildcards, false);
+	assert.equal(byId.ovh.aliases, false);
+	assert.equal(byId.ovh.apex, false);
+	assert.equal(byId.ovh.min_ttl, null);
+	assert.equal(byId.noip.ipv6_alone, false);
+	assert.equal(byId.cloudflare.ipv6_alone, true);
+	assert.equal(byId.desec.min_ttl, 3600);
+	assert.equal(byId.desec.aliases, false);
+	assert.equal(byId.porkbun.min_ttl, 600);
+	assert.equal(byId.cloudflare.aliases, true);
 	assert.equal(byId.cloudflare.proxied, true);
 	const dns = await admin.get("/nginx/certificates/dns-providers");
 	const flag = (id) => dns.body.find((provider) => provider.id === id)?.ddns;
-	for (const id of ["cloudflare", "digitalocean", "hetzner-cloud", "gandi"]) assert.equal(flag(id), true, id);
-	assert.equal(flag("ovh"), false);
+	for (const id of ["cloudflare", "desec", "digitalocean", "duckdns", "hetzner-cloud", "gandi", "ovh", "porkbun"]) {
+		assert.equal(flag(id), true, id);
+	}
 	assert.equal(flag("acmedns"), false);
+});
+
+it("refuses wildcard, alias and apex records for OVH, and takes any TTL", async () => {
+	const made = await makeCredential(admin, {
+		provider: "ovh",
+		fields: [
+			{ key: "dns_ovh_endpoint", value: "ovh-eu" },
+			{ key: "dns_ovh_application_key", value: "ak" },
+			{ key: "dns_ovh_application_secret", value: "as-SECRET-1234" },
+			{ key: "dns_ovh_consumer_key", value: "ck-SECRET-5678" },
+		],
+	});
+	const added = await admin.post("/nginx/dns-domains", { dns_credential_id: made.id, names: ["example.com"] });
+	assert.equal(added.status, 201, added.text);
+	const refuse = async (body, key) => {
+		const done = await add({ dns_credential_id: made.id, ...body });
+		assert.equal(done.status, 400, `${done.text} ${JSON.stringify(body)}`);
+		assert.equal(done.body.error.message_i18n, key, JSON.stringify(body));
+	};
+	await refuse({ name: "*.example.com" }, "error.ddns-wildcard-unsupported");
+	await refuse({ name: "a.example.com", kind: "alias", target: "x.example.net" }, "error.ddns-alias-unsupported");
+	await refuse({ name: "example.com" }, "error.ddns-apex-unsupported");
+	const ok = await add({ dns_credential_id: made.id, name: "home.example.com", ttl: 30 });
+	assert.equal(ok.status, 201, ok.text);
+	assert.equal(ok.body.provider, "ovh");
+	const toAlias = await admin.put(`${RECORDS}/${ok.body.id}`, { kind: "alias", target: "x.example.net" });
+	assert.equal(toAlias.body.error.message_i18n, "error.ddns-alias-unsupported");
+	const toApex = await admin.put(`${RECORDS}/${ok.body.id}`, { name: "example.com" });
+	assert.equal(toApex.body.error.message_i18n, "error.ddns-apex-unsupported");
+});
+
+it("refuses a TTL under 3600 and a wildcard for deSEC, and has no zone fetch", async () => {
+	const made = await makeCredential(admin, {
+		provider: "desec",
+		fields: [{ key: "dns_desec_token", value: "tok-SECRET-1234" }],
+	});
+	const added = await admin.post("/nginx/dns-domains", { dns_credential_id: made.id, names: ["example.com"] });
+	assert.equal(added.status, 201, added.text);
+	const low = await add({ dns_credential_id: made.id, name: "home.example.com", ttl: 600 });
+	assert.equal(low.status, 400, low.text);
+	assert.equal(low.body.error.message_i18n, "error.ddns-ttl-min");
+	const wild = await add({ dns_credential_id: made.id, name: "*.example.com" });
+	assert.equal(wild.body.error.message_i18n, "error.ddns-wildcard-unsupported");
+	const ok = await add({ dns_credential_id: made.id, name: "home.example.com", ttl: 3600 });
+	assert.equal(ok.status, 201, ok.text);
+	const providers = await admin.get("/nginx/certificates/dns-providers");
+	assert.equal(providers.body.find((provider) => provider.id === "desec").lists_domains, false);
+});
+
+it("refuses a TTL under 600 and a wildcard for Porkbun, and has no zone fetch", async () => {
+	const made = await makeCredential(admin, {
+		provider: "porkbun",
+		fields: [
+			{ key: "dns_porkbun_key", value: "pk1-SECRET-1234" },
+			{ key: "dns_porkbun_secret", value: "sk1-SECRET-5678" },
+		],
+	});
+	const added = await admin.post("/nginx/dns-domains", { dns_credential_id: made.id, names: ["example.com"] });
+	assert.equal(added.status, 201, added.text);
+	const low = await add({ dns_credential_id: made.id, name: "home.example.com", ttl: 300 });
+	assert.equal(low.status, 400, low.text);
+	assert.equal(low.body.error.message_i18n, "error.ddns-ttl-min");
+	const wild = await add({ dns_credential_id: made.id, name: "*.example.com" });
+	assert.equal(wild.body.error.message_i18n, "error.ddns-wildcard-unsupported");
+	const ok = await add({ dns_credential_id: made.id, name: "home.example.com", ttl: 600 });
+	assert.equal(ok.status, 201, ok.text);
+	const providers = await admin.get("/nginx/certificates/dns-providers");
+	assert.equal(providers.body.find((provider) => provider.id === "porkbun").lists_domains, false);
+});
+
+it("keeps DuckDNS records under duckdns.org: one label, no TTL, no alias, no wildcard, no domain to add", async () => {
+	const made = await makeCredential(admin, {
+		provider: "duckdns",
+		fields: [{ key: "dns_duckdns_token", value: "tok-SECRET-1234" }],
+	});
+	const providers = await admin.get("/nginx/ddns/providers");
+	const duck = providers.body.find((provider) => provider.id === "duckdns");
+	assert.deepEqual(
+		[duck.zoneless, duck.zone, duck.aliases, duck.wildcards, duck.min_ttl],
+		[true, "duckdns.org", false, false, null],
+	);
+	const refuse = async (body, key) => {
+		const done = await add({ dns_credential_id: made.id, ...body });
+		assert.equal(done.status, 400, `${done.text} ${JSON.stringify(body)}`);
+		assert.equal(done.body.error.message_i18n, key, JSON.stringify(body));
+	};
+	await refuse({ name: "home.example.com" }, "error.ddns-zoneless-name");
+	await refuse({ name: "duckdns.org" }, "error.ddns-zoneless-name");
+	await refuse({ name: "a.b.duckdns.org" }, "error.ddns-zoneless-name");
+	await refuse({ name: "*.duckdns.org" }, "error.ddns-wildcard-unsupported");
+	await refuse({ name: "*.home.duckdns.org" }, "error.ddns-wildcard-unsupported");
+	await refuse({ name: "home.duckdns.org", ttl: 300 }, "error.ddns-ttl-unsupported");
+	await refuse({ name: "home.duckdns.org", kind: "alias", target: "x.example.net" }, "error.ddns-alias-unsupported");
+	// the domain is not on the credential and none is asked for; a typed zone is ignored
+	const ok = await add({
+		dns_credential_id: made.id,
+		name: "Home.DuckDNS.org",
+		zone: "example.com",
+		ip_version: "both",
+	});
+	assert.equal(ok.status, 201, ok.text);
+	assert.equal(ok.body.name, "home.duckdns.org");
+	assert.equal(ok.body.zone, "duckdns.org");
+	assert.equal(ok.body.ttl, null);
+	const rename = await admin.put(`${RECORDS}/${ok.body.id}`, { name: "other.example.com" });
+	assert.equal(rename.body.error.message_i18n, "error.ddns-zoneless-name");
+	const withTtl = await admin.put(`${RECORDS}/${ok.body.id}`, { ttl: 600 });
+	assert.equal(withTtl.body.error.message_i18n, "error.ddns-ttl-unsupported");
+	const renamedOk = await admin.put(`${RECORDS}/${ok.body.id}`, { name: "next.duckdns.org", enabled: false });
+	assert.equal(renamedOk.status, 200, renamedOk.text);
+	assert.equal(renamedOk.body.zone, "duckdns.org");
+	const answer = JSON.stringify(renamedOk.body);
+	assert.ok(!answer.includes("tok-SECRET-1234"));
+	await api.db("npmpro_ddns_record").del();
+});
+
+it("checks the IPv6 suffix of a DuckDNS record like any address record", async () => {
+	const made = await makeCredential(admin, {
+		provider: "duckdns",
+		fields: [{ key: "dns_duckdns_token", value: "tok-SECRET-1234" }],
+	});
+	const body = { dns_credential_id: made.id, name: "suffix.duckdns.org" };
+	const bad = await add({ ...body, ip_version: "ipv4", ipv6_suffix: "::1" });
+	assert.equal(bad.body.error.message_i18n, "error.ddns-suffix-needs-ipv6");
+	const invalid = await add({ ...body, ip_version: "ipv6", ipv6_suffix: "not-a-suffix" });
+	assert.equal(invalid.body.error.message_i18n, "error.ddns-suffix-invalid");
+	const ok = await add({ ...body, ip_version: "both", ipv6_suffix: "::a:b" });
+	assert.equal(ok.status, 201, ok.text);
+	assert.equal(ok.body.ipv6_suffix, "::a:b");
+	// the stored suffix passes a save that keeps it
+	const kept = await admin.put(`${RECORDS}/${ok.body.id}`, { enabled: false });
+	assert.equal(kept.status, 200, kept.text);
+	await api.db("npmpro_ddns_record").del();
 });
 
 it("refuses a credential delete and a provider change while a record uses it", async () => {

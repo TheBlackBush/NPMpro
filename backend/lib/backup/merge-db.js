@@ -11,6 +11,9 @@ import { CATEGORIES, RESTORE_ORDER, TYPES } from "./types.js";
 // replaced rows keep the instance row's id, links are mapped to the added or matching row or cleared. Nothing is
 // deleted except the child rows of a replaced host or user. Files are placed elsewhere.
 
+// a record's secret column without sealed details: a backup without secrets, or a record that never had any
+const noSecret = (value) => value === null || value === undefined || value === "";
+
 const HOST_TYPES = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams"];
 const LINK_TYPES = ["dns_credentials", "certificates", "access_lists"];
 // the setting row types; backup schedules are their own rows
@@ -399,18 +402,29 @@ const mergeTypes = async ({
 				skippedRecords.push({ name: source.name, why: "its DNS credential is of another provider" });
 				return;
 			}
-			// a record without a credential (the custom provider): a replaced one stays with its owner
-			let recordOwner = credential?.owner_user_id;
-			if (!credential) {
-				const target =
-					item.action === "replace"
-						? await trx(table).where({ id: item.target.id }).first("owner_user_id")
-						: null;
-				recordOwner = target ? target.owner_user_id : ownerOf(source.owner_user_id);
-			}
-			const [row] = TYPES.ddns.restoreRows({
-				[table]: [{ ...source, dns_credential_id: credentialId, owner_user_id: recordOwner }],
-			})[table];
+			const target =
+				item.action === "replace"
+					? await trx(table).where({ id: item.target.id }).first("owner_user_id", "provider", "secret")
+					: null;
+			// a record without a credential (the custom provider, a preset): a replaced one stays with its owner
+			const recordOwner = credential
+				? credential.owner_user_id
+				: (target?.owner_user_id ?? ownerOf(source.owner_user_id));
+			// a backup without secrets replacing a record of the same provider keeps the sealed details stored here (the
+			// custom URL, a preset's password), as a merge of a setting keeps its secrets; the record then stays enabled
+			const keptSecret =
+				noSecret(source.secret) && target?.provider === source.provider && !noSecret(target.secret)
+					? { secret: target.secret }
+					: {};
+			const sealed = TYPES.ddns.secrets.seal(
+				{
+					[table]: [
+						{ ...source, ...keptSecret, dns_credential_id: credentialId, owner_user_id: recordOwner },
+					],
+				},
+				box,
+			);
+			const [row] = TYPES.ddns.restoreRows(sealed)[table];
 			let recordId;
 			if (item.action === "add") {
 				recordId = await inserter.insertWithNewId(table, row);

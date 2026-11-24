@@ -311,6 +311,11 @@
 				"$ref": "./paths/nginx/ddns/check/post.json"
 			}
 		},
+		"/nginx/ddns/suggestions": {
+			"get": {
+				"$ref": "./paths/nginx/ddns/suggestions/get.json"
+			}
+		},
 		"/nginx/ddns/providers": {
 			"get": {
 				"$ref": "./paths/nginx/ddns/providers/get.json"

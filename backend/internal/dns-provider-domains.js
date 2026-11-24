@@ -1,4 +1,4 @@
-import { listProviderZones, providerForCredential } from "../lib/ddns/providers/index.js";
+import { listProviderZones, zoneLister } from "../lib/ddns/providers/index.js";
 import { credentialFields, secretValuesOf } from "../lib/dns-credential-values.js";
 import { normalizeDomainName } from "../lib/dns-domain-name.js";
 import errs from "../lib/error.js";
@@ -58,7 +58,7 @@ const internalDnsProviderDomains = {
 	get: async (access, { id }) => {
 		access.can("certificates:manage");
 		const row = await internalDnsCredential.get(access, { id });
-		const provider = providerForCredential(row.provider);
+		const provider = zoneLister(row.provider);
 		if (provider === null) return { supported: false, truncated: false, zones: [] };
 		const fields = credentialFields(internalDnsCredential.openValues(row));
 		const secrets = secretValuesOf(row.provider, fields);

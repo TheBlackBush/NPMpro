@@ -53,12 +53,16 @@ export const HOST_TYPES = {
 // a proxy host also changes the counts of the access lists it uses
 const accessLists = (type) => (type === "proxy" ? [["access-lists"]] : []);
 
+// the names of proxy, redirection and 404 hosts feed the Keep updated suggestions of Dynamic DNS (streams have none)
+const ddnsSuggestions = (type) => (type === "stream" ? [] : [["ddns-suggestions"]]);
+
 export const toggleInvalidations = (type, id) => [[HOST_TYPES[type].listKey], [HOST_TYPES[type].itemKey, id]];
 
 export const deleteInvalidations = (type, id) => [
 	...toggleInvalidations(type, id),
 	["certificates"],
 	...accessLists(type),
+	...ddnsSuggestions(type),
 ];
 
 export const saveInvalidations = (type, id) => [
@@ -68,6 +72,7 @@ export const saveInvalidations = (type, id) => [
 	["host-report"],
 	["certificates"],
 	...accessLists(type),
+	...ddnsSuggestions(type),
 ];
 
 // a save that answered an error but is stored (nginx could not reload) changed the same caches as a successful one: the

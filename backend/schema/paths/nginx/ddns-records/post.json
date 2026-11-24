@@ -21,8 +21,7 @@
 					"type": "object",
 					"additionalProperties": false,
 					"required": [
-						"name",
-						"dns_credential_id"
+						"name"
 					],
 					"allOf": [
 						{
@@ -68,6 +67,50 @@
 									}
 								}
 							}
+						},
+						{
+							"if": {
+								"required": [
+									"provider"
+								],
+								"properties": {
+									"provider": {
+										"const": "custom"
+									}
+								}
+							},
+							"then": {
+								"required": [
+									"url"
+								]
+							},
+							"else": {
+								"if": {
+									"required": [
+										"provider"
+									],
+									"properties": {
+										"provider": {
+											"enum": [
+												"namecheap",
+												"noip",
+												"dynu"
+											]
+										}
+									}
+								},
+								"then": {},
+								"else": {
+									"required": [
+										"dns_credential_id"
+									],
+									"properties": {
+										"dns_credential_id": {
+											"type": "integer"
+										}
+									}
+								}
+							}
 						}
 					],
 					"properties": {
@@ -79,16 +122,19 @@
 							"description": "The record name, such as `home.example.com`; `*.example.com` only where the provider allows wildcards. A name that exists answers 400"
 						},
 						"dns_credential_id": {
-							"type": "integer",
+							"type": [
+								"integer",
+								"null"
+							],
 							"minimum": 1,
 							"example": 1,
-							"description": "ID of the DNS credential to write the record with; its provider must have an updater"
+							"description": "ID of the DNS credential to write the record with; its provider must have an updater. Required except for the custom provider, which takes none (null or left out)"
 						},
 						"provider": {
 							"type": "string",
 							"maxLength": 64,
 							"example": "cloudflare",
-							"description": "The updater provider; it defaults from the credential and must match it when given"
+							"description": "The updater provider; it defaults from the credential and must match it when given; `custom` is the administrators-only custom HTTP provider"
 						},
 						"zone": {
 							"type": "string",
@@ -152,6 +198,49 @@
 							"type": "boolean",
 							"example": true,
 							"description": "Whether NPMpro keeps the record up to date (the default is true)"
+						},
+						"url": {
+							"type": "string",
+							"maxLength": 2048,
+							"example": "https://dyn.example.net/update?host={name}&ip={ip}",
+							"description": "Custom provider only, write-only and administrators only: the https URL called to update the record. `{ip}` (the address of the record type), `{ipv4}`, `{ipv6}` and `{name}` may stand in the path and the query (never in the host) and are filled URL-encoded. It is stored sealed and never shown (`url_set` tells whether one is stored); an empty value keeps the stored one"
+						},
+						"method": {
+							"type": "string",
+							"enum": [
+								"GET",
+								"POST"
+							],
+							"example": "GET",
+							"description": "Custom provider only: the HTTP method of the update call (the default is GET)"
+						},
+						"expect": {
+							"type": [
+								"string",
+								"null"
+							],
+							"maxLength": 255,
+							"example": "good",
+							"description": "Custom provider only: text the answer must contain; without it the update counts as failed. Empty or null: any 2xx answer succeeds"
+						},
+						"username": {
+							"type": "string",
+							"maxLength": 255,
+							"example": "user@example.com",
+							"description": "No-IP and Dynu presets only, write-only: the account's user name. It is stored sealed and never shown (`secret_set` tells whether the details are stored); an empty value keeps the stored one"
+						},
+						"password": {
+							"type": "string",
+							"minLength": 4,
+							"maxLength": 255,
+							"example": "update-password",
+							"description": "Namecheap, No-IP and Dynu presets only, write-only: the Dynamic DNS password (Namecheap: of the domain, Advanced DNS tab; No-IP and Dynu: of the account). It is stored sealed and never shown; leave it out to keep the stored one. At least 4 characters (shorter text cannot be hidden from messages)"
+						},
+						"domain": {
+							"type": "string",
+							"maxLength": 255,
+							"example": "example.com",
+							"description": "Namecheap preset only: the domain the record belongs to, as Namecheap lists it. The record name is this domain or a name under it"
 						}
 					}
 				},

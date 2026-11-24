@@ -59,4 +59,30 @@ const refuseMultiple = (existing) => {
 
 const jsonHeaders = (headers) => ({ ...headers, "Content-Type": "application/json" });
 
-export { dotted, jsonHeaders, pathName, plainTarget, refuseMultiple, refuseWildcard, relativeName, zoneNotFound };
+/**
+ * The record a write meant to change is gone at the provider (deleted between the read and the write): retried, and
+ * the next check creates it again
+ *
+ * @param   {{ status: number }}  res
+ * @param   {string[]}            secrets
+ * @returns {DdnsProviderError}
+ */
+const recordGone = (res, secrets) =>
+	new DdnsProviderError({
+		providerStatus: res.status,
+		code: "failed",
+		message: "The record was removed at the provider; it is created again on the next check",
+		secrets,
+	});
+
+export {
+	dotted,
+	jsonHeaders,
+	pathName,
+	plainTarget,
+	recordGone,
+	refuseMultiple,
+	refuseWildcard,
+	relativeName,
+	zoneNotFound,
+};

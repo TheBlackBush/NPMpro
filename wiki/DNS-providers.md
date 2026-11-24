@@ -8,7 +8,7 @@ certificate, wildcards included); the other columns are what NPMpro adds on top.
 | DNS challenge | 86 of 90 (4 deprecated plugins no longer install) | certbot proves the domain through the provider's DNS with a saved [DNS credential](DNS#dns-challenge) |
 | Credential form | 19 | the credential has labelled fields (secrets hidden); the others take the plugin's INI text as its documentation shows it |
 | Fetch domains | 6 | the Add domains window lists the provider's zones to tick ([Domains from the provider](DNS#domains-from-the-provider)); for the others type the domains |
-| Dynamic DNS | 4 | NPMpro keeps an address record (A/AAAA) at the public IP, or an alias (CNAME) pointing at a name ([Dynamic DNS](DNS#dynamic-dns)); wildcard records (`*.example.com`) only on Cloudflare and DigitalOcean |
+| Dynamic DNS | 8, and 3 presets | NPMpro keeps an address record (A/AAAA) at the public IP, or an alias (CNAME) pointing at a name ([Dynamic DNS](DNS#dynamic-dns)); wildcard records (`*.example.com`) only on Cloudflare and DigitalOcean. Namecheap, No-IP and Dynu are presets with their own account details (no DNS credential), and Custom HTTP (administrators only) calls a URL you set; these keep an address record only |
 
 **Deprecated** plugins (7) are kept for credentials that already use them: their projects are no longer maintained or
 the provider closed the API, so they may no longer work. Four of them (Constellix, Core Networks, DNSPod, Oracle Cloud
@@ -38,7 +38,7 @@ The plugin versions are the ones this NPMpro version installs.
 | Core Networks | `corenetworks` | `certbot-dns-corenetworks` 0.2.1 | No: deprecated, the plugin no longer installs | INI text |  |  |
 | cPanel | `cpanel` | `certbot-dns-cpanel` 0.4.0 | Yes | INI text |  |  |
 | DDNSS | `ddnss` | `certbot-dns-ddnss` 1.1.0 | Yes | INI text |  |  |
-| deSEC | `desec` | `certbot-dns-desec` 1.3.2 | Yes | Fields |  |  |
+| deSEC | `desec` | `certbot-dns-desec` 1.3.2 | Yes | Fields |  | Yes |
 | DigitalOcean | `digitalocean` | `certbot-dns-digitalocean` 5.10.0 | Yes | Fields | Yes | Yes |
 | DirectAdmin | `directadmin` | `certbot-dns-directadmin` 1.0.15 | Yes | INI text |  |  |
 | DNS Made Easy | `dnsmadeeasy` | `certbot-dns-dnsmadeeasy` 5.10.0 | Yes | INI text |  |  |
@@ -47,8 +47,8 @@ The plugin versions are the ones this NPMpro version installs.
 | DomainOffensive (do.de) | `domainoffensive` | `certbot-dns-domainoffensive` 2.0.0 | Yes | INI text |  |  |
 | Domeneshop | `domeneshop` | `certbot-dns-domeneshop` 0.2.9 | Yes | INI text |  |  |
 | Dreamhost | `dreamhost` | `certbot-dns-dreamhost` 1.0 | Yes | INI text |  |  |
-| DuckDNS | `duckdns` | `certbot-dns-duckdns` 1.9.0 | Yes | Fields |  |  |
-| Dynu | `dynu` | `certbot-dns-dynu` 0.0.6.post2502111739272536 | Yes | INI text |  |  |
+| DuckDNS | `duckdns` | `certbot-dns-duckdns` 1.9.0 | Yes | Fields |  | Yes |
+| Dynu | `dynu` | `certbot-dns-dynu` 0.0.6.post2502111739272536 | Yes | INI text |  | Preset |
 | easyDNS | `easydns` | `certbot-dns-easydns` 0.1.4 | Yes | INI text |  |  |
 | EuroDNS | `eurodns` | `certbot-dns-eurodns` 1.8.2 | Yes | INI text |  |  |
 | First Domains | `firstdomains` | `certbot-dns-firstdomains` 1.0.4 | Yes | INI text |  |  |
@@ -82,15 +82,15 @@ The plugin versions are the ones this NPMpro version installs.
 | MC-HOST24 | `mchost24` | `certbot-dns-mchost24` 1.0.0 | Yes | INI text |  |  |
 | mijn.host | `mijnhost` | `certbot-dns-mijn-host` 0.0.10 | Yes | INI text |  |  |
 | Name.com | `namecom` | `certbot-dns-namecom` 1.0.0 | Yes | INI text |  |  |
-| Namecheap | `namecheap` | `certbot-dns-namecheap` 1.0.0 | Yes | Fields |  |  |
+| Namecheap | `namecheap` | `certbot-dns-namecheap` 1.0.0 | Yes | Fields |  | Preset |
 | netcup | `netcup` | `certbot-dns-netcup` 2.1.0 | Yes | Fields |  |  |
 | nic.ru | `nicru` | `certbot-dns-nicru` 1.0.3 | Yes | INI text |  |  |
 | Njalla | `njalla` | `certbot-dns-njalla` 2.0.2 | Yes | INI text |  |  |
 | NS1 | `nsone` | `certbot-dns-nsone` 5.10.0 | Yes | INI text |  |  |
 | Oracle Cloud Infrastructure DNS | `oci` | `certbot-dns-oci` 0.3.6 | No: deprecated, the plugin no longer installs | INI text |  |  |
-| OVH | `ovh` | `certbot-dns-ovh` 5.10.0 | Yes | Fields | Yes |  |
+| OVH | `ovh` | `certbot-dns-ovh` 5.10.0 | Yes | Fields | Yes | Yes |
 | Plesk | `plesk` | `certbot-dns-plesk` 0.4.1 | Yes | INI text |  |  |
-| Porkbun | `porkbun` | `certbot-dns-porkbun` 0.11.0 | Yes | Fields |  |  |
+| Porkbun | `porkbun` | `certbot-dns-porkbun` 0.11.0 | Yes | Fields |  | Yes |
 | PowerDNS | `powerdns` | `certbot-dns-pdns` 0.1.1 | Yes | Fields | Yes |  |
 | RcodeZero | `rcode0` | `certbot-dns-rcode0` 0.0.0.2 | Yes | INI text |  |  |
 | reg.ru | `regru` | `certbot-regru` 1.0.2 | Yes | INI text |  |  |

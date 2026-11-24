@@ -8,12 +8,22 @@ import {
 	getDdnsRecord,
 	getDdnsRecords,
 	getDdnsStatus,
+	getDdnsSuggestions,
 	updateDdnsRecord,
 	updateDdnsRecordNow,
 } from "src/api/backend";
+import { CERTIFICATES, hasPermission, VIEW } from "src/modules/Permissions";
+import { useUser } from "./useUser";
 
 // every change of a record (and Update now, Check now) can change the list, the record, the status and the audit log
-const DDNS_KEYS = [["ddns-records"], ["ddns-record"], ["ddns-status"], ["ddns-history"], ["audit-logs"]];
+const DDNS_KEYS = [
+	["ddns-records"],
+	["ddns-suggestions"],
+	["ddns-record"],
+	["ddns-status"],
+	["ddns-history"],
+	["audit-logs"],
+];
 
 // the updater works in the background: a mounted list and status page ask again every 30 seconds (the tab strip's
 // count passes refetchInterval: false, so only the open Dynamic DNS tab polls)
@@ -64,6 +74,19 @@ const useDdnsProviders = (options = {}) =>
 		...options,
 	});
 
+// the host names without a record; input help only (needs Certificates view, like the records)
+const useDdnsSuggestions = ({ enabled = true, ...options } = {}) => {
+	const { data: user } = useUser("me");
+	return useQuery({
+		queryKey: ["ddns-suggestions"],
+		queryFn: getDdnsSuggestions,
+		staleTime: 10 * 1000,
+		retry: false,
+		...options,
+		enabled: enabled && hasPermission(CERTIFICATES, VIEW, user?.permissions, user?.roles),
+	});
+};
+
 // also after a failure: a refused Update now (cooldown, pause) still stored when the record was last checked
 const useDdnsMutation = (mutationFn) => {
 	const queryClient = useQueryClient();
@@ -100,6 +123,7 @@ export {
 	useDdnsRecord,
 	useDdnsRecords,
 	useDdnsStatus,
+	useDdnsSuggestions,
 	useDeleteDdnsRecord,
 	useSetDdnsRecord,
 	useUpdateDdnsRecordNow,

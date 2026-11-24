@@ -10,8 +10,14 @@
 			"record_types",
 			"proxied",
 			"ipv6",
+			"ipv6_alone",
 			"admin_only",
 			"wildcards",
+			"aliases",
+			"zoneless",
+			"preset",
+			"zone",
+			"apex",
 			"min_ttl"
 		],
 		"additionalProperties": false,
@@ -27,9 +33,12 @@
 				"description": "Name of the provider"
 			},
 			"credential_provider": {
-				"type": "string",
+				"type": [
+					"string",
+					"null"
+				],
 				"example": "cloudflare",
-				"description": "ID of the DNS credential provider whose saved credential it uses"
+				"description": "ID of the DNS credential provider whose saved credential it uses; null for the custom provider, which has none"
 			},
 			"record_types": {
 				"type": "array",
@@ -53,6 +62,11 @@
 				"example": true,
 				"description": "Whether it writes AAAA records"
 			},
+			"ipv6_alone": {
+				"type": "boolean",
+				"example": true,
+				"description": "Whether a record of IPv6 alone is allowed (false: IPv4 or both only, as No-IP)"
+			},
 			"admin_only": {
 				"type": "boolean",
 				"example": false,
@@ -63,10 +77,41 @@
 				"example": true,
 				"description": "Whether a wildcard record name (`*.example.com`) is allowed"
 			},
+			"aliases": {
+				"type": "boolean",
+				"example": true,
+				"description": "Whether an alias (CNAME) record is allowed"
+			},
+			"zoneless": {
+				"type": "boolean",
+				"example": false,
+				"description": "Whether the provider has no zones and no record read (DuckDNS): records are address records only, take no TTL and sit under its one fixed zone"
+			},
+			"preset": {
+				"type": "boolean",
+				"example": false,
+				"description": "Whether it is an update-URL preset (Namecheap, No-IP, Dynu): no DNS credential, the account details are typed in the record and stored sealed"
+			},
+			"zone": {
+				"type": [
+					"string",
+					"null"
+				],
+				"example": null,
+				"description": "The fixed zone of a zoneless provider (`duckdns.org`: the record name is `<subdomain>.duckdns.org`); null for the others"
+			},
+			"apex": {
+				"type": "boolean",
+				"example": true,
+				"description": "Whether a record at the zone apex is allowed"
+			},
 			"min_ttl": {
-				"type": "integer",
+				"type": [
+					"integer",
+					"null"
+				],
 				"example": 60,
-				"description": "The lowest TTL in seconds the provider takes; a record's TTL below it is refused"
+				"description": "The lowest TTL in seconds the provider takes; a record's TTL below it is refused. Null when the provider documents none"
 			}
 		}
 	}
