@@ -28,7 +28,7 @@ For Cloudflare, DigitalOcean, Hetzner Cloud, Gandi, OVH, PowerDNS, Linode, Vultr
 
 **Test** checks that a saved DNS credential still works. It is in the credential window and in the row menu of the credential (DNS credentials tab of Certificates & DNS), and needs the Certificates manage permission. Save changes first: the test reads the saved values, and the button says **Save the credential first** while the form has an unsaved change. A provider that cannot list its zones (see the Fetch domains column of [DNS providers](DNS-providers)) has nothing to test with, and the button is off.
 
-A test only reads. It asks the provider for one page of the zone list and, when the credential has a domain and the provider can read records (Cloudflare, DigitalOcean, Hetzner Cloud, Gandi, deSEC and Porkbun), for the A record at the apex of the first domain. Nothing is stored and nothing is written at the provider, and a test leaves no audit log entry.
+A test only reads. It asks the provider for one page of the zone list and, when a domain of the credential is a zone on that page and the provider can read records (Cloudflare, DigitalOcean, Hetzner Cloud, Gandi, deSEC and Porkbun), for the A record at the apex of the first such domain. A domain below a zone, or one the page does not show, is not read. Nothing is stored and nothing is written at the provider, and a test leaves no audit log entry.
 
 The answer is one of:
 
@@ -44,7 +44,7 @@ How a refusal reads depends on the provider. OVH always shows the general **The 
 
 ## Host check
 
-The host check shows where each name of a proxy, redirection or 404 host points and whether it reaches this instance. It only reads. **Check DNS** at the top of a host list checks the hosts on the page shown (in requests of at most 50 hosts), and **Check** in the DNS card of the host window checks that host (save a new host first). The result shows as a **DNS** badge after the names in the list, with one line per name in its tooltip, and as one line per name in the DNS card with the time of the check. Streams have no names and no check. A wildcard name is **Not checked**.
+The host check shows where each name of a proxy, redirection or 404 host points and whether it reaches this instance. It only reads. **Check DNS** at the top of a host list checks the hosts on the page shown (in requests of at most 50 hosts and 200 names), and **Check** in the DNS card of the host window checks that host. A new host is not checked by itself: save it, then press **Check** in its window or **Check DNS** in the list. The result shows as a **DNS** badge after the names in the list, with one line per name in its tooltip, and as one line per name in the DNS card with the time of the check. Streams have no names and no check. A wildcard name is **Not checked**.
 
 NPMpro looks up the A and AAAA records of each name (through **DNS servers for checks**, see [How the address is found](#how-the-address-is-found) and [The check](#the-check)) and compares them with the public address of this instance, found as for dynamic DNS. A name is in one of these states:
 
@@ -52,10 +52,10 @@ NPMpro looks up the A and AAAA records of each name (through **DNS servers for c
 - **Partly here:** one address family points here and the other does not.
 - **Points elsewhere:** the name has addresses and they are not this instance's.
 - **No address:** the name has neither an A nor an AAAA record.
-- **Unknown:** the check could not decide. The reason is shown: the DNS lookup failed, timed out or got no answer from the server, the public address (or the public IPv6 address) of this instance is not known, or the provider record could not be read.
+- **Unknown:** the check could not decide. The reason is shown: the DNS lookup failed, timed out or got no answer from the server, the public address (or the public IPv6 address) of this instance is not known or not confirmed (two address services disagree), the provider record could not be read, or the check ran out of time. One check ends within 60 seconds, and each DNS lookup within about 6 seconds (two tries of 3 seconds); a name not checked by then is **Unknown** and is checked again the next time.
 - **Not checked:** a wildcard name.
 
-A Cloudflare record that is proxied resolves to Cloudflare, not to your address, so DNS alone says **Points elsewhere**. When the name is under a domain of one DNS credential that the user can see, NPMpro reads the record at the provider (see [Dynamic DNS](#dynamic-dns) for the providers that can read records): for a proxied Cloudflare record it then shows **Reaches this instance** with **Proxied** beside it, and the line says **via record**. If the name has no record of its own, an alias (CNAME) is followed one level (**via alias**), and on Cloudflare and DigitalOcean the wildcard record of the parent name counts (**via wildcard**). Other providers are read only when DNS alone does not already show the name here; Cloudflare is read always. When the provider cannot be read the check goes on with DNS alone and says so.
+A Cloudflare record that is proxied resolves to Cloudflare, not to your address, so DNS alone says **Points elsewhere**. When the name is under a domain of one DNS credential that the user can see, NPMpro reads the record at the provider (see [Dynamic DNS](#dynamic-dns) for the providers that can read records): for a proxied Cloudflare record it then shows **Reaches this instance** with **Proxied** beside it, and the line says **via record**. If the name has no record of its own, an alias (CNAME) is followed one level (**via alias**), and on Cloudflare and DigitalOcean the wildcard record of the parent name counts (**via wildcard**). Other providers are read only when DNS alone does not already show the name here; Cloudflare is read always. When the provider cannot be read the check goes on with DNS alone and says so. One check reads the provider at most 50 times (a Cloudflare zone is looked up once per check), and stops reading a credential after the provider says it gets too many requests, so a check cannot use up the rate limit that certificate requests and dynamic DNS share; the other names then keep their DNS answer and say that the provider was not asked.
 
 The provider read needs the Certificates manage permission, and the credential must be the only one that covers the name. A user without it gets the DNS-only answer: a name hidden behind a Cloudflare proxy then reads **Points elsewhere**. A user limited to their own items checks only their own hosts and reads only their own credentials. Results are kept in memory and reused for 30 seconds per host (and per kind of user, since the provider read depends on the permission); a host change, a restore or a restart forgets them.
 
@@ -65,7 +65,7 @@ A certificate request with the DNS challenge adds a TXT record at `_acme-challen
 
 What counts as a leftover:
 
-- Only TXT records at `_acme-challenge` or a name below it, in the domains of this credential (at most 100 domains, and the list is cut at 500 records per domain: delete these and open the window again). Nothing else at the provider is listed or touched.
+- Only TXT records at `_acme-challenge` or a name below it, in the domains of this credential (at most 100 domains and 500 records in all: when the list is cut, delete these and open the window again). A domain the provider does not know as a zone (a name below a zone, for example) is named in a note with the provider's answer, and the other domains are listed.. Nothing else at the provider is listed or touched.
 - A CNAME at `_acme-challenge` is a delegation you set up on purpose. It is not listed and never deleted; the window only says how many it left alone.
 
 Each record shows its age and a state:
@@ -75,7 +75,7 @@ Each record shows its age and a state:
 - Records older than 1 hour with a known age are ticked in advance. Nothing else is: tick only what you know is a leftover.
 - **Age unknown:** DigitalOcean, Hetzner Cloud, Gandi, OVH and Porkbun give no change time for a record. None of their records is ticked in advance, and another program may be using such a record.
 
-After you tick records and press Delete, the window asks **Delete N records at the credential?** and nothing is deleted before you confirm. The records are sent in batches of 100. Each is read again first: a record that changed since the list was read is skipped (**Skipped: the record changed since the list was read**), one that is gone counts as **Already gone**, and one outside the credential's domains is skipped. The results list says **Deleted**, **Already gone**, **Skipped** or **Failed** for each record. The audit log keeps the names and the count, never the values (they are challenge tokens).
+After you tick records and press Delete, the window asks **Delete N records at the credential?** and nothing is deleted before you confirm. The records are sent in batches of 100. Each is read again first: a record that changed since the list was read is skipped (**Skipped: the record changed since the list was read**), one that is gone counts as **Already gone**, and one outside the credential's domains is skipped. If a certificate request or renewal starts while the records are deleted, the delete stops and the rest are skipped. The window lists again only when it opens and after a delete, so a ticked record keeps the values you saw; a record whose values changed loses its tick. The results list says **Deleted**, **Already gone**, **Skipped** or **Failed** for each record. The audit log keeps the names and the count, never the values (they are challenge tokens).
 
 Gandi, deSEC and Hetzner Cloud hold all the TXT values of one name in one set, and the delete removes the whole set after it checked that it still holds the values the list showed. There is a small window between that check and the delete: a value another program adds to the same set in that moment is removed with it.
 
@@ -83,7 +83,7 @@ Gandi, deSEC and Hetzner Cloud hold all the TXT values of one name in one set, a
 
 A CAA record at your domain says which certificate authorities may issue for it. The CAA check tells you before a request whether the CAA records of the names allow the CA that would issue the certificate. It only reads and **never blocks a request or a save**: it shows a note.
 
-The note shows in the windows that request or re-issue an ACME certificate, and in the certificate window of a host, a moment after you stop typing names or change the CA. In the Certificates list a small warning icon after the names of an ACME certificate shows when a name is refused, limited or could not be checked, with a line per name in its tooltip. Custom certificates are not checked. List results are kept for 6 hours (up to 25 certificates are refreshed each time the list loads), and a save, a re-issue or a renewal of a certificate forgets its result. A user who may view certificates sees the checks.
+The note shows in the windows that request or re-issue an ACME certificate, and in the certificate window of a host, a moment after you stop typing names or change the CA. In the Certificates list a small warning icon after the names of an ACME certificate shows when a name is refused, limited or could not be checked, with a line per name in its tooltip. Custom certificates are not checked. List results are kept for 6 hours, or 5 minutes for a name that could not be checked (up to 25 certificates are refreshed each time the list loads, within 60 seconds), and a save, a re-issue or a renewal of a certificate forgets its result. A user who may view certificates sees the checks.
 
 How a name is checked:
 
@@ -91,7 +91,7 @@ How a name is checked:
 - A wildcard name follows the `issuewild` records when there are any, otherwise `issue`.
 - The CA's CAA identities come from the CA's own ACME directory. If the directory names none, Let's Encrypt uses `letsencrypt.org`, ZeroSSL uses `sectigo.com` and its related names (`trust-provider.com`, `usertrust.com`, `comodoca.com`, `comodo.com`, `entrust.net`, `affirmtrust.com`) and Google Trust Services uses `pki.goog`. A CA of your own that names none is **not checked** (the note says so).
 - No CAA records anywhere, or records that set no `issue` property, allow every CA. A record that lists the CA allows it. Records that list other CAs only, or an empty `issue ";"`, refuse it (**The CAA records do not allow the CA**), and so does a record with the critical flag and a tag the check does not know.
-- For Let's Encrypt the check also compares `validationmethods` with the challenge of the certificate (`dns-01` or `http-01`; a record that allows other methods only refuses) and shows `accounturi` as **The CAA records limit the account**: NPMpro does not compare the account. For the other CAs these two parameters are shown and not compared, and a record with them counts as allowing the CA.
+- For Let's Encrypt the check also compares `validationmethods` with the challenge of the certificate (`dns-01` or `http-01`; a record that allows other methods only refuses) and shows `accounturi` as **The CAA records limit the account**: NPMpro does not compare the account. For the other CAs these two parameters are not compared: a record with them counts as allowing the CA, and no note is shown.
 
 ## Dynamic DNS
 
