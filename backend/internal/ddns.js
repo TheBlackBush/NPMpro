@@ -120,6 +120,9 @@ const checkNow = async (access) => {
 const updateNow = async (access, id) => {
 	access.can("certificates:manage");
 	const row = await internalDdnsRecord.rowOf(access, id, { expand: ["credential"] });
+	if (row.provider === "custom" && !access.isAdmin) {
+		throw new errs.PermissionError("Only an administrator may update a custom HTTP record");
+	}
 	if (!row.enabled) {
 		throw new errs.ValidationError("The record is disabled; enable it first", "error.ddns-record-disabled");
 	}

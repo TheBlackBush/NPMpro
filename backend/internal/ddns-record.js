@@ -1,3 +1,4 @@
+import { refusalOf, secretsOfUrl } from "../lib/ddns/custom-url.js";
 import { fromDbTime, toDbTime } from "../lib/ddns/db-time.js";
 import { isIpv6Suffix } from "../lib/ddns/ipv6.js";
 import { updaterFor } from "../lib/ddns/providers/index.js";
@@ -7,6 +8,7 @@ import { bareName, coveringZone } from "../lib/dns-domain-match.js";
 import { normalizeDomainName } from "../lib/dns-domain-name.js";
 import errs from "../lib/error.js";
 import { createKeyedLock } from "../lib/keyed-lock.js";
+import { defaultSecretBox } from "../lib/secret-box.js";
 import ddnsHistoryModel from "../models/ddns_history.js";
 import ddnsRecordModel from "../models/ddns_record.js";
 import dnsCredentialModel from "../models/dns_credential.js";
@@ -73,6 +75,24 @@ const visibleRecords = (access, trx) => {
 	return query;
 };
 
+const CUSTOM = "custom";
+const CUSTOM_LABEL = "Custom HTTP";
+
+/** What a custom record's sealed secret holds: { url, method, expect }; null when none or not readable */
+const openCustom = (secret) => {
+	if (typeof secret !== "string" || secret === "") return null;
+	try {
+		const opened = defaultSecretBox.decrypt(secret);
+		return typeof opened?.url === "string" && opened.url !== "" ? opened : null;
+	} catch {
+		return null;
+	}
+};
+
+// Check now of a user who is no administrator does not call a custom URL
+const customOnlyForAdmin = (access, query) =>
+	access.isAdmin ? query : query.whereNot("npmpro_ddns_record.provider", CUSTOM);
+
 const iso = (value) => fromDbTime(value)?.toISOString() ?? null;
 
 // the engine keeps the flag per record type (proxied_a, proxied_aaaa, proxied_cname): true when any is proxied
@@ -89,8 +109,13 @@ const toPublic = (row) => {
 	for (const key of TIME_KEYS) json[key] = iso(row[key]);
 	// an alias follows no address: the column keeps its NOT NULL default, the answer says none
 	if (json.kind === "alias") Object.assign(json, { ip_version: null, ipv6_suffix: null });
+	// the URL itself never leaves: only whether one is stored, and the call's method and expected text
+	const custom = row.provider === CUSTOM ? openCustom(row.secret) : null;
 	return {
 		...json,
+		...(row.provider === CUSTOM
+			? { url_set: custom !== null, method: custom?.method ?? null, expect: custom?.expect ?? null }
+			: {}),
 		error_i18n: meta?.error_i18n ?? null,
 		error_values: meta?.error_values ?? null,
 		proxied: proxiedOf(meta),
@@ -217,6 +242,73 @@ const resolveZoneless = ({ updater, credential, credentialChanged, data, row, na
 };
 
 /**
+ * The save of a custom HTTP record: no credential and no zone, the name is the host whose DNS answer the engine
+ * compares, an address record without a TTL; the URL, the method and the expected text are sealed in `secret`.
+ */
+const resolveCustom = async (access, data, row) => {
+	if (data.dns_credential_id !== undefined && data.dns_credential_id !== null) {
+		throw refusal("The custom provider takes no DNS credential", "error.ddns-custom-no-credential");
+	}
+	const nameChanged = row === null || (data.name !== undefined && data.name !== row.name);
+	const name = nameChanged ? normalizeRecordName(data.name) : row.name;
+	const renamed = row === null || name !== row.name;
+	if (renamed && isWildcard(name)) {
+		throw refusal(`${CUSTOM_LABEL} does not support wildcard records`, "error.ddns-wildcard-unsupported", {
+			provider: CUSTOM_LABEL,
+		});
+	}
+	const kind = data.kind ?? row?.kind ?? "address";
+	if (kind === "alias") {
+		throw refusal(`${CUSTOM_LABEL} does not allow alias (CNAME) records`, "error.ddns-alias-unsupported", {
+			provider: CUSTOM_LABEL,
+		});
+	}
+	const ttl = data.ttl !== undefined ? data.ttl : (row?.ttl ?? null);
+	if (ttl !== null) {
+		throw refusal(`${CUSTOM_LABEL} takes no TTL`, "error.ddns-ttl-unsupported", { provider: CUSTOM_LABEL });
+	}
+	const stored = openCustom(row?.secret);
+	const typed = typeof data.url === "string" && data.url.trim() !== "" ? data.url.trim() : null;
+	if (typed !== null) {
+		const key = await refusalOf(typed);
+		if (key !== null) throw refusal("The URL is not accepted", key);
+	}
+	const url = typed ?? stored?.url ?? null;
+	const enabled = data.enabled ?? row?.enabled ?? true;
+	if (url === null && (row === null || enabled)) {
+		throw refusal("Enter the URL", "error.ddns-custom-url-required");
+	}
+	const expectInput = data.expect !== undefined ? data.expect : (stored?.expect ?? null);
+	const expect = typeof expectInput === "string" && expectInput.trim() !== "" ? expectInput.trim() : null;
+	const method = data.method ?? stored?.method ?? "GET";
+	const address = addressValues({ data, row, kind, suffix: suffixOf(data, row) });
+	const values = {
+		owner_user_id: row?.owner_user_id ?? access.token.getUserId(1),
+		dns_credential_id: null,
+		provider: CUSTOM,
+		name,
+		zone: "",
+		kind,
+		ttl,
+		enabled,
+		...address,
+	};
+	const sealedAgain =
+		url !== null &&
+		(typed !== null ||
+			stored === null ||
+			method !== (stored.method ?? "GET") ||
+			expect !== (stored.expect ?? null));
+	if (sealedAgain) values.secret = defaultSecretBox.encrypt({ url, method, expect });
+	return { values, credential: null, identityChanged: row !== null && renamed };
+};
+
+/** The custom provider is for administrators: creating, changing, deleting and updating such a record */
+const assertCustomAdmin = (access) => {
+	if (!access.isAdmin) throw new errs.PermissionError("Only an administrator may manage a custom HTTP record");
+};
+
+/**
  * The values a save stores. Rules run on new or changed values only: a stored value passes a save that keeps it.
  *
  * @param   {Access}       access
@@ -225,6 +317,26 @@ const resolveZoneless = ({ updater, credential, credentialChanged, data, row, na
  * @returns {Promise<Object>}  { values, credential, changed }
  */
 const resolveSave = async (access, data, row) => {
+	const isCustom = (row?.provider ?? data.provider) === CUSTOM;
+	if (isCustom) {
+		if (data.provider !== undefined && data.provider !== null && data.provider !== CUSTOM) {
+			throw refusal(`The record's provider is ${CUSTOM}, not ${data.provider}`, "error.ddns-provider-mismatch", {
+				provider: String(data.provider),
+			});
+		}
+		return await resolveCustom(access, data, row);
+	}
+	if (data.provider === CUSTOM) {
+		throw refusal(`The record's provider is ${row.provider}, not ${CUSTOM}`, "error.ddns-provider-mismatch", {
+			provider: CUSTOM,
+		});
+	}
+	if (data.url !== undefined || data.method !== undefined || data.expect !== undefined) {
+		throw refusal(
+			"Only the custom provider takes a URL, a method or an expected text",
+			"error.ddns-custom-fields-only",
+		);
+	}
 	const credentialId = data.dns_credential_id ?? row?.dns_credential_id;
 	const credentialChanged = row === null || credentialId !== row.dns_credential_id;
 	const credential = await internalDnsCredential.get(access, { id: credentialId });
@@ -384,12 +496,13 @@ const internalDdnsRecord = {
 
 	create: async (access, data) => {
 		access.can("certificates:manage");
+		if (data.provider === CUSTOM) assertCustomAdmin(access);
 		const { values, credential } = await resolveSave(access, data, null);
 		// under the credential owner's lock, as a credential delete: an insert cannot slip in after its check
-		const row = await ownerLock(credential.owner_user_id, () =>
+		const row = await ownerLock(values.owner_user_id, () =>
 			nameLock("names", async () => {
 				// the credential may have been deleted while this waited for the lock
-				if (!(await dnsCredentialModel.query().findById(credential.id))) {
+				if (credential && !(await dnsCredentialModel.query().findById(credential.id))) {
 					throw new errs.ItemNotFoundError(credential.id);
 				}
 				await internalDdnsRecord.assertNameFree(values.name);
@@ -412,6 +525,7 @@ const internalDdnsRecord = {
 	update: async (access, data) => {
 		access.can("certificates:manage");
 		const current = await internalDdnsRecord.rowOf(access, data.id);
+		if (current.provider === CUSTOM) assertCustomAdmin(access);
 		// a move to another credential runs under its owner's lock (owner, then record), as a credential delete does
 		const movesTo =
 			data.dns_credential_id !== undefined && data.dns_credential_id !== current.dns_credential_id
@@ -425,9 +539,9 @@ const internalDdnsRecord = {
 					const row = await internalDdnsRecord.rowOf(access, data.id);
 					const { values, credential: next, identityChanged } = await resolveSave(access, data, row);
 					if (values.name !== row.name) await internalDdnsRecord.assertNameFree(values.name, row.id);
-					const configChanged = ["kind", "target", "ip_version", "ipv6_suffix", "ttl"].some(
-						(key) => values[key] !== row[key],
-					);
+					const configChanged =
+						"secret" in values ||
+						["kind", "target", "ip_version", "ipv6_suffix", "ttl"].some((key) => values[key] !== row[key]);
 					const patch = { ...values };
 					const turnedOn = values.enabled && !row.enabled;
 					if (!values.enabled) patch.state = "disabled";
@@ -464,6 +578,7 @@ const internalDdnsRecord = {
 	delete: async (access, { id }) => {
 		access.can("certificates:manage");
 		const row = await internalDdnsRecord.rowOf(access, id);
+		if (row.provider === CUSTOM) assertCustomAdmin(access);
 		const credential = await credentialOf(row);
 		await recordLock(id, async () => {
 			// SQLite does not run the foreign key's cascade: the history goes in code, in the same transaction
@@ -496,9 +611,11 @@ const internalDdnsRecord = {
 
 	/** @returns {Promise<number[]>} the ids of the enabled records the user can see */
 	enabledIds: async (access) =>
-		(await visibleRecords(access).where("npmpro_ddns_record.enabled", true).select("npmpro_ddns_record.id")).map(
-			(row) => row.id,
-		),
+		(
+			await customOnlyForAdmin(access, visibleRecords(access).where("npmpro_ddns_record.enabled", true)).select(
+				"npmpro_ddns_record.id",
+			)
+		).map((row) => row.id),
 
 	/** The number of enabled records the user can see */
 	countEnabled: async (access) => {
@@ -554,8 +671,13 @@ const ddnsStore = {
 
 	/** @returns {Promise<{ fields: Object, secrets: String[] }>}  the opened credential, in memory for one run */
 	openCredential: async (record) => {
+		// a custom record has no credential: its sealed URL, method and expected text are the fields
+		if (record.dns_credential_id === null) {
+			const custom = openCustom(record.secret);
+			return { fields: custom ?? {}, secrets: custom === null ? [] : secretsOfUrl(custom.url) };
+		}
 		const row = await credentialOf(record);
-		if (row === null) throw new Error("The DNS credential of this record is gone");
+		if (!row) throw new Error("The DNS credential of this record is gone");
 		const fields = credentialFields(internalDnsCredential.openValues(row));
 		return { fields, secrets: secretValuesOf(row.provider, fields) };
 	},

@@ -524,3 +524,101 @@ it("a merge skips a record whose matched credential is of another provider, and 
 		await knex.destroy();
 	}
 });
+
+const PROVIDER_REFUSED = /provider/u;
+const customRecord = (id, name, extra = {}) =>
+	record(id, null, name, {
+		provider: "custom",
+		zone: "",
+		secret: box.encrypt({ url: "https://dyn.test/u/TOKEN-9876", method: "POST", expect: "good" }),
+		...extra,
+	});
+
+it("a backup with secrets carries the custom URL in the archive rows, a backup without them none, and a restore seals it again", () => {
+	const rows = { npmpro_ddns_record: [customRecord(1, "c.example.com"), record(2, 1, "a.example.com")] };
+	const opened = TYPES.ddns.secrets.export(rows, box).npmpro_ddns_record;
+	assert.deepEqual(opened[0].secret, { url: "https://dyn.test/u/TOKEN-9876", method: "POST", expect: "good" });
+	assert.equal(opened[1].secret, null);
+	const stripped = TYPES.ddns.secrets.strip(rows).npmpro_ddns_record;
+	assert.deepEqual(
+		stripped.map((row) => row.secret),
+		[null, null],
+	);
+	assert.ok(!JSON.stringify(stripped).includes("TOKEN-9876"));
+	const sealed = TYPES.ddns.secrets.seal({ npmpro_ddns_record: opened }, box).npmpro_ddns_record;
+	assert.equal(typeof sealed[0].secret, "string");
+	assert.ok(sealed[0].secret.startsWith("v1:"));
+	assert.deepEqual(box.decrypt(sealed[0].secret), opened[0].secret);
+	assert.equal(sealed[1].secret, null);
+});
+
+it("a custom record restored without its URL comes back disabled and asks for the URL again, one with it keeps running", () => {
+	const [without, withUrl, other] = TYPES.ddns.restoreRows({
+		npmpro_ddns_record: [
+			customRecord(1, "a.example.com", { secret: null }),
+			customRecord(2, "b.example.com"),
+			record(3, 1, "c.example.com"),
+		],
+	}).npmpro_ddns_record;
+	assert.equal(Number(without.enabled), 0);
+	assert.equal(without.state, "disabled");
+	assert.equal(JSON.parse(without.meta).error_i18n, "error.ddns-custom-url-missing");
+	assert.equal(JSON.parse(without.meta).proxied, true);
+	assert.equal(Number(withUrl.enabled), 1);
+	assert.equal(withUrl.state, "pending");
+	assert.equal(JSON.parse(withUrl.meta).error_i18n, undefined);
+	assert.equal(other.state, "pending");
+});
+
+it("a replace restore of a stripped backup brings a custom record back disabled, one with secrets keeps its sealed URL", async () => {
+	const knex = await open();
+	try {
+		const stripped = TYPES.ddns.secrets.strip(ddnsData([customRecord(1, "a.example.com")]).ddns);
+		const result = await replaceTypes({
+			knex,
+			data: { ddns: stripped },
+			types: ["ddns"],
+			adminUserId: 1,
+			box,
+			now: NOW,
+		});
+		assert.equal(result.counts.ddns, 1);
+		const [row] = await knex("npmpro_ddns_record");
+		assert.equal(row.secret, null);
+		assert.equal(Number(row.enabled), 0);
+		assert.equal(row.state, "disabled");
+		assert.equal(JSON.parse(row.meta).error_i18n, "error.ddns-custom-url-missing");
+
+		const full = TYPES.ddns.secrets.export(ddnsData([customRecord(1, "a.example.com")]).ddns, box);
+		await replaceTypes({ knex, data: { ddns: full }, types: ["ddns"], adminUserId: 1, box, now: NOW });
+		const [kept] = await knex("npmpro_ddns_record");
+		assert.deepEqual(box.decrypt(kept.secret), {
+			url: "https://dyn.test/u/TOKEN-9876",
+			method: "POST",
+			expect: "good",
+		});
+		assert.equal(Number(kept.enabled), 1);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a merge seals the custom URL of an archive with secrets, and a page import of a custom record by a user is refused", async () => {
+	const knex = await open();
+	try {
+		const full = TYPES.ddns.secrets.export(ddnsData([customRecord(1, "a.example.com")]).ddns, box);
+		const { plan } = await merge(knex, { data: { ddns: full } });
+		const [row] = await knex("npmpro_ddns_record");
+		assert.deepEqual(box.decrypt(row.secret), {
+			url: "https://dyn.test/u/TOKEN-9876",
+			method: "POST",
+			expect: "good",
+		});
+		await assert.rejects(
+			checkPageImport({ knex, plan: { items: plan.items }, data: { ddns: full } }),
+			PROVIDER_REFUSED,
+		);
+	} finally {
+		await knex.destroy();
+	}
+});

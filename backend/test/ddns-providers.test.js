@@ -49,7 +49,7 @@ describe("registry", () => {
 	it("lists the updater providers and finds them by credential provider", () => {
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.id),
-			["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh", "desec", "duckdns", "porkbun"],
+			["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh", "desec", "duckdns", "porkbun", "custom"],
 		);
 		assert.deepEqual(PROVIDER_LIST[0], {
 			id: "cloudflare",
@@ -68,26 +68,27 @@ describe("registry", () => {
 		});
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.min_ttl),
-			[60, 30, 60, 300, null, 3600, null, 600],
+			[60, 30, 60, 300, null, 3600, null, 600, null],
 		);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.aliases),
-			[true, true, true, true, false, false, false, false],
+			[true, true, true, true, false, false, false, false, false],
 		);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.apex),
-			[true, true, true, true, false, true, true, true],
+			[true, true, true, true, false, true, true, true, true],
 		);
 		assert.equal(PROVIDER_LIST.filter((p) => p.proxied).length, 1);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.wildcards),
-			[true, true, false, false, false, false, false, false],
+			[true, true, false, false, false, false, false, false, false],
 		);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.zoneless),
-			[false, false, false, false, false, false, true, false],
+			[false, false, false, false, false, false, true, false, true],
 		);
 		assert.equal(PROVIDER_LIST[6].zone, "duckdns.org");
+		assert.equal(updaterFor(null), null);
 		assert.equal(updaterFor("gandi").id, "gandi");
 		assert.equal(updaterFor("ovh").id, "ovh");
 		assert.equal(updaterFor("powerdns"), null);

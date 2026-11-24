@@ -443,7 +443,7 @@ it("counts only the enabled records the user can see, and lists the providers wi
 	const byId = Object.fromEntries(providers.body.map((provider) => [provider.id, provider]));
 	assert.deepEqual(
 		Object.keys(byId).sort((a, b) => a.localeCompare(b)),
-		["cloudflare", "desec", "digitalocean", "duckdns", "gandi", "hetzner-cloud", "ovh", "porkbun"],
+		["cloudflare", "custom", "desec", "digitalocean", "duckdns", "gandi", "hetzner-cloud", "ovh", "porkbun"],
 	);
 	assert.equal(byId.cloudflare.wildcards, true);
 	assert.equal(byId.digitalocean.wildcards, true);

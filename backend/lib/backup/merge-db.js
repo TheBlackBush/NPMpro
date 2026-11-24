@@ -408,9 +408,11 @@ const mergeTypes = async ({
 						: null;
 				recordOwner = target ? target.owner_user_id : ownerOf(source.owner_user_id);
 			}
-			const [row] = TYPES.ddns.restoreRows({
-				[table]: [{ ...source, dns_credential_id: credentialId, owner_user_id: recordOwner }],
-			})[table];
+			const sealed = TYPES.ddns.secrets.seal(
+				{ [table]: [{ ...source, dns_credential_id: credentialId, owner_user_id: recordOwner }] },
+				box,
+			);
+			const [row] = TYPES.ddns.restoreRows(sealed)[table];
 			let recordId;
 			if (item.action === "add") {
 				recordId = await inserter.insertWithNewId(table, row);

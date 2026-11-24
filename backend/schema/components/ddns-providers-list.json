@@ -31,9 +31,12 @@
 				"description": "Name of the provider"
 			},
 			"credential_provider": {
-				"type": "string",
+				"type": [
+					"string",
+					"null"
+				],
 				"example": "cloudflare",
-				"description": "ID of the DNS credential provider whose saved credential it uses"
+				"description": "ID of the DNS credential provider whose saved credential it uses; null for the custom provider, which has none"
 			},
 			"record_types": {
 				"type": "array",

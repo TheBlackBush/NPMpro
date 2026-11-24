@@ -1,6 +1,7 @@
 import { DdnsProviderError } from "../errors.js";
 import { providerFetch } from "../provider-fetch.js";
 import cloudflare from "./cloudflare.js";
+import custom from "./custom.js";
 import desec from "./desec.js";
 import digitalocean from "./digitalocean.js";
 import duckdns from "./duckdns.js";
@@ -20,13 +21,17 @@ const PROVIDERS = Object.freeze([
 	desec,
 	duckdns,
 	porkbun,
+	custom,
 	powerdns,
 ]);
 
 const providerById = (id) => PROVIDERS.find((provider) => provider.id === id) ?? null;
 
+// the custom provider has no credential: no credential provider is its
 const providerForCredential = (credentialProvider) =>
-	PROVIDERS.find((provider) => provider.credentialProvider === credentialProvider) ?? null;
+	typeof credentialProvider === "string"
+		? (PROVIDERS.find((provider) => provider.credentialProvider === credentialProvider) ?? null)
+		: null;
 
 /** A provider without listZones (deSEC) updates records but has no zone fetch */
 const zoneLister = (credentialProvider) => {
@@ -44,21 +49,23 @@ const updaterFor = (credentialProvider) => {
 
 /** The updater providers as GET /nginx/ddns/providers shows them */
 const PROVIDER_LIST = Object.freeze(
-	PROVIDERS.filter((provider) => updaterFor(provider.credentialProvider)).map((provider) => ({
-		id: provider.id,
-		label: provider.label,
-		credential_provider: provider.credentialProvider,
-		record_types: provider.recordTypes,
-		proxied: provider.proxied,
-		ipv6: provider.ipv6,
-		admin_only: provider.adminOnly,
-		wildcards: provider.wildcards,
-		aliases: provider.aliases === true,
-		zoneless: provider.zoneless === true,
-		zone: provider.zone ?? null,
-		apex: provider.apex !== false,
-		min_ttl: provider.minTtl ?? null,
-	})),
+	PROVIDERS.filter((provider) => typeof provider.read === "function" && typeof provider.write === "function").map(
+		(provider) => ({
+			id: provider.id,
+			label: provider.label,
+			credential_provider: provider.credentialProvider,
+			record_types: provider.recordTypes,
+			proxied: provider.proxied,
+			ipv6: provider.ipv6,
+			admin_only: provider.adminOnly,
+			wildcards: provider.wildcards,
+			aliases: provider.aliases === true,
+			zoneless: provider.zoneless === true,
+			zone: provider.zone ?? null,
+			apex: provider.apex !== false,
+			min_ttl: provider.minTtl ?? null,
+		}),
+	),
 );
 
 /** One zone list, all its pages included, ends after this long */

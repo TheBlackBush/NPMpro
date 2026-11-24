@@ -1,5 +1,6 @@
 import errs from "../error.js";
 import { createKeyedLock } from "../keyed-lock.js";
+import { EngineFailure } from "./engine-failure.js";
 import { DdnsProviderError, scrubSecrets } from "./errors.js";
 import { canonicalIpv6, withSuffix } from "./ipv6.js";
 import { providerFetch } from "./provider-fetch.js";
@@ -8,15 +9,6 @@ import { plainTarget } from "./providers/record-common.js";
 const HISTORY_LIMIT = 50;
 const MAX_BACKOFF_MS = 6 * 60 * 60_000;
 const NO_ADDRESS_ERRORS = new Set(["error.ddns-ip-failed", "error.ddns-ip-disagree", "error.ddns-ip-unconfirmed"]);
-
-/** A failure the engine itself reports (not a provider answer); key and values travel in the record's meta */
-class EngineFailure extends Error {
-	constructor(message, key, values) {
-		super(message);
-		this.key = key;
-		this.values = values;
-	}
-}
 
 const toMs = (value) => {
 	if (value === null || value === undefined) return null;

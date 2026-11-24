@@ -272,6 +272,11 @@ const checkRowValues = ({ typeId, row, data }) => {
 // the host config guard for one host row, as for a non-admin create (stored: undefined) or update: raw nginx config,
 // file serving, unix: targets, request variables in the target and regex domain names are admin-only
 const checkRowAdminOnly = ({ typeId, row, data, stored }) => {
+	// the custom HTTP provider's record is for administrators (it holds a URL that is called from here)
+	if (typeId === "ddns") {
+		if (row.provider === "custom" || stored?.provider === "custom") throw new FieldError("provider");
+		return;
+	}
 	if (!Object.hasOwn(HOSTS, typeId)) return;
 	const { guard } = HOSTS[typeId];
 	for (const field of CONFIG_FIELDS[guard]) {

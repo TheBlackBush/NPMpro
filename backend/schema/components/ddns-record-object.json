@@ -230,6 +230,33 @@
 		"owner": {
 			"$ref": "./user-object.json",
 			"description": "The user who created the record; only with `expand=owner`"
+		},
+		"url_set": {
+			"type": "boolean",
+			"example": true,
+			"description": "Custom provider only: whether a URL is stored. The URL itself is never shown"
+		},
+		"method": {
+			"type": [
+				"string",
+				"null"
+			],
+			"enum": [
+				"GET",
+				"POST",
+				null
+			],
+			"example": "GET",
+			"description": "Custom provider only: the HTTP method of the update call"
+		},
+		"expect": {
+			"type": [
+				"string",
+				"null"
+			],
+			"maxLength": 255,
+			"example": null,
+			"description": "Custom provider only: text the answer must contain, else the update counts as failed"
 		}
 	}
 }

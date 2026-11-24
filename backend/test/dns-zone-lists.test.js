@@ -215,7 +215,18 @@ it("a 4.1 error (network) passes through", async () => {
 it("the registry is ordered and looks providers up", () => {
 	assert.deepEqual(
 		PROVIDERS.map((p) => p.id),
-		["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh", "desec", "duckdns", "porkbun", "powerdns"],
+		[
+			"cloudflare",
+			"digitalocean",
+			"hetzner-cloud",
+			"gandi",
+			"ovh",
+			"desec",
+			"duckdns",
+			"porkbun",
+			"custom",
+			"powerdns",
+		],
 	);
 	assert.equal(providerById("gandi").label, "Gandi");
 	assert.equal(providerById("nope"), null);
