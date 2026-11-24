@@ -41,6 +41,11 @@ it("is an error with the hint of the provider for a refused credential", () => {
 	});
 	assert.equal(hintIdOf("digitalocean"), "dns-domains.fetch.hint.digitalocean");
 	assert.equal(hintIdOf("ovh"), "dns-domains.fetch.hint.ovh");
+	for (const id of ["linode", "vultr", "desec", "bunny", "porkbun"]) {
+		assert.equal(hintIdOf(id), `dns-domains.fetch.hint.${id}`);
+	}
+	assert.equal(hintIdOf("ionos"), "dns-domains.fetch.hint.other");
+	assert.equal(hintIdOf("godaddy"), "dns-domains.fetch.hint.other");
 	assert.equal(hintIdOf("hetzner-cloud"), "dns-domains.fetch.hint.other");
 	assert.equal(hintIdOf(undefined), "dns-domains.fetch.hint.other");
 });
