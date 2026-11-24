@@ -277,6 +277,16 @@
 				"$ref": "./paths/nginx/dns-credentials/credentialID/test/post.json"
 			}
 		},
+		"/nginx/dns-credentials/{credentialID}/challenges": {
+			"get": {
+				"$ref": "./paths/nginx/dns-credentials/credentialID/challenges/get.json"
+			}
+		},
+		"/nginx/dns-credentials/{credentialID}/challenges/delete": {
+			"post": {
+				"$ref": "./paths/nginx/dns-credentials/credentialID/challenges/delete/post.json"
+			}
+		},
 		"/nginx/dns-check/hosts": {
 			"get": {
 				"$ref": "./paths/nginx/dns-check/hosts/get.json"

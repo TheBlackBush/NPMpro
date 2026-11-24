@@ -53,6 +53,10 @@
 			"ddns": {
 				"type": "boolean",
 				"description": "Whether dynamic DNS records can be written with a credential of this provider"
+			},
+			"cleans_challenges": {
+				"type": "boolean",
+				"description": "Whether leftover ACME challenge TXT records of a credential of this provider can be listed and deleted"
 			}
 		}
 	}

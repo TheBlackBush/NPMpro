@@ -70,6 +70,18 @@ const errs = {
 		}
 	},
 
+	// the request cannot be done now because of the state of something else (a certificate request is running)
+	ConflictError: class extends Error {
+		name = this.constructor.name;
+		public = true;
+		status = 409;
+
+		constructor(message, messageI18n, options) {
+			super(message, options);
+			this.message_i18n = messageI18n;
+		}
+	},
+
 	// the connection test of a CrowdSec save failed: the answer lists the checks, the UI offers "Save anyway"
 	ConnectionTestError: class extends Error {
 		name = this.constructor.name;

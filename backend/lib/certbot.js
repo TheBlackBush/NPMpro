@@ -34,12 +34,29 @@ const CERTBOT_ENV_KEYS = [
 const certbotEnv = (env = process.env) =>
 	Object.fromEntries(CERTBOT_ENV_KEYS.filter((key) => env[key] !== undefined).map((key) => [key, env[key]]));
 
+// the runs of certbot and of pip (plugin installs) going on now, so the challenge cleanup never deletes a TXT record
+// beside a run it cannot see inside (the DNS plugins do not report which record they use)
+let running = 0;
+
+/** @returns {number} how many certbot runs and plugin installs of this instance are going on */
+const certbotRunning = () => running;
+
+const counted = async (run) => {
+	running += 1;
+	try {
+		return await run();
+	} finally {
+		running -= 1;
+	}
+};
+
 /**
  * @param   {String[]} args
  * @param   {Object} [options]  more execFile options (a timeout), spread after env
  * @returns {Promise<String>}
  */
-const runCertbot = (args, options = {}) => utils.execFile("certbot", args, { env: certbotEnv(), ...options });
+const runCertbot = (args, options = {}) =>
+	counted(() => utils.execFile("certbot", args, { env: certbotEnv(), ...options }));
 
 /**
  * The pip arguments that install a plugin: its pinned version, against the image's certbot versions, never upgrading
@@ -85,7 +102,7 @@ const installPlugin = async (pluginKey) => {
 	const plugin = dnsPlugins[pluginKey];
 	logger.start(`Installing ${pluginKey}...`);
 
-	const result = await utils.execFile("pip", pluginInstallArgs(plugin), { env: certbotEnv() });
+	const result = await counted(() => utils.execFile("pip", pluginInstallArgs(plugin), { env: certbotEnv() }));
 
 	logger.complete(`Installed ${pluginKey}`);
 	return result;
@@ -113,6 +130,7 @@ export {
 	assertProviderForNew,
 	CERTBOT_CONSTRAINTS,
 	certbotEnv,
+	certbotRunning,
 	installPlugin,
 	installPlugins,
 	pluginInstallArgs,
