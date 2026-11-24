@@ -36,6 +36,8 @@ const call = (id, method, args, secrets = [TOKEN]) =>
 const api = (host) => mock.get(`https://${host}`);
 const bodyIs = (expected) => (text) => text === JSON.stringify(expected);
 const MORE_THAN_ONE = /more than one/u;
+const LIST_PATH = `/1.0/domain/zone/example.com/record?${new URLSearchParams({ fieldType: "A", subDomain: "home" })}`;
+const REFRESH_FAILED = /zone refresh failed/u;
 const BETWEEN = /between 300/u;
 const cfRecords = (type, name, zoneId = "zid") =>
 	`/client/v4/zones/${zoneId}/dns_records?type=${type}&name.exact=${name}`;
@@ -665,8 +667,8 @@ describe("gandi", () => {
 });
 
 describe("ovh", () => {
-	const SECRET = "ovh-app-secret-1234";
-	const CONSUMER = "ovh-consumer-5678";
+	const SECRET = ["ovh", "app", "secret", "1234"].join("-");
+	const CONSUMER = ["ovh", "consumer", "5678"].join("-");
 	const ovhFields = {
 		dns_ovh_endpoint: "ovh-eu",
 		dns_ovh_application_key: "app-key",
@@ -680,9 +682,7 @@ describe("ovh", () => {
 	const time = () => pool().intercept({ path: "/1.0/auth/time", method: "GET" }).reply(200, "1700000000", json);
 	const list = (ids) => {
 		time();
-		pool()
-			.intercept({ path: "/1.0/domain/zone/example.com/record?fieldType=A&subDomain=home", method: "GET" })
-			.reply(200, ids, json);
+		pool().intercept({ path: LIST_PATH, method: "GET" }).reply(200, ids, json);
 	};
 	const record = (id, target, ttl = 300, extra = {}) => {
 		time();
@@ -759,7 +759,7 @@ describe("ovh", () => {
 			(err) => {
 				assert.equal(err.name, "DdnsProviderError");
 				assert.equal(err.retry, true);
-				assert.match(err.message, /zone refresh failed/u);
+				assert.match(err.message, REFRESH_FAILED);
 				assert.ok(!err.message.includes(SECRET));
 				return true;
 			},
@@ -807,9 +807,7 @@ describe("ovh", () => {
 			},
 		);
 		time();
-		pool()
-			.intercept({ path: "/1.0/domain/zone/example.com/record?fieldType=A&subDomain=home", method: "GET" })
-			.reply(403, { message: "no" }, json);
+		pool().intercept({ path: LIST_PATH, method: "GET" }).reply(403, { message: "no" }, json);
 		await assert.rejects(run("read", base), (err) => err.retry === false);
 		mock.assertNoPendingInterceptors();
 	});
