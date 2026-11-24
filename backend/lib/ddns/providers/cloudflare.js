@@ -1,4 +1,5 @@
 import { DdnsProviderError } from "../errors.js";
+import { assertChallengeItem, collectChallenges, fullName, PREFIX, settleDelete } from "./challenge-common.js";
 import { jsonHeaders, plainTarget, refuseMultiple, zoneNotFound } from "./record-common.js";
 import { bearer, collectZones, failAnswer, malformed } from "./zone-common.js";
 
@@ -138,8 +139,67 @@ export default {
 			return { meta: { ...next, record_id: res.json?.result?.id ?? null }, created: true };
 		});
 	},
-	listZones: ({ fields, fetch }) =>
+	/**
+	 * After a 401 or 403 of the zone list: the token verify call tells a wrong token (401, code 1000) from a missing
+	 * right; any other answer (an account owned token, a key group) stays "refused". Reads only.
+	 */
+	async verifyRefusal({ fields, fetch }) {
+		if (!fields.dns_cloudflare_api_token) return "refused";
+		const res = await fetch(`${API}/user/tokens/verify`, { headers: authHeaders(fields) });
+		const wrong = res.status === 401 && res.json?.errors?.some?.((error) => error?.code === 1000) === true;
+		return wrong ? "wrong-key" : "refused";
+	},
+	/** The TXT records (and CNAMEs, counted) at or below _acme-challenge: the name filter is a prefix, filtered again here */
+	async listChallenges({ zone, fields, fetch }) {
+		const zoneId = await zoneIdOf({ zone, fields, fetch });
+		return collectChallenges({
+			zone,
+			fetchPage: async (page) => {
+				const res = await fetch(
+					`${API}/zones/${zoneId}/dns_records?name.startswith=${PREFIX}&per_page=100&page=${page}`,
+					{ headers: authHeaders(fields) },
+				);
+				check(res, fields);
+				if (!Array.isArray(res.json?.result)) throw malformed(res, secretsOf(fields));
+				const info = res.json.result_info;
+				return {
+					records: res.json.result.map((record) => ({
+						name: fullName(zone, record?.name),
+						type: record?.type,
+						id: record?.id,
+						values: [record?.content],
+						changed_on: record?.modified_on ?? record?.created_on,
+					})),
+					more: typeof info?.page === "number" && info.page < (info.total_pages ?? 0),
+				};
+			},
+		});
+	},
+	/** Deletes the record by id; an answer that is not a success is checked by a new list (no documented gone answer) */
+	async removeChallenge({ zone, item, fields, fetch }) {
+		assertChallengeItem(zone, item);
+		const zoneId = await zoneIdOf({ zone, fields, fetch });
+		const res = await fetch(`${API}/zones/${zoneId}/dns_records/${encodeURIComponent(item.id)}`, {
+			method: "DELETE",
+			headers: authHeaders(fields),
+		});
+		return settleDelete({
+			res,
+			ok: (answer) => answer.status === 200 && answer.json?.success !== false,
+			recheck: async () => {
+				const again = await fetch(
+					`${API}/zones/${zoneId}/dns_records?type=TXT&name.exact=${encodeURIComponent(item.name)}`,
+					{ headers: authHeaders(fields) },
+				);
+				check(again, fields);
+				return Array.isArray(again.json?.result) && !again.json.result.some((record) => record?.id === item.id);
+			},
+			fail: (answer) => check(answer, fields),
+		});
+	},
+	listZones: ({ fields, fetch, maxPages }) =>
 		collectZones({
+			maxPages,
 			fetchPage: async (page) => {
 				const res = await fetch(`https://api.cloudflare.com/client/v4/zones?page=${page}&per_page=50`, {
 					headers: authHeaders(fields),

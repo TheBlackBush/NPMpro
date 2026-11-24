@@ -1,5 +1,5 @@
 import { DdnsProviderError } from "../errors.js";
-import { collectZones, failAnswer, malformed } from "./zone-common.js";
+import { collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
 const TRAILING_SLASHES = /\/+$/u;
 const TRAILING_DOT = /\.$/u;
@@ -31,8 +31,10 @@ export default {
 	id: "powerdns",
 	label: "PowerDNS",
 	credentialProvider: "powerdns",
-	listZones: ({ fields, fetch }) =>
+	testRefusal: statusRefusal({ 401: "wrong-key" }),
+	listZones: ({ fields, fetch, maxPages }) =>
 		collectZones({
+			maxPages,
 			fetchPage: async () => {
 				const secrets = secretsOf(fields);
 				const base = baseOf(fields.dns_pdns_endpoint);

@@ -1,5 +1,5 @@
 import { DdnsProviderError } from "../errors.js";
-import { collectZones, failAnswer, malformed } from "./zone-common.js";
+import { collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
 const DEFAULT_ENDPOINT = "https://api.hosting.ionos.com";
 const TRAILING_SLASHES = /\/+$/u;
@@ -43,8 +43,10 @@ export default {
 	id: "ionos",
 	label: "IONOS",
 	credentialProvider: "ionos",
-	listZones: ({ fields, fetch }) =>
+	testRefusal: statusRefusal({ 401: "wrong-key" }),
+	listZones: ({ fields, fetch, maxPages }) =>
 		collectZones({
+			maxPages,
 			fetchPage: async () => {
 				const secrets = secretsOf(fields);
 				const res = await fetch(`${baseOf(fields.dns_ionos_endpoint)}/dns/v1/zones`, {

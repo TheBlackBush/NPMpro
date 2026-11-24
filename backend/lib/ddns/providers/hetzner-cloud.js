@@ -1,4 +1,14 @@
 import {
+	assertChallengeItem,
+	changedSet,
+	collectChallenges,
+	fullName,
+	PREFIX,
+	sameValues,
+	settleDelete,
+	unquote,
+} from "./challenge-common.js";
+import {
 	dotted,
 	jsonHeaders,
 	pathName,
@@ -8,7 +18,7 @@ import {
 	relativeName,
 	zoneNotFound,
 } from "./record-common.js";
-import { bearer, collectZones, failAnswer, malformed } from "./zone-common.js";
+import { bearer, collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
 const HINT = "Read and write access to the project's DNS zones";
 const API = "https://api.hetzner.cloud/v1/zones";
@@ -91,8 +101,58 @@ export default {
 		}
 		return { meta: { ...meta }, created: false };
 	},
-	listZones: ({ fields, fetch }) =>
+	testRefusal: statusRefusal({ 401: "wrong-key", 403: "missing-right" }),
+	/** The TXT RRSets of the zone (a set is one item; the name filter is exact, so the prefix is filtered here) */
+	listChallenges({ zone, fields, fetch }) {
+		const headers = bearer(fields.dns_hetzner_cloud_api_token);
+		const zonePath = `${API}/${encodeURIComponent(zone)}/rrsets`;
+		return collectChallenges({
+			zone,
+			fetchPage: async (page) => {
+				const res = await fetch(`${zonePath}?type=TXT&page=${page}&per_page=50`, { headers });
+				check(res, fields);
+				if (!Array.isArray(res.json?.rrsets)) throw malformed(res, secretsOf(fields));
+				return {
+					records: res.json.rrsets.map((rrset) => ({
+						name: fullName(zone, rrset?.name, true),
+						type: rrset?.type,
+						id: null,
+						values: Array.isArray(rrset?.records) ? rrset.records.map((record) => record?.value) : [],
+					})),
+					more: Boolean(res.json.meta?.pagination?.next_page),
+				};
+			},
+			cnames: async () => {
+				const res = await fetch(`${zonePath}?type=CNAME&name=${PREFIX}`, { headers });
+				check(res, fields);
+				if (!Array.isArray(res.json?.rrsets)) throw malformed(res, secretsOf(fields));
+				return res.json.rrsets.filter((rrset) => rrset?.type === "CNAME").length;
+			},
+		});
+	},
+	/**
+	 * Deletes the whole RRSet, but only when it still holds exactly the values the list showed (a value added since
+	 * is another client's and is kept: changed). The delete answers with an action.
+	 */
+	async removeChallenge({ zone, item, fields, fetch }) {
+		assertChallengeItem(zone, item);
+		const current = await getRrset({ zone, name: item.name, type: "TXT", fields, fetch });
+		if (!current) return { gone: true };
+		if (!sameValues(current.records.map(unquote), item.values)) return changedSet();
+		const res = await fetch(rrsetUrl(zone, item.name, "TXT"), {
+			method: "DELETE",
+			headers: bearer(fields.dns_hetzner_cloud_api_token),
+		});
+		return settleDelete({
+			res,
+			ok: (answer) => answer.status >= 200 && answer.status < 300,
+			recheck: async () => (await getRrset({ zone, name: item.name, type: "TXT", fields, fetch })) === null,
+			fail: (answer) => failAnswer(answer, { hint: HINT, secrets: secretsOf(fields) }),
+		});
+	},
+	listZones: ({ fields, fetch, maxPages }) =>
 		collectZones({
+			maxPages,
 			fetchPage: async (page) => {
 				const secrets = [fields.dns_hetzner_cloud_api_token];
 				const res = await fetch(`https://api.hetzner.cloud/v1/zones?page=${page}&per_page=50`, {

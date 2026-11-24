@@ -1,4 +1,4 @@
-import { bearer, collectZones, failAnswer, malformed } from "./zone-common.js";
+import { bearer, collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
 const PER_PAGE = 500;
 const HINT = "The IP access control list of the API key";
@@ -8,9 +8,11 @@ export default {
 	id: "vultr",
 	label: "Vultr",
 	credentialProvider: "vultr",
-	listZones: ({ fields, fetch }) => {
+	testRefusal: statusRefusal({ 401: "wrong-key" }),
+	listZones: ({ fields, fetch, maxPages }) => {
 		let cursor = "";
 		return collectZones({
+			maxPages,
 			fetchPage: async () => {
 				const secrets = [fields.dns_vultr_key];
 				const query = `per_page=${PER_PAGE}${cursor === "" ? "" : `&cursor=${encodeURIComponent(cursor)}`}`;

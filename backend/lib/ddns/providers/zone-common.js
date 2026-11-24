@@ -51,13 +51,15 @@ const failAnswer = (res, { hint, secrets, refused = false, refusedRetryAfterMs }
  *
  * @param   {Object}   options
  * @param   {Function} options.fetchPage  (page) => Promise<{ names: unknown[], more: boolean }>
+ * @param   {number}   [options.maxPages]  at most this many page calls (default 25; the credential Test asks for 1)
  * @returns {Promise<String[]>}
  */
-const collectZones = async ({ fetchPage }) => {
+const collectZones = async ({ fetchPage, maxPages = MAX_PAGES }) => {
+	const pageLimit = Math.min(Math.max(1, Math.trunc(maxPages) || MAX_PAGES), MAX_PAGES);
 	const found = new Set();
 	let truncated = false;
 	let previous = null;
-	for (let page = 1; page <= MAX_PAGES; page++) {
+	for (let page = 1; page <= pageLimit; page++) {
 		const { names, more } = await fetchPage(page);
 		const key = JSON.stringify(names);
 		const repeated = key === previous;
@@ -72,7 +74,7 @@ const collectZones = async ({ fetchPage }) => {
 		}
 		if (!more) break;
 		// the cap stops paging while the provider still has more
-		if (page === MAX_PAGES) truncated = true;
+		if (page === pageLimit) truncated = true;
 	}
 	const sorted = [...found].sort((a, b) => a.localeCompare(b));
 	const zones = sorted.slice(0, MAX_ZONES);
@@ -85,4 +87,13 @@ const malformed = (res, secrets) =>
 
 const bearer = (token) => ({ Authorization: `Bearer ${token}`, Accept: "application/json" });
 
-export { bearer, collectZones, failAnswer, malformed };
+/**
+ * The Test answer for a refused call, by the provider's HTTP status (Task 8a.1 mapping); a status not in the map,
+ * or a provider that cannot tell the two apart, is "refused"
+ *
+ * @param   {Object<number, "wrong-key"|"missing-right">} map
+ * @returns {(err: Error) => "wrong-key"|"missing-right"|"refused"}
+ */
+const statusRefusal = (map) => (err) => map[err?.providerStatus] ?? "refused";
+
+export { bearer, collectZones, failAnswer, malformed, statusRefusal };

@@ -36,8 +36,12 @@ after(() => {
 
 const json = { headers: { "content-type": "application/json" } };
 const TOKEN = "tok-secret-1234";
-const run = (id, fields, secrets = [TOKEN]) =>
-	providerById(id).listZones({ fields, fetch: (url, options) => providerFetch(url, { ...options, secrets }) });
+const run = (id, fields, secrets = [TOKEN], extra = {}) =>
+	providerById(id).listZones({
+		fields,
+		fetch: (url, options) => providerFetch(url, { ...options, secrets }),
+		...extra,
+	});
 const intercept = (host, path, headers) => mock.get(`https://${host}`).intercept({ path, method: "GET", headers });
 const bearerOf = (token) => ({ authorization: `Bearer ${token}` });
 
@@ -191,6 +195,15 @@ for (const [id, c] of Object.entries(CASES)) {
 		const zones = await run(id, c.fields);
 		assert.equal(zones.length, 1000);
 		assert.equal(zones.truncated, true);
+		mock.assertNoPendingInterceptors();
+	});
+
+	it(`${id}: maxPages 1 makes one page call (a listing that has more is marked truncated)`, async () => {
+		const names = zoneNames(0, c.single === true ? 3 : c.perPage);
+		intercept(c.host, c.path(1), c.headers).reply(200, c.body(names, 1, 2), replyOf(c, 1, 2));
+		const zones = await run(id, c.fields, [TOKEN], { maxPages: 1 });
+		assert.equal(zones.length, names.length);
+		assert.equal(zones.truncated, c.single === true ? undefined : true);
 		mock.assertNoPendingInterceptors();
 	});
 
@@ -786,4 +799,38 @@ it("a list that ends before its deadline is returned, the secrets scrubbed from 
 		listProviderZones(providerById("cloudflare"), { fields: cf.fields, secrets: [TOKEN] }),
 		(err) => err.code === "failed" && !err.message.includes(TOKEN),
 	);
+});
+
+it("porkbun: maxPages 1 makes one call", async () => {
+	pbList(0).reply(200, pbOk(pbDomains(0, 1000)), json);
+	const zones = await run("porkbun", PB, PB_SECRETS, { maxPages: 1 });
+	assert.equal(zones.length, 1000);
+	assert.equal(zones.truncated, true);
+	mock.assertNoPendingInterceptors();
+});
+
+it("powerdns: maxPages 1 makes one call", async () => {
+	intercept("pdns.example.org", "/api/v1/servers/localhost/zones", pdnsHeaders).reply(
+		200,
+		[{ name: "a.example.org." }],
+		json,
+	);
+	const zones = await run("powerdns", PDNS, [TOKEN], { maxPages: 1 });
+	assert.deepEqual([...zones], ["a.example.org"]);
+	mock.assertNoPendingInterceptors();
+});
+
+it("ovh: maxPages 1 makes the one zone list call", async () => {
+	const pool = mock.get("https://eu.api.ovh.com");
+	pool.intercept({ path: "/1.0/auth/time", method: "GET" }).reply(200, "1700000000", json);
+	pool.intercept({ path: "/1.0/domain/zone", method: "GET" }).reply(200, ["a.example.org"], json);
+	const fields = {
+		dns_ovh_endpoint: "ovh-eu",
+		dns_ovh_application_key: "app-key",
+		dns_ovh_application_secret: "ovh-app-secret-1234",
+		dns_ovh_consumer_key: "ovh-consumer-5678",
+	};
+	const zones = await run("ovh", fields, ["ovh-app-secret-1234"], { maxPages: 1 });
+	assert.deepEqual([...zones], ["a.example.org"]);
+	mock.assertNoPendingInterceptors();
 });
