@@ -1,18 +1,23 @@
 #!/bin/sh
 # Installs the NPMpro parser, scenarios and alert context into a CrowdSec container as local items, until the
 # collection TheBlackBush/npmpro is on the CrowdSec hub. Run it inside the CrowdSec container, for example:
-#   curl -fsSL https://raw.githubusercontent.com/TheBlackBush/NPMpro/develop/scripts/crowdsec-npmpro.sh | docker exec -i crowdsec sh
-# Options (after "sh -s --" when piped): --remove deletes the local items again, --help shows the usage.
+#   curl -fsSL https://raw.githubusercontent.com/TheBlackBush/NPMpro/<release tag>/scripts/crowdsec-npmpro.sh | docker exec -i crowdsec sh
+# (before the first release, use develop in place of the tag). Options, after "sh -s --" when piped: --remove deletes
+# the local items again, --help shows the usage.
 # The items are part of this file, so nothing else is downloaded; cscli installs the hub items they need.
 set -eu
 
 ITEMS_COMMIT="39fa787"
 CONF="${CROWDSEC_CONFIG_DIR:-/etc/crowdsec}"
+CONF="${CONF%/}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 HUB_COLLECTIONS="crowdsecurity/base-http-scenarios crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules crowdsecurity/appsec-wordpress crowdsecurity/wordpress"
 HUB_PARSERS="crowdsecurity/syslog-logs crowdsecurity/dateparse-enrich"
 HUB_SCENARIOS="crowdsecurity/nginx-req-limit-exceeded"
 LOCAL_FILES="parsers/s01-parse/npmpro-logs.yaml scenarios/npmpro-login-bf.yaml scenarios/npmpro-bad-requests.yaml scenarios/npmpro-stream-flood.yaml scenarios/npmpro-tls-probe.yaml scenarios/npmpro-stream-tls-probe.yaml contexts/npmpro.yaml"
+# an acquisition line with the old log type, also quoted or with a comment after it
+OLD_TYPE='^([[:space:]]*type:[[:space:]]*["'"'"']?)npmplus(["'"'"']?[[:space:]]*(#.*)?)$'
+NEW_TYPE='^[[:space:]]*type:[[:space:]]*["'"'"']?npmpro["'"'"']?[[:space:]]*(#.*)?$'
 
 say() { printf '%s\n' "$*"; }
 warn() { printf 'Warning: %s\n' "$*" >&2; }
@@ -41,37 +46,54 @@ put() {
 	target="$CONF/$1"
 	tmp="$(mktemp)"
 	cat >"$tmp"
-	mkdir -p "$(dirname "$target")"
 	if [ -f "$target" ] && cmp -s "$tmp" "$target"; then
 		rm -f "$tmp"
 		say "  $target is current"
 		return
 	fi
-	if [ -f "$target" ]; then backup "$1"; fi
-	cat "$tmp" >"$target"
+	if [ -f "$target" ]; then backup "$1" || {
+		rm -f "$tmp"
+		fail "could not back up $target"
+	}; fi
+	{ mkdir -p "$(dirname "$target")" && cat "$tmp" >"$target"; } || {
+		rm -f "$tmp"
+		fail "could not write $target"
+	}
 	rm -f "$tmp"
 	say "  wrote $target"
 }
 
 # 1.6.4 or newer reads the alert context (older versions refuse to start with it)
 context_supported() {
-	version="$(cscli version 2>&1 | sed -n 's/^version: v\{0,1\}\([0-9][0-9.]*\).*/\1/p' | head -n 1)"
-	major="$(printf '%s' "$version" | cut -d. -f1)"
-	minor="$(printf '%s' "$version" | cut -d. -f2)"
-	patch="$(printf '%s' "$version" | cut -d. -f3)"
-	[ -n "$major" ] || return 1
+	version="$(cscli version </dev/null 2>&1 | sed -n 's/^version: v\{0,1\}\([0-9][0-9.]*\).*/\1/p' | head -n 1)"
+	[ -n "$version" ] || return 1
+	# shellcheck disable=SC2046 # split into major, minor and patch on purpose
+	set -- $(printf '%s.0.0' "$version" | tr '.' ' ')
+	major="$1" minor="$2" patch="$3"
 	[ "$major" -gt 1 ] && return 0
 	[ "$major" -eq 1 ] || return 1
-	[ "${minor:-0}" -gt 6 ] && return 0
-	[ "${minor:-0}" -eq 6 ] && [ "${patch:-0}" -ge 4 ]
+	[ "$minor" -gt 6 ] && return 0
+	[ "$minor" -eq 6 ] && [ "$patch" -ge 4 ]
+}
+
+# true when $CONF is a mount point or lies below one (other than /)
+config_mounted() {
+	awk -v dir="$CONF" '$5 != "/" && (dir == $5 || index(dir, $5 "/") == 1) { found = 1 } END { exit !found }' /proc/self/mountinfo
 }
 
 check_container() {
 	command -v cscli >/dev/null 2>&1 || fail "cscli was not found: run this script inside the CrowdSec container (docker exec -i crowdsec sh)"
 	[ -f "$CONF/config.yaml" ] || fail "$CONF/config.yaml was not found: set CROWDSEC_CONFIG_DIR to the CrowdSec config folder"
-	if [ -r /proc/self/mountinfo ] && ! awk -v dir="$CONF" '$5 == dir { found = 1 } END { exit !found }' /proc/self/mountinfo; then
+	if [ -r /proc/self/mountinfo ] && ! config_mounted; then
 		warn "$CONF is not a mounted folder: the items are lost when the container is recreated. Mount it from the host (see the NPMpro wiki, CrowdSec) and run this script again."
 	fi
+}
+
+# prints the acquisition backups this script made, if any
+acquisition_backups() {
+	for copy in "$CONF"/npmpro-backup/*/acquis.yaml "$CONF"/npmpro-backup/*/acquis.d/*; do
+		if [ -f "$copy" ]; then say "    $copy"; fi
+	done
 }
 
 remove() {
@@ -79,31 +101,41 @@ remove() {
 	say "Removing the local NPMpro items from $CONF"
 	for file in $LOCAL_FILES; do
 		target="$CONF/$file"
-		if [ -f "$target" ]; then
-			backup "$file"
-			rm -f "$target"
-			say "  removed $target"
+		[ -e "$target" ] || continue
+		if [ -L "$target" ] || ! grep -qi npmpro "$target"; then
+			warn "$target is not an NPMpro item written by this script (a link, or other content): left in place"
+			continue
 		fi
+		backup "$file"
+		rm -f "$target"
+		say "  removed $target"
 	done
 	say ""
 	say "Done. The acquisition keeps type: npmpro, which the hub collection reads too."
 	say "Install the collection from the hub (cscli collections install TheBlackBush/npmpro, or add it to the"
 	say "COLLECTIONS variable of the container) and restart the CrowdSec container."
+	say "Without the NPMpro parser, type: npmpro reads nothing: to go back to the old setup, copy the acquisition"
+	say "files this script changed back from:"
+	acquisition_backups
 }
 
 switch_acquisition() {
 	found=""
 	for file in "$CONF/acquis.yaml" "$CONF"/acquis.d/*.yaml "$CONF"/acquis.d/*.yml; do
 		[ -f "$file" ] || continue
-		if grep -Eq '^[[:space:]]*type:[[:space:]]*npmplus[[:space:]]*$' "$file"; then
+		if grep -Eq "$OLD_TYPE" "$file"; then
 			backup "${file#"$CONF"/}"
-			sed -i 's/^\([[:space:]]*type:[[:space:]]*\)npmplus[[:space:]]*$/\1npmpro/' "$file"
+			tmp="$(mktemp)"
+			sed -E "s/$OLD_TYPE/\\1npmpro\\2/" "$file" >"$tmp"
+			# written through the file, so a file mounted on its own keeps working
+			cat "$tmp" >"$file"
+			rm -f "$tmp"
 			say "  $file: type npmplus is now type npmpro"
 		fi
-		if grep -Eq '^[[:space:]]*type:[[:space:]]*npmpro[[:space:]]*$' "$file"; then found="yes"; fi
+		if grep -Eq "$NEW_TYPE" "$file"; then found="yes"; fi
 	done
 	if [ -z "$found" ]; then
-		warn "no acquisition file with type: npmpro was found. Create $CONF/acquis.d/npmpro.yaml as step 4 of the NPMpro wiki page CrowdSec shows, with type: npmpro."
+		warn "no acquisition file with type: npmpro was found. Check the type line of your acquisition file (step 4 of the NPMpro wiki page CrowdSec), it must read type: npmpro."
 	fi
 }
 
@@ -111,13 +143,13 @@ install() {
 	check_container
 	say "Installing the NPMpro items (hub branch commit $ITEMS_COMMIT) into $CONF"
 	say "Hub items they need:"
-	cscli hub update >/dev/null
+	cscli hub update </dev/null >/dev/null || fail "cscli hub update failed: check that the container reaches the internet and run this script again"
 	# shellcheck disable=SC2086 # the lists are space separated on purpose
-	cscli collections install $HUB_COLLECTIONS
+	cscli collections install $HUB_COLLECTIONS </dev/null || fail "cscli could not install the collections $HUB_COLLECTIONS; nothing local was changed yet, run this script again"
 	# shellcheck disable=SC2086
-	cscli parsers install $HUB_PARSERS
+	cscli parsers install $HUB_PARSERS </dev/null || fail "cscli could not install the parsers $HUB_PARSERS; nothing local was changed yet, run this script again"
 	# shellcheck disable=SC2086
-	cscli scenarios install $HUB_SCENARIOS
+	cscli scenarios install $HUB_SCENARIOS </dev/null || fail "cscli could not install the scenario $HUB_SCENARIOS; nothing local was changed yet, run this script again"
 	say "Local items:"
 	write_items
 	if context_supported; then
@@ -128,10 +160,12 @@ install() {
 	say "Acquisition:"
 	switch_acquisition
 	say "Checking the configuration:"
-	if crowdsec -c "$CONF/config.yaml" -t >/dev/null 2>&1; then
+	if check="$(crowdsec -c "$CONF/config.yaml" -t </dev/null 2>&1)"; then
 		say "  the configuration is valid"
 	else
-		warn "crowdsec -t found an error. Run 'crowdsec -c $CONF/config.yaml -t' to see it; this script with --remove takes the items out again."
+		printf '%s\n' "$check" | tail -n 15 >&2
+		warn "crowdsec -t found the error above. Do not restart CrowdSec yet. This script with --remove takes the items out again."
+		if [ -d "$CONF/npmpro-backup/$STAMP" ]; then warn "The files this run replaced are in $CONF/npmpro-backup/$STAMP/."; fi
 		exit 1
 	fi
 	say ""

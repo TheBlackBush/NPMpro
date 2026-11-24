@@ -101,7 +101,7 @@ labels:
   type: appsec
 ```
 
-- The first part reads the access log. `type: npmplus` selects the parser of the collection; keep it exactly like this.
+- The first part reads the access log. `type: npmplus` selects the parser of the collection; keep it exactly like this (the script of [Install the NPMpro items before they are on the hub](#install-the-npmpro-items-before-they-are-on-the-hub) changes it to `type: npmpro`, which its parser reads).
 - The second part (after `---`) starts the AppSec listener on port 7422 inside the CrowdSec container. `0.0.0.0` is correct here: it is the address inside the container, and step 1 publishes the port on `127.0.0.1` of the host only.
 - If you do not want AppSec, leave out everything from `---` on, and leave the AppSec URL empty in step 7.
 
@@ -235,7 +235,7 @@ Until the collection `TheBlackBush/npmpro` is on the CrowdSec hub, the script `s
 curl -fsSL https://raw.githubusercontent.com/TheBlackBush/NPMpro/develop/scripts/crowdsec-npmpro.sh | docker exec -i crowdsec sh
 ```
 
-Replace `crowdsec` with the name of your CrowdSec container. Without `curl` on the host, use `wget -qO- <the same URL>`. To read the script before you run it, download it first (`curl -fsSL -o crowdsec-npmpro.sh <URL>`), then run `docker exec -i crowdsec sh < crowdsec-npmpro.sh`. The items are written into the script itself, so it downloads nothing else.
+Replace `crowdsec` with the name of your CrowdSec container. From the first NPMpro release on, put its tag in place of `develop` in the URL (for example `.../NPMpro/v1.0.0/scripts/...`), so you run a fixed version of the script. Without `curl` on the host, use `wget -qO- <the same URL>`. To read the script before you run it, download it first (`curl -fsSL -o crowdsec-npmpro.sh <URL>`), then run `docker exec -i crowdsec sh < crowdsec-npmpro.sh`. The items are written into the script itself, so it downloads nothing else.
 
 The script:
 
