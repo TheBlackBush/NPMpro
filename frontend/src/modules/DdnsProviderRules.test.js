@@ -40,7 +40,7 @@ const PROVIDERS = [
 		preset: true,
 		ipv6: false,
 	},
-	{ ...base, id: "noip", label: "No-IP", credentialProvider: null, zoneless: true, preset: true },
+	{ ...base, id: "noip", label: "No-IP", credentialProvider: null, zoneless: true, preset: true, ipv6Alone: false },
 	{ ...base, id: "dynu", label: "Dynu", credentialProvider: null, zoneless: true, preset: true },
 	{ ...base, id: "custom", label: "Custom HTTP", credentialProvider: null, zoneless: true, adminOnly: true },
 ];

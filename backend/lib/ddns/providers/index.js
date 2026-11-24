@@ -63,6 +63,7 @@ const PROVIDER_LIST = Object.freeze(
 			record_types: provider.recordTypes,
 			proxied: provider.proxied,
 			ipv6: provider.ipv6,
+			ipv6_alone: provider.ipv6Alone !== false,
 			admin_only: provider.adminOnly,
 			wildcards: provider.wildcards,
 			aliases: provider.aliases === true,

@@ -2,9 +2,6 @@
 // provider flags of GET /nginx/ddns/providers (zoneless, preset, aliases, wildcards, ipv6, minTtl, adminOnly). Pure.
 
 const IP_VERSION_ALL = Object.freeze(["ipv4", "ipv6", "both"]);
-// No-IP documents no way to keep the IPv4 part unchanged, so "IPv6 alone" is refused (the backend's ipv6Alone flag,
-// which the provider list does not carry)
-const IPV6_ALONE_REFUSED = Object.freeze(["noip"]);
 const CUSTOM = "custom";
 // the choice of a saved DNS credential, whose provider decides the rest
 const CREDENTIAL = "credential";
@@ -70,7 +67,7 @@ const providerFieldsOf = (provider) => {
 	const zoneless = provider.zoneless === true;
 	let ipVersions = [...IP_VERSION_ALL];
 	if (provider.ipv6 === false) ipVersions = ["ipv4"];
-	else if (IPV6_ALONE_REFUSED.includes(provider.id)) ipVersions = ["ipv4", "both"];
+	else if (provider.ipv6Alone === false) ipVersions = ["ipv4", "both"];
 	let fields = [];
 	if (isCustom(provider)) fields = ["url", "method", "expect"];
 	else if (isPreset(provider)) fields = [...(PRESET_FIELDS[provider.id] ?? [])];
@@ -104,7 +101,6 @@ export {
 	CREDENTIAL,
 	CUSTOM,
 	credentiallessChoices,
-	IPV6_ALONE_REFUSED,
 	isCustom,
 	isPreset,
 	PRESET_FIELDS,

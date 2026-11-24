@@ -10,6 +10,7 @@
 			"record_types",
 			"proxied",
 			"ipv6",
+			"ipv6_alone",
 			"admin_only",
 			"wildcards",
 			"aliases",
@@ -60,6 +61,11 @@
 				"type": "boolean",
 				"example": true,
 				"description": "Whether it writes AAAA records"
+			},
+			"ipv6_alone": {
+				"type": "boolean",
+				"example": true,
+				"description": "Whether a record of IPv6 alone is allowed (false: IPv4 or both only, as No-IP)"
 			},
 			"admin_only": {
 				"type": "boolean",

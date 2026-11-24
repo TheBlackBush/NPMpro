@@ -433,11 +433,10 @@ function AccountFields({ provider, stored }) {
 					autoComplete="new-password"
 					label={<T id="ddns.field.url" />}
 					hint={
-						saved ? (
-							keep
-						) : (
+						<>
+							{saved ? <>{keep} </> : null}
 							<T id="ddns.field.url.hint" data={{ placeholders: "{ip}, {ipv4}, {ipv6}, {name}" }} />
-						)
+						</>
 					}
 					required={!saved}
 				/>
@@ -632,7 +631,10 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 							{customHidden ? (
 								<CustomRecordRow
 									stored={stored}
-									label={providers.find((entry) => entry.id === "custom")?.label ?? "custom"}
+									label={
+										providers.find((entry) => entry.id === "custom")?.label ??
+										intl.formatMessage({ id: "ddns.provider.custom" })
+									}
 								/>
 							) : (
 								<RecordFields

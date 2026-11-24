@@ -71,6 +71,7 @@ describe("registry", () => {
 			record_types: ["A", "AAAA", "CNAME"],
 			proxied: true,
 			ipv6: true,
+			ipv6_alone: true,
 			admin_only: false,
 			wildcards: true,
 			aliases: true,
@@ -91,6 +92,10 @@ describe("registry", () => {
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.apex),
 			[true, true, true, true, false, true, true, true, true, true, true, true],
+		);
+		assert.deepEqual(
+			PROVIDER_LIST.filter((p) => !p.ipv6_alone).map((p) => p.id),
+			["noip"],
 		);
 		assert.equal(PROVIDER_LIST.filter((p) => p.proxied).length, 1);
 		assert.deepEqual(

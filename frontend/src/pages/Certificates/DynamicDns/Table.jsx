@@ -5,7 +5,7 @@ import { Button, EmptyData, HasPermission, RowActions, StatusBadge, ValueWithDat
 import { TableLayout } from "src/components/Table/TableLayout";
 import { PagedTable } from "src/components/Table/TablePagination";
 import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
-import { useCanManage, useDdnsProviders } from "src/hooks";
+import { useCanManage, useDdnsProviders, useIsAdmin } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDdnsRecordModal } from "src/modals";
 import { IP_VERSIONS, recordStateOf } from "src/modules/DdnsForms";
@@ -14,7 +14,9 @@ import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { ddnsErrorText } from "./errorText";
 
 function RecordActions({ record, updating, onEdit, onUpdateNow, onHistory, onToggle, onDelete }) {
-	const canManage = useCanManage(CERTIFICATES);
+	// a custom HTTP record belongs to the administrators: anyone else may only view it
+	const isAdmin = useIsAdmin();
+	const canManage = useCanManage(CERTIFICATES) && !(record.provider === "custom" && isAdmin === false);
 	return (
 		<RowActions
 			// names the row, so the buttons of a list are told apart

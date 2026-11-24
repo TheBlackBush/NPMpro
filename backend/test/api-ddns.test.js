@@ -466,6 +466,8 @@ it("counts only the enabled records the user can see, and lists the providers wi
 	assert.equal(byId.ovh.aliases, false);
 	assert.equal(byId.ovh.apex, false);
 	assert.equal(byId.ovh.min_ttl, null);
+	assert.equal(byId.noip.ipv6_alone, false);
+	assert.equal(byId.cloudflare.ipv6_alone, true);
 	assert.equal(byId.desec.min_ttl, 3600);
 	assert.equal(byId.desec.aliases, false);
 	assert.equal(byId.porkbun.min_ttl, 600);
