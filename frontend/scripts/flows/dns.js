@@ -874,9 +874,10 @@ async function checkHost({ admin, browser, base, viewerPassword }) {
 			throw new Error(`the check line shows ${result}`);
 		console.log(`dns check: ${CHECK_HOST} is ${result}`);
 		await closeWindow(page, dialog);
-		// the list shows the badge of the result in the host's own row (other hosts may be on the page too)
+		// the list shows the badge of the result in the host's own row (other hosts may be on the page too; a row holds a
+		// second, hidden copy of its cells for the phone layout, so the visible one is waited for)
 		await revealRow(page, CHECK_HOST);
-		await rowOf(page, CHECK_HOST).locator("[data-dns-check]").first().waitFor();
+		await rowOf(page, CHECK_HOST).locator("[data-dns-check]").filter({ visible: true }).first().waitFor();
 		// Check DNS on the list checks the page (with any other host on it) and says so; the request holds this host
 		const host = created.id;
 		const sent = page.waitForRequest(
@@ -889,7 +890,7 @@ async function checkHost({ admin, browser, base, viewerPassword }) {
 			page.locator("[data-dns-check-page]").filter({ visible: true }).first().click(),
 		);
 		await sent;
-		await rowOf(page, CHECK_HOST).locator("[data-dns-check]").first().waitFor();
+		await rowOf(page, CHECK_HOST).locator("[data-dns-check]").filter({ visible: true }).first().waitFor();
 
 		// a limited user: the fields stay disabled, Check works, there is no Save
 		const viewer = await signIn(browser, base, VIEWER_EMAIL, viewerPassword);
