@@ -13,6 +13,9 @@ import {
 	HasPermission,
 	HookForm,
 	Loading,
+	NoticeAlert,
+	PasswordField,
+	SelectField,
 	SuggestionRow,
 	SwitchField,
 	TextField,
@@ -29,6 +32,7 @@ import {
 	useDdnsRecord,
 	useDnsCredentials,
 	useDomainSuggestions,
+	useIsAdmin,
 	useSetDdnsRecord,
 	useUnsavedChangesGuard,
 	useUser,
@@ -36,16 +40,25 @@ import {
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import {
+	chosenProvider,
 	ddnsRecordPayload,
 	ddnsRecordValidate,
 	ddnsRulesInput,
 	IP_VERSIONS,
 	minTtlOf,
 	normalizeRecordName,
-	providerOf,
 	suggestedZone,
 	zoneFor,
 } from "src/modules/DdnsForms";
+import {
+	CREDENTIAL,
+	credentiallessChoices,
+	isCustom,
+	providerFieldsOf,
+	providerIdOf,
+	providerNoteOf,
+	withoutCredential,
+} from "src/modules/DdnsProviderRules";
 import { challengeSuggestion, suggestionStep } from "src/modules/DnsChallengeSuggestion";
 import { displayDomain } from "src/modules/DnsDomainForms";
 import { domainSuggestions } from "src/modules/DomainSuggestions";
@@ -77,9 +90,22 @@ const emptyRecord = {
 	ipv6Suffix: "",
 	ttl: "",
 	enabled: true,
+	providerId: CREDENTIAL,
+	url: "",
+	method: "GET",
+	expect: "",
+	username: "",
+	password: "",
+	domain: "",
 };
 
-const toForm = (record) => ({
+// the write-only fields (url, username, password) come back empty: a saved one is told by urlSet and secretSet
+const toForm = (record, providers) => ({
+	...emptyRecord,
+	providerId: providerIdOf(record, providers),
+	method: record.method ?? "GET",
+	expect: record.expect ?? "",
+	domain: record.domain ?? "",
 	name: record.name,
 	credentialId: record.dnsCredentialId ?? undefined,
 	zone: record.zone ?? "",
@@ -253,24 +279,27 @@ function KindField() {
 	);
 }
 
-function AddressFields() {
+function AddressFields({ ipVersions }) {
 	const { field } = useController({ name: "ipVersion" });
+	const { setValue } = useFormContext();
 	const ipVersion = useWatch({ name: "ipVersion" });
+	// the provider takes some IP versions only: a version it does not take gives way to its first
+	useEffect(() => {
+		if (!ipVersions.includes(ipVersion)) setValue("ipVersion", ipVersions[0], { shouldDirty: false });
+	}, [ipVersions, ipVersion, setValue]);
 	return (
 		<>
-			<ChoiceGroup
-				name="ipVersion"
-				legend={<T id="ddns.column.ip-version" />}
-				options={[
-					{ value: "ipv4", label: IP_VERSIONS.ipv4 },
-					{ value: "ipv6", label: IP_VERSIONS.ipv6 },
-					{ value: "both", label: IP_VERSIONS.both },
-				]}
-				value={field.value}
-				inputRef={field.ref}
-				onBlur={field.onBlur}
-				onChange={field.onChange}
-			/>
+			{ipVersions.length > 1 ? (
+				<ChoiceGroup
+					name="ipVersion"
+					legend={<T id="ddns.column.ip-version" />}
+					options={ipVersions.map((value) => ({ value, label: IP_VERSIONS[value] }))}
+					value={field.value}
+					inputRef={field.ref}
+					onBlur={field.onBlur}
+					onChange={field.onChange}
+				/>
+			) : null}
 			{ipVersion === "ipv4" ? null : (
 				<TextField
 					name="ipv6Suffix"
@@ -335,49 +364,183 @@ function TargetField({ zones, names }) {
 	);
 }
 
-function RecordFields({ stored, prefilled, providers, credentials, zones, names, ownerUserId, userId }) {
+// the provider: a saved DNS credential, or a service that takes its details in the record; fixed on an edit
+function ProviderField({ choices, isNew }) {
+	return (
+		<SelectField
+			name="providerId"
+			id="ddnsProvider"
+			label={<T id="ddns.provider" />}
+			hint={<T id="ddns.provider.hint" />}
+			disabled={!isNew}
+		>
+			<option value={CREDENTIAL}>{intl.formatMessage({ id: "ddns.provider.credential" })}</option>
+			{choices.map((choice) => (
+				<option key={choice.id} value={choice.id}>
+					{choice.label}
+				</option>
+			))}
+		</SelectField>
+	);
+}
+
+// the account details of a preset and the custom provider's URL: write-only, a saved one stays when left empty
+function AccountFields({ provider, stored }) {
+	const shown = providerFieldsOf(provider);
+	const saved = provider && isCustom(provider) ? stored?.urlSet === true : stored?.secretSet === true;
+	const keep = <T id="ddns.field.saved-keep" />;
+	const common = { autoComplete: "off", spellCheck: false };
+	return (
+		<>
+			{shown.fields.includes("domain") ? (
+				<TextField
+					{...common}
+					name="domain"
+					id="ddnsDomain"
+					label={<T id="ddns.field.domain" />}
+					hint={<T id="ddns.field.domain.hint" />}
+					required
+				/>
+			) : null}
+			{shown.fields.includes("username") ? (
+				<TextField
+					{...common}
+					name="username"
+					id="ddnsUsername"
+					label={<T id="ddns.field.username" />}
+					hint={saved ? keep : undefined}
+					required={!saved}
+				/>
+			) : null}
+			{shown.fields.includes("password") ? (
+				<PasswordField
+					{...common}
+					name="password"
+					id="ddnsPassword"
+					autoComplete="new-password"
+					label={
+						<T id={provider.id === "namecheap" ? "ddns.field.password-namecheap" : "ddns.field.password"} />
+					}
+					hint={saved ? keep : undefined}
+					required={!saved}
+				/>
+			) : null}
+			{shown.fields.includes("url") ? (
+				<PasswordField
+					{...common}
+					name="url"
+					id="ddnsUrl"
+					autoComplete="new-password"
+					label={<T id="ddns.field.url" />}
+					hint={
+						saved ? (
+							keep
+						) : (
+							<T id="ddns.field.url.hint" data={{ placeholders: "{ip}, {ipv4}, {ipv6}, {name}" }} />
+						)
+					}
+					required={!saved}
+				/>
+			) : null}
+			{shown.fields.includes("method") ? (
+				<SelectField name="method" id="ddnsMethod" label={<T id="ddns.field.method" />}>
+					<option value="GET">GET</option>
+					<option value="POST">POST</option>
+				</SelectField>
+			) : null}
+			{shown.fields.includes("expect") ? (
+				<TextField
+					{...common}
+					name="expect"
+					id="ddnsExpect"
+					label={<T id="ddns.field.expect" />}
+					hint={<T id="ddns.field.expect.hint" />}
+				/>
+			) : null}
+		</>
+	);
+}
+
+function RecordFields({ stored, prefilled, providers, credentials, zones, names, ownerUserId, userId, isAdmin }) {
 	const { register } = useFormContext();
 	const credentialId = useWatch({ name: "credentialId" });
+	const providerId = useWatch({ name: "providerId" });
 	const kind = useWatch({ name: "kind" });
-	const credential = (credentials ?? []).find((c) => c.id === credentialId);
-	const provider = providerOf(credential, providers);
+	const provider = chosenProvider({ providerId, credentialId }, providers, credentials);
+	const own = withoutCredential(providerId);
+	const shown = providerFieldsOf(provider);
+	const note = providerNoteOf(provider);
+	const choices = useMemo(() => credentiallessChoices(providers, isAdmin), [providers, isAdmin]);
 	const canUse = useMemo(() => (c) => providers.some((p) => p.credentialProvider === c.provider), [providers]);
 	return (
 		<>
-			<NameField wildcards={Boolean(provider?.wildcards)} zones={zones.suggestion} names={names} />
-			<CredentialField
-				ownerUserId={ownerUserId}
-				canUse={canUse}
-				zones={zones.suggestion}
-				credentials={credentials}
-				userId={userId}
-				// a credential a suggestion filled in stays chosen: the automatic pick only fills an empty one
-				isNew={!(stored || prefilled)}
-			/>
-			<ZoneField zones={zones.match} credentials={credentials} stored={stored} />
-			<KindField />
-			{kind === "alias" ? <TargetField zones={zones.suggestion} names={names} /> : <AddressFields />}
-			<TextField
-				name="ttl"
-				id="ddnsTtl"
-				label={<T id="ddns.ttl" />}
-				hint={
-					provider ? (
-						<T id="ddns.ttl.hint-min" data={{ min: minTtlOf(provider), provider: provider.label }} />
-					) : (
-						<T id="ddns.ttl.hint" />
-					)
-				}
-				inputMode="numeric"
-				autoComplete="off"
-				placeholder={intl.formatMessage({ id: "ddns.ttl.placeholder" })}
-			/>
+			<NameField wildcards={shown.wildcard} zones={zones.suggestion} names={names} />
+			<ProviderField choices={choices} isNew={!stored} />
+			{own ? (
+				<AccountFields provider={provider} stored={stored} />
+			) : (
+				<>
+					<CredentialField
+						ownerUserId={ownerUserId}
+						canUse={canUse}
+						zones={zones.suggestion}
+						credentials={credentials}
+						userId={userId}
+						// a credential a suggestion filled in stays chosen: the automatic pick only fills an empty one
+						isNew={!(stored || prefilled)}
+					/>
+					{shown.zone ? <ZoneField zones={zones.match} credentials={credentials} stored={stored} /> : null}
+				</>
+			)}
+			{note ? (
+				<NoticeAlert variant="info" className="mb-3">
+					<T id={note.id} data={note.values} />
+				</NoticeAlert>
+			) : null}
+			{shown.alias ? <KindField /> : null}
+			{kind === "alias" && shown.alias ? (
+				<TargetField zones={zones.suggestion} names={names} />
+			) : (
+				<AddressFields ipVersions={shown.ipVersions} />
+			)}
+			{shown.ttl ? (
+				<TextField
+					name="ttl"
+					id="ddnsTtl"
+					label={<T id="ddns.ttl" />}
+					hint={
+						provider ? (
+							<T id="ddns.ttl.hint-min" data={{ min: minTtlOf(provider), provider: provider.label }} />
+						) : (
+							<T id="ddns.ttl.hint" />
+						)
+					}
+					inputMode="numeric"
+					autoComplete="off"
+					placeholder={intl.formatMessage({ id: "ddns.ttl.placeholder" })}
+				/>
+			) : null}
 			<SwitchField
 				id="ddnsEnabled"
 				label={<T id="ddns.enabled" />}
 				hint={<T id="ddns.enabled.hint" />}
 				{...register("enabled")}
 			/>
+		</>
+	);
+}
+
+// what a user who may not manage custom records sees of one: the name and the state, never its details
+function CustomRecordRow({ stored, label }) {
+	return (
+		<>
+			<TextField name="name" id="ddnsName" label={<T id="ddns.column.name" />} readOnly />
+			<FormField id="ddnsProvider" label={<T id="ddns.provider" />}>
+				{(control) => <Input {...control} readOnly value={label} />}
+			</FormField>
+			<NoticeAlert variant="info" className="mb-3">
+				<T id="ddns.custom.hidden" data={{ name: stored.name }} />
+			</NoticeAlert>
 		</>
 	);
 }
@@ -397,6 +560,7 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 	const { data: credentials } = useDnsCredentials();
 	const { data: suggested } = useDomainSuggestions();
 	const { data: me } = useUser("me");
+	const isAdmin = useIsAdmin();
 	const { mutateAsync: setRecord } = useSetDdnsRecord();
 	const [errorMsg, setErrorMsg] = useState(null);
 
@@ -411,12 +575,15 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 		}),
 		[suggested],
 	);
-	const ready = providers && (isNew || stored);
+	const ready = providers && isAdmin !== undefined && (isNew || stored);
+	// a custom record belongs to the administrators: anyone else sees its row and no details
+	const customHidden = !isNew && stored?.provider === "custom" && isAdmin === false;
+	const viewOnly = readOnly || customHidden;
 	const methods = useAppForm({
 		defaultValues: emptyRecord,
-		values: ready ? (isNew ? { ...emptyRecord, ...prefill } : toForm(stored)) : undefined,
+		values: ready ? (isNew ? { ...emptyRecord, ...prefill } : toForm(stored, providers)) : undefined,
 		validate: (values) => {
-			const found = ddnsRecordValidate(ddnsRulesInput(values), {
+			const found = ddnsRecordValidate(ddnsRulesInput(values, chosenProvider(values, providers, credentials)), {
 				providers,
 				credentials,
 				zones: zones.match,
@@ -432,7 +599,9 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 		const normalized = normalizeRecordName(values.name);
 		const covering = normalized.error ? null : zoneFor(normalized.name, values.credentialId, zones.match);
 		try {
-			await setRecord(ddnsRecordPayload(values, stored, covering === null));
+			await setRecord(
+				ddnsRecordPayload(values, stored, covering === null, chosenProvider(values, providers, credentials)),
+			);
 			showObjectSuccess("ddns-record", "saved");
 			remove();
 		} catch (err) {
@@ -445,39 +614,52 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{(isPending && !isNew) || providersPending ? <Loading noLogo /> : null}
 			{ready && (
-				<HookForm readOnly={readOnly} methods={methods} onSubmit={onSubmit}>
+				<HookForm readOnly={viewOnly} methods={methods} onSubmit={onSubmit}>
 					<DirtyTracker dirtyRef={dirtyRef} />
 					<AppModal.Header closeButton={!isSubmitting}>
 						<AppModal.Title className="flex items-center gap-2">
 							{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
-							<T id={windowTitleId({ editing: !isNew, readOnly })} tData={{ object: "ddns-record" }} />
+							<T
+								id={windowTitleId({ editing: !isNew, readOnly: viewOnly })}
+								tData={{ object: "ddns-record" }}
+							/>
 						</AppModal.Title>
 					</AppModal.Header>
 					<AppModal.Body>
 						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 						{/* a View window: the fields sit in a disabled fieldset */}
-						<fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
-							<RecordFields
-								stored={stored}
-								prefilled={prefill?.credentialId !== undefined}
-								providers={providers}
-								credentials={credentials}
-								zones={zones}
-								names={suggested?.names ?? []}
-								ownerUserId={isNew ? me?.id : stored.ownerUserId}
-								userId={me?.id}
-							/>
+						<fieldset disabled={viewOnly} className="m-0 min-w-0 border-0 p-0">
+							{customHidden ? (
+								<CustomRecordRow
+									stored={stored}
+									label={providers.find((entry) => entry.id === "custom")?.label ?? "custom"}
+								/>
+							) : (
+								<RecordFields
+									isAdmin={isAdmin}
+									stored={stored}
+									prefilled={prefill?.credentialId !== undefined}
+									providers={providers}
+									credentials={credentials}
+									zones={zones}
+									names={suggested?.names ?? []}
+									ownerUserId={isNew ? me?.id : stored.ownerUserId}
+									userId={me?.id}
+								/>
+							)}
 						</fieldset>
 					</AppModal.Body>
 					<AppModal.Footer>
 						<Button variant="ghost" onClick={close} disabled={isSubmitting}>
-							<T id={readOnly ? "action.close" : "cancel"} />
+							<T id={viewOnly ? "action.close" : "cancel"} />
 						</Button>
-						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
-							<FormSubmit edit={!isNew} isLoading={isSubmitting} disabled={isSubmitting}>
-								<T id="save" />
-							</FormSubmit>
-						</HasPermission>
+						{customHidden ? null : (
+							<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
+								<FormSubmit edit={!isNew} isLoading={isSubmitting} disabled={isSubmitting}>
+									<T id="save" />
+								</FormSubmit>
+							</HasPermission>
+						)}
 					</AppModal.Footer>
 				</HookForm>
 			)}

@@ -3,6 +3,7 @@
 // it, and the checks run on new or changed values only. Pure.
 
 import { decamelizeKeys } from "../api/backend/caseConvert.js";
+import { isCustom, isPreset, providerFieldsOf, withoutCredential } from "./DdnsProviderRules.js";
 import { normalizeDnsDomain } from "./DnsDomainForms.js";
 import { coveringZone } from "./DnsDomainMatch.js";
 
@@ -100,6 +101,23 @@ const zoneFor = (name, credentialId, zones) => {
 const providerOf = (credential, providers) =>
 	(providers ?? []).find((provider) => provider.credentialProvider === credential?.provider) ?? null;
 
+/**
+ * The provider a form is about: the chosen one that takes no credential, else the credential's
+ *
+ * @param   {Object}  values  { providerId, credentialId }
+ * @param   {Array<Object>}  providers  GET /nginx/ddns/providers
+ * @param   {Array<Object>}  credentials
+ * @returns {Object | null}
+ */
+const chosenProvider = (values, providers, credentials) => {
+	if (withoutCredential(values.providerId))
+		return (providers ?? []).find((entry) => entry.id === values.providerId) ?? null;
+	return providerOf(
+		(credentials ?? []).find((entry) => entry.id === values.credentialId),
+		providers,
+	);
+};
+
 const problem = (id, values) => (values ? { id, values } : { id });
 
 // <subdomain>.<zone> with one subdomain label
@@ -107,7 +125,7 @@ const zonelessNameOk = (name, zone) => name.endsWith(`.${zone}`) && !name.slice(
 
 /** The rules of a record of a zoneless provider: the twin of resolveZoneless in backend/internal/ddns-record.js */
 const zonelessErrors = (errors, { values, provider, stored, name, renamed, credentialChanged }) => {
-	if (!errors.name && (renamed || credentialChanged) && !zonelessNameOk(name, provider.zone)) {
+	if (provider.zone && !errors.name && (renamed || credentialChanged) && !zonelessNameOk(name, provider.zone)) {
 		errors.name = problem("error.ddns-zoneless-name", { provider: provider.label, zone: provider.zone });
 	}
 	const kind = values.kind ?? stored?.kind ?? "address";
@@ -135,16 +153,86 @@ const zonelessErrors = (errors, { values, provider, stored, name, renamed, crede
 	return errors;
 };
 
+const MIN_PASSWORD = 4;
+const HTTPS_PREFIX = /^https:\/\//iu;
+
+// the Namecheap domain: required unless one is saved, a valid domain that holds the name
+const domainError = ({ text, stored, needed, name }) => {
+	if (text === "")
+		return !trimmed(stored?.domain) && needed
+			? problem("error.ddns-preset-required", { provider: "Namecheap" })
+			: null;
+	const done = normalizeDnsDomain(text);
+	if (done.error) return problem("error.ddns-preset-domain-invalid", { domain: text });
+	if (name !== done.name && !name.endsWith(`.${done.name}`))
+		return problem("error.ddns-zone-mismatch", { name, zone: done.name });
+	return null;
+};
+
+// the account fields of a preset record: a saved record keeps what it has when a field stays empty
+const presetErrors = (errors, { values, provider, stored, name }) => {
+	const needed = stored === null || values.enabled !== false;
+	const kept = stored?.secretSet === true;
+	const required = problem("error.ddns-preset-required", { provider: provider.label });
+	for (const field of providerFieldsOf(provider).fields) {
+		const text = trimmed(values[field]);
+		if (field === "domain") {
+			const found = domainError({ text, stored, needed, name });
+			if (found) errors.domain = found;
+		} else if (text === "") {
+			if (!kept && needed) errors[field] = required;
+		} else if (field === "password" && text.length < MIN_PASSWORD) {
+			errors.password = problem("ddns.error.password-short", { min: MIN_PASSWORD });
+		}
+	}
+};
+
+// the custom provider's URL: required unless one is saved; the backend has the full check
+const customErrors = (errors, { values, stored }) => {
+	const url = trimmed(values.url);
+	const needed = stored === null || values.enabled !== false;
+	if (url === "") {
+		if (needed && stored?.urlSet !== true) errors.url = problem("error.ddns-custom-url-required");
+	} else if (!HTTPS_PREFIX.test(url)) errors.url = problem("error.ddns-custom-url-https");
+};
+
+/**
+ * The rules of a record of a provider with no DNS credential (a preset or the custom one): the twin of resolvePreset
+ * and resolveCustom in backend/internal/ddns-record.js. The IP version is already one the provider takes
+ * (ddnsRulesInput).
+ */
+const providerlessErrors = (values, { providers, stored }) => {
+	const provider = (providers ?? []).find((entry) => entry.id === values.providerId);
+	if (!provider || provider.credentialProvider !== null) {
+		return { providerId: problem("error.ddns-no-updater", { provider: String(values.providerId) }) };
+	}
+	const errors = {};
+	const rawName = trimmed(values.name);
+	let name = stored?.name ?? "";
+	if (stored === null || rawName !== stored.name) {
+		const done = normalizeRecordName(rawName);
+		if (done.error) return { name: problem(done.error, { name: rawName }) };
+		name = done.name;
+		if (done.wildcard) errors.name = problem("error.ddns-wildcard-unsupported", { provider: provider.label });
+	}
+	if (isCustom(provider)) customErrors(errors, { values, stored });
+	if (isPreset(provider)) presetErrors(errors, { values, provider, stored, name });
+	const renamed = stored === null || name !== stored.name;
+	return zonelessErrors(errors, { values, provider, stored, name, renamed, credentialChanged: stored === null });
+};
+
 /**
  * The errors of a record form, by field. A field without an entry passes.
  *
- * @param   {Object}  values  { name, credentialId, kind ("address" | "alias"), target, ipVersion, ipv6Suffix, ttl,
+ * @param   {Object}  values  { name, providerId (a provider without a DNS credential; empty: the credential's),
+ *                             credentialId, url, username, password, domain (the account fields), kind ("address" | "alias"), target, ipVersion, ipv6Suffix, ttl,
  *                             zone (typed, optional) }
  * @param   {Object}  context { providers, credentials: [{ id, name, provider, ownerUserId }], zones, stored }
  *                            stored: the saved record (camelCase) on an edit, else null
  * @returns {Object}  { [field]: { id, values? } } with i18n ids (the backend's error.ddns-* keys)
  */
 const ddnsRecordValidate = (values, { providers, credentials, zones, stored = null } = {}) => {
+	if (withoutCredential(values.providerId)) return providerlessErrors(values, { providers, stored });
 	const errors = {};
 	const credentialId = values.credentialId ?? stored?.dnsCredentialId;
 	const credential = (credentials ?? []).find((entry) => entry.id === credentialId);
@@ -277,14 +365,21 @@ const minTtlOf = (provider) =>
 
 /**
  * What the rules of ddnsRecordValidate see: a field the window hides never blocks a save (an address has no target,
- * an alias no IP version or suffix, IPv4 no suffix)
+ * an alias no IP version or suffix, IPv4 no suffix, a provider without aliases or TTL none of those, one without IPv6
+ * or without IPv6 alone an IP version it takes)
  *
  * @param   {Object}  values  the form values
+ * @param   {Object | null}  [provider]  the chosen provider (GET /nginx/ddns/providers), when known
  * @returns {Object}
  */
-const ddnsRulesInput = (values) => {
-	if (values.kind === "alias") return { ...values, ipVersion: undefined, ipv6Suffix: "" };
-	return { ...values, target: "", ipv6Suffix: values.ipVersion === "ipv4" ? "" : values.ipv6Suffix };
+const ddnsRulesInput = (values, provider = null) => {
+	const shown = providerFieldsOf(provider);
+	const own = { ...values };
+	if (!shown.alias) own.kind = "address";
+	if (!shown.ttl) own.ttl = "";
+	if (!shown.ipVersions.includes(own.ipVersion)) own.ipVersion = shown.ipVersions[0];
+	if (own.kind === "alias") return { ...own, ipVersion: undefined, ipv6Suffix: "" };
+	return { ...own, target: "", ipv6Suffix: own.ipVersion === "ipv4" ? "" : own.ipv6Suffix };
 };
 
 /**
@@ -294,28 +389,40 @@ const ddnsRulesInput = (values) => {
  * @param   {Object}  values     the form values
  * @param   {Object | null | undefined}  stored  the saved record on an edit
  * @param   {boolean} zoneTyped  whether no domain of the credential covers the name (the typed zone is sent)
+ * @param   {Object | null} [provider]  the chosen provider (GET /nginx/ddns/providers): what it hides is not sent; a
+ *                                      provider without a DNS credential is named on a new record, a credential is not
  * @returns {Object}  camelCase body of POST or PUT /nginx/ddns-records
  */
-const ddnsRecordPayload = (values, stored, zoneTyped) => {
-	const ttl = trimmed(values.ttl);
+const ddnsRecordPayload = (values, stored, zoneTyped, provider = null) => {
+	const input = ddnsRulesInput(values, provider);
+	const shown = providerFieldsOf(provider);
+	const ttl = trimmed(input.ttl);
 	const payload = {
 		id: stored?.id,
 		name: trimmed(values.name),
-		dnsCredentialId: values.credentialId,
-		kind: values.kind,
+		kind: input.kind,
 		enabled: values.enabled,
 	};
+	if (!withoutCredential(values.providerId)) payload.dnsCredentialId = values.credentialId;
+	else if (!stored) payload.provider = values.providerId;
 	if (ttl !== "") payload.ttl = Number(ttl);
 	else if (stored) payload.ttl = null;
-	if (zoneTyped && trimmed(values.zone) !== "") payload.zone = trimmed(values.zone);
-	if (values.kind === "alias") {
-		payload.target = trimmed(values.target);
+	if (shown.zone && zoneTyped && trimmed(values.zone) !== "") payload.zone = trimmed(values.zone);
+	// the write-only fields: an empty one is left out, so the stored value stays
+	for (const field of shown.fields) {
+		const text = trimmed(values[field]);
+		if (field === "method") payload.method = values.method === "POST" ? "POST" : "GET";
+		else if (field === "expect") payload.expect = text === "" ? null : text;
+		else if (text !== "") payload[field] = text;
+	}
+	if (input.kind === "alias") {
+		payload.target = trimmed(input.target);
 		if (stored) payload.ipv6Suffix = null;
 		return payload;
 	}
-	payload.ipVersion = values.ipVersion;
-	const suffix = trimmed(values.ipv6Suffix);
-	if (values.ipVersion !== "ipv4" && suffix !== "") payload.ipv6Suffix = suffix;
+	payload.ipVersion = input.ipVersion;
+	const suffix = trimmed(input.ipv6Suffix);
+	if (input.ipVersion !== "ipv4" && suffix !== "") payload.ipv6Suffix = suffix;
 	else if (stored) payload.ipv6Suffix = null;
 	return payload;
 };
@@ -391,6 +498,7 @@ const ddnsApiErrorOf = (err, formatTime) => {
 };
 
 export {
+	chosenProvider,
 	ddnsApiErrorOf,
 	ddnsErrorOf,
 	ddnsMessageValues,
