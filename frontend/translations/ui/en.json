@@ -677,6 +677,7 @@
 	"error.ddns-ip-failed": "The public address could not be found",
 	"error.ddns-ip-unconfirmed": "Only one service gave the new public address, so nothing was changed",
 	"error.ddns-ipv4-only": "{provider} supports IPv4 only",
+	"error.ddns-ipv6-alone-unsupported": "{provider} does not take a record of IPv6 alone: choose IPv4 or both",
 	"error.ddns-multi-value": "The name has {count} values at the provider. NPMpro only changes a name with one value",
 	"error.ddns-name-has-address": "The name has an address record. Remove it or use an address record",
 	"error.ddns-name-has-cname": "The name has a CNAME record. Remove it or use an alias record",

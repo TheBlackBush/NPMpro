@@ -57,7 +57,18 @@ const createBackupWriter = ({
 	 *
 	 * @returns {Promise<Object>}  the header summary
 	 */
-	const writeBackup = async ({ file, types, secrets, mode, passphrase, userId, items, accounts, customUrls }) => {
+	const writeBackup = async ({
+		file,
+		types,
+		secrets,
+		mode,
+		passphrase,
+		userId,
+		items,
+		accounts,
+		customUrls,
+		ownerId,
+	}) => {
 		const stageDir = await store.createStageDir("tmp");
 		try {
 			const { summary } = await exportStage({
@@ -70,6 +81,7 @@ const createBackupWriter = ({
 				items,
 				accounts,
 				customUrls,
+				ownerId,
 				meta: {
 					npmproVersion,
 					dbVersion: await dbVersion(),

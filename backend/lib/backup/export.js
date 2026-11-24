@@ -54,18 +54,23 @@ const copyFiles = async ({ dataDir, stageDir, type, secrets, only }) => {
 	}
 };
 
-// a custom DDNS record's URL is for administrators: an export that must not carry it empties the secret of those rows
-const withoutCustomUrls = (rowsByTable) =>
+// a custom DDNS record's URL is for administrators, and a preset's details are for their owner: an export that must
+// not carry them (a user who is no administrator) empties the secret of the custom rows and of every row of another owner
+const withoutForeignSecrets = (rowsByTable, ownerId) =>
 	Object.fromEntries(
 		Object.entries(rowsByTable).map(([table, rows]) => [
 			table,
 			table === "npmpro_ddns_record"
-				? rows.map((row) => (row.provider === "custom" ? { ...row, secret: null } : row))
+				? rows.map((row) =>
+						row.provider === "custom" || String(row.owner_user_id) !== String(ownerId)
+							? { ...row, secret: null }
+							: row,
+					)
 				: rows,
 		]),
 	);
 
-const writeData = async ({ knex, box, stageDir, types, secrets, items, customUrls }) => {
+const writeData = async ({ knex, box, stageDir, types, secrets, items, customUrls, ownerId }) => {
 	const counts = {};
 	await knex.transaction(async (trx) => {
 		for (const typeId of types) {
@@ -74,7 +79,7 @@ const writeData = async ({ knex, box, stageDir, types, secrets, items, customUrl
 			let rowsByTable = {};
 			for (const { table, where } of type.tables) rowsByTable[table] = await exportRows(trx, table, where);
 			rowsByTable = selectRows(typeId, rowsByTable, items?.[typeId]);
-			if (customUrls === false) rowsByTable = withoutCustomUrls(rowsByTable);
+			if (customUrls === false) rowsByTable = withoutForeignSecrets(rowsByTable, ownerId);
 			rowsByTable = secrets ? type.secrets.export(rowsByTable, box) : type.secrets.strip(rowsByTable);
 			counts[typeId] = rowsByTable[type.tables[0].table].length;
 			await writeFile(path.join(stageDir, "data", `${typeId}.json`), JSON.stringify(rowsByTable), {
@@ -119,15 +124,29 @@ const numericItems = (items) =>
  * @param   {Object}   [options.items]   { [typeId]: ids[] }; only these rows (and child rows, certificate files) go in
  * @param   {string}   [options.accounts]  partial backups: ACME accounts: "named" (those the chosen certificates name),
  *                                         "none" or all
- * @param   {boolean}  [options.customUrls]  false: the URL of a custom DDNS record is left out (a user who is no administrator)
+ * @param   {boolean}  [options.customUrls]  false: the URL of a custom DDNS record and the details of a preset record of
+ * another owner are left out (a user who is no administrator)
+ * @param   {number}   [options.ownerId]  the exporting user: with customUrls false, the owner whose preset secrets stay
  * @param   {Object}   options.meta      { npmproVersion, dbVersion, dbMigrations, createdBy: { name, email },
  *                                         createdAt }
  * @returns {Promise<{ manifest: Object, summary: Object }>}
  */
-const exportStage = async ({ knex, box, dataDir, stageDir, types, secrets, items, accounts, customUrls, meta }) => {
+const exportStage = async ({
+	knex,
+	box,
+	dataDir,
+	stageDir,
+	types,
+	secrets,
+	items,
+	accounts,
+	customUrls,
+	ownerId,
+	meta,
+}) => {
 	await mkdir(path.join(stageDir, "data"), { recursive: true, mode: 0o700 });
 	await mkdir(path.join(stageDir, "files"), { recursive: true, mode: 0o700 });
-	const counts = await writeData({ knex, box, stageDir, types, secrets, items, customUrls });
+	const counts = await writeData({ knex, box, stageDir, types, secrets, items, customUrls, ownerId });
 	for (const typeId of types) {
 		const type = TYPES[typeId];
 		const only =

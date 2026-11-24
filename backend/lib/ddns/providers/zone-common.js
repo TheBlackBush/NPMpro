@@ -22,15 +22,16 @@ const providerMessage = (res) => {
  * a refused body, failed for anything else.
  *
  * @param {{ status: number, json: *, text: string }} res
- * @param {{ hint: string, secrets: String[], refused?: boolean }} options
+ * @param {{ hint: string, secrets: String[], refused?: boolean, refusedRetryAfterMs?: number }} options
  */
-const failAnswer = (res, { hint, secrets, refused = false }) => {
+const failAnswer = (res, { hint, secrets, refused = false, refusedRetryAfterMs }) => {
 	const forbidden = refused || res.status === 401 || res.status === 403;
 	const err = new DdnsProviderError({
 		providerStatus: res.status,
 		code: forbidden ? "forbidden" : "failed",
 		message: `${forbidden ? "Access refused" : "Unexpected answer"} (${res.status}): ${providerMessage(res)}`,
 		retry: !forbidden,
+		retryAfterMs: forbidden ? refusedRetryAfterMs : undefined,
 		secrets,
 	});
 	if (forbidden) err.hint = hint;

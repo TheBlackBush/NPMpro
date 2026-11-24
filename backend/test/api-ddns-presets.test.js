@@ -9,6 +9,7 @@ import { startApi } from "./support/api.js";
 
 const RECORDS = "/nginx/ddns-records";
 const PUBLIC_IP = "81.2.69.160";
+const NEW_PASSWORD = ["another", "PASS", "5678"].join("-");
 const PASSWORD = "preset-PASS-secret-4321";
 const USER = "someone@example.com";
 const PASSPHRASE = "a long enough passphrase of my own";
@@ -133,8 +134,11 @@ it("updates through the provider with Basic auth, then does not write again for 
 });
 
 it("writes a Namecheap record with the host, the domain and the password, and refuses IPv6 at save", async () => {
-	answer.body =
-		'<?xml version="1.0" encoding="utf-16"?><interface-response><ErrCount>0</ErrCount><errors /></interface-response>';
+	answer.body = [
+		'<?xml version="1.0" encoding="utf-16"?>',
+		"<interface-response><ErrCount>0</ErrCount>",
+		"<errors /></interface-response>",
+	].join("");
 	const base = { provider: "namecheap", password: PASSWORD, domain: "Example.com" };
 	const six = await add({ ...base, name: "home.example.com", ip_version: "ipv6" });
 	assert.equal(six.status, 400, six.text);
@@ -210,13 +214,13 @@ it("refuses a credential, a TTL, an alias, a wildcard, a foreign field and missi
 
 it("keeps the stored details when a change sends none, and starts over when a new password is saved", async () => {
 	const record = await addOk(noip("keep.example.net"));
-	const kept = await admin.put(`${RECORDS}/${record.id}`, { password: "", enabled: true });
+	const kept = await admin.put(`${RECORDS}/${record.id}`, { enabled: true });
 	assert.equal(kept.status, 200, kept.text);
 	assert.equal(kept.body.secret_set, true);
 	assert.equal(kept.body.state, "pending");
 	assert.equal((await admin.post(`${RECORDS}/${record.id}/update`)).body.state, "ok");
 	assert.equal(seen[0].auth, `Basic ${Buffer.from(`${USER}:${PASSWORD}`).toString("base64")}`);
-	const changed = await admin.put(`${RECORDS}/${record.id}`, { password: "another-PASS-5678" });
+	const changed = await admin.put(`${RECORDS}/${record.id}`, { password: NEW_PASSWORD });
 	assert.equal(changed.status, 200, changed.text);
 	assert.equal(changed.body.state, "pending");
 	seen = [];
@@ -224,7 +228,7 @@ it("keeps the stored details when a change sends none, and starts over when a ne
 	await api.db("npmpro_ddns_record").where({ id: record.id }).update({ last_changed_on: null });
 	const again = await admin.post(`${RECORDS}/${record.id}/update`);
 	assert.equal(again.body.state, "ok", again.text);
-	assert.equal(seen[0].auth, `Basic ${Buffer.from(`${USER}:another-PASS-5678`).toString("base64")}`);
+	assert.equal(seen[0].auth, `Basic ${Buffer.from(`${USER}:${NEW_PASSWORD}`).toString("base64")}`);
 });
 
 it("clears 'Enter the password again' when a password is saved, and leaves the record disabled", async () => {
@@ -294,4 +298,52 @@ it("a failing provider answer is shown scrubbed and the record fails with a retr
 	assert.equal(run.body.state, "failed", run.text);
 	assert.ok(run.body.error.includes("badauth"));
 	assert.ok(!run.text.includes(PASSWORD));
+});
+
+it("refuses a No-IP record of IPv6 alone, allows both, and a password shorter than 4 characters", async () => {
+	const six = await add(noip("six.example.net", { ip_version: "ipv6" }));
+	assert.equal(six.status, 400, six.text);
+	assert.equal(six.body.error.message_i18n, "error.ddns-ipv6-alone-unsupported");
+	assert.equal((await add(noip("both.example.net", { ip_version: "both" }))).status, 201);
+	const short = await add(noip("short.example.net", { password: "abc" }));
+	assert.equal(short.status, 400, short.text);
+	const record = await addOk(noip("pw.example.net"));
+	assert.equal((await admin.put(`${RECORDS}/${record.id}`, { password: "abc" })).status, 400);
+});
+
+it("leaves a record alone for the provider's wait after a refusal, and a saved password starts over", async () => {
+	const record = await addOk(noip("floor.example.net"));
+	answer.status = 401;
+	answer.body = "badauth";
+	const started = Date.now();
+	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);
+	const failed = (await admin.get(`${RECORDS}/${record.id}`)).body;
+	assert.equal(failed.state, "failed");
+	const wait = Date.parse(failed.next_try_on) - started;
+	assert.ok(wait >= 6 * 60 * 60_000 - 5000, `next try in ${wait} ms`);
+	answer.body = "911";
+	answer.status = 200;
+	const saved = await admin.put(`${RECORDS}/${record.id}`, { password: NEW_PASSWORD });
+	assert.equal(saved.body.state, "pending");
+	assert.equal(saved.body.next_try_on, null);
+	assert.equal(saved.body.failures, 0);
+	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);
+	const again = (await admin.get(`${RECORDS}/${record.id}`)).body;
+	const wait911 = Date.parse(again.next_try_on) - Date.now();
+	assert.ok(wait911 >= 30 * 60_000 - 5000 && wait911 < 60 * 60_000, `next try in ${wait911} ms`);
+});
+
+it("keeps another owner's preset details out of a page export of a user who sees all records", async () => {
+	const viewer = await api.limited({ visibility: "all", certificates: "manage" });
+	const theirs = await addOk(noip("theirs.example.net"), viewer);
+	const adminsOwn = await addOk(noip("admins.example.net"));
+	const foreign = JSON.parse(await exportedDdns(viewer, adminsOwn.id, true)).npmpro_ddns_record[0];
+	assert.equal(foreign.secret, null);
+	assert.ok(!JSON.stringify(foreign).includes(PASSWORD));
+	const own = JSON.parse(await exportedDdns(viewer, theirs.id, true)).npmpro_ddns_record[0];
+	assert.deepEqual(own.secret, { username: USER, password: PASSWORD });
+	const full = JSON.parse(await exportedDdns(admin, theirs.id, true)).npmpro_ddns_record[0];
+	assert.deepEqual(full.secret, { username: USER, password: PASSWORD });
+	const adminsFull = JSON.parse(await exportedDdns(admin, adminsOwn.id, true)).npmpro_ddns_record[0];
+	assert.deepEqual(adminsFull.secret, { username: USER, password: PASSWORD });
 });

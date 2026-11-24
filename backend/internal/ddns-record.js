@@ -402,6 +402,11 @@ const resolvePreset = (access, data, row, updater) => {
 	if (updater.ipv6 === false && address.ip_version !== "ipv4") {
 		throw refusal(`${updater.label} supports IPv4 only`, "error.ddns-ipv4-only", { provider: updater.label });
 	}
+	if (updater.ipv6Alone === false && address.ip_version === "ipv6") {
+		throw refusal(`${updater.label} does not take a record of IPv6 alone`, "error.ddns-ipv6-alone-unsupported", {
+			provider: updater.label,
+		});
+	}
 	const values = {
 		owner_user_id: row?.owner_user_id ?? access.token.getUserId(1),
 		dns_credential_id: null,

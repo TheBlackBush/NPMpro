@@ -1312,6 +1312,11 @@ describe("porkbun", () => {
 	});
 });
 
+const dynuWait = (body, retry) => {
+	if (body === "911") return 10 * 60_000;
+	return retry ? undefined : 6 * 60 * 60_000;
+};
+
 describe("update-URL presets (namecheap, noip, dynu)", () => {
 	// secrets with characters that change when URL-encoded
 	const PASSWORD = ["pw", "a/b+c&d=1 2"].join("-");
@@ -1371,6 +1376,7 @@ describe("update-URL presets (namecheap, noip, dynu)", () => {
 				(err) =>
 					err.code === "forbidden" &&
 					err.retry === false &&
+					err.retryAfterMs === 6 * 60 * 60_000 &&
 					err.message.includes("Passwords do not match") &&
 					noLeak(err),
 			);
@@ -1431,7 +1437,9 @@ describe("update-URL presets (namecheap, noip, dynu)", () => {
 		const send = (ipKey = "myip", ip = "5.6.7.8") => ({
 			path: `/nic/update?hostname=home.example.net&${ipKey}=${encodeURIComponent(ip)}`,
 			method: "GET",
-			headers: (headers) => headers.authorization === basic && headers["user-agent"].startsWith("NPMpro "),
+			headers: (headers) =>
+				headers.authorization === basic &&
+				headers["user-agent"] === "NPMpro-DDNS/1.0 github.com/TheBlackBush/NPMpro",
 		});
 
 		it("sends one GET with Basic auth and a user agent, and takes good and nochg as success", async () => {
@@ -1462,7 +1470,9 @@ describe("update-URL presets (namecheap, noip, dynu)", () => {
 					run("write", base),
 					(err) =>
 						err.code === code &&
+						err.retryAfterMs === (body === "911" ? 30 * 60_000 : 6 * 60 * 60_000) &&
 						err.retry === retry &&
+						err.retryAfterMs === (body === "911" ? 30 * 60_000 : 6 * 60 * 60_000) &&
 						err.message.includes(body) &&
 						err.providerStatus === status,
 					body,
@@ -1540,7 +1550,11 @@ describe("update-URL presets (namecheap, noip, dynu)", () => {
 				dy().intercept(send("myip=5.6.7.8&myipv6=no")).reply(200, body);
 				await assert.rejects(
 					run("write", base),
-					(err) => err.code === code && err.retry === retry && err.message.includes(body),
+					(err) =>
+						err.code === code &&
+						err.retry === retry &&
+						err.message.includes(body) &&
+						err.retryAfterMs === dynuWait(body, retry),
 					body,
 				);
 			}

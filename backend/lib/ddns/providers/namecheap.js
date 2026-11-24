@@ -6,6 +6,8 @@ import { failAnswer } from "./zone-common.js";
 const ENDPOINT = "https://dynamicdns.park-your-domain.com/update";
 const HINT =
 	"Check the domain and its Dynamic DNS password (Advanced DNS tab), and that the host exists as an A + Dynamic DNS record";
+// an answer about the account: the engine waits at least this long (an edit of the record starts over)
+const REFUSED_WAIT_MS = 6 * 60 * 60_000;
 const DECLARATION = /^\s*<\?xml[^>]*\?>/iu;
 const ERR_COUNT = /<ErrCount>\s*(?<count>\d+)\s*<\/ErrCount>/iu;
 const FIRST_ERROR = /<Err1>(?<text>[^<]*)<\/Err1>/iu;
@@ -84,9 +86,10 @@ export default {
 				code: "forbidden",
 				message: `Access refused (${res.status}): ${answer.message ?? "Namecheap reported an error"}`,
 				retry: false,
+				retryAfterMs: REFUSED_WAIT_MS,
 				secrets,
 			});
 		}
-		failAnswer(res, { hint: HINT, secrets });
+		failAnswer(res, { hint: HINT, secrets, refusedRetryAfterMs: REFUSED_WAIT_MS });
 	},
 };

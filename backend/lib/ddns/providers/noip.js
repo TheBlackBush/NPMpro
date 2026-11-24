@@ -6,11 +6,16 @@ import { failAnswer } from "./zone-common.js";
 const ENDPOINT = "https://dynupdate.no-ip.com/nic/update";
 const HINT = "Check the user name and password of the No-IP account and that the host belongs to it";
 // No-IP asks for "Company NameOfProgram/OSVersion-ReleaseVersion maintainer-contact@example.com"
-const USER_AGENT = "NPMpro DynamicDNS/Linux-1 noreply@example.com";
+const USER_AGENT = "NPMpro-DDNS/1.0 github.com/TheBlackBush/NPMpro";
 const GOOD = /^(?:good|nochg)(?:\s|$)/u;
 const WHITESPACE = /\s/u;
 const LINE_BREAK = /\r?\n/u;
-// the answers that stop the record for good until the account is looked at
+const MINUTE = 60_000;
+// an account answer is not worth asking again soon: the engine waits at least this long (an edit of the record starts over)
+const REFUSED_WAIT_MS = 6 * 60 * MINUTE;
+// No-IP asks for no retry sooner than 30 minutes after a 911
+const SERVER_ERROR_WAIT_MS = 30 * MINUTE;
+// the answers about the account or the client
 const STOPPED = new Set(["nohost", "badauth", "badagent", "!donator", "abuse"]);
 const MESSAGES = {
 	nohost: "The host does not belong to this account",
@@ -23,8 +28,9 @@ const MESSAGES = {
 
 /**
  * No-IP: one GET with the host and the address, the account's user name and password as Basic auth. The failure shows
- * in the body (a wrong password is a 401 with `badauth`). `911` is retried only after the backoff and `abuse`,
- * `badagent` and the other account answers are not retried.
+ * in the body (a wrong password is a 401 with `badauth`). `911` leaves the record alone for 30 minutes and the account
+ * answers (`nohost`, `badauth`, `badagent`, `!donator`, `abuse`) for 6 hours (a floor on the engine's backoff).
+ * A record of IPv6 alone is refused at save: No-IP documents no way to keep the IPv4 part unchanged.
  */
 export default {
 	id: "noip",
@@ -38,6 +44,7 @@ export default {
 	aliases: false,
 	zoneless: true,
 	preset: true,
+	ipv6Alone: false,
 	read: () => Promise.resolve(null),
 	async write({ name, type, ip, fields, fetch, meta }) {
 		refuseWildcard(name);
@@ -66,9 +73,10 @@ export default {
 				code: code === "911" ? "failed" : "forbidden",
 				message: `${MESSAGES[code]} (${code})`,
 				retry: code === "911",
+				retryAfterMs: code === "911" ? SERVER_ERROR_WAIT_MS : REFUSED_WAIT_MS,
 				secrets,
 			});
 		}
-		failAnswer(res, { hint: HINT, secrets });
+		failAnswer(res, { hint: HINT, secrets, refusedRetryAfterMs: REFUSED_WAIT_MS });
 	},
 };

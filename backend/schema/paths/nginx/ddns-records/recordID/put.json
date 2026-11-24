@@ -197,9 +197,10 @@
 						},
 						"password": {
 							"type": "string",
+							"minLength": 4,
 							"maxLength": 255,
 							"example": "update-password",
-							"description": "Namecheap, No-IP and Dynu presets only, write-only: the Dynamic DNS password (Namecheap: of the domain, Advanced DNS tab; No-IP and Dynu: of the account). It is stored sealed and never shown; an empty value keeps the stored one"
+							"description": "Namecheap, No-IP and Dynu presets only, write-only: the Dynamic DNS password (Namecheap: of the domain, Advanced DNS tab; No-IP and Dynu: of the account). It is stored sealed and never shown; leave it out to keep the stored one. At least 4 characters (shorter text cannot be hidden from messages)"
 						},
 						"domain": {
 							"type": "string",

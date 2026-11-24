@@ -311,7 +311,8 @@ const createDdnsEngine = ({
 		patch.meta = meta;
 		if (countTry) {
 			patch.failures = failures;
-			patch.next_try_on = new Date(now() + delay);
+			const floor = err instanceof DdnsProviderError ? (err.retryAfterMs ?? 0) : 0;
+			patch.next_try_on = new Date(now() + Math.max(delay, floor));
 		}
 		return patch;
 	};

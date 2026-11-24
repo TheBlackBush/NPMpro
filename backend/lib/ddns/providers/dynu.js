@@ -20,8 +20,20 @@ const MESSAGES = {
 	dnserr: "Dynu has a DNS error",
 	unknown: "Dynu did not understand the request",
 };
+const MINUTE = 60_000;
+// an account answer is not worth asking again soon: the engine waits at least this long (an edit of the record starts over)
+const REFUSED_WAIT_MS = 6 * 60 * MINUTE;
+// Dynu suspends the client for 10 minutes after a 911
+const SERVER_ERROR_WAIT_MS = 10 * MINUTE;
 // the answers a later try can fix
 const RETRY = new Set(["911", "servererror", "dnserr"]);
+
+// how long the engine leaves the record alone: 10 minutes after a 911, 6 hours after an account answer, no floor for the
+// other retried answers
+const waitOf = (code) => {
+	if (code === "911") return SERVER_ERROR_WAIT_MS;
+	return RETRY.has(code) ? undefined : REFUSED_WAIT_MS;
+};
 
 /**
  * Dynu: one GET to the IP update protocol with the host name always sent (a call with the user name alone updates every
@@ -71,9 +83,10 @@ export default {
 				code: RETRY.has(code) ? "failed" : "forbidden",
 				message: `${MESSAGES[code]} (${code})`,
 				retry: RETRY.has(code),
+				retryAfterMs: waitOf(code),
 				secrets,
 			});
 		}
-		failAnswer(res, { hint: HINT, secrets });
+		failAnswer(res, { hint: HINT, secrets, refusedRetryAfterMs: REFUSED_WAIT_MS });
 	},
 };
