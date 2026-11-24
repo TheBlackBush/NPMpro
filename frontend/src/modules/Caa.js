@@ -89,6 +89,25 @@ export function caaRequest({ names, server, dnsChallenge, needsServer = false })
 	};
 }
 
+/**
+ * The results of a kept answer that belong to the current request: none when the answer was for another CA or another
+ * challenge, else only the names the request still holds (the previous answer stays shown while a new one is asked)
+ *
+ * @param   {{ names: Array<{ name: string }>, request?: Object }|undefined} checked  the answer with the request it was
+ *          asked for
+ * @param   {Object|null} request  caaRequest of the window now
+ * @returns {Array|undefined}  the names' results, undefined when nothing of the answer applies
+ */
+export function currentCaaResults(checked, request) {
+	if (!checked || !request) return;
+	const asked = checked.request ?? {};
+	if ((asked.acmeServer ?? "") !== (request.acmeServer ?? "") || asked.dnsChallenge !== request.dnsChallenge) {
+		return;
+	}
+	const names = new Set(request.domainNames.map((name) => name.toLowerCase()));
+	return (checked.names ?? []).filter((result) => names.has(String(result.name).toLowerCase()));
+}
+
 const isNoIdentity = (result) => result?.state === "not-checked" && result.reason === "no-identity";
 
 /**

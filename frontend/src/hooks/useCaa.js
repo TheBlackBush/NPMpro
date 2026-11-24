@@ -9,7 +9,8 @@ import { CAA_DEBOUNCE_MS } from "src/modules/Caa";
  * ask. A failed check answers nothing: the note is a help, never a block.
  *
  * @param   {Object|null} request  caaRequest of the window; null: nothing to ask
- * @returns {{ names: Array, checkedOn: string }|undefined}
+ * @returns {{ names: Array, checkedOn: string, request: Object }|undefined}  request: the one this answer was for (a
+ *          kept previous answer may be for other names or another CA: currentCaaResults filters it)
  */
 const useCaaCheck = (request) => {
 	const key = request === null ? null : JSON.stringify(request);
@@ -24,7 +25,10 @@ const useCaaCheck = (request) => {
 	}, [key]);
 	const { data } = useQuery({
 		queryKey: ["caa-check", settled],
-		queryFn: () => checkCaa(JSON.parse(settled)),
+		queryFn: async () => {
+			const asked = JSON.parse(settled);
+			return { ...(await checkCaa(asked)), request: asked };
+		},
 		enabled: settled !== null,
 		staleTime: 30 * 1000,
 		retry: false,

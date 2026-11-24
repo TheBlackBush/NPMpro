@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { CAA_MAX_LINES, caaBadge, caaById, caaLine, caaLines, caaRequest, worstCaa } from "./Caa.js";
+import { CAA_MAX_LINES, caaBadge, caaById, caaLine, caaLines, caaRequest, currentCaaResults, worstCaa } from "./Caa.js";
 
 const result = (state, extra = {}) => ({
 	name: "a.example.com",
@@ -189,4 +189,37 @@ it("finds the cached entries by certificate id", () => {
 	assert.equal(map.get(4).state, "refused");
 	assert.equal(map.size, 2);
 	assert.equal(caaById(undefined).size, 0);
+});
+
+it("uses a kept answer only for the current CA and challenge, and only its current names", () => {
+	const request = { domainNames: ["a.example", "C.example"], acmeServer: "https://ca.test/dir", dnsChallenge: false };
+	const checked = {
+		names: [
+			{ name: "a.example", state: "refused" },
+			{ name: "b.example", state: "refused" },
+			{ name: "c.example", state: "unknown" },
+		],
+		request: {
+			domainNames: ["a.example", "b.example", "c.example"],
+			acmeServer: "https://ca.test/dir",
+			dnsChallenge: false,
+		},
+	};
+	assert.deepEqual(
+		currentCaaResults(checked, request).map((one) => one.name),
+		["a.example", "c.example"],
+	);
+	assert.equal(currentCaaResults(checked, { ...request, acmeServer: "https://other.test/dir" }), undefined);
+	assert.equal(currentCaaResults(checked, { ...request, dnsChallenge: true }), undefined);
+	const { acmeServer: _server, ...instance } = request;
+	assert.equal(currentCaaResults(checked, instance), undefined);
+	assert.equal(currentCaaResults({ ...checked, request: instance }, instance).length, 2);
+	assert.equal(currentCaaResults(undefined, request), undefined);
+	assert.equal(currentCaaResults(checked, null), undefined);
+});
+
+it("reads a kept answer without names or request as nothing for the names", () => {
+	const request = { domainNames: ["a.example"], dnsChallenge: false };
+	assert.deepEqual(currentCaaResults({ request: { dnsChallenge: false } }, request), []);
+	assert.equal(currentCaaResults({ names: [] }, request), undefined);
 });

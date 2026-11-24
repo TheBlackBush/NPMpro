@@ -3,7 +3,7 @@ import { useAcmeServers, useCaaCheck, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import { acmeServerLabel } from "src/modules/AcmeAccount";
 import { defaultCa } from "src/modules/AcmeServers";
-import { caaLines, caaRequest, worstCaa } from "src/modules/Caa";
+import { caaLines, caaRequest, currentCaaResults, worstCaa } from "src/modules/Caa";
 import { CERTIFICATES, hasPermission, VIEW } from "src/modules/Permissions";
 
 // the CA's name as the select shows it: a preset's name or the host of its directory
@@ -33,7 +33,8 @@ export function CaaNote({ names, server, dnsChallenge, needsServer, className })
 	const mayCheck = hasPermission(CERTIFICATES, VIEW, user?.permissions, user?.roles);
 	const request = mayCheck ? caaRequest({ names, server, dnsChallenge, needsServer }) : null;
 	const checked = useCaaCheck(request);
-	const worst = worstCaa(checked?.names);
+	// only what the answer says about the current names and CA
+	const worst = worstCaa(currentCaaResults(checked, request));
 	const ca = caText(server || defaultCa(servers));
 	const { lines, more } = worst ? caaLines(worst.results) : { lines: [], more: 0 };
 	// the names are named when the check holds more than one
