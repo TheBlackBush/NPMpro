@@ -35,12 +35,12 @@ The answer is one of:
 - **Reading works. The write right cannot be tested without a change.** The key reads zones; whether it may also change records is shown only when a certificate request or a dynamic DNS update writes.
 - **The provider refused the key.** The provider answered "unauthorized": the key is wrong, expired or revoked.
 - **The key works but lacks a right:** followed by the right the credential needs, as in [Domains from the provider](#domains-from-the-provider).
-- **The provider refused the key or a right is missing.** The provider refused, and cannot say which of the two it is.
+- **The provider refused the key or a right is missing.** The provider refused, and cannot say which of the two it is. Check the rights listed in [Domains from the provider](#domains-from-the-provider) and any IP allow list of the key (Porkbun, Vultr), then test again.
 - **The provider answered with an error.** The provider's own message is shown below.
 - **The provider did not answer.** A timeout or a network failure.
 - **NPMpro does not send requests to this address.** The endpoint is refused by the outbound check (see [Security](Security#dns-provider-apis)).
 
-Gandi and OVH answer a wrong key and a missing right in the same way, so for them a refusal is always the general **The provider refused the key or a right is missing.** Cloudflare refuses a zone call the same way for both, so after a refusal NPMpro makes a second read-only call (the token check of Cloudflare): a token Cloudflare does not know shows **The provider refused the key.**, any other refusal (an account-owned token, for example) stays the general one. The other providers are told apart by the status of the answer.
+How a refusal reads depends on the provider. OVH always shows the general **The provider refused the key or a right is missing.** DigitalOcean, Hetzner Cloud, Linode and Porkbun tell a missing right (a 403 answer) from a wrong key. Gandi, bunny.net, deSEC, GoDaddy, IONOS, PowerDNS and Vultr show **The provider refused the key.** only for a 401 answer and the general refusal for a 403; a wrong Gandi token answers 403, so for Gandi it reads as the general refusal. Cloudflare refuses a zone call the same way for both, so after a refusal NPMpro makes a second read-only call (the token check of Cloudflare): a token Cloudflare does not know shows **The provider refused the key.**, any other refusal (an account-owned token, for example) stays the general one.
 
 ## Host check
 
@@ -70,7 +70,7 @@ What counts as a leftover:
 
 Each record shows its age and a state:
 
-- **In use:** a certificate request or renewal of this instance is running. All records are **In use**, nothing can be ticked, and the delete is refused until the run ends. The delete itself also waits for the certificate locks and is refused when it cannot take them, so a request cannot start beside it.
+- **In use:** a certificate request or renewal of this instance is running. All records are **In use**, nothing can be ticked, and the delete is refused until the run ends: wait for the certificate request to end, then open the window again. The delete itself also waits for the certificate locks and is refused when it cannot take them, so a request cannot start beside it.
 - **Recent:** changed less than 10 minutes ago. Another ACME client may still be using it.
 - Records older than 1 hour with a known age are ticked in advance. Nothing else is: tick only what you know is a leftover.
 - **Age unknown:** DigitalOcean, Hetzner Cloud, Gandi, OVH and Porkbun give no change time for a record. None of their records is ticked in advance, and another program may be using such a record.
@@ -87,10 +87,10 @@ The note shows in the windows that request or re-issue an ACME certificate, and 
 
 How a name is checked:
 
-- NPMpro looks for CAA records at the name and, if there are none, at each parent name up to the top label, and uses the first set it finds (RFC 8659). A name under a wildcard starts at the name without `*.`. The climb goes up at most 16 levels: a name with more labels says it could not be checked (**The name has more than 16 labels, so the lookup stopped before the top.**). An answer of no data or no such name moves up; any other failure (a timeout, a server failure) stops the climb and the name is **Unknown**.
+- NPMpro looks for CAA records at the name and, if there are none, at each parent name up to the top label, and uses the first set it finds (RFC 8659). A name under a wildcard starts at the name without `*.`. The climb goes up at most 16 levels: a climb that ends without finding a CAA set within 16 levels says the name could not be checked (**The name has more than 16 labels, so the lookup stopped before the top.**). An answer of no data or no such name moves up; any other failure (a timeout, a server failure) stops the climb and the name is **Unknown**.
 - A wildcard name follows the `issuewild` records when there are any, otherwise `issue`.
 - The CA's CAA identities come from the CA's own ACME directory. If the directory names none, Let's Encrypt uses `letsencrypt.org`, ZeroSSL uses `sectigo.com` and its related names (`trust-provider.com`, `usertrust.com`, `comodoca.com`, `comodo.com`, `entrust.net`, `affirmtrust.com`) and Google Trust Services uses `pki.goog`. A CA of your own that names none is **not checked** (the note says so).
-- No CAA records anywhere, or records that set no `issue` property (for a wildcard name with `issuewild` records: no `issuewild` property in them), allow every CA. A record that lists the CA allows it. Records that list other CAs only, or an empty `issue ";"`, refuse it (**The CAA records do not allow the CA**), and so does a record with the critical flag and a tag the check does not know.
+- No CAA records anywhere, or records that set no `issue` property, allow every CA. A record that lists the CA allows it. Records that list other CAs only, or an empty `issue ";"`, refuse it (**The CAA records do not allow the CA**), and so does a record with the critical flag and a tag the check does not know.
 - For Let's Encrypt the check also compares `validationmethods` with the challenge of the certificate (`dns-01` or `http-01`; a record that allows other methods only refuses) and shows `accounturi` as **The CAA records limit the account**: NPMpro does not compare the account. For the other CAs these two parameters are shown and not compared, and a record with them counts as allowing the CA.
 
 ## Dynamic DNS
