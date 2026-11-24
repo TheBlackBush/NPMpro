@@ -661,6 +661,8 @@
 	"error.ddns-alias-no-ip": "Ein Alias folgt keiner Adresse und hat daher weder IP-Version noch IPv6-Suffix",
 	"error.ddns-alias-self": "{name} kann nicht auf sich selbst zeigen",
 	"error.ddns-alias-target-required": "Ein Alias braucht einen Zielnamen",
+	"error.ddns-alias-unsupported": "{provider} erlaubt keine Alias-Einträge (CNAME)",
+	"error.ddns-apex-unsupported": "{provider} erlaubt keine Einträge am Zonen-Apex: {name} ist die Zone selbst",
 	"error.ddns-bad-suffix": "Das IPv6-Suffix {suffix} ist ungültig",
 	"error.ddns-cooldown": "Kürzlich aktualisiert; der nächste Schreibvorgang ist ab {next_write_on} möglich",
 	"error.ddns-ip-disagree": "Die IP-Dienste sind sich uneinig",

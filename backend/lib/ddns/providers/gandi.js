@@ -27,6 +27,7 @@ export default {
 	ipv6: true,
 	adminOnly: false,
 	wildcards: false,
+	aliases: true,
 	// rrset_ttl from 300 (Gandi LiveDNS API)
 	minTtl: 300,
 	async read({ zone, name, type, fields, fetch, meta }) {

@@ -189,10 +189,32 @@ const resolveSave = async (access, data, row) => {
 	if (row === null || renamed || credentialChanged) zone = await zoneFor(credential, name, typedZone);
 	else if (typedZone !== null && typedZone !== row.zone) zone = typedZoneFor(name, typedZone);
 
+	// OVH spells the apex in a way its documentation does not confirm: such a provider has no apex records
+	if (
+		updater.apex === false &&
+		name === zone &&
+		(row === null || renamed || credentialChanged || zone !== row.zone)
+	) {
+		throw refusal(`${updater.label} does not allow records at the zone apex`, "error.ddns-apex-unsupported", {
+			provider: updater.label,
+			name,
+		});
+	}
+
 	const kind = data.kind ?? row?.kind ?? "address";
 	const kindChanged = row === null || kind !== row.kind;
+	if (kind === "alias" && updater.aliases === false && (kindChanged || credentialChanged)) {
+		throw refusal(`${updater.label} does not allow alias (CNAME) records`, "error.ddns-alias-unsupported", {
+			provider: updater.label,
+		});
+	}
 	const ttl = data.ttl !== undefined ? data.ttl : (row?.ttl ?? null);
-	if (ttl !== null && ttl < updater.minTtl && (row === null || ttl !== row.ttl || credentialChanged)) {
+	if (
+		ttl !== null &&
+		Number.isInteger(updater.minTtl) &&
+		ttl < updater.minTtl &&
+		(row === null || ttl !== row.ttl || credentialChanged)
+	) {
 		throw refusal(`${updater.label} takes a TTL of at least ${updater.minTtl} seconds`, "error.ddns-ttl-min", {
 			min: updater.minTtl,
 			provider: updater.label,

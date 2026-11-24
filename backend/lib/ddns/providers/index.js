@@ -17,7 +17,7 @@ const providerForCredential = (credentialProvider) =>
 
 const listsDomains = (credentialProvider) => providerForCredential(credentialProvider) !== null;
 
-/** The providers that can read and write records (OVH and PowerDNS only list zones) */
+/** The providers that can read and write records (PowerDNS only lists zones) */
 const updaterFor = (credentialProvider) => {
 	const provider = providerForCredential(credentialProvider);
 	return typeof provider?.read === "function" && typeof provider?.write === "function" ? provider : null;
@@ -34,7 +34,9 @@ const PROVIDER_LIST = Object.freeze(
 		ipv6: provider.ipv6,
 		admin_only: provider.adminOnly,
 		wildcards: provider.wildcards,
-		min_ttl: provider.minTtl,
+		aliases: provider.aliases === true,
+		apex: provider.apex !== false,
+		min_ttl: provider.minTtl ?? null,
 	})),
 );
 

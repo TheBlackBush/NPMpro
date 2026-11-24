@@ -41,6 +41,7 @@ export default {
 	ipv6: true,
 	adminOnly: false,
 	wildcards: false,
+	aliases: true,
 	// an RRSet TTL from 60 (Hetzner Cloud API spec)
 	minTtl: 60,
 	async read({ zone, name, type, fields, fetch, meta }) {

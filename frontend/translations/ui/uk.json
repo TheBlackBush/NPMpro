@@ -661,6 +661,8 @@
 	"error.ddns-alias-no-ip": "Псевдонім не слідує за жодною адресою, тому в нього немає версії IP і суфікса IPv6",
 	"error.ddns-alias-self": "{name} не може вказувати на самого себе",
 	"error.ddns-alias-target-required": "Псевдоніму потрібне ім'я призначення",
+	"error.ddns-alias-unsupported": "{provider} не допускає записів-псевдонімів (CNAME)",
+	"error.ddns-apex-unsupported": "{provider} не допускає записів у вершині зони: {name} це сама зона",
 	"error.ddns-bad-suffix": "Суфікс IPv6 {suffix} недійсний",
 	"error.ddns-cooldown": "Нещодавно оновлено; наступний запис можливий о {next_write_on}",
 	"error.ddns-ip-disagree": "IP-сервіси дають різні результати",

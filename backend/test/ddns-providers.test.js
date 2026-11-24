@@ -42,10 +42,10 @@ const cfRecords = (type, name, zoneId = "zid") =>
 const bearerOf = { authorization: `Bearer ${TOKEN}` };
 
 describe("registry", () => {
-	it("lists the four updater providers and finds them by credential provider", () => {
+	it("lists the five updater providers and finds them by credential provider", () => {
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.id),
-			["cloudflare", "digitalocean", "hetzner-cloud", "gandi"],
+			["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh"],
 		);
 		assert.deepEqual(PROVIDER_LIST[0], {
 			id: "cloudflare",
@@ -56,19 +56,30 @@ describe("registry", () => {
 			ipv6: true,
 			admin_only: false,
 			wildcards: true,
+			aliases: true,
+			apex: true,
 			min_ttl: 60,
 		});
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.min_ttl),
-			[60, 30, 60, 300],
+			[60, 30, 60, 300, null],
+		);
+		assert.deepEqual(
+			PROVIDER_LIST.map((p) => p.aliases),
+			[true, true, true, true, false],
+		);
+		assert.deepEqual(
+			PROVIDER_LIST.map((p) => p.apex),
+			[true, true, true, true, false],
 		);
 		assert.equal(PROVIDER_LIST.filter((p) => p.proxied).length, 1);
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.wildcards),
-			[true, true, false, false],
+			[true, true, false, false, false],
 		);
 		assert.equal(updaterFor("gandi").id, "gandi");
-		assert.equal(updaterFor("ovh"), null);
+		assert.equal(updaterFor("ovh").id, "ovh");
+		assert.equal(updaterFor("powerdns"), null);
 		assert.equal(updaterFor("acmedns"), null);
 	});
 });
@@ -648,6 +659,167 @@ describe("gandi", () => {
 		);
 		await assert.rejects(
 			call("gandi", "write", { ...base, ip: "5.6.7.8", existing: { values: ["1.1.1.1", "2.2.2.2"], ttl: 300 } }),
+			MORE_THAN_ONE,
+		);
+	});
+});
+
+describe("ovh", () => {
+	const SECRET = "ovh-app-secret-1234";
+	const CONSUMER = "ovh-consumer-5678";
+	const ovhFields = {
+		dns_ovh_endpoint: "ovh-eu",
+		dns_ovh_application_key: "app-key",
+		dns_ovh_application_secret: SECRET,
+		dns_ovh_consumer_key: CONSUMER,
+	};
+	const secrets = [SECRET, CONSUMER];
+	const base = { zone: "example.com", name: "home.example.com", type: "A", fields: ovhFields };
+	const pool = () => api("eu.api.ovh.com");
+	const run = (method, args) => call("ovh", method, args, secrets);
+	const time = () => pool().intercept({ path: "/1.0/auth/time", method: "GET" }).reply(200, "1700000000", json);
+	const list = (ids) => {
+		time();
+		pool()
+			.intercept({ path: "/1.0/domain/zone/example.com/record?fieldType=A&subDomain=home", method: "GET" })
+			.reply(200, ids, json);
+	};
+	const record = (id, target, ttl = 300, extra = {}) => {
+		time();
+		pool()
+			.intercept({ path: `/1.0/domain/zone/example.com/record/${id}`, method: "GET" })
+			.reply(200, { id, zone: "example.com", fieldType: "A", subDomain: "home", target, ttl, ...extra }, json);
+	};
+	const refresh = (status = 200) => {
+		time();
+		pool()
+			.intercept({ path: "/1.0/domain/zone/example.com/refresh", method: "POST" })
+			.reply(status, status === 200 ? "" : { message: `no ${SECRET}` }, json);
+	};
+
+	it("reads one record by type and sub domain", async () => {
+		list([11]);
+		record(11, "1.2.3.4");
+		assert.deepEqual(await run("read", base), { values: ["1.2.3.4"], ttl: 300, meta: { record_id: 11 } });
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("reports every value of a multi-value set, and ignores a record of another name", async () => {
+		list([11, 12, 13]);
+		record(11, "1.2.3.4");
+		record(12, "5.5.5.5", 0);
+		record(13, "9.9.9.9", 300, { subDomain: "homer" });
+		assert.deepEqual(await run("read", base), {
+			values: ["1.2.3.4", "5.5.5.5"],
+			ttl: 300,
+			meta: { record_id: 11 },
+		});
+		list([]);
+		assert.equal(await run("read", base), null);
+	});
+
+	it("updates the record and then refreshes the zone", async () => {
+		time();
+		pool()
+			.intercept({
+				path: "/1.0/domain/zone/example.com/record/11",
+				method: "PUT",
+				body: bodyIs({ target: "5.6.7.8", ttl: 600 }),
+			})
+			.reply(200, "", json);
+		refresh();
+		const done = await run("write", {
+			...base,
+			ip: "5.6.7.8",
+			ttl: 600,
+			existing: { values: ["1.2.3.4"], ttl: 300, meta: { record_id: 11 } },
+			meta: { record_id: 11 },
+		});
+		assert.deepEqual(done, { meta: { record_id: 11 }, created: false });
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("is a failure when the refresh fails, with the secrets scrubbed", async () => {
+		time();
+		pool()
+			.intercept({
+				path: "/1.0/domain/zone/example.com/record/11",
+				method: "PUT",
+				body: bodyIs({ target: "5.6.7.8" }),
+			})
+			.reply(200, "", json);
+		refresh(500);
+		await assert.rejects(
+			run("write", {
+				...base,
+				ip: "5.6.7.8",
+				existing: { values: ["1.2.3.4"], ttl: 300 },
+				meta: { record_id: 11 },
+			}),
+			(err) => {
+				assert.equal(err.name, "DdnsProviderError");
+				assert.equal(err.retry, true);
+				assert.match(err.message, /zone refresh failed/u);
+				assert.ok(!err.message.includes(SECRET));
+				return true;
+			},
+		);
+	});
+
+	it("creates the record and then refreshes the zone", async () => {
+		time();
+		pool()
+			.intercept({
+				path: "/1.0/domain/zone/example.com/record",
+				method: "POST",
+				body: bodyIs({ fieldType: "A", subDomain: "home", target: "5.6.7.8" }),
+			})
+			.reply(
+				200,
+				{ id: 77, fieldType: "A", subDomain: "home", target: "5.6.7.8", ttl: 0, zone: "example.com" },
+				json,
+			);
+		refresh();
+		assert.deepEqual(await run("write", { ...base, ip: "5.6.7.8", existing: null }), {
+			meta: { record_id: 77 },
+			created: true,
+		});
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("does not refresh after a refused change, and a 403 is not retried", async () => {
+		time();
+		pool()
+			.intercept({ path: "/1.0/domain/zone/example.com/record/11", method: "PUT" })
+			.reply(403, { message: `no ${SECRET}` }, json);
+		await assert.rejects(
+			run("write", {
+				...base,
+				ip: "5.6.7.8",
+				existing: { values: ["1.2.3.4"], ttl: 300 },
+				meta: { record_id: 11 },
+			}),
+			(err) => {
+				assert.equal(err.code, "forbidden");
+				assert.equal(err.retry, false);
+				assert.ok(!err.message.includes(SECRET));
+				return true;
+			},
+		);
+		time();
+		pool()
+			.intercept({ path: "/1.0/domain/zone/example.com/record?fieldType=A&subDomain=home", method: "GET" })
+			.reply(403, { message: "no" }, json);
+		await assert.rejects(run("read", base), (err) => err.retry === false);
+		mock.assertNoPendingInterceptors();
+	});
+
+	it("refuses wildcards, the apex and a record set with more than one value", async () => {
+		const failed = (err) => err.code === "failed" && err.retry === false;
+		await assert.rejects(run("read", { ...base, name: "*.example.com" }), failed);
+		await assert.rejects(run("write", { ...base, name: "example.com", ip: "1.1.1.1", existing: null }), failed);
+		await assert.rejects(
+			run("write", { ...base, ip: "5.6.7.8", existing: { values: ["1.1.1.1", "2.2.2.2"], ttl: 300 } }),
 			MORE_THAN_ONE,
 		);
 	});

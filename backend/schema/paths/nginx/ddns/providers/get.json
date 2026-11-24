@@ -33,6 +33,8 @@
 									"ipv6": true,
 									"admin_only": false,
 									"wildcards": true,
+									"aliases": true,
+									"apex": true,
 									"min_ttl": 60
 								}
 							]

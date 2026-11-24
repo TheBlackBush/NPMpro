@@ -661,6 +661,8 @@
 	"error.ddns-alias-no-ip": "별칭은 주소를 따르지 않으므로 IP 버전이나 IPv6 접미사가 없습니다",
 	"error.ddns-alias-self": "{name}은(는) 자기 자신을 가리킬 수 없습니다",
 	"error.ddns-alias-target-required": "별칭에는 대상 이름이 필요합니다",
+	"error.ddns-alias-unsupported": "{provider}은(는) 별칭(CNAME) 레코드를 허용하지 않습니다",
+	"error.ddns-apex-unsupported": "{provider}은(는) 영역 최상위(apex) 레코드를 허용하지 않습니다: {name}은(는) 영역 자체입니다",
 	"error.ddns-bad-suffix": "IPv6 접미사 {suffix}이(가) 올바르지 않습니다",
 	"error.ddns-cooldown": "최근에 업데이트됨. 다음 쓰기는 {next_write_on}에 가능합니다",
 	"error.ddns-ip-disagree": "IP 서비스의 결과가 일치하지 않습니다",

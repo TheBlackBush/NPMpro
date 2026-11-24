@@ -661,6 +661,8 @@
 	"error.ddns-alias-no-ip": "Un alias non segue alcun indirizzo, quindi non ha versione IP né suffisso IPv6",
 	"error.ddns-alias-self": "{name} non può puntare a sé stesso",
 	"error.ddns-alias-target-required": "Un alias richiede un nome di destinazione",
+	"error.ddns-alias-unsupported": "{provider} non consente record alias (CNAME)",
+	"error.ddns-apex-unsupported": "{provider} non consente record all'apice della zona: {name} è la zona stessa",
 	"error.ddns-bad-suffix": "Il suffisso IPv6 {suffix} non è valido",
 	"error.ddns-cooldown": "Aggiornato di recente; la prossima scrittura è possibile alle {next_write_on}",
 	"error.ddns-ip-disagree": "I servizi IP non concordano",

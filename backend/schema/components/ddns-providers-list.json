@@ -12,6 +12,8 @@
 			"ipv6",
 			"admin_only",
 			"wildcards",
+			"aliases",
+			"apex",
 			"min_ttl"
 		],
 		"additionalProperties": false,
@@ -63,10 +65,23 @@
 				"example": true,
 				"description": "Whether a wildcard record name (`*.example.com`) is allowed"
 			},
+			"aliases": {
+				"type": "boolean",
+				"example": true,
+				"description": "Whether an alias (CNAME) record is allowed"
+			},
+			"apex": {
+				"type": "boolean",
+				"example": true,
+				"description": "Whether a record at the zone apex is allowed"
+			},
 			"min_ttl": {
-				"type": "integer",
+				"type": [
+					"integer",
+					"null"
+				],
 				"example": 60,
-				"description": "The lowest TTL in seconds the provider takes; a record's TTL below it is refused"
+				"description": "The lowest TTL in seconds the provider takes; a record's TTL below it is refused. Null when the provider documents none"
 			}
 		}
 	}

@@ -661,6 +661,8 @@
 	"error.ddns-alias-no-ip": "Een alias volgt geen adres, dus heeft hij geen IP-versie of IPv6-achtervoegsel",
 	"error.ddns-alias-self": "{name} kan niet naar zichzelf verwijzen",
 	"error.ddns-alias-target-required": "Een alias heeft een doelnaam nodig",
+	"error.ddns-alias-unsupported": "{provider} staat geen alias-records (CNAME) toe",
+	"error.ddns-apex-unsupported": "{provider} staat geen records op de zone-apex toe: {name} is de zone zelf",
 	"error.ddns-bad-suffix": "Het IPv6-achtervoegsel {suffix} is niet geldig",
 	"error.ddns-cooldown": "Onlangs bijgewerkt; de volgende schrijfactie is mogelijk om {next_write_on}",
 	"error.ddns-ip-disagree": "De IP-diensten zijn het oneens",

@@ -661,6 +661,8 @@
 	"error.ddns-alias-no-ip": "Alias nie śledzi żadnego adresu, więc nie ma wersji IP ani sufiksu IPv6",
 	"error.ddns-alias-self": "{name} nie może wskazywać na samego siebie",
 	"error.ddns-alias-target-required": "Alias wymaga nazwy celu",
+	"error.ddns-alias-unsupported": "{provider} nie dopuszcza rekordów aliasu (CNAME)",
+	"error.ddns-apex-unsupported": "{provider} nie dopuszcza rekordów na wierzchołku strefy: {name} to sama strefa",
 	"error.ddns-bad-suffix": "Sufiks IPv6 {suffix} jest nieprawidłowy",
 	"error.ddns-cooldown": "Niedawno zaktualizowano; następny zapis jest możliwy o {next_write_on}",
 	"error.ddns-ip-disagree": "Usługi IP podają różne wyniki",

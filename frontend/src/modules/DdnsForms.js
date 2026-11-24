@@ -163,6 +163,16 @@ const ddnsRecordValidate = (values, { providers, credentials, zones, stored = nu
 		}
 	}
 
+	// a provider without apex records (OVH): the name may not be the zone itself
+	if (provider.apex === false && !errors.name && !errors.zone) {
+		const typedDone = typedZone === "" ? null : normalizeDnsDomain(typedZone);
+		const known = zoneFor(name, credentialId, zones) ?? (typedDone?.error ? null : (typedDone?.name ?? null));
+		const zone = known ?? stored?.zone ?? null;
+		if (name === zone && (stored === null || renamed || credentialChanged || zone !== stored.zone)) {
+			errors.name = problem("error.ddns-apex-unsupported", { provider: provider.label, name });
+		}
+	}
+
 	const kind = values.kind ?? stored?.kind ?? "address";
 	const kindChanged = stored === null || kind !== stored.kind;
 	const target = trimmed(values.target);
@@ -196,6 +206,11 @@ const ddnsRecordValidate = (values, { providers, credentials, zones, stored = nu
 				errors.ipv6Suffix = problem("error.ddns-suffix-invalid", { suffix });
 			}
 		}
+	}
+
+	// the alias target is the field the window shows for an alias, so the refusal sits there
+	if (kind === "alias" && provider.aliases === false && (kindChanged || credentialChanged)) {
+		errors.target = problem("error.ddns-alias-unsupported", { provider: provider.label });
 	}
 
 	if (!isBlank(values.ttl)) {

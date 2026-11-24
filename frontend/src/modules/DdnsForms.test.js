@@ -19,16 +19,27 @@ import {
 
 const PROVIDERS = [
 	{ id: "cloudflare", label: "Cloudflare", credentialProvider: "cloudflare", wildcards: true, minTtl: 60 },
-	{ id: "gandi", label: "Gandi", credentialProvider: "gandi", wildcards: false, minTtl: 300 },
+	{ id: "gandi", label: "Gandi", credentialProvider: "gandi", wildcards: false, aliases: true, minTtl: 300 },
+	{
+		id: "ovh",
+		label: "OVH",
+		credentialProvider: "ovh",
+		wildcards: false,
+		aliases: false,
+		apex: false,
+		minTtl: null,
+	},
 ];
 const CREDENTIALS = [
 	{ id: 1, name: "Cloudflare main", provider: "cloudflare", ownerUserId: 1 },
 	{ id: 2, name: "Gandi", provider: "gandi", ownerUserId: 1 },
 	{ id: 3, name: "Other", provider: "route53", ownerUserId: 1 },
+	{ id: 4, name: "OVH", provider: "ovh", ownerUserId: 1 },
 ];
 const ZONES = [
 	{ name: "example.com", credentialId: 1, ownerUserId: 1 },
 	{ name: "example.org", credentialId: 2, ownerUserId: 1 },
+	{ name: "example.net", credentialId: 4, ownerUserId: 1 },
 ];
 const CONTEXT = { providers: PROVIDERS, credentials: CREDENTIALS, zones: ZONES, stored: null };
 const NEW = { name: "home.example.com", credentialId: 1, kind: "address", ipVersion: "ipv4" };
@@ -120,6 +131,34 @@ it("keeps a stored wildcard on a provider without wildcards when the save keeps 
 	// a rename or a credential change runs the rule again
 	const moved = check({ name: "*.sub.example.org", credentialId: 2 }, { stored });
 	assert.equal(moved.name.id, "error.ddns-wildcard-unsupported");
+});
+
+it("refuses an alias and a name at the apex for a provider without them (the backend cases)", () => {
+	const aliasRefused = alias({ name: "a.example.net", credentialId: 4, target: "x.example.org" });
+	assert.deepEqual(aliasRefused.target, { id: "error.ddns-alias-unsupported", values: { provider: "OVH" } });
+	assert.equal(alias({ name: "a.example.org", credentialId: 2, target: "x.example.net" }).target, undefined);
+	const apex = check({ name: "example.net", credentialId: 4 });
+	assert.deepEqual(apex.name, {
+		id: "error.ddns-apex-unsupported",
+		values: { provider: "OVH", name: "example.net" },
+	});
+	assert.deepEqual(check({ name: "home.example.net", credentialId: 4 }), {});
+	// a typed zone makes the name its apex too, and a provider with apex records takes it
+	assert.equal(
+		check({ name: "x.example.io", credentialId: 4, zone: "x.example.io" }).name.id,
+		"error.ddns-apex-unsupported",
+	);
+	assert.equal(check({ name: "example.com", credentialId: 1 }).name, undefined);
+	// a stored record passes a save that keeps it, a rename or a credential change runs the rules again
+	const stored = { ...STORED, name: "example.net", dnsCredentialId: 4, zone: "example.net" };
+	assert.deepEqual(check({ name: "example.net", credentialId: 4 }, { stored }), {});
+	assert.equal(
+		check(
+			{ name: "example.net", credentialId: 4, kind: "alias", target: "x.example.org", ipVersion: undefined },
+			{ stored },
+		).target.id,
+		"error.ddns-alias-unsupported",
+	);
 });
 
 it("needs a zone when no domain covers the name, and a typed zone must cover it", () => {
@@ -218,6 +257,7 @@ it("follows each provider's min_ttl: Gandi takes 300, a stored TTL passes a save
 	assert.equal(minTtlOf({ minTtl: 300 }), 300);
 	assert.equal(minTtlOf({ minTtl: 10 }), 30);
 	assert.equal(minTtlOf(null), 30);
+	assert.equal(minTtlOf({ minTtl: null }), 30);
 });
 
 it("an alias never carries the IP version the form shows, an IPv4 address no suffix", () => {

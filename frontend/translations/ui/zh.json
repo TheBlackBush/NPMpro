@@ -661,6 +661,8 @@
 	"error.ddns-alias-no-ip": "别名不跟随任何地址，因此没有 IP 版本或 IPv6 后缀",
 	"error.ddns-alias-self": "{name} 不能指向自己",
 	"error.ddns-alias-target-required": "别名需要一个目标名称",
+	"error.ddns-alias-unsupported": "{provider} 不允许别名 (CNAME) 记录",
+	"error.ddns-apex-unsupported": "{provider} 不允许在区域顶点创建记录：{name} 就是区域本身",
 	"error.ddns-bad-suffix": "IPv6 后缀 {suffix} 无效",
 	"error.ddns-cooldown": "最近已更新；下次可在 {next_write_on} 写入",
 	"error.ddns-ip-disagree": "IP 服务结果不一致",

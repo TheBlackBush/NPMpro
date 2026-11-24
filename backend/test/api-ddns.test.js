@@ -443,18 +443,51 @@ it("counts only the enabled records the user can see, and lists the providers wi
 	const byId = Object.fromEntries(providers.body.map((provider) => [provider.id, provider]));
 	assert.deepEqual(
 		Object.keys(byId).sort((a, b) => a.localeCompare(b)),
-		["cloudflare", "digitalocean", "gandi", "hetzner-cloud"],
+		["cloudflare", "digitalocean", "gandi", "hetzner-cloud", "ovh"],
 	);
 	assert.equal(byId.cloudflare.wildcards, true);
 	assert.equal(byId.digitalocean.wildcards, true);
 	assert.equal(byId["hetzner-cloud"].wildcards, false);
 	assert.equal(byId.gandi.wildcards, false);
+	assert.equal(byId.ovh.wildcards, false);
+	assert.equal(byId.ovh.aliases, false);
+	assert.equal(byId.ovh.apex, false);
+	assert.equal(byId.ovh.min_ttl, null);
+	assert.equal(byId.cloudflare.aliases, true);
 	assert.equal(byId.cloudflare.proxied, true);
 	const dns = await admin.get("/nginx/certificates/dns-providers");
 	const flag = (id) => dns.body.find((provider) => provider.id === id)?.ddns;
-	for (const id of ["cloudflare", "digitalocean", "hetzner-cloud", "gandi"]) assert.equal(flag(id), true, id);
-	assert.equal(flag("ovh"), false);
+	for (const id of ["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh"]) assert.equal(flag(id), true, id);
 	assert.equal(flag("acmedns"), false);
+});
+
+it("refuses wildcard, alias and apex records for OVH, and takes any TTL", async () => {
+	const made = await makeCredential(admin, {
+		provider: "ovh",
+		fields: [
+			{ key: "dns_ovh_endpoint", value: "ovh-eu" },
+			{ key: "dns_ovh_application_key", value: "ak" },
+			{ key: "dns_ovh_application_secret", value: "as-SECRET-1234" },
+			{ key: "dns_ovh_consumer_key", value: "ck-SECRET-5678" },
+		],
+	});
+	const added = await admin.post("/nginx/dns-domains", { dns_credential_id: made.id, names: ["example.com"] });
+	assert.equal(added.status, 201, added.text);
+	const refuse = async (body, key) => {
+		const done = await add({ dns_credential_id: made.id, ...body });
+		assert.equal(done.status, 400, `${done.text} ${JSON.stringify(body)}`);
+		assert.equal(done.body.error.message_i18n, key, JSON.stringify(body));
+	};
+	await refuse({ name: "*.example.com" }, "error.ddns-wildcard-unsupported");
+	await refuse({ name: "a.example.com", kind: "alias", target: "x.example.net" }, "error.ddns-alias-unsupported");
+	await refuse({ name: "example.com" }, "error.ddns-apex-unsupported");
+	const ok = await add({ dns_credential_id: made.id, name: "home.example.com", ttl: 30 });
+	assert.equal(ok.status, 201, ok.text);
+	assert.equal(ok.body.provider, "ovh");
+	const toAlias = await admin.put(`${RECORDS}/${ok.body.id}`, { kind: "alias", target: "x.example.net" });
+	assert.equal(toAlias.body.error.message_i18n, "error.ddns-alias-unsupported");
+	const toApex = await admin.put(`${RECORDS}/${ok.body.id}`, { name: "example.com" });
+	assert.equal(toApex.body.error.message_i18n, "error.ddns-apex-unsupported");
 });
 
 it("refuses a credential delete and a provider change while a record uses it", async () => {
