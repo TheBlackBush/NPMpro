@@ -558,6 +558,25 @@ it("keeps DuckDNS records under duckdns.org: one label, no TTL, no alias, no wil
 	await api.db("npmpro_ddns_record").del();
 });
 
+it("checks the IPv6 suffix of a DuckDNS record like any address record", async () => {
+	const made = await makeCredential(admin, {
+		provider: "duckdns",
+		fields: [{ key: "dns_duckdns_token", value: "tok-SECRET-1234" }],
+	});
+	const body = { dns_credential_id: made.id, name: "suffix.duckdns.org" };
+	const bad = await add({ ...body, ip_version: "ipv4", ipv6_suffix: "::1" });
+	assert.equal(bad.body.error.message_i18n, "error.ddns-suffix-needs-ipv6");
+	const invalid = await add({ ...body, ip_version: "ipv6", ipv6_suffix: "not-a-suffix" });
+	assert.equal(invalid.body.error.message_i18n, "error.ddns-suffix-invalid");
+	const ok = await add({ ...body, ip_version: "both", ipv6_suffix: "::a:b" });
+	assert.equal(ok.status, 201, ok.text);
+	assert.equal(ok.body.ipv6_suffix, "::a:b");
+	// the stored suffix passes a save that keeps it
+	const kept = await admin.put(`${RECORDS}/${ok.body.id}`, { enabled: false });
+	assert.equal(kept.status, 200, kept.text);
+	await api.db("npmpro_ddns_record").del();
+});
+
 it("refuses a credential delete and a provider change while a record uses it", async () => {
 	const made = await withDomain();
 	await addOk({ name: "used.example.com", dns_credential_id: made.id });

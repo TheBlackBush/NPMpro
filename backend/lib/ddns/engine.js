@@ -385,6 +385,8 @@ const createDdnsEngine = ({
 			if (unit.family !== null) patch[unit.family === 6 ? "last_ipv6" : "last_ipv4"] = unit.wanted;
 			if (!result.change) continue;
 			patch.last_changed_on = new Date(now());
+			// a zoneless provider is written without a reading: the same address again is no change to show
+			if (result.change.old === result.change.new) continue;
 			rows.push({
 				kind: result.change.kind,
 				ip_version: unit.family === null ? null : `ipv${unit.family}`,

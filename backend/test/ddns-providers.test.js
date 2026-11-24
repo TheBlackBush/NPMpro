@@ -46,7 +46,7 @@ const cfRecords = (type, name, zoneId = "zid") =>
 const bearerOf = { authorization: `Bearer ${TOKEN}` };
 
 describe("registry", () => {
-	it("lists the five updater providers and finds them by credential provider", () => {
+	it("lists the updater providers and finds them by credential provider", () => {
 		assert.deepEqual(
 			PROVIDER_LIST.map((p) => p.id),
 			["cloudflare", "digitalocean", "hetzner-cloud", "gandi", "ovh", "desec", "duckdns"],

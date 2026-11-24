@@ -147,6 +147,33 @@ const zoneFor = async (credential, name, typed) => {
 	});
 };
 
+const suffixOf = (data, row) => {
+	const input = data.ipv6_suffix !== undefined ? data.ipv6_suffix : (row?.ipv6_suffix ?? null);
+	return typeof input === "string" && input.trim() !== "" ? input.trim() : null;
+};
+
+/**
+ * The address-record values of a save, shared by both paths: no target, the IP version and the IPv6 suffix, the
+ * suffix checked only when it (or the kind) changed
+ */
+const addressValues = ({ data, row, kind, suffix }) => {
+	const kindChanged = row === null || kind !== row.kind;
+	if (typeof data.target === "string" && data.target.trim() !== "") {
+		throw refusal("An address record takes no target", "error.ddns-address-no-target");
+	}
+	const ipVersion = data.ip_version ?? (kindChanged ? "ipv4" : row.ip_version);
+	const suffixChanged = suffix !== (kindChanged ? null : (row?.ipv6_suffix ?? null));
+	if (suffix !== null && (suffixChanged || ipVersion !== row?.ip_version)) {
+		if (ipVersion === "ipv4") throw refusal("An IPv6 suffix needs IPv6 or both", "error.ddns-suffix-needs-ipv6");
+		if (suffixChanged && !isIpv6Suffix(suffix)) {
+			throw refusal(`'${suffix}' is not an IPv6 interface id of at most 64 bits`, "error.ddns-suffix-invalid", {
+				suffix,
+			});
+		}
+	}
+	return { target: null, ip_version: ipVersion, ipv6_suffix: suffix };
+};
+
 // <subdomain>.<zone> with one subdomain label
 const zonelessNameOk = (name, zone) => name.endsWith(`.${zone}`) && !name.slice(0, -(zone.length + 1)).includes(".");
 
@@ -171,20 +198,7 @@ const resolveZoneless = ({ updater, credential, credentialChanged, data, row, na
 	if (ttl !== null && (row === null || ttl !== row.ttl || credentialChanged)) {
 		throw refusal(`${updater.label} takes no TTL`, "error.ddns-ttl-unsupported", { provider: updater.label });
 	}
-	const suffixInput = data.ipv6_suffix !== undefined ? data.ipv6_suffix : (row?.ipv6_suffix ?? null);
-	const suffix = typeof suffixInput === "string" && suffixInput.trim() !== "" ? suffixInput.trim() : null;
-	const kindChanged = row === null || kind !== row.kind;
-	const hasTarget = typeof data.target === "string" && data.target.trim() !== "";
-	if (hasTarget) throw refusal("An address record takes no target", "error.ddns-address-no-target");
-	const ipVersion = data.ip_version ?? (kindChanged ? "ipv4" : row.ip_version);
-	if (suffix !== null && (kindChanged || suffix !== row?.ipv6_suffix || ipVersion !== row?.ip_version)) {
-		if (ipVersion === "ipv4") throw refusal("An IPv6 suffix needs IPv6 or both", "error.ddns-suffix-needs-ipv6");
-		if (!isIpv6Suffix(suffix)) {
-			throw refusal(`'${suffix}' is not an IPv6 interface id of at most 64 bits`, "error.ddns-suffix-invalid", {
-				suffix,
-			});
-		}
-	}
+	const address = addressValues({ data, row, kind, suffix: suffixOf(data, row) });
 	return {
 		values: {
 			owner_user_id: credential.owner_user_id,
@@ -195,9 +209,7 @@ const resolveZoneless = ({ updater, credential, credentialChanged, data, row, na
 			kind,
 			ttl,
 			enabled: data.enabled ?? row?.enabled ?? true,
-			target: null,
-			ip_version: ipVersion,
-			ipv6_suffix: suffix,
+			...address,
 		},
 		credential,
 		identityChanged: row !== null && (renamed || credentialChanged || updater.zone !== row.zone),
@@ -294,8 +306,7 @@ const resolveSave = async (access, data, row) => {
 		enabled: data.enabled ?? row?.enabled ?? true,
 	};
 
-	const suffixInput = data.ipv6_suffix !== undefined ? data.ipv6_suffix : (row?.ipv6_suffix ?? null);
-	const suffix = typeof suffixInput === "string" && suffixInput.trim() !== "" ? suffixInput.trim() : null;
+	const suffix = suffixOf(data, row);
 	if (kind === "alias") {
 		const targetChanged = row === null || kindChanged || (data.target !== undefined && data.target !== row.target);
 		let target = row?.target ?? null;
@@ -330,25 +341,7 @@ const resolveSave = async (access, data, row) => {
 		}
 		Object.assign(values, { target, ip_version: "ipv4", ipv6_suffix: null });
 	} else {
-		const hasTarget = typeof data.target === "string" && data.target.trim() !== "";
-		if (hasTarget) throw refusal("An address record takes no target", "error.ddns-address-no-target");
-		const ipVersion = data.ip_version ?? (kindChanged ? "ipv4" : row.ip_version);
-		const suffixChanged = suffix !== (kindChanged ? null : (row?.ipv6_suffix ?? null));
-		if (suffix !== null && (suffixChanged || ipVersion !== row?.ip_version)) {
-			if (ipVersion === "ipv4") {
-				throw refusal("An IPv6 suffix needs IPv6 or both", "error.ddns-suffix-needs-ipv6");
-			}
-			if (suffixChanged && !isIpv6Suffix(suffix)) {
-				throw refusal(
-					`'${suffix}' is not an IPv6 interface id of at most 64 bits`,
-					"error.ddns-suffix-invalid",
-					{
-						suffix,
-					},
-				);
-			}
-		}
-		Object.assign(values, { target: null, ip_version: ipVersion, ipv6_suffix: suffix });
+		Object.assign(values, addressValues({ data, row, kind, suffix }));
 	}
 
 	const identityChanged = row !== null && (renamed || credentialChanged || zone !== row.zone);

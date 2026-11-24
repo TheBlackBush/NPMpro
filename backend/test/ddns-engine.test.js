@@ -798,6 +798,15 @@ describe("ddns engine: zoneless provider", () => {
 		assert.equal(h.historyRows[0].old_ip, IP4_NEW);
 	});
 
+	it("writes again without a history row when the address is the one last written and DNS never answers", async () => {
+		const h = harness({ zoneless: true, records: [record({ last_ipv4: IP4 })], resolver: () => null });
+		await h.engine.cycle();
+		assert.equal(writes(h).length, 1);
+		assert.equal(h.row().state, "ok");
+		assert.equal(h.historyRows.length, 0);
+		assert.ok(h.row().last_changed_on);
+	});
+
 	it("does not write when the DNS answer is already the address, even for a record never written", async () => {
 		const h = harness({ zoneless: true, records: [record()], resolver: () => [IP4] });
 		await h.engine.cycle();

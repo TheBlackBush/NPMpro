@@ -78,3 +78,33 @@ it("trims the times and keeps the lists as they are", () => {
 	assert.equal(api.period, "10m");
 	assert.deepEqual(api.ipv4Services, data.ipv4Services);
 });
+
+it("validates a new form without loaded data, with missing values and a non-array service list", () => {
+	const errors = ddnsSettingsValidate(rules, {
+		period: undefined,
+		cooldown: null,
+		ipv4Services: "https://a.example/",
+		ipv6Services: [],
+		resolver: undefined,
+	});
+	assert.ok(errors.period && errors.cooldown);
+	assert.ok(errors.ipv4Services && errors.ipv6Services);
+	assert.equal(errors.resolver, undefined);
+	assert.deepEqual(serviceListProblem(undefined), { error: "count" });
+});
+
+it("refuses an invalid resolver address, a duplicate and too many, and keeps a stored list", () => {
+	const form = { ...ddnsToForm(data) };
+	const check = (resolver, stored = data) => ddnsSettingsValidate(rules, { ...form, resolver }, stored).resolver;
+	assert.ok(check(["not an address"]));
+	assert.ok(check(["9.9.9.9", "9.9.9.9"]));
+	assert.ok(check(Array.from({ length: 20 }, (_, i) => `9.9.9.${i}`)));
+	assert.equal(check(["9.9.9.9"]), undefined);
+	assert.equal(check(["not an address"], { ...data, resolver: ["not an address"] }), undefined);
+});
+
+it("fills the form and the request from missing values", () => {
+	assert.deepEqual(ddnsToForm({}), { period: "", cooldown: "", ipv4Services: [], ipv6Services: [], resolver: [] });
+	assert.equal(ddnsToApi({ period: undefined, cooldown: " 5m " }).cooldown, "5m");
+	assert.equal(ddnsToApi({}).period, "");
+});
