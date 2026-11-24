@@ -330,3 +330,90 @@ it("renew, re-issue and a domain change each clear the entry", async () => {
 	// re-issue at the CA without an identity: the result is rebuilt for it
 	await flip(() => admin.post(`${CERTS}/${id}/reissue`, { npmpro_acme_server: OTHER }), "not-checked");
 });
+
+it("an unknown result lives 5 minutes, not 6 hours", async () => {
+	const { caaCache } = await import("../lib/dns-check/caa-cache.js");
+	await dns("u.example.com", { code: "servfail" });
+	const id = await certificate(["u.example.com"]);
+	assert.equal((await entry(admin, id)).state, "unknown");
+	await dns("u.example.com", issue("directory-ca.example"));
+	const stored = caaCache.get("certificate", id, "all");
+	stored.at = Date.now() - 4 * 60_000;
+	assert.equal((await entry(admin, id)).state, "unknown");
+	stored.at = Date.now() - 6 * 60_000;
+	assert.equal((await entry(admin, id)).state, "allowed");
+});
+
+const withTiming = async (values, run) => {
+	const { checkTiming } = await import("../lib/dns-check/timing.js");
+	const saved = { ...checkTiming };
+	Object.assign(checkTiming, values);
+	try {
+		return await run();
+	} finally {
+		Object.assign(checkTiming, saved);
+	}
+};
+
+it("a list call ends within its deadline: an unfinished refresh keeps the certificate as it was", async () => {
+	const { caaCache } = await import("../lib/dns-check/caa-cache.js");
+	await api.db("certificate").delete();
+	await dns("kept.example.com", issue("directory-ca.example"));
+	const kept = await certificate(["kept.example.com"]);
+	const earlier = await entry(admin, kept);
+	assert.equal(earlier.state, "allowed");
+	caaCache.get("certificate", kept, "all").at = Date.now() - 7 * 3600 * 1000;
+	await dns("kept.example.com", { delay: 3000, answer: issue("letsencrypt.org") });
+	await dns("late.example.com", { delay: 3000, answer: issue("directory-ca.example") });
+	const late = await certificate(["late.example.com"]);
+	await withTiming({ requestMs: 300, tryMs: 5000 }, async () => {
+		const started = Date.now();
+		const res = await admin.get(LIST);
+		assert.equal(res.status, 200, res.text);
+		assert.ok(Date.now() - started < 2000, "the list waited for the lookups");
+		const byId = Object.fromEntries(res.body.map((item) => [item.certificate_id, item]));
+		assert.deepEqual(byId[kept], earlier);
+		assert.equal(byId[late].state, "not-checked");
+		assert.equal(byId[late].checked_on, null);
+	});
+});
+
+it("parallel list calls share one refresh of a certificate", async () => {
+	const { caaCache } = await import("../lib/dns-check/caa-cache.js");
+	await api.db("certificate").delete();
+	await dns("twice.example.com", { delay: 200, answer: issue("directory-ca.example") });
+	const id = await certificate(["twice.example.com"]);
+	const set = caaCache.set;
+	let writes = 0;
+	caaCache.set = (...args) => {
+		if (args[1] === id) writes += 1;
+		return set(...args);
+	};
+	try {
+		const [first, second] = await Promise.all([admin.get(LIST), admin.get(LIST)]);
+		assert.equal(first.status, 200, first.text);
+		assert.equal(second.status, 200, second.text);
+		assert.equal(writes, 1);
+		assert.equal(second.body.find((item) => item.certificate_id === id).state, "allowed");
+	} finally {
+		caaCache.set = set;
+	}
+});
+
+it("the check answers within its deadline: an unfinished name is unknown", async () => {
+	await dns("now.example.com", issue("directory-ca.example"));
+	await dns("never.example.com", { delay: 3000, answer: issue("directory-ca.example") });
+	await withTiming({ requestMs: 300, tryMs: 5000 }, async () => {
+		const started = Date.now();
+		const res = await admin.post(CHECK, { domain_names: ["now.example.com", "never.example.com"] });
+		assert.equal(res.status, 200, res.text);
+		assert.ok(Date.now() - started < 2000, "the check waited for the lookups");
+		assert.deepEqual(
+			res.body.names.map(({ name, state, reason }) => [name, state, reason]),
+			[
+				["now.example.com", "allowed", "listed"],
+				["never.example.com", "unknown", "lookup-timeout"],
+			],
+		);
+	});
+});
