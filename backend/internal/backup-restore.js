@@ -13,6 +13,7 @@ import {
 	swapFiles,
 } from "../lib/backup/restore-files.js";
 import { allowFile, RESTORE_ORDER, TYPES } from "../lib/backup/types.js";
+import { caaCache } from "../lib/dns-check/caa-cache.js";
 import { hostCheckCache } from "../lib/dns-check/host-cache.js";
 import { withAllOwnerLocks } from "../lib/dns-domain-lock.js";
 import { isRestartRule, rulesOf } from "../lib/runtime-rules.js";
@@ -316,6 +317,7 @@ const createRestore = (
 			return await applyWithRollbackInner(options);
 		} finally {
 			hostCheckCache.clearAll();
+			caaCache.clearAll();
 		}
 	};
 

@@ -1,7 +1,7 @@
 import { presetOf, sameServer } from "../lib/acme-server.js";
 import { ddnsSettingsOf } from "../lib/ddns/settings.js";
+import { caaCache as cache } from "../lib/dns-check/caa-cache.js";
 import { caaIdentitiesOf, checkCaaNames } from "../lib/dns-check/caa-lookup.js";
-import { createHostCache } from "../lib/dns-check/host-cache.js";
 import { limitConcurrency } from "../lib/dns-check/limit.js";
 import { lookup } from "../lib/dns-check/lookup.js";
 import errs from "../lib/error.js";
@@ -23,8 +23,6 @@ const SCOPE = "all";
 const SEVERITY = ["refused", "limited", "unknown", "allowed", "not-checked"];
 // Let's Encrypt honours the two RFC 8657 parameters; for any other CA they are shown and not compared
 const PARAMETER_PRESETS = new Set(["letsencrypt", "letsencrypt-staging"]);
-
-const cache = createHostCache();
 
 const worstOf = (names) => SEVERITY.find((state) => names.some((name) => name.state === state)) ?? "not-checked";
 

@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
+import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { GOOGLE_SERVER, LETSENCRYPT_STAGING_SERVER, ZEROSSL_SERVER } from "../lib/acme-server.js";
 import { startApi } from "./support/api.js";
-import { acmeDirectory, seedAccount } from "./support/certbot.js";
+import { acmeDirectory, certbotSucceeds, makeCertificate, seedAccount } from "./support/certbot.js";
 
 const CERTS = "/nginx/certificates";
 const ACME = "https://acme.test/directory";
@@ -258,4 +259,68 @@ it("a list call checks at most 25 certificates, the rest answer not-checked", as
 	// the next call checks the two that are left
 	assert.equal((await admin.get(LIST)).body.filter((item) => item.state === "allowed").length, 27);
 	assert.equal(made.length, 27);
+});
+
+it("a result older than 6 hours is checked again, a younger one is not", async () => {
+	const { caaCache } = await import("../lib/dns-check/caa-cache.js");
+	await dns("t.example.com", issue("letsencrypt.org"));
+	const id = await certificate(["t.example.com"]);
+	assert.equal((await entry(admin, id)).state, "refused");
+	await dns("t.example.com", issue("directory-ca.example"));
+	// the stored time is the clock of the entry: 6 hours less a minute, then 6 hours and a minute
+	const stored = caaCache.get("certificate", id, "all");
+	stored.at = Date.now() - (6 * 3600 * 1000 - 60_000);
+	assert.equal((await entry(admin, id)).state, "refused");
+	stored.at = Date.now() - (6 * 3600 * 1000 + 60_000);
+	assert.equal((await entry(admin, id)).state, "allowed");
+});
+
+it("a restore of the backup flow clears the shared cache (the cache module is the one the restore clears)", async () => {
+	const { caaCache } = await import("../lib/dns-check/caa-cache.js");
+	await api.db("certificate").delete();
+	await dns("r.example.com", issue("letsencrypt.org"));
+	const id = await certificate(["r.example.com"]);
+	assert.equal((await entry(admin, id)).state, "refused");
+	assert.equal(caaCache.size() > 0, true);
+	caaCache.clearAll();
+	await dns("r.example.com", issue("directory-ca.example"));
+	assert.equal((await entry(admin, id)).state, "allowed");
+});
+
+it("a change of the allowed CAs clears the results", async () => {
+	await api.db("certificate").delete();
+	await dns("k.example.com", issue("letsencrypt.org"));
+	const id = await certificate(["k.example.com"]);
+	assert.equal((await entry(admin, id)).state, "refused");
+	await dns("k.example.com", issue("directory-ca.example"));
+	assert.equal((await entry(admin, id)).state, "refused");
+	const added = await admin.post("/settings/acme/accounts", { server: "https://third.test/dir", email: "a@example.com" });
+	// whatever the answer (the CA may not register), the attempt cleared the cache
+	assert.ok(added.status > 0);
+	assert.equal((await entry(admin, id)).state, "allowed");
+});
+
+it("renew, re-issue and a domain change each clear the entry", async () => {
+	const pair = await makeCertificate(path.join(api.root, "fake"), "n.example.com");
+	await certbotSucceeds(api, pair);
+	await api.db("certificate").delete();
+	const { caaCache } = await import("../lib/dns-check/caa-cache.js");
+	const made = await admin.post(CERTS, { provider: "letsencrypt", domain_names: ["n.example.com"] });
+	assert.equal(made.status, 201, made.text);
+	const id = made.body.id;
+	const flip = async (action, expectState) => {
+		await dns("n.example.com", issue("letsencrypt.org"));
+		await dns("o2.example.com", issue("letsencrypt.org"));
+		caaCache.clearAll();
+		assert.equal((await entry(admin, id)).state, "refused", "primed");
+		await dns("n.example.com", issue("directory-ca.example"));
+		await dns("o2.example.com", issue("directory-ca.example"));
+		const done = await action();
+		assert.equal(done.status, 200, done.text);
+		assert.equal((await entry(admin, id)).state, expectState);
+	};
+	await flip(() => admin.post(`${CERTS}/${id}/renew`, {}), "allowed");
+	await flip(() => admin.put(`${CERTS}/${id}/domains`, { domain_names: ["n.example.com", "o2.example.com"] }), "allowed");
+	// re-issue at the CA without an identity: the result is rebuilt for it
+	await flip(() => admin.post(`${CERTS}/${id}/reissue`, { npmpro_acme_server: OTHER }), "not-checked");
 });

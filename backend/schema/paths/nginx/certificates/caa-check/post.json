@@ -90,5 +90,5 @@
 			}
 		}
 	},
-	"description": "Reads the CAA records (RFC 8659) of each name: the name itself, then each parent until a set is found, at most 10 levels; a wildcard starts at its base name. It compares them with the CAA identities of the chosen CA (the `caaIdentities` of its ACME directory, else a fixed list for the preset CAs). A name whose CA does not name an identity is `not-checked`. Nothing is written and nothing is cached.\n\nNeeds: Certificates view"
+	"description": "Reads the CAA records (RFC 8659) of each name: the name itself, then each parent until a set is found, at most 16 levels (a deeper name is `unknown`); a wildcard starts at its base name. It compares them with the CAA identities of the chosen CA (the `caaIdentities` of its ACME directory, else a fixed list for the preset CAs). A name whose CA does not name an identity is `not-checked`. Nothing is written and nothing is cached.\n\nNeeds: Certificates view"
 }

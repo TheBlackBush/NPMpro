@@ -7,15 +7,15 @@ import { evaluateCaa } from "./caa.js";
 // The CAA check of names: the climb of RFC 8659 section 3 (find the Relevant RRset) and the evaluation of each name.
 // The lookups are passed in, so the climb itself touches no network.
 
-const MAX_LEVELS = 10;
+const MAX_LEVELS = 16;
 const LEADING_WILDCARD = /^\*\./u;
 const NOT_FOUND = new Set(["nodata", "nxdomain"]);
 const HOSTNAME = /^(?:\*\.)?[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?(?:\.[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?)*$/u;
 
 /**
- * The CAA set that applies to a name: the first non-empty set at the name or a parent, at most 10 levels, up to and
- * including the top level label. A wildcard `*.x` starts at `x`. NODATA and NXDOMAIN move up; any other failure
- * stops the climb.
+ * The CAA set that applies to a name: the first non-empty set at the name or a parent, up to and including the top
+ * level label, at most 16 levels. A wildcard `*.x` starts at `x`. NODATA and NXDOMAIN move up; any other failure
+ * stops the climb. When the cap ends the climb before the top label the answer is code `too-deep` (never allowed).
  *
  * @param   {String}    name
  * @param   {Function}  lookup  (name, "CAA") -> { ok, values } | { ok: false, code }
@@ -29,10 +29,11 @@ const findCaaSet = async (name, lookup) => {
 		if (found.ok && found.values.length > 0) return { ok: true, at: current, records: found.values };
 		if (!found.ok && !NOT_FOUND.has(found.code)) return { ok: false, code: found.code };
 		const dot = current.indexOf(".");
-		if (dot < 0) break;
+		if (dot < 0) return { ok: true, at: null, records: [] };
 		current = current.slice(dot + 1);
 	}
-	return { ok: true, at: null, records: [] };
+	// the cap ended the climb before the top label: a set above may exist, so no answer is a safe one
+	return { ok: false, code: "too-deep" };
 };
 
 const result = (name, state, extra = {}) => ({

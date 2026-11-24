@@ -37,6 +37,7 @@ import {
 } from "../lib/certbot-account.js";
 import { CERTBOT_INI, CERTBOT_INI_BASE, renewalOptionEdits } from "../lib/certbot-ini.js";
 import { cleanCertbotMessage } from "../lib/certbot-message.js";
+import { caaCache } from "../lib/dns-check/caa-cache.js";
 import errs from "../lib/error.js";
 import { rooted } from "../lib/paths.js";
 import { withFiles, writeStartupSettings } from "../lib/runtime-apply.js";
@@ -1432,6 +1433,18 @@ const internalAcmeAccount = {
 	saveSettings,
 	updateAccount,
 };
+
+// a change of the instance CA or of the allowed CAs changes which CA a CAA result was judged for
+for (const name of ["saveSettings", "addAccount", "updateAccount", "removeAccount", "replaceAccount"]) {
+	const original = internalAcmeAccount[name];
+	internalAcmeAccount[name] = async (...args) => {
+		try {
+			return await original(...args);
+		} finally {
+			caaCache.clearAll();
+		}
+	};
+}
 
 export {
 	accountRow,

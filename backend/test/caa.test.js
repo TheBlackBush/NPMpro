@@ -158,14 +158,72 @@ it("the climb stops at the first non-empty set, not at the first answer of any t
 	assert.equal((await findCaaSet("a.example.com", lookup)).at, "example.com");
 });
 
-it("the climb is capped at 10 levels", async () => {
+it("a deep name still reaches the set at its zone (13 labels, set at example.com)", async () => {
+	const lookup = answers({ "example.com": [rec("issue", "pki.goog")] });
+	const results = await checkCaaNames({
+		names: ["a.b.c.d.e.f.g.h.i.j.k.example.com"],
+		identities: LE,
+		method: "http-01",
+		parameters: true,
+		lookup,
+	});
+	assert.deepEqual([results[0].state, results[0].found_at], ["refused", "example.com"]);
+});
+
+it("a name deeper than the cap is unknown too-deep, never allowed", async () => {
 	const asked = [];
-	const name = Array.from({ length: 14 }, (_, i) => `l${i}`).join(".");
-	await findCaaSet(name, (level) => {
+	const name = Array.from({ length: 20 }, (_, i) => `l${i}`).join(".");
+	const set = await findCaaSet(name, (level) => {
 		asked.push(level);
 		return { ok: false, code: "nodata" };
 	});
-	assert.equal(asked.length, 10);
+	assert.deepEqual(set, { ok: false, code: "too-deep" });
+	assert.equal(asked.length, 16);
+	const [result] = await checkCaaNames({
+		names: [name],
+		identities: LE,
+		method: "http-01",
+		parameters: true,
+		lookup: () => ({ ok: false, code: "nodata" }),
+	});
+	assert.deepEqual([result.state, result.reason], ["unknown", "lookup-too-deep"]);
+});
+
+it("checkCaaNames: a wildcard uses issuewild and starts at its base name", async () => {
+	const asked = [];
+	const lookup = (name) => {
+		asked.push(name);
+		return name === "example.com"
+			? { ok: true, values: [rec("issue", "letsencrypt.org"), rec("issuewild", "pki.goog")] }
+			: { ok: false, code: "nodata" };
+	};
+	const [wild, plain] = await checkCaaNames({
+		names: ["*.example.com", "example.com"],
+		identities: LE,
+		method: "dns-01",
+		parameters: true,
+		lookup,
+	});
+	assert.deepEqual([wild.state, wild.found_at], ["refused", "example.com"]);
+	assert.equal(plain.state, "allowed");
+	assert.equal(asked.includes("*.example.com"), false);
+});
+
+it("checkCaaNames: an IDN name is looked up in punycode", async () => {
+	const asked = [];
+	const [result] = await checkCaaNames({
+		names: ["bücher.example"],
+		identities: LE,
+		method: "http-01",
+		parameters: true,
+		lookup: (name) => {
+			asked.push(name);
+			return { ok: false, code: "nodata" };
+		},
+	});
+	assert.equal(asked[0], "xn--bcher-kva.example");
+	assert.equal(result.name, "bücher.example");
+	assert.equal(result.state, "allowed");
 });
 
 it("checkCaaNames: a state per name, a failing lookup is unknown, a pattern name is not checked", async () => {

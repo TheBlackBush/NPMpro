@@ -69,7 +69,7 @@
 								"string",
 								"null"
 							],
-							"description": "A code: `none`, `no-issue-property`, `listed`, `listed-parameters-unchecked`, `not-listed`, `forbidden`, `validationmethods`, `accounturi`, `critical-unknown-tag`, `lookup-timeout`, `lookup-servfail`, `lookup-error`, `skipped-pattern` or `no-identity`"
+							"description": "A code: `none`, `no-issue-property`, `listed`, `listed-parameters-unchecked`, `not-listed`, `forbidden`, `validationmethods`, `accounturi`, `critical-unknown-tag`, `lookup-timeout`, `lookup-servfail`, `lookup-error`, `lookup-too-deep` (the name has more than 16 labels), `skipped-pattern` or `no-identity`"
 						},
 						"found_at": {
 							"type": [
