@@ -486,6 +486,7 @@
 	"ddns.state.ok-age": "Актуально, {age}",
 	"ddns.state.pending": "Ожидает",
 	"ddns.state.proxied": "Через прокси",
+	"ddns.state.stopped": "Автоматические обновления остановлены: измените запись или нажмите Обновить сейчас",
 	"ddns.state.updated": "Обновлено {time}",
 	"ddns.state.updating": "Обновляется",
 	"ddns.status.check-now": "Проверить сейчас",

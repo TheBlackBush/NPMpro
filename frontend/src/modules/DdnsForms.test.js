@@ -10,6 +10,7 @@ import {
 	ddnsRecordValidate,
 	ddnsRulesInput,
 	isIpv6Suffix,
+	isStoppedRecord,
 	minTtlOf,
 	missingDetailsOf,
 	normalizeRecordName,
@@ -580,4 +581,14 @@ it("a provider switch clears every account field and sets the method back to GET
 		expect: "",
 		method: "GET",
 	});
+});
+
+it("tells a failed record that waits for the user after an account refusal", () => {
+	const base = { enabled: true, state: "failed", stopped: true };
+	assert.equal(isStoppedRecord(base), true);
+	assert.equal(isStoppedRecord({ ...base, stopped: false }), false);
+	assert.equal(isStoppedRecord({ ...base, stopped: undefined }), false);
+	assert.equal(isStoppedRecord({ ...base, state: "ok" }), false);
+	assert.equal(isStoppedRecord({ ...base, enabled: false }), false);
+	assert.equal(isStoppedRecord(null), false);
 });

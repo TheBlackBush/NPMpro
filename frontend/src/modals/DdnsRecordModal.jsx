@@ -45,6 +45,7 @@ import {
 	ddnsRecordValidate,
 	ddnsRulesInput,
 	IP_VERSIONS,
+	isStoppedRecord,
 	minTtlOf,
 	missingDetailsOf,
 	normalizeRecordName,
@@ -69,6 +70,7 @@ import { windowTitleId } from "src/modules/HostForms";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { sectionAccent } from "src/modules/SectionAccents";
 import { showObjectSuccess } from "src/notifications";
+import { ddnsErrorText } from "src/pages/Certificates/DynamicDns/errorText";
 import { sectionIcon } from "src/shell/useNavItems";
 
 const accent = sectionAccent("dnsCredentials");
@@ -593,6 +595,7 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 	// a custom record belongs to the administrators: anyone else sees its row and no details
 	const customHidden = !isNew && stored?.provider === "custom" && isAdmin === false;
 	const viewOnly = readOnly || customHidden;
+	const stoppedError = !customHidden && isStoppedRecord(stored) ? ddnsErrorText(stored) : null;
 	const methods = useAppForm({
 		defaultValues: emptyRecord,
 		values: ready ? (isNew ? { ...emptyRecord, ...prefill } : toForm(stored, providers)) : undefined,
@@ -645,6 +648,13 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 						{!customHidden && missingDetailsOf(stored) ? (
 							<NoticeAlert variant="warning" className="mb-3">
 								<T id={missingDetailsOf(stored)} />
+							</NoticeAlert>
+						) : null}
+						{/* a provider refused the account: the error, and that no automatic try comes until the user acts */}
+						{!customHidden && isStoppedRecord(stored) ? (
+							<NoticeAlert variant="warning" className="mb-3">
+								{stoppedError ? <span className="block">{stoppedError}</span> : null}
+								<T id="ddns.state.stopped" />
 							</NoticeAlert>
 						) : null}
 						{/* a View window: the fields sit in a disabled fieldset */}

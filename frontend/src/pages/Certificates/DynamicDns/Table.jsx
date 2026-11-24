@@ -8,7 +8,7 @@ import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
 import { useCanManage, useDdnsProviders, useIsAdmin } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDdnsRecordModal } from "src/modals";
-import { IP_VERSIONS, missingDetailsOf, recordStateOf } from "src/modules/DdnsForms";
+import { IP_VERSIONS, isStoppedRecord, missingDetailsOf, recordStateOf } from "src/modules/DdnsForms";
 import { ageOf, recordAddressOf } from "src/modules/DdnsStatus";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { ddnsErrorText } from "./errorText";
@@ -116,6 +116,11 @@ function RecordState({ record, updating }) {
 			{note ? (
 				<span className="text-xs text-muted-foreground" data-ddns-note>
 					<T id={note} />
+				</span>
+			) : null}
+			{isStoppedRecord(record) ? (
+				<span className="text-xs text-muted-foreground" data-ddns-stopped>
+					<T id="ddns.state.stopped" />
 				</span>
 			) : null}
 			{state.nextTry ? (

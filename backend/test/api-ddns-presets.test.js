@@ -320,6 +320,7 @@ it("stops a record after an account refusal until it is saved with a change, ena
 	assert.equal(failed.state, "failed");
 	assert.ok(failed.error.includes("badauth"));
 	assert.equal(failed.next_try_on, null);
+	assert.equal(failed.stopped, true);
 	assert.equal(seen.length, 1);
 	// no automatic try: Check now and a save that changes nothing leave it stopped
 	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);
@@ -334,6 +335,7 @@ it("stops a record after an account refusal until it is saved with a change, ena
 	await admin.put(`${RECORDS}/${record.id}`, { enabled: false });
 	const enabled = await admin.put(`${RECORDS}/${record.id}`, { enabled: true });
 	assert.equal(enabled.body.state, "pending");
+	assert.equal(enabled.body.stopped, false);
 	answer.body = "911";
 	answer.status = 200;
 	assert.equal((await admin.post("/nginx/ddns/check")).status, 200);

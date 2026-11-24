@@ -148,6 +148,8 @@ const toPublic = (row, access) => {
 		error_i18n: meta?.error_i18n ?? null,
 		error_values: meta?.error_values ?? null,
 		note_i18n: meta?.note_i18n ?? null,
+		// a provider refused the account: no automatic try until the user acts
+		stopped: meta?.stopped === true,
 		proxied: proxiedOf(meta),
 	};
 };

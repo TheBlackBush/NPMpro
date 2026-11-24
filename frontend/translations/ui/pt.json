@@ -486,6 +486,7 @@
 	"ddns.state.ok-age": "Atualizado, {age}",
 	"ddns.state.pending": "Pendente",
 	"ddns.state.proxied": "Com proxy",
+	"ddns.state.stopped": "Atualizações automáticas paradas: edite o registo ou use Atualizar agora",
 	"ddns.state.updated": "Atualizado {time}",
 	"ddns.state.updating": "A atualizar",
 	"ddns.status.check-now": "Verificar agora",

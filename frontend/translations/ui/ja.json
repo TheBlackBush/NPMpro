@@ -486,6 +486,7 @@
 	"ddns.state.ok-age": "最新、{age}",
 	"ddns.state.pending": "保留中",
 	"ddns.state.proxied": "プロキシ済み",
+	"ddns.state.stopped": "自動更新は停止しています：レコードを編集するか、今すぐ更新を使ってください",
 	"ddns.state.updated": "{time} に更新",
 	"ddns.state.updating": "更新中",
 	"ddns.status.check-now": "今すぐ確認",

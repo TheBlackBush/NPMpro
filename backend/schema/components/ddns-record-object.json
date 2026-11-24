@@ -194,6 +194,11 @@
 			"example": null,
 			"description": "The placeholders of the translated error, with `error_i18n`"
 		},
+		"stopped": {
+			"type": "boolean",
+			"example": false,
+			"description": "Whether the provider refused the account (a wrong password, an unknown host, a blocked client): the record gets no automatic try until it is saved with a change, enabled again or updated now"
+		},
 		"note_i18n": {
 			"type": [
 				"string",

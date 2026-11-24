@@ -445,6 +445,15 @@ const MISSING_DETAILS = new Set(["error.ddns-custom-url-missing", "error.ddns-se
 const missingDetailsOf = (record) => (MISSING_DETAILS.has(record?.errorI18n) ? record.errorI18n : null);
 
 /**
+ * Whether a failed record waits for the user: its provider refused the account, so no automatic try comes until the
+ * record is edited or Update now is used (a disabled record says Disabled instead)
+ *
+ * @param   {{ enabled?: boolean, state?: string, stopped?: boolean } | null | undefined}  record  camelCase record
+ * @returns {boolean}
+ */
+const isStoppedRecord = (record) => Boolean(record?.enabled) && record.state === "failed" && record.stopped === true;
+
+/**
  * The values a provider switch on Add puts back: one service's account details or URL never go to another
  *
  * @returns {{ username: string, password: string, domain: string, url: string, expect: string, method: "GET" }}
@@ -526,6 +535,7 @@ export {
 	ddnsRulesInput,
 	IP_VERSIONS,
 	isIpv6Suffix,
+	isStoppedRecord,
 	minTtlOf,
 	missingDetailsOf,
 	normalizeRecordName,

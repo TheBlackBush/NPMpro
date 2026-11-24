@@ -486,6 +486,7 @@
 	"ddns.state.ok-age": "최신 상태, {age}",
 	"ddns.state.pending": "대기 중",
 	"ddns.state.proxied": "프록시됨",
+	"ddns.state.stopped": "자동 업데이트가 중지되었습니다. 레코드를 편집하거나 지금 업데이트를 사용하세요",
 	"ddns.state.updated": "{time}에 업데이트됨",
 	"ddns.state.updating": "업데이트 중",
 	"ddns.status.check-now": "지금 확인",

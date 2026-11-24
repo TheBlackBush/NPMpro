@@ -486,6 +486,7 @@
 	"ddns.state.ok-age": "已是最新，{age}",
 	"ddns.state.pending": "待处理",
 	"ddns.state.proxied": "已代理",
+	"ddns.state.stopped": "自动更新已停止：请编辑记录或使用立即更新",
 	"ddns.state.updated": "已更新 {time}",
 	"ddns.state.updating": "正在更新",
 	"ddns.status.check-now": "立即检查",
