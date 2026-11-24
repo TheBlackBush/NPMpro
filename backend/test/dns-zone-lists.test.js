@@ -216,22 +216,77 @@ it("linode, vultr: zone listing only, no DDNS updater", () => {
 	}
 });
 
-it("desec: a cursor URL of another host is refused without a second request", async () => {
+it("desec: a cursor URL of another host is refused as a bad shape", async () => {
 	const c = CASES.desec;
 	intercept(c.host, c.path(1), c.headers).reply(200, c.body(["a.example.org"]), {
 		headers: { ...json.headers, link: '<https://evil.example/api/v1/domains/?cursor=x>; rel="next"' },
 	});
-	await assert.rejects(run("desec", c.fields), (err) => err.code === "failed");
+	await assert.rejects(
+		run("desec", c.fields),
+		(err) => err.code === "failed" && err.message === "Unexpected answer shape",
+	);
 });
 
-it("desec: a custom endpoint is used for the list", async () => {
+it("desec: rel must be the exact token next", async () => {
+	const c = CASES.desec;
+	intercept(c.host, c.path(1), c.headers).reply(200, c.body(["a.example.org"]), {
+		headers: { ...json.headers, link: '<https://desec.io/api/v1/domains/?cursor=x>; rel="nextfoo"' },
+	});
+	assert.deepEqual(await run("desec", c.fields), ["a.example.org"]);
+	intercept(c.host, c.path(1), c.headers).reply(200, c.body(["b.example.org"]), {
+		headers: { ...json.headers, link: "<https://desec.io/api/v1/domains/?cursor=c1>; rel=next" },
+	});
+	intercept(c.host, c.path(2), c.headers).reply(200, c.body(["c.example.org"]), json);
+	assert.deepEqual(await run("desec", c.fields), ["b.example.org", "c.example.org"]);
+});
+
+it("desec: a 400 with a first link is followed once, then paging goes on", async () => {
+	const c = CASES.desec;
+	intercept(c.host, c.path(1), c.headers).reply(
+		400,
+		{ detail: "cursor needed" },
+		{ headers: { ...json.headers, link: '<https://desec.io/api/v1/domains/?cursor=>; rel="first"' } },
+	);
+	intercept(c.host, "/api/v1/domains/?cursor=", c.headers).reply(200, c.body(["a.example.org"]), replyOf(c, 1, 2));
+	intercept(c.host, c.path(2), c.headers).reply(200, c.body(["b.example.org"]), replyOf(c, 2, 2));
+	assert.deepEqual(await run("desec", c.fields), ["a.example.org", "b.example.org"]);
+	mock.assertNoPendingInterceptors();
+});
+
+it("desec: a second 400 fails and a first link of another origin is not followed", async () => {
+	const c = CASES.desec;
+	const first = { headers: { ...json.headers, link: '<https://desec.io/api/v1/domains/?cursor=>; rel="first"' } };
+	intercept(c.host, c.path(1), c.headers).reply(400, { detail: "x" }, first);
+	intercept(c.host, "/api/v1/domains/?cursor=", c.headers).reply(400, { detail: "still" }, first);
+	await assert.rejects(run("desec", c.fields), (err) => err.code === "failed" && err.providerStatus === 400);
+	intercept(c.host, c.path(1), c.headers).reply(
+		400,
+		{ detail: "x" },
+		{ headers: { ...json.headers, link: '<https://evil.example/d/?cursor=>; rel="first"' } },
+	);
+	await assert.rejects(
+		run("desec", c.fields),
+		(err) => err.code === "failed" && err.message === "Unexpected answer shape",
+	);
+});
+
+it("desec: a custom endpoint is used for the list and carries the token", async () => {
 	mock.get("https://dns.example.org")
-		.intercept({ path: "/v1/domains/", method: "GET" })
+		.intercept({ path: "/v1/domains/", method: "GET", headers: CASES.desec.headers })
 		.reply(200, [{ name: "x.example.org" }], json);
 	assert.deepEqual(await run("desec", { ...CASES.desec.fields, dns_desec_endpoint: "https://dns.example.org/v1" }), [
 		"x.example.org",
 	]);
 });
+
+for (const endpoint of ["http://dns.example.org/v1", "https://127.0.0.1/v1"]) {
+	it(`desec: the endpoint ${endpoint} is refused before any request`, async () => {
+		await assert.rejects(
+			run("desec", { ...CASES.desec.fields, dns_desec_endpoint: endpoint }),
+			(err) => err instanceof DdnsProviderError,
+		);
+	});
+}
 
 it("cloudflare: the global key group sends X-Auth-Email and X-Auth-Key", async () => {
 	const fields = { dns_cloudflare_email: "me@example.org", dns_cloudflare_api_key: "globalkey-9999" };
