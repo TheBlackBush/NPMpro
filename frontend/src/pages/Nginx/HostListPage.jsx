@@ -20,7 +20,7 @@ import {
 } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
-import { checkCounts, checksOfType, checkTargets } from "src/modules/DnsCheck";
+import { checkBatches, checkCounts, checksOfType } from "src/modules/DnsCheck";
 import { addTag, tagNames } from "src/modules/HostTags";
 import { deleteInvalidations, toggleInvalidations } from "src/modules/HostTypes";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
@@ -31,6 +31,7 @@ import {
 	showNginxConfigError,
 	showObjectSuccess,
 	showSuccess,
+	showWarning,
 } from "src/notifications";
 
 const FILTERS = ["status", "tls", "group", "tags"];
@@ -118,10 +119,17 @@ export function HostListPage({ list }) {
 	};
 
 	const handleCheckDns = async () => {
-		const targets = checkTargets(list.type, pageRowsRef.current);
-		if (targets.length === 0) return;
+		const batches = checkBatches(list.type, pageRowsRef.current);
+		if (batches.length === 0) {
+			showWarning(intl.formatMessage({ id: "dns-check.nothing" }));
+			return;
+		}
 		try {
-			const hosts = await checkDns(targets);
+			// one request after the other: each runs its lookups four at a time
+			const hosts = await batches.reduce(
+				async (done, batch) => [...(await done), ...(await checkDns(batch))],
+				Promise.resolve([]),
+			);
 			showSuccess(intl.formatMessage({ id: "dns-check.toast" }, checkCounts(hosts)));
 		} catch (err) {
 			showApiError(err);

@@ -4,6 +4,7 @@ import { useCanManage, useDdnsSuggestions } from "src/hooks";
 import { intl, T } from "src/locale";
 import { recordPrefill, suggestionsFor } from "src/modules/DdnsSuggestions";
 import { CERTIFICATES } from "src/modules/Permissions";
+import { useReadOnly } from "./HookForm";
 
 /**
  * The names of a host that the server suggests keeping updated, by lower case name. The server suggests names of saved
@@ -12,29 +13,32 @@ import { CERTIFICATES } from "src/modules/Permissions";
  * that cap has none (accepted). Empty without Certificates manage.
  *
  * @param   {string[]} names  the names of the host window
+ * @param   {boolean} [enabled]  false: no request (a window that offers no Keep updated)
  * @returns {Map<string, Object>}
  */
-export function useKeepUpdated(names) {
+export function useKeepUpdated(names, enabled = true) {
 	const canManage = useCanManage(CERTIFICATES);
-	const { data: suggestions } = useDdnsSuggestions({ enabled: canManage });
-	const found = canManage ? suggestionsFor(names, suggestions) : [];
+	const { data: suggestions } = useDdnsSuggestions({ enabled: enabled && canManage });
+	const found = enabled && canManage ? suggestionsFor(names, suggestions) : [];
 	return new Map(found.map((entry) => [entry.name.toLowerCase(), entry]));
 }
 
 /**
  * A "Keep updated" button beside a name: it opens the record window with the name and the credential filled in. Input
- * help only.
+ * help only; disabled in a View window like the fields around it.
  *
  * @param {Object} props
  * @param {Object} props.entry  a suggestion of useKeepUpdated
  * @param {(id?: number, prefill?: Object) => void} props.onOpen  opens the record window (showDdnsRecordModal)
  */
 export function KeepUpdatedButton({ entry, onOpen }) {
+	const readOnly = useReadOnly();
 	return (
 		<Button
 			type="button"
 			variant="outline"
 			size="xs"
+			disabled={readOnly}
 			data-keep-updated
 			aria-label={intl.formatMessage({ id: "ddns.suggestions.keep-updated-name" }, { name: entry.name })}
 			onClick={() => onOpen(undefined, recordPrefill(entry))}

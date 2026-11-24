@@ -68,15 +68,14 @@ export function HostDnsCard({ type, hostId, onKeepUpdated }) {
 	const formNames = useWatch({ name: "domainNames" });
 	const { data: checks } = useHostDnsChecks();
 	const { mutateAsync: check, isPending } = useCheckHostDns();
-	const keep = useKeepUpdated(onKeepUpdated ? formNames : []);
+	const keep = useKeepUpdated(formNames, Boolean(onKeepUpdated));
 	const entry = hostId ? checkOfHost(checks, type, hostId) : undefined;
 	const lines = cardLines(formNames, entry?.names);
 
 	const run = async () => {
 		try {
 			const hosts = await check([{ type, id: hostId }]);
-			const counts = checkCounts(hosts);
-			showSuccess(intl.formatMessage({ id: "dns-check.toast" }, counts));
+			showSuccess(intl.formatMessage({ id: "dns-check.toast" }, checkCounts(hosts)));
 		} catch (err) {
 			showApiError(err);
 		}

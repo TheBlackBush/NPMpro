@@ -191,14 +191,19 @@ export function mergeChecks(cached, fresh) {
 }
 
 /**
- * The hosts a list checks: the rows of the page it shows, at most CHECK_LIMIT, as the request wants them
+ * The hosts a list checks: every row of the page it shows, in requests of at most CHECK_LIMIT hosts
  *
  * @param   {string} type  proxy, redirection or dead
  * @param   {Array<{ id: number }>} rows  the rows of the current page
- * @returns {Array<{ type: string, id: number }>}
+ * @returns {Array<Array<{ type: string, id: number }>>}  the requests; none for an empty page
  */
-export function checkTargets(type, rows) {
-	return (rows ?? []).slice(0, CHECK_LIMIT).map((row) => ({ type, id: row.id }));
+export function checkBatches(type, rows) {
+	const targets = (rows ?? []).map((row) => ({ type, id: row.id }));
+	const batches = [];
+	for (let start = 0; start < targets.length; start += CHECK_LIMIT) {
+		batches.push(targets.slice(start, start + CHECK_LIMIT));
+	}
+	return batches;
 }
 
 /**

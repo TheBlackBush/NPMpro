@@ -3,10 +3,10 @@ import { it } from "node:test";
 import {
 	CHECK_LIMIT,
 	cardLines,
+	checkBatches,
 	checkCounts,
 	checkOfHost,
 	checksOfType,
-	checkTargets,
 	hostCheckBadge,
 	mergeChecks,
 	nameLine,
@@ -210,14 +210,23 @@ it("finds, merges and picks checks by host", () => {
 	assert.deepEqual(mergeChecks([one], undefined), [one]);
 });
 
-it("checks the hosts of the page, at most 50", () => {
-	const rows = Array.from({ length: 120 }, (_, index) => ({ id: index + 1 }));
-	const targets = checkTargets("proxy", rows);
+it("checks every host of the page in requests of at most 50", () => {
+	const rows = (count) => Array.from({ length: count }, (_, index) => ({ id: index + 1 }));
 	assert.equal(CHECK_LIMIT, 50);
-	assert.equal(targets.length, 50);
-	assert.deepEqual(targets[0], { type: "proxy", id: 1 });
-	assert.deepEqual(checkTargets("dead", [{ id: 7 }]), [{ type: "dead", id: 7 }]);
-	assert.deepEqual(checkTargets("dead", undefined), []);
+	const batches = checkBatches("proxy", rows(120));
+	assert.deepEqual(
+		batches.map((batch) => batch.length),
+		[50, 50, 20],
+	);
+	assert.deepEqual(batches[0][0], { type: "proxy", id: 1 });
+	assert.deepEqual(batches[2][19], { type: "proxy", id: 120 });
+	assert.deepEqual(
+		checkBatches("dead", rows(50)).map((batch) => batch.length),
+		[50],
+	);
+	assert.deepEqual(checkBatches("dead", [{ id: 7 }]), [[{ type: "dead", id: 7 }]]);
+	assert.deepEqual(checkBatches("dead", []), []);
+	assert.deepEqual(checkBatches("dead", undefined), []);
 });
 
 it("counts the names a check looked at", () => {

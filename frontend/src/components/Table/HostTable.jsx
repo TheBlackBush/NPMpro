@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { EmptyData } from "src/components/EmptyData";
 import { pageRows } from "src/modules/TableGroups";
 import { TableLayout } from "./TableLayout";
@@ -50,14 +51,18 @@ export function HostTable({
 		onSortingChange,
 	});
 
-	if (pageRowsRef) {
-		pageRowsRef.current = pageRows({
-			rows: tableInstance.getRowModel().rows.map((row) => row.original),
-			keyOf: groupBy,
-			pageIndex: paging.pageIndex,
-			pageSize: paging.pageSize,
-		});
-	}
+	// what "Check DNS" checks: the rows of the page as the table orders and groups them, kept after each render
+	const shownRows = tableInstance.getRowModel().rows.map((row) => row.original);
+	useEffect(() => {
+		if (pageRowsRef) {
+			pageRowsRef.current = pageRows({
+				rows: shownRows,
+				keyOf: groupBy,
+				pageIndex: paging.pageIndex,
+				pageSize: paging.pageSize,
+			});
+		}
+	});
 
 	return (
 		<PagedTable paging={paging} total={data.length}>
