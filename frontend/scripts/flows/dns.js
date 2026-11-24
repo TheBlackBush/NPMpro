@@ -632,6 +632,8 @@ async function fetchDomains({ admin }) {
 		await addWindow(page).getByText("Turn on API access for the domain", { exact: false }).waitFor();
 		if ((await addWindow(page).getByText("This token cannot list zones", { exact: false }).count()) > 0)
 			throw new Error("Porkbun shows the Cloudflare hint");
+		if ((await addWindow(page).getByText("Check the credential", { exact: false }).count()) > 0)
+			throw new Error("Porkbun shows the general hint");
 		await cancel();
 		if (errors.length > 0) throw new Error(`page error: ${errors[0]}`);
 	} finally {
