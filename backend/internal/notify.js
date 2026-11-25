@@ -76,6 +76,8 @@ const fromAudit = async (entry) => {
 		await notify.emit(type, {
 			...meta,
 			...(hostType ? { type: hostType } : {}),
+			// a move's audit meta names the target as name, as the moved check reads it
+			...(entry.object_type === "database" ? { to: meta.to ?? meta.name } : {}),
 			id: entry.object_id,
 			user: { id: entry.user_id, name },
 		});
