@@ -3,6 +3,8 @@
 // again or forgotten. Pure; the list and the record window only draw it.
 
 // the host_type of a record answer and the host window that edits it
+import { dnsRecordInvalidations } from "./HostTypes.js";
+
 const HOST_KINDS = { proxy_host: "proxy", redirection_host: "redirection", dead_host: "dead" };
 
 /** Whether the record belongs to a host (made by the host record option) */
@@ -50,4 +52,31 @@ export function rowActionKeys(record, { canManage }) {
 	keys.push("history");
 	if (canManage && isOrphanRecord(record)) keys.push("remove-at-provider", "forget");
 	return keys;
+}
+
+/** The window type of a managed record's host (proxy, redirection, dead), also when the user may not see the host */
+export const hostKindOf = (record) => (isManagedRecord(record) ? (HOST_KINDS[record.hostType] ?? null) : null);
+
+/**
+ * The queries a change of a managed record's row (Delete at the provider again, Forget) makes stale: the host's item,
+ * list, badge and checks, the Dynamic DNS list and the audit log. Empty for a manual record.
+ *
+ * @param   {Object|null|undefined} record  a record of the list (camelCase)
+ * @returns {Array<Array<string|number>>}
+ */
+export function hostRecordInvalidations(record) {
+	const type = hostKindOf(record);
+	return type && Number.isInteger(record.hostId) ? dnsRecordInvalidations(type, record.hostId) : [];
+}
+
+/**
+ * What Open host does: the function that opens the record's host window, none without a visible host
+ *
+ * @param   {Object|null|undefined} record
+ * @param   {{ proxy: Function, redirection: Function, dead: Function }} windows  the host windows' show functions
+ * @returns {(() => void)|null}
+ */
+export function hostOpener(record, windows) {
+	const host = hostOfRecord(record);
+	return host ? () => windows[host.type](host.id) : null;
 }

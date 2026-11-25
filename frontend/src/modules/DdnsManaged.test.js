@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { hostOfRecord, isManagedRecord, isOrphanRecord, rowActionKeys } from "./DdnsManaged.js";
+import {
+	hostKindOf,
+	hostOfRecord,
+	hostOpener,
+	hostRecordInvalidations,
+	isManagedRecord,
+	isOrphanRecord,
+	rowActionKeys,
+} from "./DdnsManaged.js";
 
 const manual = { id: 1, enabled: true, hostType: null, hostId: null, hostLabel: null, orphan: false };
 const managed = { id: 2, enabled: true, hostType: "proxy_host", hostId: 7, hostLabel: "a.example.com", orphan: false };
@@ -67,5 +75,38 @@ describe("rowActionKeys", () => {
 			"forget",
 		]);
 		assert.deepEqual(rowActionKeys(orphan, { canManage: false }), ["edit", "open-host", "history"]);
+	});
+});
+
+describe("hostRecordInvalidations", () => {
+	it("refreshes the host's caches for a managed row, of any host type, also without a label", () => {
+		const keys = hostRecordInvalidations({ ...managed, hostLabel: null });
+		assert.deepEqual(keys[0], ["proxy-host", 7]);
+		assert.ok(keys.some((key) => key[0] === "proxy-hosts"));
+		assert.ok(keys.some((key) => key[0] === "dns-plan"));
+		assert.ok(keys.some((key) => key[0] === "audit-logs"));
+		assert.deepEqual(hostRecordInvalidations({ ...managed, hostType: "dead_host" })[0], ["dead-host", 7]);
+		assert.equal(hostKindOf({ ...managed, hostType: "redirection_host" }), "redirection");
+	});
+	it("gives nothing for a manual row", () => {
+		assert.deepEqual(hostRecordInvalidations(manual), []);
+		assert.equal(hostKindOf(manual), null);
+	});
+});
+
+describe("hostOpener", () => {
+	it("opens the window of the host's type with its id", () => {
+		const calls = [];
+		const windows = {
+			proxy: (id) => calls.push(["proxy", id]),
+			redirection: (id) => calls.push(["redirection", id]),
+			dead: (id) => calls.push(["dead", id]),
+		};
+		hostOpener({ ...managed, hostType: "redirection_host", hostId: 3 }, windows)();
+		assert.deepEqual(calls, [["redirection", 3]]);
+	});
+	it("gives none without a visible host", () => {
+		assert.equal(hostOpener({ ...managed, hostLabel: null }, {}), null);
+		assert.equal(hostOpener(manual, {}), null);
 	});
 });

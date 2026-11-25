@@ -53,7 +53,7 @@ import {
 	suggestedZone,
 	zoneFor,
 } from "src/modules/DdnsForms";
-import { hostOfRecord, isManagedRecord, isOrphanRecord } from "src/modules/DdnsManaged";
+import { hostOfRecord, hostOpener, isManagedRecord, isOrphanRecord } from "src/modules/DdnsManaged";
 import {
 	CREDENTIAL,
 	credentiallessChoices,
@@ -92,8 +92,7 @@ const HOST_WINDOWS = { proxy: showProxyHostModal, redirection: showRedirectionHo
 
 /** Opens the window of the host a managed record belongs to (nothing for a record without a visible host) */
 const showHostOfRecord = (record) => {
-	const host = hostOfRecord(record);
-	if (host) HOST_WINDOWS[host.type](host.id);
+	hostOpener(record, HOST_WINDOWS)?.();
 };
 
 const emptyRecord = {
@@ -720,10 +719,9 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 									{ id: "ddns.action.open-host-of" },
 									{ host: host.label },
 								)}
-								onClick={() => {
-									remove();
-									showHostOfRecord(stored);
-								}}
+								// this window stays under the host's: the host's window gives the focus back to this button,
+								// and closing this one gives it to the row
+								onClick={() => showHostOfRecord(stored)}
 							>
 								<T id="ddns.action.open-host" />
 							</Button>

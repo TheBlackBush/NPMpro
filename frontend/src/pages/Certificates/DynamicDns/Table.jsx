@@ -178,20 +178,29 @@ function ManagedNote({ record, onOpenHost }) {
 	return (
 		<div className="mt-1 flex flex-col items-start gap-1 text-xs text-muted-foreground" data-ddns-managed>
 			<span>
-				<T id="ddns.managed.by" />
 				{host ? (
-					<>
-						{" "}
-						<button
-							type="button"
-							className="rounded-sm text-foreground underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							aria-label={intl.formatMessage({ id: "ddns.action.open-host-of" }, { host: host.label })}
-							onClick={() => onOpenHost?.(record)}
-						>
-							{host.label}
-						</button>
-					</>
-				) : null}
+					<T
+						id="ddns.managed.by"
+						data={{
+							name: host.label,
+							host: (chunks) => (
+								<button
+									type="button"
+									className="rounded-sm text-foreground underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									aria-label={intl.formatMessage(
+										{ id: "ddns.action.open-host-of" },
+										{ host: host.label },
+									)}
+									onClick={() => onOpenHost?.(record)}
+								>
+									{chunks}
+								</button>
+							),
+						}}
+					/>
+				) : (
+					<T id="ddns.managed.by-plain" />
+				)}
 			</span>
 			{isOrphanRecord(record) ? (
 				<span data-ddns-orphan>

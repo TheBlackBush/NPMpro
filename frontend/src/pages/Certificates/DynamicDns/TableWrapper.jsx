@@ -14,6 +14,7 @@ import { intl, T } from "src/locale";
 import { showDdnsHistoryModal, showDdnsRecordModal, showDeleteConfirmModal, showHostOfRecord } from "src/modals";
 import { DDNS_RECORD_LIST_EXPAND } from "src/modules/CertificateTabs";
 import { recordStateOf } from "src/modules/DdnsForms";
+import { hostRecordInvalidations } from "src/modules/DdnsManaged";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { showApiError, showError, showObjectSuccess, showSuccess } from "src/notifications";
@@ -154,7 +155,7 @@ export default function TableWrapper() {
 							children: <T id="host-dns.remove.confirm" />,
 							subject: record.name,
 							confirmLabel: <T id="host-dns.remove" />,
-							invalidations: [...DDNS_KEYS, ["dns-credentials"], ["dns-credential"]],
+							invalidations: [...DDNS_KEYS, ...hostRecordInvalidations(record)],
 							onConfirm: async () => {
 								const answer = await removeHostDnsRecordAtProvider(record.id);
 								// a provider that still refuses keeps the row: say so, the row shows the new error
@@ -175,7 +176,12 @@ export default function TableWrapper() {
 							children: <T id="ddns.forget.confirm" />,
 							subject: record.name,
 							confirmLabel: <T id="ddns.action.forget" />,
-							invalidations: [...DDNS_KEYS, ["dns-credentials"], ["dns-credential"]],
+							invalidations: [
+								...DDNS_KEYS,
+								["dns-credentials"],
+								["dns-credential"],
+								...hostRecordInvalidations(record),
+							],
 							onConfirm: async () => {
 								await deleteDdnsRecord(record.id);
 								showSuccess(intl.formatMessage({ id: "ddns.forget.done" }, { name: record.name }));
