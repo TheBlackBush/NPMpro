@@ -107,11 +107,15 @@ const traffic = createTrafficService({
 		loadVisitorKey({ readMeta: stateMeta.readMeta, writeMeta: stateMeta.writeMeta, box: defaultSecretBox }),
 });
 
-// the unreachable state of CrowdSec: off (not configured) removes it, no event
-const reportCrowdsecState = ({ state, error, secrets }) =>
-	state === "off"
-		? notify.clearState("crowdsec.unreachable", "crowdsec")
-		: notify.reportState("crowdsec.unreachable", "crowdsec", { state, source: { error, secrets } });
+// the unreachable state of CrowdSec: off (not configured) removes it, no event. A state that was not stored throws, so
+// the service tells it again at the next poll. The data holds the error text only, never the key.
+const reportCrowdsecState = async ({ state, error, secrets }) => {
+	const stored =
+		state === "off"
+			? await notify.clearState("crowdsec.unreachable", "crowdsec")
+			: await notify.reportState("crowdsec.unreachable", "crowdsec", { state, source: { error, secrets } });
+	if (stored === false) throw new Error("the CrowdSec state was not stored");
+};
 
 const crowdsec = createCrowdsecService({
 	geoLookup: (ip) => geoip.lookup(ip)?.country ?? null,
@@ -189,6 +193,7 @@ export {
 	crowdsec as crowdsecService,
 	internalMonitoring,
 	pauseMonitoringWriters,
+	reportCrowdsecState,
 	resumeMonitoringWriters,
 	runGeoipUpdate,
 	startMonitoringServices,

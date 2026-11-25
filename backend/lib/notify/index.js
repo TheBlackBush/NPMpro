@@ -83,23 +83,27 @@ const createNotify = ({
 		/** Sends data already built (the reminders of the sweep) */
 		deliver: (type, data, object = "-") => deliver(type, data, object),
 
-		/** Stores the state of an object; the change, when there is one, goes out as the event or its .resolved twin */
+		/** Stores the state of an object; the change, when there is one, goes out as the event or its .resolved twin. Answers whether the state was stored */
 		reportState: async (event, objectId, { state, source = {} } = {}) => {
 			try {
 				const data = catalogue.buildData(event, { ...source, state });
 				const change = await stateStore.report({ event, objectId, state, data });
 				if (change) await deliver(change.type, change.data, objectId);
+				return true;
 			} catch (error) {
 				fail(event, error);
+				return false;
 			}
 		},
 
-		/** Removes the state of a deleted object, no event */
+		/** Removes the state of a deleted object, no event. Answers whether it was removed */
 		clearState: async (event, objectId) => {
 			try {
 				await stateStore.clear(event, objectId);
+				return true;
 			} catch (error) {
 				fail(`${event} clear`, error);
+				return false;
 			}
 		},
 

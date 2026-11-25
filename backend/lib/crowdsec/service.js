@@ -91,14 +91,12 @@ const createCrowdsecService = ({
 	// the state callback never breaks a poll
 	const tell = async (change) => {
 		if (!onState) return;
-		if (change.state !== "bad") {
-			if (told === change.state) return;
-			told = change.state;
-		} else {
-			told = null;
-		}
+		const quiet = change.state !== "bad";
+		if (quiet && told === change.state) return;
 		try {
 			await onState(change);
+			// told only after the write worked: a failed ok or off is tried again at the next poll
+			told = quiet ? change.state : null;
 		} catch (err) {
 			log.warn(`CrowdSec state: ${err?.message ?? err}`);
 		}

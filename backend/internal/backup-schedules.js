@@ -19,7 +19,7 @@ const createScheduleService = ({
 	backup,
 	store,
 	audit,
-	notify = null,
+	notify,
 	clock = Date,
 	log = console,
 	zone = localZone,
@@ -81,13 +81,21 @@ const createScheduleService = ({
 	const nextAfter = (row, after) => (row.enabled ? nextRun(row, after, zone) : null);
 
 	// the notification of a run and the end of a schedule's state; a failure of the layer never reaches the schedule
-	const notifyRun = async ({ id, name }, { result, error }) => {
-		if (!notify) return;
+	const notifyRun = async ({ id, name, protection, passphrase }, { result, error }) => {
 		try {
 			const schedule = { id, name };
+			// the passphrase never reaches an event, whatever an error text holds
+			const secrets = [];
+			if (!result && protection === "passphrase") {
+				try {
+					secrets.push(box.decrypt(passphrase).passphrase);
+				} catch {
+					// an unreadable passphrase cannot be in the text
+				}
+			}
 			await notify.reportState("backup.failed", String(id), {
 				state: result ? "ok" : "bad",
-				source: { schedule, error: result ? undefined : errorText(error) },
+				source: { schedule, error: result ? undefined : errorText(error), secrets },
 			});
 			if (result) await notify.emit("backup.succeeded", { schedule, file: result.name, size: result.size });
 		} catch (caught) {
@@ -98,7 +106,6 @@ const createScheduleService = ({
 	};
 
 	const clearNotifyState = async (id) => {
-		if (!notify) return;
 		try {
 			await notify.clearState("backup.failed", String(id));
 		} catch (caught) {
