@@ -91,6 +91,30 @@
 	},
 	{
 		"type": "index",
+		"name": "npmpro_notification_delivery_due",
+		"table": "npmpro_notification_delivery",
+		"sql": "CREATE INDEX `npmpro_notification_delivery_due` on `npmpro_notification_delivery` (`status`, `next_try_on`)"
+	},
+	{
+		"type": "index",
+		"name": "npmpro_notification_delivery_message",
+		"table": "npmpro_notification_delivery",
+		"sql": "CREATE INDEX `npmpro_notification_delivery_message` on `npmpro_notification_delivery` (`message_id`)"
+	},
+	{
+		"type": "index",
+		"name": "npmpro_notification_delivery_target",
+		"table": "npmpro_notification_delivery",
+		"sql": "CREATE INDEX `npmpro_notification_delivery_target` on `npmpro_notification_delivery` (`channel`, `target_id`, `id`)"
+	},
+	{
+		"type": "index",
+		"name": "npmpro_notification_state_key",
+		"table": "npmpro_notification_state",
+		"sql": "CREATE UNIQUE INDEX `npmpro_notification_state_key` on `npmpro_notification_state` (`key`)"
+	},
+	{
+		"type": "index",
 		"name": "npmpro_user_oidc_identity",
 		"table": "user",
 		"sql": "CREATE UNIQUE INDEX `npmpro_user_oidc_identity` on `user` (`npmpro_oidc_issuer`, `npmpro_oidc_subject`)"
@@ -219,7 +243,7 @@
 		"type": "table",
 		"name": "certificate",
 		"table": "certificate",
-		"sql": "CREATE TABLE \"certificate\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `owner_user_id` integer NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `provider` varchar(255) NOT NULL, `nice_name` varchar(255) NOT NULL DEFAULT '', `domain_names` json NOT NULL, `expires_on` datetime NOT NULL, `meta` json NOT NULL, \"npmpro_reuse_key\" integer NOT NULL DEFAULT '0', \"npmpro_dns_challenge\" integer NOT NULL DEFAULT '0', \"npmpro_dns_provider\" varchar(255) NOT NULL DEFAULT '', \"npmpro_propagation_seconds\" integer NOT NULL DEFAULT '0', \"npmpro_dns_credential_id\" integer NULL DEFAULT null, `npmpro_acme_server` varchar(255) null default null)"
+		"sql": "CREATE TABLE \"certificate\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `owner_user_id` integer NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `provider` varchar(255) NOT NULL, `nice_name` varchar(255) NOT NULL DEFAULT '', `domain_names` json NOT NULL, `expires_on` datetime NOT NULL, `meta` json NOT NULL, \"npmpro_reuse_key\" integer NOT NULL DEFAULT '0', \"npmpro_dns_challenge\" integer NOT NULL DEFAULT '0', \"npmpro_dns_provider\" varchar(255) NOT NULL DEFAULT '', \"npmpro_propagation_seconds\" integer NOT NULL DEFAULT '0', \"npmpro_dns_credential_id\" integer NULL DEFAULT null, `npmpro_acme_server` varchar(255) null default null, `npmpro_valid_from` datetime null)"
 	},
 	{
 		"type": "table",
@@ -274,6 +298,18 @@
 		"name": "npmpro_location",
 		"table": "npmpro_location",
 		"sql": "CREATE TABLE \"npmpro_location\" (`id` integer not null primary key autoincrement, `proxy_host_id` integer not null, \"npmpro_enabled\" integer not null default '1', `path` text not null, `location_type` varchar(255) not null default '', `forward_scheme` varchar(255) not null default 'http', `forward_host` varchar(255) not null default '', `forward_port` integer not null default '0', \"npmpro_noindex\" integer not null default '0', \"npmpro_crowdsec_appsec\" integer not null default '0', \"npmpro_proxy_request_buffering\" integer not null default '0', \"npmpro_proxy_response_buffering\" integer not null default '0', \"npmpro_upstream_compression\" integer not null default '0', \"npmpro_fancyindex\" integer not null default '0', \"npmpro_x_frame_options\" varchar(255) not null default 'SAMEORIGIN', \"npmpro_auth_request\" varchar(255) not null default 'none', \"npmpro_auth_request_upstream\" varchar(255) not null default '', `advanced_config` text not null default '', \"npmpro_access_list_type\" varchar(255) not null default 'global')"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_notification_delivery",
+		"table": "npmpro_notification_delivery",
+		"sql": "CREATE TABLE `npmpro_notification_delivery` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `message_id` varchar(40) not null, `event` varchar(64) not null, `channel` varchar(16) not null, `target_id` integer null, `recipient` varchar(254) null, `group_key` varchar(191) null, `payload` text null, `status` varchar(16) not null, `attempts` integer not null default '0', `next_try_on` datetime null, `http_status` integer null, `duration_ms` integer null, `error` varchar(300) null, `response` varchar(2048) null)"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_notification_state",
+		"table": "npmpro_notification_state",
+		"sql": "CREATE TABLE `npmpro_notification_state` (`id` integer not null primary key autoincrement, `key` varchar(191) not null, `event` varchar(64) not null, `object_id` varchar(64) not null, `state` varchar(16) not null, `since` datetime not null, `last_sent_on` datetime null, `data` text null)"
 	},
 	{
 		"type": "table",
