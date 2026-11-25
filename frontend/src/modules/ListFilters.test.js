@@ -84,8 +84,9 @@ it("filters certificates by the lifetime window", () => {
 	];
 	const options = { searchText: () => "", now };
 	assert.deepEqual(ids(filterCertificates(certs, parse("expiry=soon"), options)), [2, 3]);
-	assert.deepEqual(ids(filterCertificates(certs, parse("expiry=soon"), { ...options, days: 7 })), [2, 3]);
-	assert.deepEqual(ids(filterCertificates(certs, parse("expiry=soon"), { ...options, days: 5 })), [2]);
+	// cert 3 has 9 days left: ok with 7 warning days, soon with 10
+	assert.deepEqual(ids(filterCertificates(certs, parse("expiry=soon"), { ...options, days: 7 })), [2]);
+	assert.deepEqual(ids(filterCertificates(certs, parse("expiry=soon"), { ...options, days: 10 })), [2, 3]);
 });
 
 it("counts active filters", () => {

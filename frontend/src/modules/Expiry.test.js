@@ -46,3 +46,17 @@ it("follows the warning days setting", () => {
 	assert.equal(state(cert(10, 365), { days: 7 }), "ok");
 	assert.equal(state(cert(5, 365), { days: 7 }), "soon");
 });
+
+it("treats a garbage date or a garbage valid-from date like the backend", () => {
+	// a garbage expiry date is never soon or expired; a garbage valid-from date leaves the days alone
+	assert.equal(expiryInfo("garbage", {}, now).state, "ok");
+	assert.equal(state({ expiresOn: days(5), validFrom: "garbage" }), "soon");
+	assert.equal(state({ expiresOn: days(5), validFrom: "garbage" }, { days: 3 }), "ok");
+});
+
+it("trusts the days it is given", () => {
+	// the setting is 1 to 60 (the backend falls back to 14 for others; the health value is already checked)
+	assert.equal(state({ expiresOn: days(5), validFrom: null }, { days: 1 }), "ok");
+	assert.equal(state({ expiresOn: days(50), validFrom: null }, { days: 60 }), "soon");
+	assert.equal(state({ expiresOn: days(0.5), validFrom: null }, { days: 0 }), "ok");
+});

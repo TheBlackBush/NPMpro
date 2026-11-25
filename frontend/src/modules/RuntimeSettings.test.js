@@ -127,6 +127,13 @@ it("runtimeSettingsPayload sends a changed resolver list and skips an unchanged 
 	);
 });
 
+it("certificates payload carries the warning days", () => {
+	assert.deepEqual(runtimeSettingsPayload("certificates", { warningDays: 30 }, [], { warningDays: 14 }), {
+		warningDays: 30,
+	});
+	assert.deepEqual(runtimeSettingsPayload("certificates", { warningDays: 30 }, ["warning_days"], {}), {});
+});
+
 it("GROUP_KEYS match the backend response schemas", () => {
 	const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
 	for (const group of Object.keys(GROUP_KEYS)) {
