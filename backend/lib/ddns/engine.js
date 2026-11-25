@@ -69,6 +69,17 @@ class RecordAppeared extends Error {
 
 const foundOf = (type, existing) => ({ type, values: (existing.values ?? []).map(String) });
 
+/** A record at the name that holds the address this row itself last wrote for that type: NPMpro's own, not appeared */
+const ownWrite = (record, type, existing) => {
+	const last = { A: record.last_ipv4, AAAA: record.last_ipv6 }[type];
+	return (
+		typeof last === "string" &&
+		last !== "" &&
+		existing?.values?.length === 1 &&
+		same(type, existing.values[0], last)
+	);
+};
+
 // what a provider is handed to look a record up: the record id belongs to one record type, so it is not passed on
 const lookupMeta = (meta) => {
 	const { record_id: _ignored, ...rest } = cleanMeta(meta);
@@ -301,7 +312,9 @@ const createDdnsEngine = ({
 			}
 		}
 		const existing = await ctx.provider.read({ ...base, meta: lookupMeta(ctx.meta) });
-		if (existing !== null && isCreateOnly(record)) throw new RecordAppeared([foundOf(unit.type, existing)]);
+		if (existing !== null && isCreateOnly(record) && !ownWrite(record, unit.type, existing)) {
+			throw new RecordAppeared([foundOf(unit.type, existing)]);
+		}
 		if (existing === null) {
 			await checkOtherType(ctx, unit);
 			const written = await ctx.provider.write({
@@ -355,7 +368,8 @@ const createDdnsEngine = ({
 				fetch: ctx.fetch,
 				meta: lookupMeta(ctx.meta),
 			});
-			if (existing !== null) found.push(foundOf(type, existing));
+			// a type an earlier run of this row already created (the other one failed) is its own
+			if (existing !== null && !ownWrite(ctx.record, type, existing)) found.push(foundOf(type, existing));
 		}
 		if (found.length > 0) throw new RecordAppeared(found);
 	};

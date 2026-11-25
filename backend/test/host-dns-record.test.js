@@ -26,6 +26,8 @@ let hostCount = 0;
 const clock = { at: Date.parse("2026-11-25T10:00:00Z"), now: () => clock.at };
 const net = { ipv4: IP4, ipv6: null, asked: 0 };
 const probe = { result: "reachable", calls: 0 };
+// the ids of the hosts a test deleted (the hosts of these tests are not rows: the service is told this way)
+const gone = new Set();
 
 /** A provider at a fake DNS host: its records by name and type, every call counted */
 const fake = {
@@ -134,6 +136,7 @@ const makeService = (extra = {}) =>
 			});
 		},
 		writeRecord: (id) => engine.updateRecord(id),
+		hostExists: (_type, id) => Promise.resolve(!gone.has(id)),
 		clock,
 		log: { warn: () => undefined },
 		...extra,
@@ -179,6 +182,7 @@ const apply = async (host, wanted, access = manager) => {
 };
 /** A host's delete and its job; the states left (orphans) */
 const deleteHost = async (host) => {
+	gone.add(host.id);
 	await service.onDelete(manager, { hostType: "proxy_host", host });
 	await service.idle("proxy_host", host.id);
 	return await hostStates(host);
@@ -895,9 +899,9 @@ describe("checks before a tick", () => {
 
 	it("a save answers before any provider work: pending, then the job's result", async () => {
 		const name = freshName("now");
-		const gone = freshName("gone");
-		const host = hostOf([name, gone]);
-		await apply(host, [{ name: gone }]);
+		const dropped = freshName("gone");
+		const host = hostOf([name, dropped]);
+		await apply(host, [{ name: dropped }]);
 		fake.reset();
 		const answered = await service.applyHost(manager, {
 			hostType: "proxy_host",
@@ -909,7 +913,7 @@ describe("checks before a tick", () => {
 			answered.map((one) => [one.name, one.state]),
 			[
 				[name, "pending"],
-				[gone, "pending"],
+				[dropped, "pending"],
 			],
 		);
 		assert.equal(fake.total(), 0, "no provider call inside the save");
@@ -919,10 +923,10 @@ describe("checks before a tick", () => {
 			(await hostStates(host)).map((one) => [one.name, one.state]),
 			[
 				[name, "ok"],
-				[gone, "off"],
+				[dropped, "off"],
 			],
 		);
-		assert.deepEqual(fake.removes, [{ name: gone, type: "A", value: IP4 }]);
+		assert.deepEqual(fake.removes, [{ name: dropped, type: "A", value: IP4 }]);
 	});
 
 	it("a host's jobs run one after another", async () => {
@@ -1247,5 +1251,130 @@ describe("never over or under another client's record", () => {
 		assert.equal(plan.message, "Covered by another record");
 		const [seen] = await service.planNames(manager, { hostType: "proxy_host", host: hostOf([name]) });
 		assert.equal(seen.covered_by, name);
+	});
+});
+
+describe("a host delete and the host's job", () => {
+	/** A provider call held until the test opens it; started resolves when the job reached it */
+	const hold = (method, match = () => true) => {
+		const original = provider[method];
+		let open;
+		let reached;
+		const gate = new Promise((resolve) => {
+			open = resolve;
+		});
+		const started = new Promise((resolve) => {
+			reached = resolve;
+		});
+		let held = false;
+		provider[method] = async (args) => {
+			if (!held && match(args)) {
+				held = true;
+				reached();
+				await gate;
+			}
+			return await original(args);
+		};
+		return {
+			started,
+			open: () => {
+				provider[method] = original;
+				open();
+			},
+		};
+	};
+	const save = (host, wanted) =>
+		service.applyHost(manager, { hostType: "proxy_host", hostAfter: host, wanted: confirmedTicks(wanted) });
+	const remove = (host) => {
+		gone.add(host.id);
+		return service.onDelete(manager, { hostType: "proxy_host", host });
+	};
+
+	it("a delete while the save job reads: the record is never made", async () => {
+		const name = freshName("del");
+		const host = hostOf([name]);
+		const held = hold("read");
+		await save(host, [{ name }]);
+		await held.started;
+		assert.deepEqual(await remove(host), []);
+		held.open();
+		await settle(host);
+		assert.equal(fake.calls.write, 0);
+		assert.equal(await rowOf(name), undefined);
+		assert.equal(fake.get(name, "A"), null);
+	});
+
+	it("a delete while the save job writes: the record made is removed by the delete job", async () => {
+		const name = freshName("delw");
+		const host = hostOf([name]);
+		const held = hold("write");
+		await save(host, [{ name }]);
+		await held.started;
+		await remove(host);
+		held.open();
+		await settle(host);
+		assert.equal(fake.calls.write, 1);
+		assert.deepEqual(fake.removes, [{ name, type: "A", value: IP4 }]);
+		assert.equal(fake.get(name, "A"), null);
+		assert.equal(await rowOf(name), undefined);
+	});
+
+	it("a delete queued behind a save job: the save job finds the host gone and calls no provider", async () => {
+		const name = freshName("delq");
+		const host = hostOf([name]);
+		await save(host, [{ name }]);
+		await remove(host);
+		await settle(host);
+		assert.equal(fake.total(), 0);
+		assert.equal(await rowOf(name), undefined);
+	});
+
+	it("a delete of a host with rows and a running job releases every row, also the one the job was making", async () => {
+		const kept = freshName("rows");
+		const added = freshName("added");
+		const host = hostOf([kept, added]);
+		await apply(host, [{ name: kept }]);
+		fake.reset();
+		const held = hold("read", (args) => args.name === added);
+		await save(host, [{ name: kept }, { name: added }]);
+		await held.started;
+		const answered = await remove(host);
+		assert.deepEqual(
+			answered.map((one) => [one.name, one.state]),
+			[[kept, "pending"]],
+		);
+		held.open();
+		await settle(host);
+		assert.deepEqual(fake.removes, [{ name: kept, type: "A", value: IP4 }]);
+		assert.equal(fake.calls.write, 0);
+		assert.equal(await rowOf(kept), undefined);
+		assert.equal(await rowOf(added), undefined);
+	});
+
+	it("the engine knows its own record: A written, AAAA failed, the retry continues; untick deletes both", async () => {
+		net.ipv6 = IP6;
+		const name = freshName("own6");
+		const host = hostOf([name]);
+		const write = provider.write;
+		provider.write = (args) =>
+			args.type === "AAAA"
+				? Promise.reject(new DdnsProviderError({ code: "failed", message: "AAAA refused" }))
+				: write(args);
+		try {
+			assert.equal(stateOf(await apply(host, [{ name, ipv6: true }]), name).state, "failed");
+		} finally {
+			provider.write = write;
+		}
+		assert.equal((await metaOf(name)).create_only, true);
+		assert.deepEqual(fake.get(name, "A").values, [IP4]);
+		await engine.cycle({ force: true, ids: [(await rowOf(name)).id] });
+		const line = stateOf(await hostStates(host), name);
+		assert.equal(line.state, "ok");
+		assert.equal(line.origin, "created");
+		assert.deepEqual(fake.get(name, "AAAA").values, [IP6]);
+		await apply(host, []);
+		assert.equal(fake.get(name, "A"), null);
+		assert.equal(fake.get(name, "AAAA"), null);
+		assert.equal(await rowOf(name), undefined);
 	});
 });

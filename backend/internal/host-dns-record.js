@@ -215,6 +215,7 @@ const defaultFetchFor = (secrets, deadline) => (url, options) => providerFetch(u
  * @param   {Function}  [deps.probe]          probeReach
  * @param   {Function}  [deps.writeRecord]    (id) -> the engine's run of one record now (updateRecord)
  * @param   {Function}  [deps.fetchFor]       (secrets, deadline) -> the guarded fetch handed to a provider
+ * @param   {Function}  [deps.hostExists]     (hostType, id) -> whether the host row still exists
  * @param   {Object}    [deps.clock]          { now() } in ms
  * @param   {Object}    [deps.log]            { warn() }
  */
@@ -224,6 +225,7 @@ const createHostDnsRecords = ({
 	probe = probeReach,
 	writeRecord = writeRecordNow,
 	fetchFor = defaultFetchFor,
+	hostExists = async (hostType, id) => Boolean(await HOST_MODELS[hostType].query().findById(id).select("id")),
 	clock = { now: () => Date.now() },
 	log = logger,
 } = {}) => {
@@ -581,6 +583,8 @@ const createHostDnsRecords = ({
 		}
 		values.meta = meta;
 
+		// a host deleted while this job ran gets nothing (its delete job comes after this one)
+		if (!(await hostExists(hostType, host.id))) return null;
 		let row;
 		try {
 			row = await managedRows.insert(values);
@@ -592,7 +596,7 @@ const createHostDnsRecords = ({
 		}
 		if (verdict.kind === "create") {
 			await audit(access, "created", row);
-			await writeNow(row.id);
+			if (await hostExists(hostType, host.id)) await writeNow(row.id);
 		} else if (verdict.kind === "adopt") {
 			await audit(access, "adopted", row);
 		}
@@ -819,6 +823,7 @@ const createHostDnsRecords = ({
 						resultsOf(key).set(entry.name, check.refusal);
 						continue;
 					}
+					if (!(await hostExists(hostType, hostAfter.id))) return;
 					reader ??= readerFor(access);
 					const result = await tick(access, { hostType, host: hostAfter, entry, reach: check.reach, reader });
 					if (result === null) resultsOf(key).delete(entry.name);
@@ -883,20 +888,25 @@ const createHostDnsRecords = ({
 
 		/**
 		 * A deleted host: as unticking every name (created records deleted at the provider, adopted ones released),
-		 * as the host's job after the delete's answer. Answers the rows as they are now; the orphans it leaves are in
-		 * the Dynamic DNS list.
+		 * as the host's job after the delete's answer and after any save job of the host still running or queued (which
+		 * finds the host gone and makes nothing more); it releases the rows as they are when it runs. Answers the rows
+		 * as they are now; the orphans it leaves are in the Dynamic DNS list.
 		 */
 		onDelete: async (access, { hostType, host }) => {
 			hostSection(hostType);
 			const key = hostKey(hostType, host.id);
 			const rows = (await managedRows.ofHost(hostType, host.id)).filter((row) => row.meta?.orphan !== true);
 			results.delete(key);
-			if (rows.length === 0) return [];
+			// a save job still running or queued may yet insert a row: the delete job comes after it on the chain
+			if (rows.length === 0 && (working.get(key)?.size ?? 0) === 0) return [];
 			schedule(
 				key,
 				rows.map((row) => row.name),
 				async () => {
-					for (const row of rows) await release(access, row.id);
+					for (const row of await managedRows.ofHost(hostType, host.id)) {
+						if (row.meta?.orphan !== true) await release(access, row.id);
+					}
+					results.delete(key);
 				},
 			);
 			return rows.map((row) => answer(row.name, "pending", rowBase(row)));
