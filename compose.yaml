@@ -142,6 +142,7 @@ services:
 #      - "ACME_SERVER_TLS_VERIFY=false" # check the TLS certificate of ACME_SERVER, default and recommended true
 #      - "CUSTOM_OCSP_STAPLING=true" # OCSP stapling for uploaded (custom) certificates, turns TLS certificate compression off, default false
 #      - "CERTBOT_RUN_INTERVAL=12" # hours between renewal checks, 1 to 499, default 3
+#      - "CERT_WARNING_DAYS=30" # days before expiry a certificate counts as expiring soon, 1 to 60, default 14 (at most a third of its lifetime)
 #      - "DEFAULT_CERT_ID=1" # id of the certificate for unknown host names and the web UI, default 0 (built-in placeholder certificate)
 #      - "ECH_ROTATION_INTERVAL=3" # hours between runs of your ECH script (/opt/npmpro/tls/ech/cron.sh), 1 to 24, default 1
 
