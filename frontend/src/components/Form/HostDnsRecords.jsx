@@ -1,22 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { Button } from "src/components/Button";
 import { StatusBadge } from "src/components/StatusBadge";
 import { Checkbox } from "src/components/ui/checkbox";
-import {
-	useCanManage,
-	useDdnsProviders,
-	useDnsDomains,
-	useHostDnsChecks,
-	useHostDnsRecordAction,
-	useHostDnsRecords,
-	useProbeHostReach,
-	useUser,
-} from "src/hooks";
+import { useCanManage, useHostDnsPlan, useHostDnsRecordAction, useHostDnsRecords, useProbeHostReach } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
-import { checkOfHost } from "src/modules/DnsCheck";
-import { nameRow, needsReachConfirm, planOf, reachBlocked, reachText, ticksOf } from "src/modules/HostDnsRecords";
+import {
+	nameRow,
+	needsReachConfirm,
+	reachBlocked,
+	reachText,
+	ticksOf,
+	withChange,
+	withoutTick,
+	withTick,
+} from "src/modules/HostDnsRecords";
 import { CERTIFICATES } from "src/modules/Permissions";
 import { showApiError, showSuccess } from "src/notifications";
 import { useReadOnly } from "./HookForm";
@@ -25,7 +24,7 @@ import { SwitchField } from "./SwitchField";
 const HOST_TYPE_IDS = { proxy: "proxy_host", redirection: "redirection_host", dead: "dead_host" };
 const NONE = [];
 const NOTE = "text-sm text-muted-foreground";
-const EXPAND = ["credential"];
+const CLOCK_MS = 30 * 1000;
 
 // the question of each record action: title, text, button and the toast, written out whole
 const ACTIONS = {
@@ -48,17 +47,13 @@ const ACTIONS = {
 		variant: "destructive",
 	},
 };
-const ACTION_ICON_LABELS = {
-	adopt: "host-dns.adopt.label",
-	leave: "host-dns.leave.label",
-	remove: "host-dns.remove.label",
-};
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
 // one ticked name: the probe's answer, the box for the user's own confirmation, what Save will create and the options
-function TickDetails({ index, entry, row, probe, onChange, disabled }) {
-	const confirm = probe && probe.status !== "checking" && needsReachConfirm(probe.result ?? null);
+function TickDetails({ index, entry, row, probe, now, onChange, disabled }) {
+	// no valid reach at the server (not reachable, or the answer is older than it remembers): the user confirms
+	const confirm = probe && probe.status !== "checking" && needsReachConfirm({ ...probe.result, at: probe.at }, now);
 	const text = probe?.result ? reachText(probe.result) : null;
 	return (
 		<div className="flex flex-col gap-2 pl-7">
@@ -145,29 +140,37 @@ function TickDetails({ index, entry, row, probe, onChange, disabled }) {
  * @param {number} [props.hostId]  the saved host's id; none for a new host
  */
 export function HostDnsRecords({ type, hostId }) {
-	const { setValue } = useFormContext();
+	const { setValue, getValues } = useFormContext();
 	const readOnly = useReadOnly();
 	const canManage = useCanManage(CERTIFICATES);
-	const { data: user } = useUser("me");
 	const [names, entries] = useWatch({ name: ["domainNames", "npmproDnsRecords"] });
 	const formNames = Array.isArray(names) ? names : NONE;
 	const { data: host } = useHostDnsRecords(type, hostId);
 	const records = host?.npmproDnsRecords ?? NONE;
-	const { data: domains } = useDnsDomains(EXPAND, { enabled: canManage });
-	const { data: providers } = useDdnsProviders({ enabled: canManage });
-	const { data: checks } = useHostDnsChecks();
 	const { mutateAsync: probeReach } = useProbeHostReach();
 	const { mutateAsync: runAction } = useHostDnsRecordAction(type, hostId);
-	// the probes of this window by lower case name: { status, result, address }
+	// the probes of this window by lower case name: { status, result, address, at }
 	const [probes, setProbes] = useState({});
 	const [switched, setSwitched] = useState(null);
 
 	const ticks = entries ?? ticksOf(records, formNames);
 	const on = switched ?? ticks.length > 0;
-	const checked = hostId ? checkOfHost(checks, type, hostId)?.names?.[0] : undefined;
-	const hostNames = (host?.domainNames ?? NONE).map((name) => name.toLowerCase());
 	const rights = { canTick: canManage, readOnly };
+	const unique = [...new Map(formNames.map((name) => [name.toLowerCase(), name])).values()];
+	const { data: plan } = useHostDnsPlan(type, hostId, unique, on);
+	const planFor = (name) => plan?.names?.find((one) => sameName(one.name, name));
+	const hostNames = (host?.domainNames ?? NONE).map((name) => name.toLowerCase());
+	// the clock moves on while a reachable answer is shown, so the confirmation box returns when the server forgets it
+	const [now, setNow] = useState(() => Date.now());
+	const watching = Object.values(probes).some((probe) => probe.result?.result === "reachable");
+	useEffect(() => {
+		if (!watching) return;
+		const timer = setInterval(() => setNow(Date.now()), CLOCK_MS);
+		return () => clearInterval(timer);
+	}, [watching]);
 
+	// the ticks as the form holds them now (an answer that comes later must not use the ticks of its click)
+	const latest = () => getValues("npmproDnsRecords") ?? ticksOf(records, getValues("domainNames") ?? NONE);
 	const store = (next) => setValue("npmproDnsRecords", next, { shouldDirty: true });
 	const setProbe = (name, value) => setProbes((current) => ({ ...current, [name.toLowerCase()]: value }));
 
@@ -177,10 +180,10 @@ export function HostDnsRecords({ type, hostId }) {
 	};
 
 	const tick = async (name) => {
-		store([...ticks, { name, proxied: false, ipv6: false, reachConfirmed: false }]);
+		store(withTick(latest(), name));
 		setProbe(name, {
 			status: "checking",
-			address: probes[name.toLowerCase()]?.address ?? checked?.ipv4?.public ?? null,
+			address: plan?.address ?? null,
 		});
 		try {
 			const result = await probeReach({
@@ -188,14 +191,15 @@ export function HostDnsRecords({ type, hostId }) {
 				hostId: hostId && hostNames.includes(name.toLowerCase()) ? hostId : undefined,
 				name,
 			});
-			setProbe(name, { status: "done", result, address: result.address });
-			if (reachBlocked(result)) store(ticks.filter((entry) => !sameName(entry.name, name)));
+			setProbe(name, { status: "done", result, address: result.address, at: Date.now() });
+			setNow(Date.now());
+			if (reachBlocked(result)) store(withoutTick(latest(), name));
 		} catch {
-			setProbe(name, { status: "failed" });
+			setProbe(name, { status: "failed", at: Date.now() });
 		}
 	};
-	const untick = (name) => store(ticks.filter((entry) => !sameName(entry.name, name)));
-	const change = (next) => store(ticks.map((entry) => (sameName(entry.name, next.name) ? next : entry)));
+	const untick = (name) => store(withoutTick(latest(), name));
+	const change = (next) => store(withChange(latest(), next));
 
 	const ask = (action, record) => {
 		const spec = ACTIONS[action];
@@ -219,7 +223,6 @@ export function HostDnsRecords({ type, hostId }) {
 		});
 	};
 
-	const unique = [...new Map(formNames.map((name) => [name.toLowerCase(), name])).values()];
 	const created = records.some((record) => record.origin === "created");
 	return (
 		<>
@@ -236,17 +239,13 @@ export function HostDnsRecords({ type, hostId }) {
 				<ul className="m-0 list-none divide-y border-t p-0" data-dns-records>
 					{unique.map((name, index) => {
 						const record = records.find((one) => sameName(one.name, name));
-						const plan = planOf({
-							name,
-							domains,
-							providers,
-							userId: user?.id,
-							canManage,
-							address: probes[name.toLowerCase()]?.address ?? checked?.ipv4?.public ?? null,
-							ipv6Address: checked?.ipv6?.public ?? null,
-						});
-						const row = nameRow(plan, record, rights);
 						const entry = ticks.find((one) => sameName(one.name, name));
+						const row = nameRow(planFor(name), record, {
+							...rights,
+							ipv6: entry?.ipv6 === true,
+							ipv6Address: plan?.ipv6Address ?? null,
+							hostDisabled: plan?.hostDisabled === true,
+						});
 						const probe = probes[name.toLowerCase()];
 						const id = `dns-tick-${type}-${index}`;
 						return (
@@ -260,7 +259,7 @@ export function HostDnsRecords({ type, hostId }) {
 										id={id}
 										checked={Boolean(entry)}
 										disabled={readOnly || !(row.tickable || entry)}
-										aria-describedby={row.blocked ? `${id}-note` : undefined}
+										aria-describedby={row.blocked || row.existing ? `${id}-note` : undefined}
 										onCheckedChange={(value) => (value === true ? tick(name) : untick(name))}
 									/>
 									<label htmlFor={id} className="font-mono wrap-anywhere">
@@ -282,8 +281,8 @@ export function HostDnsRecords({ type, hostId }) {
 											size="xs"
 											data-dns-record-action={action}
 											aria-label={intl.formatMessage(
-												{ id: ACTION_ICON_LABELS[action] },
-												{ name },
+												{ id: "host-dns.action-label" },
+												{ action: intl.formatMessage({ id: ACTIONS[action].titleId }), name },
 											)}
 											onClick={() => ask(action, record)}
 										>
@@ -293,7 +292,13 @@ export function HostDnsRecords({ type, hostId }) {
 								</div>
 								{row.blocked && !entry && !row.line ? (
 									<p id={`${id}-note`} className={`${NOTE} pl-7`}>
-										<T id={row.blocked} />
+										<T id={row.blocked.id} data={row.blocked.values} />
+										{row.blocked.detail ? `: ${row.blocked.detail}` : null}
+									</p>
+								) : null}
+								{row.existing && !row.line ? (
+									<p id={`${id}-note`} className={`${NOTE} pl-7`} data-dns-existing>
+										<T id={row.existing.id} data={row.existing.values} />
 									</p>
 								) : null}
 								{!entry && probe?.result && reachBlocked(probe.result) ? (
@@ -307,6 +312,7 @@ export function HostDnsRecords({ type, hostId }) {
 										entry={entry}
 										row={row}
 										probe={probe}
+										now={now}
 										onChange={change}
 										disabled={readOnly}
 									/>

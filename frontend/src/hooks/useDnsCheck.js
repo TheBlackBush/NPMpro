@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	adoptHostDnsRecord,
 	checkHostDns,
@@ -10,12 +10,13 @@ import {
 	getProxyHost,
 	getRedirectionHost,
 	leaveHostDnsRecord,
+	planHostDnsRecords,
 	probeHostReach,
 	removeHostDnsRecordAtProvider,
 	testDnsCredential,
 } from "src/api/backend";
 import { mergeChecks } from "src/modules/DnsCheck";
-import { pollDelay } from "src/modules/HostDnsRecords";
+import { createPoller } from "src/modules/HostDnsRecords";
 import { dnsRecordInvalidations, HOST_TYPES } from "src/modules/HostTypes";
 
 // a test reads at the provider and stores nothing: no query key changes
@@ -68,22 +69,44 @@ const useDeleteDnsChallenges = (id) => {
 	});
 };
 
+const HOST_TYPE_IDS = { proxy: "proxy_host", redirection: "redirection_host", dead: "dead_host" };
 const HOST_GETTERS = { proxy: getProxyHost, redirection: getRedirectionHost, dead: getDeadHost };
 
 // the saved host with its DNS record states (npmproDnsRecords; the host's own query, so a save and the actions refresh it): while a name is
 // pending the job still runs after the save, so the states are read again every few seconds, at most 10 times
 const useHostDnsRecords = (type, hostId) => {
-	const attempts = useRef(0);
+	const poller = useRef(null);
+	poller.current ??= createPoller();
 	return useQuery({
 		queryKey: [HOST_TYPES[type].itemKey, hostId],
 		queryFn: () => HOST_GETTERS[type](hostId),
 		staleTime: 60 * 1000,
 		enabled: Boolean(hostId),
-		refetchInterval: (query) => {
-			const delay = pollDelay(query.state.data?.npmproDnsRecords, attempts.current);
-			attempts.current = delay === false ? 0 : attempts.current + 1;
-			return delay;
-		},
+		refetchInterval: (query) => poller.current(query.state.data?.npmproDnsRecords),
+	});
+};
+
+const PLAN_DELAY_MS = 600;
+
+// the plan of the names of a host window (what each can get at the provider and the public addresses): read when the
+// option is switched on and again, after a pause in typing, when the names change; it writes nothing
+const useHostDnsPlan = (type, hostId, names, enabled) => {
+	const key = JSON.stringify(
+		[...new Set(names.map((name) => name.toLowerCase()))].sort((a, b) => a.localeCompare(b)),
+	);
+	const [settled, setSettled] = useState(key);
+	useEffect(() => {
+		const timer = setTimeout(() => setSettled(key), PLAN_DELAY_MS);
+		return () => clearTimeout(timer);
+	}, [key]);
+	const list = JSON.parse(settled);
+	return useQuery({
+		queryKey: ["dns-plan", type, hostId ?? null, settled],
+		queryFn: () => planHostDnsRecords({ hostType: HOST_TYPE_IDS[type], hostId, names: list }),
+		enabled: enabled && list.length > 0,
+		staleTime: 30 * 1000,
+		retry: false,
+		refetchOnWindowFocus: false,
 	});
 };
 
@@ -113,6 +136,7 @@ export {
 	useDeleteDnsChallenges,
 	useDnsChallenges,
 	useHostDnsChecks,
+	useHostDnsPlan,
 	useHostDnsRecordAction,
 	useHostDnsRecords,
 	useProbeHostReach,

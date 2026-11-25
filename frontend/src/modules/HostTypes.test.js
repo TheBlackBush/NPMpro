@@ -100,6 +100,7 @@ it("refreshes the host, its list, the checks, the Dynamic DNS records and the au
 		["dns-check-hosts"],
 		["ddns-records"],
 		["ddns-status"],
+		["dns-plan"],
 		["audit-logs"],
 	]);
 });

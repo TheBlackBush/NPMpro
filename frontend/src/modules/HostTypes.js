@@ -91,6 +91,7 @@ export const dnsRecordInvalidations = (type, id) => [
 	...dnsChecks(type),
 	["ddns-records"],
 	["ddns-status"],
+	["dns-plan"],
 	["audit-logs"],
 ];
 

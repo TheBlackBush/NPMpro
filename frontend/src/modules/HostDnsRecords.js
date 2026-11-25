@@ -1,14 +1,14 @@
-import { coveringZone } from "./DnsDomainMatch.js";
-
 // The host record option of the DNS card (backend/internal/host-dns-record.js): which boxes a name offers, the line of
-// each state, what a save sends and when the states are read again. Pure; the card and the lists only draw it.
+// each state, what a save sends and when the states are read again. The plan of a name (credential, zone, TTL, the
+// public addresses, why it cannot get a record) is the answer of POST /nginx/dns-check/plan: this module only reads it.
+// Pure; the card and the lists only draw it.
 
 const MANAGED_STATES = ["ok", "pending", "failed", "paused", "exists"];
 const POLL_MS = 3000;
 const POLL_LIMIT = 10;
-const MIN_TTL = 300;
-// a plain host name: letters and digits (any script) with dots and dashes; a wildcard or a pattern is no plain name
-const PLAIN_NAME = /^[\p{L}\p{N}][\p{L}\p{N}.-]*$/u;
+const POLL_WINDOW_MS = 2 * 60 * 1000;
+// the server keeps a probe answer 10 minutes; the window asks again for the user's confirmation a minute sooner
+const REACH_FRESH_MS = 9 * 60 * 1000;
 
 // the reason keys of the server, written out whole (the unused-key check reads them here)
 const REASON_IDS = {
@@ -54,7 +54,7 @@ const REACH_IDS = {
 };
 
 const lower = (name) => String(name ?? "").toLowerCase();
-const isPlainName = (name) => PLAIN_NAME.test(String(name ?? "").trim());
+const sameName = (a, b) => lower(a) === lower(b);
 
 /**
  * The TTL a new record gets: the TTL an existing record keeps, else 300 raised to the provider's lowest TTL
@@ -66,18 +66,23 @@ const isPlainName = (name) => PLAIN_NAME.test(String(name ?? "").trim());
 export function ttlFor(provider, existing) {
 	if (Number.isInteger(existing?.ttl) && existing.ttl > 0) return existing.ttl;
 	const floor = Number.isInteger(provider?.minTtl) ? provider.minTtl : 0;
-	return Math.max(MIN_TTL, floor);
+	return Math.max(300, floor);
 }
 
 /**
- * Whether the user must say "I checked from outside": every probe answer but reachable, and a probe that did not run
- * (the check is soft, never a refusal from inside). No public address is a block, not a confirmation (reachBlocked).
+ * Whether the user must say "I checked from outside": every probe answer but a reachable one that the server still
+ * remembers, and a probe that did not run (the check is soft, never a refusal from inside). No public address is a
+ * block, not a confirmation (reachBlocked).
  *
- * @param   {{ result?: string }|null|undefined} probe  the answer of POST /nginx/dns-check/reach
+ * @param   {{ result?: string, at?: number }|null|undefined} probe  the answer of POST /nginx/dns-check/reach, `at`
+ *          the time it came (ms)
+ * @param   {number} [now]  ms; without it an answer never goes stale
  * @returns {boolean}
  */
-export function needsReachConfirm(probe) {
-	return !(probe?.result === "reachable" || probe?.result === "no-public-address");
+export function needsReachConfirm(probe, now) {
+	if (probe?.result === "no-public-address") return false;
+	if (probe?.result !== "reachable") return true;
+	return now !== undefined && now - (probe.at ?? 0) >= REACH_FRESH_MS;
 }
 
 /** Whether the probe found no public address: the name cannot be ticked */
@@ -89,112 +94,74 @@ export function reachText(probe) {
 	return { id, values: { address: probe?.address ?? "", port: probe?.port ?? 80 } };
 }
 
-/**
- * The credential, zone and provider that would keep a name, and why it cannot (the checks the server makes again on
- * Save): a wildcard or a pattern name, no right, no credential, two credentials, a provider without records
- *
- * @param   {Object} input
- * @param   {string} input.name
- * @param   {Array<Object>} input.domains  GET /nginx/dns-domains with expand=credential (camelCase)
- * @param   {Array<Object>} input.providers  GET /nginx/ddns/providers (camelCase)
- * @param   {number} [input.userId]
- * @param   {boolean} input.canManage  Certificates manage
- * @param   {string|null} [input.address]  the public IPv4
- * @param   {string|null} [input.ipv6Address]  the public IPv6, when one was detected
- * @returns {{ name: string, blocked: string|null, credential: Object|null, provider: Object|null, zone: string|null,
- *            ttl: number, address: string|null, ipv6Address: string|null }}  blocked: the reason key
- */
-export function planOf({ name, domains, providers, userId, canManage, address = null, ipv6Address = null }) {
-	const plan = {
-		name,
-		blocked: null,
-		credential: null,
-		provider: null,
-		zone: null,
-		ttl: ttlFor(null),
-		address,
-		ipv6Address,
-	};
-	if (String(name).includes("*")) return { ...plan, blocked: "error.host-dns-wildcard" };
-	if (!isPlainName(name)) return { ...plan, blocked: "error.host-dns-pattern" };
-	if (!canManage) return { ...plan, blocked: "error.host-dns-no-right" };
-	const zones = (domains ?? [])
-		.filter((domain) => domain.credential)
-		.map((domain) => ({
-			name: domain.name,
-			credentialId: domain.dnsCredentialId,
-			ownerUserId: domain.credential.ownerUserId,
-		}));
-	const cover = coveringZone(name, zones, userId);
-	if (cover === null) return { ...plan, blocked: "error.host-dns-no-credential" };
-	if (cover.credentialIds.length > 1) return { ...plan, blocked: "error.host-dns-many-credentials" };
-	const credential = (domains ?? []).find((domain) => domain.dnsCredentialId === cover.credentialIds[0])?.credential;
-	const provider =
-		(providers ?? []).find((entry) => entry.credentialProvider === credential?.provider && !entry.preset) ?? null;
-	const found = { ...plan, credential: credential ?? null, provider, zone: cover.zone, ttl: ttlFor(provider) };
-	if (provider === null || provider.zoneless === true)
-		return { ...found, blocked: "error.host-dns-provider-unsupported" };
-	return found;
-}
-
 const foundText = (found) => {
 	const first = found?.[0];
 	return first ? { type: first.type, value: (first.values ?? []).join(", ") } : null;
 };
 
+// the line of a reason key of the server (a plan's or a state's)
+function reasonLine(reason, message, coveredBy) {
+	if (reason === "host-dns.covered-by-record") {
+		return { id: "host-dns.covered-by-record", values: {}, tone: TONES.covered, detail: null };
+	}
+	if (reason === "host-dns.covered-by-wildcard" || reason === "host-dns.covered-by-other") {
+		const id = coveredBy ? "host-dns.covered-by-wildcard" : "host-dns.covered-by-other";
+		return { id, values: { name: coveredBy ?? "" }, tone: TONES.covered, detail: null };
+	}
+	const id = REASON_IDS[reason];
+	return {
+		id: id ?? STATE_IDS.unavailable,
+		values: {},
+		tone: TONES.unavailable,
+		detail: id ? null : (message ?? null),
+	};
+}
+
 // the state line of a name that has a state from the server
 function lineOf(record) {
 	const state = record.state;
+	// another owner's row keeps its real state, but is shown as "Managed by another user", without values
+	if (record.reason === "host-dns.other-owner") {
+		return { id: "host-dns.other-owner", values: {}, tone: TONES.unavailable, detail: null };
+	}
 	if (state === "ok") {
 		const id = record.origin === "adopted" ? STATE_IDS.adopted : STATE_IDS.ok;
 		return { id, values: {}, tone: TONES.ok, detail: null };
 	}
-	if (state === "pending" || state === "paused")
+	if (state === "pending" || state === "paused") {
 		return { id: STATE_IDS[state], values: {}, tone: TONES[state], detail: null };
+	}
 	if (state === "failed" || state === "orphan") {
 		return { id: STATE_IDS[state], values: {}, tone: TONES[state], detail: record.message ?? null };
 	}
-	if (state === "covered") {
-		const by = record.coveredBy;
-		const id = by ? "host-dns.covered-by-wildcard" : "host-dns.covered-by-other";
-		if (record.reason === "host-dns.covered-by-record") {
-			return { id: "host-dns.covered-by-record", values: {}, tone: TONES.covered, detail: null };
-		}
-		return { id, values: { name: by ?? "" }, tone: TONES.covered, detail: null };
-	}
+	if (state === "covered") return reasonLine(record.reason, record.message, record.coveredBy);
 	if (state === "exists") {
 		const found = foundText(record.found);
 		const id = record.adoptAllowed === true ? "host-dns.exists" : "host-dns.exists-remove-first";
 		return { id, values: found ?? { type: "A", value: "" }, tone: TONES.exists, detail: null };
 	}
-	if (state === "unavailable") {
-		const id = REASON_IDS[record.reason] ?? STATE_IDS.unavailable;
-		return {
-			id,
-			values: {},
-			tone: TONES.unavailable,
-			detail: REASON_IDS[record.reason] ? null : (record.message ?? null),
-		};
-	}
+	if (state === "unavailable") return reasonLine(record.reason, record.message, null);
 	return null;
 }
 
 /**
  * What one name of the DNS card offers
  *
- * @param   {Object} plan  planOf(...)
+ * @param   {Object|undefined} plan  the name's entry of POST /nginx/dns-check/plan (camelCase); undefined while it loads
  * @param   {Object|null|undefined} record  the name's state from the server (camelCase), none for a name without one
- * @param   {{ canTick: boolean, readOnly: boolean }} rights  canTick: Certificates manage; readOnly: a View window
- * @returns {{ line: Object|null, tickable: boolean, managed: boolean, blocked: string|null, actions: string[], showProxied: boolean,
- *            showIpv6: boolean, willCreate: Object|null }}
+ * @param   {{ canTick: boolean, readOnly: boolean, ipv6?: boolean, ipv6Address?: string|null,
+ *            hostDisabled?: boolean }} rights  canTick: Certificates manage; readOnly: a View window; ipv6: the AAAA box
+ *          is ticked; ipv6Address: the server's public IPv6 (the answer's own)
+ * @returns {{ line: Object|null, tickable: boolean, managed: boolean, blocked: Object|null, actions: string[],
+ *            showProxied: boolean, showIpv6: boolean, existing: Object|null, willCreate: Object|null }}
  *          line: { id, values, tone, detail } of the server's state; actions: adopt, leave, remove;
- *          blocked: the reason key a name cannot be ticked
+ *          blocked: the line of why a free name cannot be ticked; existing: the line of a record already at the name
  */
 export function nameRow(plan, record, rights) {
 	const has = record && record.state !== "off" ? record : null;
 	const line = has ? lineOf(has) : null;
 	const actions = [];
-	if (has && !rights.readOnly) {
+	if (has && !rights.readOnly && has.reason !== "host-dns.other-owner") {
 		if (has.state === "exists") {
 			if (has.adoptAllowed === true && rights.canTick) actions.push("adopt");
 			actions.push("leave");
@@ -202,28 +169,37 @@ export function nameRow(plan, record, rights) {
 		if (has.state === "orphan" && rights.canTick) actions.push("remove");
 	}
 	const managed = has !== null && MANAGED_STATES.includes(has.state);
-	const tickable = managed || (plan.blocked === null && !rights.readOnly);
-	const free = !managed;
-	const address = plan.address;
+	let blocked = null;
+	if (!managed && plan) {
+		if (rights.hostDisabled === true) blocked = reasonLine("error.host-dns-host-disabled");
+		else if (plan.available !== true) blocked = reasonLine(plan.reason, plan.message, plan.coveredBy);
+	}
+	const free = !managed && Boolean(plan) && blocked === null;
+	const found = free ? foundText(plan.existing) : null;
+	const ipv6Address = rights.ipv6Address ?? plan?.ipv6Address ?? null;
 	let willCreate = null;
-	if (free && plan.blocked === null && plan.provider) {
-		const values = {
-			ttl: plan.ttl,
-			provider: plan.provider.label,
-			zone: plan.zone,
-			address,
-			ipv6: plan.ipv6Address ?? "",
+	if (free && plan.existing === null) {
+		const withIpv6 = rights.ipv6 === true && ipv6Address !== null;
+		willCreate = {
+			id: withIpv6 ? "host-dns.will-create-ipv6" : "host-dns.will-create",
+			values: {
+				address: plan.address,
+				ipv6: ipv6Address ?? "",
+				ttl: plan.ttl,
+				provider: plan.providerLabel,
+				zone: plan.zone,
+			},
 		};
-		willCreate = { id: address ? "host-dns.will-create" : "host-dns.will-create-unknown", values };
 	}
 	return {
 		line,
-		tickable,
+		tickable: managed || (free && !rights.readOnly),
 		managed,
-		blocked: free ? plan.blocked : null,
+		blocked,
 		actions,
-		showProxied: free && plan.blocked === null && plan.provider?.proxied === true,
-		showIpv6: free && plan.blocked === null && plan.provider?.ipv6 === true && Boolean(plan.ipv6Address),
+		showProxied: free && plan.proxiedAllowed === true && plan.existing === null,
+		showIpv6: free && ipv6Address !== null && plan.existing === null,
+		existing: found ? { id: "host-dns.exists", values: found, tone: TONES.exists, detail: null } : null,
 		willCreate,
 	};
 }
@@ -241,6 +217,18 @@ export function ticksOf(records, names) {
 		.filter((record) => MANAGED_STATES.includes(record.state) && present.has(lower(record.name)))
 		.map((record) => ({ name: record.name, ipv6: record.ipv6 === true }));
 }
+
+/** The ticks with a name added (once) */
+export const withTick = (ticks, name) =>
+	ticks.some((entry) => sameName(entry.name, name))
+		? ticks
+		: [...ticks, { name, proxied: false, ipv6: false, reachConfirmed: false }];
+
+/** The ticks without a name */
+export const withoutTick = (ticks, name) => ticks.filter((entry) => !sameName(entry.name, name));
+
+/** The ticks with one entry replaced (matched by name) */
+export const withChange = (ticks, next) => ticks.map((entry) => (sameName(entry.name, next.name) ? next : entry));
 
 /**
  * The request field of a save: one entry per ticked name that the host still has; undefined (field left out, the
@@ -290,6 +278,14 @@ export function recordsBadge(records) {
 	return null;
 }
 
+const BADGE_STATES = ["ok", "pending", "exists", "paused", "failed", "orphan"];
+
+/** The names of a host's badge tooltip: one line per managed name, { name, line } */
+export const badgeLines = (records) =>
+	(records ?? [])
+		.filter((record) => BADGE_STATES.includes(record.state))
+		.map((record) => ({ name: record.name, line: lineOf(record) }));
+
 /**
  * How long until the states are read again: while a name is pending, every 3 seconds, at most 10 times
  *
@@ -300,6 +296,29 @@ export function recordsBadge(records) {
 export function pollDelay(records, attempts) {
 	const pending = (records ?? []).some((record) => record.state === "pending");
 	return pending && attempts < POLL_LIMIT ? POLL_MS : false;
+}
+
+/**
+ * A poller for refetchInterval: it counts the reads and does not start over when polling stops, so a host that stays
+ * pending is read at most 10 times in 2 minutes however often its query is fetched again; a later save, after the
+ * window has passed, gets its own reads
+ *
+ * @param   {() => number} [now]
+ * @returns {(records: Array<{ state: string }>|undefined) => number|false}
+ */
+export function createPoller(now = Date.now) {
+	let count = 0;
+	let since = 0;
+	return (records) => {
+		const time = now();
+		if (time - since >= POLL_WINDOW_MS) {
+			count = 0;
+			since = time;
+		}
+		const delay = pollDelay(records, count);
+		if (delay !== false) count += 1;
+		return delay;
+	};
 }
 
 /** The line of a name's state for a list tooltip: { id, values, tone, detail }, null for a name without one */

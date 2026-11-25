@@ -86,6 +86,7 @@ export * from "./inspectBackup";
 export * from "./leaveHostDnsRecord";
 export * from "./mfa";
 export * from "./openImport";
+export * from "./planHostDnsRecords";
 export * from "./planRestore";
 export * from "./probeHostReach";
 export * from "./refreshToken";

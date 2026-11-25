@@ -2,7 +2,7 @@ import { Globe } from "lucide-react";
 import { StatusBadge } from "src/components/StatusBadge";
 import { TapTooltip } from "src/components/TapTooltip";
 import { intl, T } from "src/locale";
-import { recordsBadge, stateLine } from "src/modules/HostDnsRecords";
+import { badgeLines, recordsBadge } from "src/modules/HostDnsRecords";
 
 // the badge's state words, written out whole
 const STATE_IDS = {
@@ -25,23 +25,21 @@ const STATE_IDS = {
 export function HostRecordsBadge({ records }) {
 	const badge = recordsBadge(records);
 	if (badge === null) return null;
-	const lines = (records ?? [])
-		.filter((record) => Object.hasOwn(STATE_IDS, record.state))
-		.map((record) => ({ record, line: stateLine(record) }));
+	const lines = badgeLines(records);
 	const label = [
 		intl.formatMessage(
 			{ id: "host-dns.badge-label" },
 			{ state: intl.formatMessage({ id: STATE_IDS[badge.state] }) },
 		),
-		...lines.map(({ record, line }) => `${record.name}: ${intl.formatMessage({ id: line.id }, line.values)}`),
+		...lines.map(({ name, line }) => `${name}: ${intl.formatMessage({ id: line.id }, line.values)}`),
 	].join(". ");
 	return (
 		<TapTooltip
 			content={
 				<ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-left">
-					{lines.map(({ record, line }) => (
-						<li key={record.name}>
-							<span className="font-mono">{record.name}</span>: <T id={line.id} data={line.values} />
+					{lines.map(({ name, line }) => (
+						<li key={name}>
+							<span className="font-mono">{name}</span>: <T id={line.id} data={line.values} />
 						</li>
 					))}
 				</ul>

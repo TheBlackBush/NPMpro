@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+	badgeLines,
+	createPoller,
 	nameRow,
 	needsReachConfirm,
-	planOf,
 	pollDelay,
 	reachBlocked,
 	reachText,
@@ -12,79 +13,55 @@ import {
 	ticksOf,
 	ttlFor,
 	wantedFromForm,
+	withChange,
+	withoutTick,
+	withTick,
 } from "./HostDnsRecords.js";
 
-const cloudflare = {
-	id: "cloudflare",
-	label: "Cloudflare",
-	credentialProvider: "cloudflare",
-	proxied: true,
-	ipv6: true,
-	minTtl: 60,
-};
-const desec = { id: "desec", label: "deSEC", credentialProvider: "desec", proxied: false, ipv6: true, minTtl: 3600 };
-const duck = {
-	id: "duckdns",
-	label: "DuckDNS",
-	credentialProvider: "duckdns",
-	zoneless: true,
-	ipv6: true,
-	minTtl: null,
-};
-const providers = [cloudflare, desec, duck];
-const domains = [
-	{
-		name: "example.com",
-		dnsCredentialId: 1,
-		credential: { id: 1, name: "CF", provider: "cloudflare", ownerUserId: 7 },
-	},
-	{ name: "desec.test", dnsCredentialId: 2, credential: { id: 2, name: "DS", provider: "desec", ownerUserId: 7 } },
-	{
-		name: "duckdns.org",
-		dnsCredentialId: 3,
-		credential: { id: 3, name: "Duck", provider: "duckdns", ownerUserId: 7 },
-	},
-	{
-		name: "twice.test",
-		dnsCredentialId: 4,
-		credential: { id: 4, name: "A", provider: "cloudflare", ownerUserId: 8 },
-	},
-	{
-		name: "twice.test",
-		dnsCredentialId: 5,
-		credential: { id: 5, name: "B", provider: "cloudflare", ownerUserId: 9 },
-	},
-];
-const plan = (name, extra = {}) =>
-	planOf({
-		name,
-		domains,
-		providers,
-		userId: 7,
-		canManage: true,
-		address: "203.0.113.7",
-		ipv6Address: null,
-		...extra,
-	});
+const plan = (extra = {}) => ({
+	name: "app.example.com",
+	available: true,
+	reason: null,
+	message: null,
+	coveredBy: null,
+	credential: { id: 1, name: "CF" },
+	zone: "example.com",
+	providerLabel: "Cloudflare",
+	address: "203.0.113.7",
+	ipv6Address: null,
+	ttl: 300,
+	proxiedAllowed: true,
+	existing: null,
+	...extra,
+});
 const rights = { canTick: true, readOnly: false };
+const state = (value, extra = {}) => ({ name: "app.example.com", state: value, ...extra });
 
 describe("ttlFor", () => {
-	it("keeps the TTL of an existing record", () => assert.equal(ttlFor(desec, { ttl: 120 }), 120));
-	it("gives a new record 300", () => assert.equal(ttlFor(cloudflare, null), 300));
-	it("raises 300 to the provider's lowest TTL", () => {
-		assert.equal(ttlFor(desec, null), 3600);
+	it("keeps the TTL of an existing record", () => assert.equal(ttlFor({ minTtl: 3600 }, { ttl: 120 }), 120));
+	it("gives a new record 300, raised to the provider's lowest TTL", () => {
+		assert.equal(ttlFor({ minTtl: 60 }, null), 300);
+		assert.equal(ttlFor({ minTtl: 3600 }, null), 3600);
 		assert.equal(ttlFor({ minTtl: null }, undefined), 300);
 		assert.equal(ttlFor(undefined), 300);
+		assert.equal(ttlFor({ minTtl: 3600 }, { ttl: null }), 3600);
 	});
-	it("ignores an existing record without a TTL", () => assert.equal(ttlFor(desec, { ttl: null }), 3600));
 });
 
 describe("the reach rule", () => {
-	it("lets a reachable answer stand", () => assert.equal(needsReachConfirm({ result: "reachable" }), false));
+	it("lets a reachable answer stand while the server remembers it", () => {
+		assert.equal(needsReachConfirm({ result: "reachable", at: 1000 }), false);
+		assert.equal(needsReachConfirm({ result: "reachable", at: 1000 }, 1000 + 8 * 60 * 1000), false);
+	});
+	it("asks again when a reachable answer is older than the server keeps it", () => {
+		assert.equal(needsReachConfirm({ result: "reachable", at: 1000 }, 1000 + 9 * 60 * 1000), true);
+		assert.equal(needsReachConfirm({ result: "reachable" }, 9 * 60 * 1000), true);
+	});
 	it("asks for the user's confirmation for every other answer", () => {
 		for (const result of ["could-not-confirm", "router-answered", "overridden"]) {
 			assert.equal(needsReachConfirm({ result }), true, result);
 		}
+		assert.equal(needsReachConfirm({ at: 5 }), true);
 		assert.equal(needsReachConfirm(null), true);
 		assert.equal(needsReachConfirm(undefined), true);
 	});
@@ -104,88 +81,89 @@ describe("the reach rule", () => {
 			"host-dns.reach.router-answered",
 		);
 		assert.equal(reachText({ result: "overridden" }).id, "host-dns.reach.overridden");
+		assert.equal(reachText({ result: "could-not-confirm" }).id, "host-dns.reach.could-not-confirm");
 		assert.equal(reachText({ result: "no-public-address" }).id, "error.host-dns-no-public-address");
 		assert.equal(reachText(null).id, "host-dns.reach.failed");
+		assert.deepEqual(reachText({ result: "reachable" }).values, { address: "", port: 80 });
 	});
 });
 
-describe("planOf", () => {
-	it("finds the credential, zone, provider and TTL", () => {
-		const found = plan("app.example.com");
-		assert.equal(found.blocked, null);
-		assert.equal(found.zone, "example.com");
-		assert.equal(found.provider.id, "cloudflare");
-		assert.equal(found.credential.id, 1);
-		assert.equal(found.ttl, 300);
-		assert.equal(plan("a.desec.test").ttl, 3600);
-	});
-	it("blocks the names the option cannot take, with the server's reason keys", () => {
-		assert.equal(plan("*.example.com").blocked, "error.host-dns-wildcard");
-		assert.equal(plan("~^a\\.example\\.com$").blocked, "error.host-dns-pattern");
-		assert.equal(plan("app.example.com", { canManage: false }).blocked, "error.host-dns-no-right");
-		assert.equal(plan("app.nowhere.test").blocked, "error.host-dns-no-credential");
-		assert.equal(plan("a.twice.test").blocked, "error.host-dns-many-credentials");
-		assert.equal(plan("a.duckdns.org").blocked, "error.host-dns-provider-unsupported");
-	});
-	it("takes the user's own credential on a zone two users listed", () => {
-		const own = plan("a.twice.test", { userId: 8 });
-		assert.equal(own.blocked, null);
-		assert.equal(own.credential.id, 4);
-	});
-});
-
-describe("nameRow", () => {
-	it("offers a free name with the line of what Save will create", () => {
-		const row = nameRow(plan("app.example.com"), undefined, rights);
+describe("nameRow of a free name", () => {
+	it("offers a tick and promises what Save creates", () => {
+		const row = nameRow(plan(), undefined, rights);
 		assert.equal(row.tickable, true);
 		assert.equal(row.managed, false);
 		assert.equal(row.line, null);
 		assert.equal(row.blocked, null);
+		assert.equal(row.existing, null);
 		assert.deepEqual(row.willCreate, {
 			id: "host-dns.will-create",
-			values: { ttl: 300, provider: "Cloudflare", zone: "example.com", address: "203.0.113.7", ipv6: "" },
+			values: { address: "203.0.113.7", ipv6: "", ttl: 300, provider: "Cloudflare", zone: "example.com" },
 		});
 	});
-	it("says so when the address is not known yet", () => {
-		const row = nameRow(plan("app.example.com", { address: null }), null, rights);
-		assert.equal(row.willCreate.id, "host-dns.will-create-unknown");
+	it("mentions the AAAA only when its box is ticked", () => {
+		const base = { ...rights, ipv6Address: "2001:db8::1" };
+		assert.equal(nameRow(plan(), null, base).showIpv6, true);
+		assert.equal(nameRow(plan(), null, base).willCreate.id, "host-dns.will-create");
+		const ticked = nameRow(plan(), null, { ...base, ipv6: true });
+		assert.equal(ticked.willCreate.id, "host-dns.will-create-ipv6");
+		assert.equal(ticked.willCreate.values.ipv6, "2001:db8::1");
+		assert.equal(nameRow(plan(), null, { ...rights, ipv6: true }).willCreate.id, "host-dns.will-create");
 	});
-	it("shows Proxied only for a provider with the flag, and the AAAA box only with a public IPv6", () => {
-		assert.equal(nameRow(plan("app.example.com"), null, rights).showProxied, true);
-		assert.equal(nameRow(plan("a.desec.test"), null, rights).showProxied, false);
-		assert.equal(nameRow(plan("app.example.com"), null, rights).showIpv6, false);
-		assert.equal(nameRow(plan("app.example.com", { ipv6Address: "2001:db8::1" }), null, rights).showIpv6, true);
-		assert.equal(nameRow(plan("a.desec.test", { ipv6Address: "2001:db8::1" }), null, rights).showIpv6, true);
-		assert.equal(
-			nameRow(plan("app.example.com", { ipv6Address: "2001:db8::1" }), { name: "x", state: "ok" }, rights)
-				.showIpv6,
-			false,
-		);
+	it("shows the AAAA box from the plan's own IPv6 too, and none without one", () => {
+		assert.equal(nameRow(plan({ ipv6Address: "2001:db8::2" }), null, rights).showIpv6, true);
+		assert.equal(nameRow(plan(), null, rights).showIpv6, false);
 	});
-	it("cannot tick a blocked name and gives the reason", () => {
-		const row = nameRow(plan("*.example.com"), undefined, rights);
-		assert.equal(row.tickable, false);
-		assert.equal(row.blocked, "error.host-dns-wildcard");
+	it("shows Proxied only for a provider with the flag", () => {
+		assert.equal(nameRow(plan(), null, rights).showProxied, true);
+		assert.equal(nameRow(plan({ proxiedAllowed: false }), null, rights).showProxied, false);
+	});
+	it("promises nothing for a name that already holds a record", () => {
+		const row = nameRow(plan({ existing: [{ type: "A", values: ["192.0.2.5"] }] }), null, rights);
+		assert.equal(row.tickable, true);
 		assert.equal(row.willCreate, null);
+		assert.equal(row.showProxied, false);
+		assert.deepEqual(row.existing.values, { type: "A", value: "192.0.2.5" });
+		assert.equal(row.existing.id, "host-dns.exists");
 	});
-	it("cannot tick in a View window, but shows the states", () => {
-		const view = { canTick: true, readOnly: true };
-		assert.equal(nameRow(plan("app.example.com"), undefined, view).tickable, false);
-		const row = nameRow(
-			plan("app.example.com"),
-			{
-				name: "app.example.com",
-				state: "exists",
-				adoptAllowed: true,
-				found: [{ type: "A", values: ["192.0.2.5"] }],
-			},
-			view,
+	it("cannot be ticked while the plan loads or in a View window", () => {
+		assert.equal(nameRow(undefined, undefined, rights).tickable, false);
+		assert.equal(nameRow(plan(), undefined, { canTick: true, readOnly: true }).tickable, false);
+	});
+	it("cannot be ticked when the plan refuses it, with the reason's line", () => {
+		const cases = [
+			["error.host-dns-wildcard", null, "error.host-dns-wildcard"],
+			["error.host-dns-no-credential", null, "error.host-dns-no-credential"],
+			["error.host-dns-name-taken", null, "error.host-dns-name-taken"],
+			["host-dns.covered-by-record", "app.example.com", "host-dns.covered-by-record"],
+			["host-dns.covered-by-wildcard", "*.example.com", "host-dns.covered-by-wildcard"],
+			["host-dns.covered-by-other", null, "host-dns.covered-by-other"],
+			["something-new", null, "host-dns.state.unavailable"],
+		];
+		for (const [reason, coveredBy, id] of cases) {
+			const row = nameRow(plan({ available: false, reason, message: "text", coveredBy }), undefined, rights);
+			assert.equal(row.tickable, false, reason);
+			assert.equal(row.blocked.id, id, reason);
+			assert.equal(row.willCreate, null);
+		}
+		const covered = nameRow(
+			plan({ available: false, reason: "host-dns.covered-by-wildcard", coveredBy: "*.example.com" }),
+			null,
+			rights,
 		);
-		assert.deepEqual(row.actions, []);
-		assert.equal(row.line.id, "host-dns.exists");
+		assert.deepEqual(covered.blocked.values, { name: "*.example.com" });
+		const unknown = nameRow(plan({ available: false, reason: "something-new", message: "odd" }), null, rights);
+		assert.equal(unknown.blocked.detail, "odd");
 	});
-	const lineOfState = (state, extra = {}) =>
-		nameRow(plan("app.example.com"), { name: "app.example.com", state, ...extra }, rights);
+	it("cannot be ticked on a disabled host", () => {
+		const row = nameRow(plan(), undefined, { ...rights, hostDisabled: true });
+		assert.equal(row.tickable, false);
+		assert.equal(row.blocked.id, "error.host-dns-host-disabled");
+	});
+});
+
+describe("nameRow of a name with a state", () => {
+	const lineOfState = (value, extra = {}) => nameRow(plan(), state(value, extra), rights);
 	it("maps every state to its text, tone and buttons", () => {
 		const cases = [
 			["ok", {}, "host-dns.state.ok", "success", []],
@@ -194,8 +172,20 @@ describe("nameRow", () => {
 			["failed", { message: "boom" }, "host-dns.state.failed", "destructive", []],
 			["paused", {}, "host-dns.state.paused", "warning", []],
 			["orphan", { message: "x" }, "host-dns.state.orphan", "destructive", ["remove"]],
-			["covered", { coveredBy: "*.example.com" }, "host-dns.covered-by-wildcard", "success", []],
-			["covered", { coveredBy: null }, "host-dns.covered-by-other", "success", []],
+			[
+				"covered",
+				{ coveredBy: "*.example.com", reason: "host-dns.covered-by-wildcard" },
+				"host-dns.covered-by-wildcard",
+				"success",
+				[],
+			],
+			[
+				"covered",
+				{ coveredBy: null, reason: "host-dns.covered-by-other" },
+				"host-dns.covered-by-other",
+				"success",
+				[],
+			],
 			["covered", { reason: "host-dns.covered-by-record" }, "host-dns.covered-by-record", "success", []],
 			[
 				"exists",
@@ -212,57 +202,94 @@ describe("nameRow", () => {
 				["leave"],
 			],
 			["unavailable", { reason: "error.host-dns-no-right" }, "error.host-dns-no-right", "muted", []],
-			["unavailable", { reason: "host-dns.other-owner" }, "host-dns.other-owner", "muted", []],
 			["unavailable", { reason: null, message: "odd" }, "host-dns.state.unavailable", "muted", []],
 		];
-		for (const [state, extra, id, tone, actions] of cases) {
-			const row = lineOfState(state, extra);
-			assert.equal(row.line.id, id, `${state} ${JSON.stringify(extra)}`);
-			assert.equal(row.line.tone, tone, state);
-			assert.deepEqual(row.actions, actions, state);
+		for (const [value, extra, id, tone, actions] of cases) {
+			const row = lineOfState(value, extra);
+			assert.equal(row.line.id, id, `${value} ${JSON.stringify(extra)}`);
+			assert.equal(row.line.tone, tone, value);
+			assert.deepEqual(row.actions, actions, value);
 		}
 	});
 	it("shows the address that exists and the detail of a failure", () => {
 		const exists = lineOfState("exists", { adoptAllowed: true, found: [{ type: "A", values: ["192.0.2.5"] }] });
 		assert.deepEqual(exists.line.values, { type: "A", value: "192.0.2.5" });
+		assert.deepEqual(lineOfState("exists", { adoptAllowed: true }).line.values, { type: "A", value: "" });
 		assert.equal(lineOfState("failed", { message: "boom" }).line.detail, "boom");
+		assert.equal(lineOfState("failed", {}).line.detail, null);
 		assert.equal(lineOfState("unavailable", { reason: null, message: "odd" }).line.detail, "odd");
+		assert.equal(lineOfState("unavailable", { reason: "error.host-dns-no-right", message: "x" }).line.detail, null);
 	});
-	it("offers Adopt and update only with Certificates manage", () => {
-		const row = nameRow(
-			plan("app.example.com"),
-			{ name: "app.example.com", state: "exists", adoptAllowed: true, found: [] },
-			{ canTick: false, readOnly: false },
-		);
-		assert.deepEqual(row.actions, ["leave"]);
-		const orphan = nameRow(
-			plan("app.example.com"),
-			{ name: "app.example.com", state: "orphan" },
-			{ canTick: false, readOnly: false },
-		);
-		assert.deepEqual(orphan.actions, []);
+	it("shows another owner's row as managed by another user, whatever its state, without buttons or values", () => {
+		for (const value of ["ok", "pending", "failed", "paused", "orphan", "exists", "unavailable"]) {
+			const row = lineOfState(value, {
+				reason: "host-dns.other-owner",
+				message: "Managed by another user",
+				adoptAllowed: true,
+				found: [{ type: "A", values: ["192.0.2.5"] }],
+			});
+			assert.equal(row.line.id, "host-dns.other-owner", value);
+			assert.deepEqual(row.line.values, {}, value);
+			assert.deepEqual(row.actions, [], value);
+		}
 	});
-	it("keeps a managed name ticked, so it can be unticked, whatever the plan says", () => {
-		const row = nameRow(
-			plan("app.example.com", { canManage: false }),
-			{ name: "app.example.com", state: "ok" },
-			{ canTick: false, readOnly: false },
-		);
+	it("offers Adopt and update only with Certificates manage, and no button in a View window", () => {
+		const exists = state("exists", { adoptAllowed: true, found: [] });
+		assert.deepEqual(nameRow(plan(), exists, { canTick: false, readOnly: false }).actions, ["leave"]);
+		assert.deepEqual(nameRow(plan(), state("orphan"), { canTick: false, readOnly: false }).actions, []);
+		assert.deepEqual(nameRow(plan(), exists, { canTick: true, readOnly: true }).actions, []);
+		assert.equal(nameRow(plan(), exists, { canTick: true, readOnly: true }).line.id, "host-dns.exists");
+	});
+	it("keeps a managed name ticked and untickable whatever the plan says", () => {
+		const row = nameRow(plan({ available: false, reason: "error.host-dns-no-right" }), state("ok"), {
+			canTick: false,
+			readOnly: false,
+		});
 		assert.equal(row.tickable, true);
+		assert.equal(row.managed, true);
 		assert.equal(row.blocked, null);
 		assert.equal(row.willCreate, null);
+		assert.equal(row.showIpv6, false);
+		assert.equal(nameRow(undefined, state("ok"), rights).tickable, true);
 	});
 	it("treats an off state like no state", () => {
-		const row = nameRow(plan("app.example.com"), { name: "app.example.com", state: "off" }, rights);
+		const row = nameRow(plan(), state("off"), rights);
 		assert.equal(row.line, null);
 		assert.equal(row.tickable, true);
+	});
+});
+
+describe("ticks", () => {
+	it("adds a name once, removes it and replaces its entry, by name without case", () => {
+		const one = withTick([], "A.example.com");
+		assert.deepEqual(one, [{ name: "A.example.com", proxied: false, ipv6: false, reachConfirmed: false }]);
+		assert.equal(withTick(one, "a.example.com"), one);
+		assert.deepEqual(withChange(one, { name: "a.example.com", ipv6: true }), [
+			{ name: "a.example.com", ipv6: true },
+		]);
+		assert.deepEqual(withoutTick(one, "a.EXAMPLE.com"), []);
+		assert.deepEqual(withoutTick(one, "b.example.com"), one);
+	});
+	it("starts from the names that hold a row and still belong to the host", () => {
+		const records = [
+			{ name: "a.example.com", state: "ok", ipv6: true },
+			{ name: "b.example.com", state: "exists", ipv6: false },
+			{ name: "c.example.com", state: "orphan" },
+			{ name: "d.example.com", state: "covered" },
+			{ name: "gone.example.com", state: "ok" },
+		];
+		assert.deepEqual(ticksOf(records, ["A.example.com", "b.example.com", "c.example.com", "d.example.com"]), [
+			{ name: "a.example.com", ipv6: true },
+			{ name: "b.example.com", ipv6: false },
+		]);
+		assert.deepEqual(ticksOf(undefined, undefined), []);
 	});
 });
 
 describe("wantedFromForm", () => {
 	it("leaves the field out until the card was touched", () => {
 		assert.equal(wantedFromForm({ domainNames: ["a.example.com"] }), undefined);
-		assert.equal(wantedFromForm({ npmproDnsRecords: undefined, domainNames: ["a.example.com"] }), undefined);
+		assert.equal(wantedFromForm(undefined), undefined);
 	});
 	it("sends an empty list when everything is unticked", () => {
 		assert.deepEqual(wantedFromForm({ npmproDnsRecords: [], domainNames: ["a.example.com"] }), []);
@@ -281,68 +308,63 @@ describe("wantedFromForm", () => {
 			{ name: "a.example.com", proxied: true, reachConfirmed: true },
 			{ name: "b.example.com", ipv6: true },
 		]);
-	});
-	it("sends nothing for a name that is not ticked", () => {
-		assert.deepEqual(
-			wantedFromForm({
-				domainNames: ["a.example.com", "b.example.com"],
-				npmproDnsRecords: [{ name: "a.example.com" }],
-			}),
-			[{ name: "a.example.com" }],
-		);
+		assert.deepEqual(wantedFromForm({ npmproDnsRecords: [{ name: "a.example.com" }] }), []);
 	});
 });
 
-describe("ticksOf", () => {
-	it("ticks the names that hold a row and still belong to the host", () => {
-		const records = [
-			{ name: "a.example.com", state: "ok", ipv6: true },
-			{ name: "b.example.com", state: "exists", ipv6: false },
-			{ name: "c.example.com", state: "orphan" },
-			{ name: "d.example.com", state: "covered" },
-			{ name: "gone.example.com", state: "ok" },
-		];
-		assert.deepEqual(ticksOf(records, ["A.example.com", "b.example.com", "c.example.com", "d.example.com"]), [
-			{ name: "a.example.com", ipv6: true },
-			{ name: "b.example.com", ipv6: false },
-		]);
-		assert.deepEqual(ticksOf(undefined, undefined), []);
-	});
-});
-
-describe("recordsBadge", () => {
+describe("recordsBadge and badgeLines", () => {
 	it("is green for ok, amber for pending, exists or paused, red for failed or orphan", () => {
 		assert.deepEqual(recordsBadge([{ state: "ok" }]), { state: "ok", tone: "success" });
-		for (const state of ["pending", "exists", "paused"])
-			assert.equal(recordsBadge([{ state }]).tone, "warning", state);
-		for (const state of ["failed", "orphan"]) assert.equal(recordsBadge([{ state }]).tone, "destructive", state);
+		for (const value of ["pending", "exists", "paused"])
+			assert.equal(recordsBadge([{ state: value }]).tone, "warning", value);
+		for (const value of ["failed", "orphan"])
+			assert.equal(recordsBadge([{ state: value }]).tone, "destructive", value);
 	});
-	it("shows the worst state of the host", () => {
+	it("shows the worst state of the host, and none without a managed row", () => {
 		assert.equal(recordsBadge([{ state: "ok" }, { state: "pending" }, { state: "failed" }]).state, "failed");
 		assert.equal(recordsBadge([{ state: "ok" }, { state: "paused" }]).state, "paused");
-	});
-	it("has no badge without a managed row", () => {
 		assert.equal(recordsBadge(undefined), null);
-		assert.equal(recordsBadge([]), null);
 		assert.equal(recordsBadge([{ state: "covered" }, { state: "unavailable" }, { state: "off" }]), null);
+	});
+	it("lists a line for each managed name only", () => {
+		const lines = badgeLines([
+			{ name: "a.example.com", state: "ok" },
+			{ name: "b.example.com", state: "covered" },
+			{ name: "c.example.com", state: "exists", adoptAllowed: true, found: [{ type: "A", values: ["1.2.3.4"] }] },
+		]);
+		assert.deepEqual(
+			lines.map((one) => [one.name, one.line.id]),
+			[
+				["a.example.com", "host-dns.state.ok"],
+				["c.example.com", "host-dns.exists"],
+			],
+		);
+		assert.deepEqual(badgeLines(undefined), []);
+	});
+	it("gives a line for a state, none for a name without one", () => {
+		assert.equal(stateLine({ state: "ok" }).id, "host-dns.state.ok");
+		assert.equal(stateLine({ state: "off" }), null);
 	});
 });
 
-describe("pollDelay", () => {
+describe("polling", () => {
 	it("reads again every 3 seconds while a name is pending, at most 10 times", () => {
 		assert.equal(pollDelay([{ state: "pending" }], 0), 3000);
 		assert.equal(pollDelay([{ state: "ok" }, { state: "pending" }], 9), 3000);
 		assert.equal(pollDelay([{ state: "pending" }], 10), false);
-	});
-	it("stops when no name is pending", () => {
 		assert.equal(pollDelay([{ state: "ok" }, { state: "failed" }], 0), false);
 		assert.equal(pollDelay(undefined, 0), false);
 	});
-});
-
-describe("stateLine", () => {
-	it("gives the line of a state, none for a name without one", () => {
-		assert.equal(stateLine({ state: "ok" }).id, "host-dns.state.ok");
-		assert.equal(stateLine({ state: "off" }), null);
+	it("counts across stops and starts over only after the window", () => {
+		let time = 1_000_000;
+		const next = createPoller(() => time);
+		const pending = [{ state: "pending" }];
+		for (let read = 0; read < 10; read += 1) assert.equal(next(pending), 3000);
+		assert.equal(next(pending), false);
+		// polling stopped (no name pending) and a later fetch finds one pending again: still the same window
+		assert.equal(next([{ state: "ok" }]), false);
+		assert.equal(next(pending), false);
+		time += 2 * 60 * 1000;
+		assert.equal(next(pending), 3000);
 	});
 });
