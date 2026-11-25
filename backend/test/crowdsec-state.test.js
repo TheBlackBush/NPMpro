@@ -94,4 +94,14 @@ describe("crowdsec unreachable state", () => {
 		await h.poll();
 		assert.deepEqual(h.calls, [{ state: "ok" }, { state: "ok" }]);
 	});
+
+	it("an ok the callback skipped (false: notifications paused) is told again at the next poll", async () => {
+		let skips = 2;
+		const h = harness({ onState: () => (skips-- > 0 ? false : undefined) });
+		await h.poll();
+		await h.poll();
+		await h.poll();
+		await h.poll();
+		assert.deepEqual(h.calls, [{ state: "ok" }, { state: "ok" }, { state: "ok" }]);
+	});
 });

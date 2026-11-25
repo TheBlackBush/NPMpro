@@ -758,6 +758,22 @@ describe("CrowdSec state emit points", () => {
 		assert.equal((await rows()).length, 0);
 	});
 
+	it("while the notifications are paused nothing is written and the state is not told", async () => {
+		const { worker } = await import("../internal/notify.js");
+		worker.pause();
+		try {
+			assert.equal(await reportCrowdsecState({ state: "bad", error: "down" }), false);
+			assert.equal(await reportCrowdsecState({ state: "off" }), false);
+			assert.equal((await rows()).length, 0);
+			assert.equal(seen.length, 0);
+		} finally {
+			worker.resume();
+		}
+		assert.notEqual(await reportCrowdsecState({ state: "bad", error: "down" }), false);
+		assert.equal((await rows()).length, 1);
+		await reportCrowdsecState({ state: "off" });
+	});
+
 	it("a state that could not be stored throws, so the service tries again", async () => {
 		const original = stateStore.report;
 		stateStore.report = () => {
