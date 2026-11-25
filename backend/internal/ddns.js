@@ -131,6 +131,15 @@ const updateNow = async (access, id) => {
 	return await internalDdnsRecord.get(access, { id, expand: ["credential"] });
 };
 
+/**
+ * Runs the engine for one record now (the host record option after it saved a row), under the timer's lock and the
+ * record's lock; no access check, no audit. The cooldown holds.
+ *
+ * @param   {number}  id
+ * @returns {Promise<Object>}  the record as the engine stored it
+ */
+const writeRecordNow = (id) => service().engine.updateRecord(id);
+
 // one detection at a time per family, shared by the callers that wait for it
 const detecting = new Map();
 
@@ -170,4 +179,5 @@ export {
 	restartDdnsTimer,
 	resumeDdns,
 	updateNow,
+	writeRecordNow,
 };

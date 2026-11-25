@@ -199,6 +199,19 @@
 			"example": null,
 			"description": "`created`: NPMpro made the record for the host; `adopted`: it existed and was taken over by the user's choice (never deleted at the provider); null for a manual record"
 		},
+		"host_label": {
+			"type": [
+				"string",
+				"null"
+			],
+			"example": null,
+			"description": "The first name of the host a host's record belongs to (\"Managed by\" in the list); null for a manual record or a host that is gone"
+		},
+		"orphan": {
+			"type": "boolean",
+			"example": false,
+			"description": "A host's record whose delete at the provider failed: it stays until it is deleted at the provider again or forgotten"
+		},
 		"failures": {
 			"type": "integer",
 			"minimum": 0,

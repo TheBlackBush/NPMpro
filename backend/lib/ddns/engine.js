@@ -49,6 +49,9 @@ const cleanMeta = (meta) => {
 /** Whether a provider told the engine to send no more updates until the user acts (see DdnsProviderError stop) */
 const isStopped = (record) => record?.meta?.stopped === true;
 
+/** A host's record paused while its host is disabled: never due, never run (the host's enable resumes it) */
+const isPausedByHost = (record) => record?.meta?.paused_by_host === true;
+
 // what a provider is handed to look a record up: the record id belongs to one record type, so it is not passed on
 const lookupMeta = (meta) => {
 	const { record_id: _ignored, ...rest } = cleanMeta(meta);
@@ -353,7 +356,7 @@ const createDdnsEngine = ({
 	const processRecord = (id, found, { ignoreDue, strictCooldown, countTry, runStopped = false }) =>
 		recordLock(id, async () => {
 			const record = await store.getRecord(id);
-			if (!record || record.enabled === false) return { skipped: "record" };
+			if (!record || record.enabled === false || isPausedByHost(record)) return { skipped: "record" };
 			if (!runStopped && isStopped(record)) return { skipped: "stopped" };
 			if (!ignoreDue && !isDue(record)) return { skipped: "due" };
 
@@ -454,7 +457,8 @@ const createDdnsEngine = ({
 		 */
 		cycle: async ({ force = false, ids, stopped = () => false } = {}) => {
 			const enabled = (await store.enabledRecords()).filter(
-				(record) => (ids === undefined || ids.includes(record.id)) && !isStopped(record),
+				(record) =>
+					(ids === undefined || ids.includes(record.id)) && !isStopped(record) && !isPausedByHost(record),
 			);
 			if (enabled.length === 0) return { ran: false, changed: 0, failed: 0, stopped: false };
 			const due = force ? enabled : enabled.filter(isDue);
@@ -493,7 +497,7 @@ const createDdnsEngine = ({
 			runNow(async () => {
 				const record = await store.getRecord(id);
 				if (!record) throw new errs.ItemNotFoundError(id);
-				if (record.enabled === false) {
+				if (record.enabled === false || isPausedByHost(record)) {
 					throw new errs.ValidationError(
 						"The record is disabled; enable it first",
 						"error.ddns-record-disabled",

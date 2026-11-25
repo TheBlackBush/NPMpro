@@ -13,8 +13,11 @@ import { createKeyedLock } from "../lib/keyed-lock.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import ddnsHistoryModel from "../models/ddns_history.js";
 import ddnsRecordModel from "../models/ddns_record.js";
+import deadHostModel from "../models/dead_host.js";
 import dnsCredentialModel from "../models/dns_credential.js";
 import dnsDomainModel from "../models/dns_domain.js";
+import proxyHostModel from "../models/proxy_host.js";
+import redirectionHostModel from "../models/redirection_host.js";
 import internalAuditLog from "./audit-log.js";
 import internalDnsCredential from "./dns-credential.js";
 
@@ -118,14 +121,49 @@ const proxiedOf = (meta) => {
 	return flags.length === 0 ? null : flags.includes(true);
 };
 
+// the host tables a record made through a host's DNS option can belong to (host_type)
+const HOST_MODELS = {
+	proxy_host: proxyHostModel,
+	redirection_host: redirectionHostModel,
+	dead_host: deadHostModel,
+};
+
+const hostKey = (hostType, hostId) => `${hostType}:${hostId}`;
+
+/** A record made through a host's DNS option: it belongs to that host and changes only through it */
+const isManaged = (row) => typeof row?.host_type === "string" && row.host_type !== "";
+
+/** A managed record whose delete at the provider failed: the row stays until it is deleted again or forgotten */
+const isOrphan = (row) => isManaged(row) && row.meta?.orphan === true;
+
+/**
+ * The label of each host the rows belong to (its first name), by `host_type:host_id`; a host that is gone has none
+ *
+ * @param   {Object[]}  rows
+ * @returns {Promise<Map<String, String>>}
+ */
+const hostLabelsOf = async (rows) => {
+	const labels = new Map();
+	for (const [hostType, model] of Object.entries(HOST_MODELS)) {
+		const ids = [...new Set(rows.filter((row) => row.host_type === hostType).map((row) => row.host_id))];
+		if (ids.length === 0) continue;
+		for (const host of await model.query().whereIn("id", ids).select("id", "domain_names")) {
+			const first = Array.isArray(host.domain_names) ? host.domain_names[0] : null;
+			if (typeof first === "string") labels.set(hostKey(hostType, host.id), first);
+		}
+	}
+	return labels;
+};
+
 /**
  * The API form of a row: no meta or secret, ISO times, the engine's translatable error and note, and the proxied flag
  *
  * @param   {Object}  row
  * @param   {Access}  access  a custom record's method and expected text are shown to administrators only
+ * @param   {Map<String, String>}  [labels]  the host labels (hostLabelsOf) of managed rows
  * @returns {Object}
  */
-const toPublic = (row, access) => {
+const toPublic = (row, access, labels) => {
 	const { meta, ...json } = row.toJSON();
 	for (const key of TIME_KEYS) json[key] = iso(row[key]);
 	// an alias follows no address: the column keeps its NOT NULL default, the answer says none
@@ -151,7 +189,22 @@ const toPublic = (row, access) => {
 		// a provider refused the account: no automatic try until the user acts
 		stopped: meta?.stopped === true,
 		proxied: proxiedOf(meta),
+		host_type: row.host_type ?? null,
+		host_id: row.host_id ?? null,
+		origin: row.origin ?? null,
+		host_label: isManaged(row) ? (labels?.get(hostKey(row.host_type, row.host_id)) ?? null) : null,
+		orphan: isOrphan(row),
 	};
+};
+
+/** toPublic of one row, with its host label */
+const publicOf = async (row, access) => toPublic(row, access, await hostLabelsOf([row]));
+
+/** A user's change or delete of a record that belongs to a host: refused, it changes only through the host */
+const assertNotManaged = (row) => {
+	if (isManaged(row)) {
+		throw refusal("This record belongs to a host: change it in the host's DNS card", "error.ddns-managed-by-host");
+	}
 };
 
 const auditMeta = (row, credential) => ({
@@ -160,6 +213,7 @@ const auditMeta = (row, credential) => ({
 	kind: row.kind,
 	...(row.target ? { target: row.target } : {}),
 	...(credential ? { dns_credential_id: credential.id, credential_name: credential.name } : {}),
+	...(isManaged(row) ? { host_type: row.host_type, host_id: row.host_id, origin: row.origin ?? null } : {}),
 });
 
 const credentialOf = async (row) =>
@@ -634,7 +688,9 @@ const internalDdnsRecord = {
 			]);
 		}
 		if (expandOf(expand)) rows.withGraphFetched(expandOf(expand));
-		return (await rows).map((row) => toPublic(row, access));
+		const found = await rows;
+		const labels = await hostLabelsOf(found);
+		return found.map((row) => toPublic(row, access, labels));
 	},
 
 	/** The row of a record the user may see; 404 otherwise. No permission check (callers do it). */
@@ -648,7 +704,7 @@ const internalDdnsRecord = {
 
 	get: async (access, { id, expand = null }) => {
 		access.can("certificates:view");
-		return toPublic(await internalDdnsRecord.rowOf(access, id, { expand }), access);
+		return await publicOf(await internalDdnsRecord.rowOf(access, id, { expand }), access);
 	},
 
 	create: async (access, data) => {
@@ -682,6 +738,7 @@ const internalDdnsRecord = {
 	update: async (access, data) => {
 		access.can("certificates:manage");
 		const current = await internalDdnsRecord.rowOf(access, data.id);
+		assertNotManaged(current);
 		if (current.provider === CUSTOM) assertCustomAdmin(access);
 		// a move to another credential runs under its owner's lock (owner, then record), as a credential delete does
 		const movesTo =
@@ -694,6 +751,7 @@ const internalDdnsRecord = {
 				nameLock("names", async () => {
 					// the record may have been changed or deleted while this waited for the locks
 					const row = await internalDdnsRecord.rowOf(access, data.id);
+					assertNotManaged(row);
 					const { values, credential: next, identityChanged } = await resolveSave(access, data, row);
 					if (values.name !== row.name) await internalDdnsRecord.assertNameFree(values.name, row.id);
 					const configChanged =
@@ -741,21 +799,22 @@ const internalDdnsRecord = {
 			object_id: saved.id,
 			meta,
 		});
-		return toPublic(await internalDdnsRecord.rowOf(access, saved.id, { expand: data.expand }), access);
+		return await publicOf(await internalDdnsRecord.rowOf(access, saved.id, { expand: data.expand }), access);
 	},
 
+	/** Deletes a record; a host's record only when it is an orphan ("Forget": the row goes, the provider is not called) */
 	delete: async (access, { id }) => {
 		access.can("certificates:manage");
 		const row = await internalDdnsRecord.rowOf(access, id);
+		if (!isOrphan(row)) assertNotManaged(row);
 		if (row.provider === CUSTOM) assertCustomAdmin(access);
 		const credential = await credentialOf(row);
 		await recordLock(id, async () => {
-			// SQLite does not run the foreign key's cascade: the history goes in code, in the same transaction
-			await ddnsRecordModel.transaction(async (trx) => {
-				await ddnsHistoryModel.query(trx).where("ddns_record_id", id).delete();
-				const gone = await ddnsRecordModel.query(trx).deleteById(id);
-				if (gone === 0) throw new errs.ItemNotFoundError(id);
-			});
+			// a host's record may have stopped being an orphan while this waited for the lock
+			const current = await ddnsRecordModel.query().findById(id);
+			if (!current) throw new errs.ItemNotFoundError(id);
+			if (!isOrphan(current)) assertNotManaged(current);
+			await deleteRow(id);
 		});
 		await internalAuditLog.add(access, {
 			action: "deleted",
@@ -763,8 +822,20 @@ const internalDdnsRecord = {
 			object_id: id,
 			meta: auditMeta(row, credential),
 		});
-		return toPublic(row, access);
+		return await publicOf(row, access);
 	},
+
+	/**
+	 * Adopt and update of a host's record whose name already had another address: the updater owns it from now on
+	 * (the old value goes into the history). The host record service (host-dns-record.js) does the work.
+	 */
+	adopt: async (access, { id }) => (await hostRecords()).adopt(access, { id }),
+
+	/** Leave alone of a host's record whose name already had another record: the row goes, nothing is written */
+	leave: async (access, { id }) => (await hostRecords()).leave(access, { id }),
+
+	/** Delete at the provider again, for an orphan (a host's record whose provider delete failed) */
+	removeAtProvider: async (access, { id }) => (await hostRecords()).removeAtProvider(access, { id }),
 
 	/** @returns {Promise<Object[]>}  the history of a record, newest first */
 	history: async (access, { id }) => {
@@ -801,6 +872,56 @@ const internalDdnsRecord = {
 			throw refusal(`A dynamic DNS record for ${name} already exists`, "error.ddns-name-taken", { name });
 		}
 	},
+};
+
+// loaded on use: the host record service imports this file
+const hostRecords = async () => (await import("./host-dns-record.js")).default;
+
+/** Deletes a row and its history (SQLite does not run the foreign key's cascade: the history goes in code) */
+const deleteRow = (id) =>
+	ddnsRecordModel.transaction(async (trx) => {
+		await ddnsHistoryModel.query(trx).where("ddns_record_id", id).delete();
+		const gone = await ddnsRecordModel.query(trx).deleteById(id);
+		if (gone === 0) throw new errs.ItemNotFoundError(id);
+	});
+
+/**
+ * The rows of the host record option (host-dns-record.js); no access checks. A row is inserted under its credential
+ * owner's lock and the name lock, as a record create; a change or delete runs under the record lock, which the caller
+ * holds (recordLock).
+ */
+const managedRows = {
+	/** @returns {Promise<Object[]>}  the rows of one host */
+	ofHost: async (hostType, hostId) =>
+		(await ddnsRecordModel.query().where({ host_type: hostType, host_id: hostId }).orderBy("id")).map(plain),
+
+	get: async (id) => plain(await ddnsRecordModel.query().findById(id)),
+
+	/** The record that holds a name, whoever it belongs to; null when none */
+	byName: async (name) => plain(await ddnsRecordModel.query().where("name", name).first()),
+
+	/**
+	 * @param   {Object}  values  the row; its credential must still exist and its name must be free
+	 * @returns {Promise<Object>}  the row
+	 * @throws  {errs.ValidationError}  error.ddns-name-taken
+	 * @throws  {errs.ItemNotFoundError}  the credential is gone
+	 */
+	insert: (values) =>
+		ownerLock(values.owner_user_id, () =>
+			nameLock("names", async () => {
+				if (!(await dnsCredentialModel.query().findById(values.dns_credential_id))) {
+					throw new errs.ItemNotFoundError(values.dns_credential_id);
+				}
+				await internalDdnsRecord.assertNameFree(values.name);
+				const row = { ...values };
+				for (const key of TIME_KEYS) if (key in row) row[key] = toDbTime(row[key]);
+				return plain(await ddnsRecordModel.query().insertAndFetch(row));
+			}),
+		),
+
+	patch: (id, patch) => ddnsStore.saveRecord(id, patch),
+
+	remove: (id) => deleteRow(id),
 };
 
 const plain = (row) => {
@@ -857,5 +978,5 @@ const ddnsStore = {
 	},
 };
 
-export { ddnsStore, normalizeRecordName, recordLock };
+export { auditMeta, ddnsStore, HOST_MODELS, isManaged, isOrphan, managedRows, normalizeRecordName, recordLock };
 export default internalDdnsRecord;

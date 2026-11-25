@@ -121,7 +121,7 @@ export default {
 	},
 	/**
 	 * PATCH sends only content (and ttl when set and the record is not proxied): proxied and the comment stay; a
-	 * create sends proxied: false
+	 * create sends proxied: false, or true for a host's record whose Proxied box was ticked (meta.proxied_on_create)
 	 */
 	write(args) {
 		try {
@@ -152,10 +152,13 @@ export default {
 				check(res, fields);
 				return { meta: { ...next, record_id: recordId }, created: false };
 			}
+			// a host's record created with its Proxied box asks for it once, here (meta.proxied_on_create); every other
+			// create is not proxied, and no later write changes the flag. A proxied record's TTL is Cloudflare's (1)
+			const proxied = meta?.proxied_on_create === true;
 			const res = await fetch(`${API}/zones/${zoneId}/dns_records`, {
 				method: "POST",
 				headers: jsonHeaders(authHeaders(fields)),
-				body: JSON.stringify({ type, name, content: ip, ttl: ttl ?? 1, proxied: false }),
+				body: JSON.stringify({ type, name, content: ip, ttl: proxied ? 1 : (ttl ?? 1), proxied }),
 			});
 			if (res.status === 404) return STALE_ZONE;
 			check(res, fields, [200, 201]);
