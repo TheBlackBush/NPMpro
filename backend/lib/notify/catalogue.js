@@ -25,25 +25,44 @@ const isSet = (value) => value !== undefined && value !== null;
  */
 const compact = (fields) => Object.fromEntries(Object.entries(fields).filter(([, value]) => isSet(value)));
 
+const ZONELESS = /^(?<day>\d{4}-\d{2}-\d{2})[ T](?<time>\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)$/u;
+
+/**
+ * A text or number field as event data: a string is scrubbed and cut to 300 characters, a finite number stays, anything
+ * else is dropped
+ *
+ * @param   {*} value
+ * @returns {String|Number|undefined}
+ */
+const scalar = (value) => {
+	if (typeof value === "string") return clean(value);
+	return Number.isFinite(value) ? value : undefined;
+};
+
+// a datetime string without a zone is UTC (the database stores UTC), never the server's local time
 const iso = (value) => {
 	if (!isSet(value)) return;
-	const date = value instanceof Date ? value : new Date(value);
+	let date = value;
+	if (!(value instanceof Date)) {
+		const zoneless = typeof value === "string" ? ZONELESS.exec(value) : null;
+		date = new Date(zoneless ? `${zoneless.groups.day}T${zoneless.groups.time}Z` : value);
+	}
 	return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
 };
 
-const names = (list) => (Array.isArray(list) ? list.map(String) : undefined);
+const names = (list) => (Array.isArray(list) ? list.map((item) => scalar(String(item))) : undefined);
 
 const certificateData = (source) =>
 	compact({
-		id: source.id,
-		nice_name: source.nice_name,
+		id: scalar(source.id),
+		nice_name: scalar(source.nice_name),
 		domain_names: names(source.domain_names),
-		provider: source.provider,
+		provider: scalar(source.provider),
 		expires_on: iso(source.expires_on),
 	});
 
 const certificateExpiringData = (source) =>
-	compact({ ...certificateData(source), state: source.state, days_left: source.days_left });
+	compact({ ...certificateData(source), state: scalar(source.state), days_left: scalar(source.days_left) });
 
 const certificateRenewalFailedData = (source) =>
 	compact({
@@ -53,14 +72,14 @@ const certificateRenewalFailedData = (source) =>
 
 const hostData = (source) =>
 	compact({
-		type: source.type,
-		id: source.id,
+		type: scalar(source.type),
+		id: scalar(source.id),
 		domain_names: source.type === "stream" ? undefined : names(source.domain_names),
-		incoming_port: source.type === "stream" ? source.incoming_port : undefined,
+		incoming_port: source.type === "stream" ? scalar(source.incoming_port) : undefined,
 		enabled: isSet(source.enabled) ? Boolean(source.enabled) : undefined,
 	});
 
-const userOf = (user) => (user ? compact({ id: user.id, name: user.name }) : undefined);
+const userOf = (user) => (user ? compact({ id: scalar(user.id), name: scalar(user.name) }) : undefined);
 
 const hostActionData = (source) => compact({ ...hostData(source), user: userOf(source.user) });
 
@@ -70,45 +89,54 @@ const hostConfigErrorData = (source) =>
 		error: isSet(source.error) ? clean(source.error, source.secrets) : undefined,
 	});
 
-const scheduleOf = (schedule) => (schedule ? compact({ id: schedule.id, name: schedule.name }) : undefined);
+const scheduleOf = (schedule) =>
+	schedule ? compact({ id: scalar(schedule.id), name: scalar(schedule.name) }) : undefined;
 
 const errorText = (source) => (isSet(source.error) ? clean(source.error, source.secrets) : undefined);
 
 const backupFailedData = (source) => compact({ schedule: scheduleOf(source.schedule), error: errorText(source) });
 
 const backupSucceededData = (source) =>
-	compact({ schedule: scheduleOf(source.schedule), file: source.file, size: source.size });
+	compact({ schedule: scheduleOf(source.schedule), file: scalar(source.file), size: scalar(source.size) });
 
 const backupRestoredData = (source) =>
-	compact({ types: Array.isArray(source.types) ? source.types.map(String) : undefined });
+	compact({ types: Array.isArray(source.types) ? source.types.map((type) => scalar(String(type))) : undefined });
 
 const errorOnlyData = (source) => compact({ error: errorText(source) });
 
 const ddnsData = (source) =>
 	compact({
 		record: source.record
-			? compact({ id: source.record.id, name: source.record.name, provider: source.record.provider })
+			? compact({
+					id: scalar(source.record.id),
+					name: scalar(source.record.name),
+					provider: scalar(source.record.provider),
+				})
 			: undefined,
 		error: errorText(source),
 	});
 
-const databaseData = (source) => compact({ from: source.from, to: source.to, error: errorText(source) });
+const databaseData = (source) =>
+	compact({ from: scalar(source.from), to: scalar(source.to), error: errorText(source) });
 
-const notificationTestData = (source) => compact({ version: source.version });
+const notificationTestData = (source) => compact({ version: scalar(source.version) });
 
 const webhookDisabledData = (source) =>
 	compact({
-		webhook: source.webhook ? compact({ id: source.webhook.id, name: source.webhook.name }) : undefined,
-		reason: source.reason,
+		webhook: source.webhook
+			? compact({ id: scalar(source.webhook.id), name: scalar(source.webhook.name) })
+			: undefined,
+		reason: scalar(source.reason),
 	});
 
-const BOTH = ["mail", "webhook"];
-const WEBHOOK = ["webhook"];
+const BOTH = Object.freeze(["mail", "webhook"]);
+const WEBHOOK = Object.freeze(["webhook"]);
 
-const state = (id, data) => ({ id, kind: "state", channels: BOTH, data, mail: id, selectable: true });
-const action = (id, data, channels = WEBHOOK) => ({ id, kind: "action", channels, data, selectable: true });
+const state = (id, data) => Object.freeze({ id, kind: "state", channels: BOTH, data, mail: id, selectable: true });
+const action = (id, data, channels = WEBHOOK) =>
+	Object.freeze({ id, kind: "action", channels, data, selectable: true });
 
-const STATE_EVENTS = [
+const STATE_EVENTS = Object.freeze([
 	state("certificate.expiring", certificateExpiringData),
 	state("certificate.renewal_failed", certificateRenewalFailedData),
 	state("host.config_error", hostConfigErrorData),
@@ -117,11 +145,11 @@ const STATE_EVENTS = [
 	state("crowdsec.unreachable", errorOnlyData),
 	state("ddns.record_failed", ddnsData),
 	state("ddns.record_stopped", ddnsData),
-];
+]);
 
-const resolvedTwin = (entry) => ({ ...entry, id: `${entry.id}.resolved`, mail: `${entry.id}.resolved` });
+const resolvedTwin = (entry) => Object.freeze({ ...entry, id: `${entry.id}.resolved`, mail: `${entry.id}.resolved` });
 
-const CATALOGUE = [
+const CATALOGUE = Object.freeze([
 	...STATE_EVENTS.flatMap((entry) => [entry, resolvedTwin(entry)]),
 	action("host.created", hostActionData),
 	action("host.updated", hostActionData),
@@ -135,9 +163,9 @@ const CATALOGUE = [
 	action("backup.restored", backupRestoredData),
 	action("database.moved", databaseData),
 	action("database.move_failed", databaseData),
-	{ ...action("webhook.disabled", webhookDisabledData, BOTH), mail: "webhook.disabled" },
-	{ ...action("notification.test", notificationTestData, BOTH), selectable: false },
-];
+	Object.freeze({ ...action("webhook.disabled", webhookDisabledData, BOTH), mail: "webhook.disabled" }),
+	Object.freeze({ ...action("notification.test", notificationTestData, BOTH), selectable: false }),
+]);
 
 const BY_ID = new Map(CATALOGUE.map((entry) => [entry.id, entry]));
 

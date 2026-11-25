@@ -13,7 +13,8 @@ import {
 } from "../lib/notify/catalogue.js";
 
 const MSG_ID = /^msg_[a-z2-7]{26}$/u;
-const NO_SECRET = /SECRET/u;
+const NO_SECRET = /SECRET|ann@example\.com/u;
+const NO_TOKEN = /SECRET-TOKEN/u;
 const UNKNOWN = /Unknown notification event/u;
 
 const SECRET_VALUES = {
@@ -82,6 +83,14 @@ describe("the notification catalogue", () => {
 		assert.equal(isSelectable("nope", "mail"), false);
 	});
 
+	it("is frozen", () => {
+		assert.ok(Object.isFrozen(CATALOGUE));
+		for (const entry of CATALOGUE) {
+			assert.ok(Object.isFrozen(entry), entry.id);
+			assert.ok(Object.isFrozen(entry.channels), entry.id);
+		}
+	});
+
 	it("never offers notification.test", () => {
 		assert.equal(isSelectable("notification.test", "mail"), false);
 		assert.equal(isSelectable("notification.test", "webhook"), false);
@@ -101,6 +110,47 @@ describe("event data builders", () => {
 				assert.ok(!json.includes(`"${key}"`), `${entry.id} holds ${key}`);
 			}
 			assert.ok(!json.includes("undefined"), entry.id);
+		}
+	});
+
+	it("scrubs an error that holds a secret of its own list in every event", () => {
+		const source = {
+			...richSource(),
+			error: "boom SECRET-TOKEN boom",
+			secrets: ["SECRET-TOKEN"],
+			reason: "SECRET-X",
+		};
+		for (const entry of CATALOGUE) {
+			const json = JSON.stringify(buildData(entry.id, { ...source, reason: undefined }));
+			assert.doesNotMatch(json, NO_TOKEN, entry.id);
+		}
+	});
+
+	it("passes only strings and finite numbers, scrubbed and cut", () => {
+		const data = buildData("webhook.disabled", {
+			reason: { nested: "SECRET" },
+			webhook: { id: {}, name: "x".repeat(400) },
+		});
+		assert.deepEqual(data, { webhook: { name: "x".repeat(300) } });
+		assert.equal(buildData("webhook.disabled", { reason: "a\nb" }).reason, "a b");
+		assert.equal(buildData("backup.succeeded", { size: Number.NaN, file: ["f"] }).size, undefined);
+	});
+
+	it("reads a datetime without a zone as UTC whatever the server time zone", () => {
+		const before = process.env.TZ;
+		process.env.TZ = "Pacific/Auckland";
+		try {
+			assert.equal(
+				buildData("certificate.issued", { expires_on: "2027-01-01 00:00:00" }).expires_on,
+				"2027-01-01T00:00:00.000Z",
+			);
+			assert.equal(
+				buildData("certificate.issued", { expires_on: "2027-01-01T05:06:07" }).expires_on,
+				"2027-01-01T05:06:07.000Z",
+			);
+		} finally {
+			if (before === undefined) delete process.env.TZ;
+			else process.env.TZ = before;
 		}
 	});
 
@@ -225,5 +275,6 @@ describe("the envelope", () => {
 		const envelope = makeEnvelope("x", { names: ["a"], error: "e".repeat(50000) });
 		assert.ok(Buffer.byteLength(JSON.stringify(envelope)) <= 20 * 1024);
 		assert.equal(envelope.data.truncated, true);
+		assert.deepEqual(envelope.data.names, []);
 	});
 });
