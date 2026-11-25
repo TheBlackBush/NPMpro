@@ -3,7 +3,7 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
-import { makeCertificate, makeExpiredCertificate, readZip } from "./support/certbot.js";
+import { makeCertificate, makeExpiredCertificate, readZip, validFromProblem } from "./support/certbot.js";
 import { addCertificate, countRows, fileExists, reloads } from "./support/hosts.js";
 
 const CERTS = "/nginx/certificates";
@@ -115,6 +115,7 @@ it("uploads a custom certificate: files on disk, the key private, the row filled
 	assert.deepEqual(done.body.domain_names, ["a.example.com"]);
 	assert.equal(done.body.nice_name, "Upload me");
 	assert.ok(Date.parse(done.body.expires_on) > Date.now() + 25 * 86400000);
+	assert.equal(validFromProblem(await api.db("certificate").where({ id: row.id }).first()), null);
 	assert.equal(done.text.includes("PRIVATE KEY"), false);
 	const stored = await api.db("certificate").where({ id: row.id }).first();
 	assert.deepEqual(JSON.parse(stored.domain_names), ["a.example.com"]);

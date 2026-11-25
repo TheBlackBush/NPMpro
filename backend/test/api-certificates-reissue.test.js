@@ -3,7 +3,14 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { startApi } from "./support/api.js";
-import { acmeDirectory, certbotSucceeds, makeCertificate, normalizedCalls, seedAccount } from "./support/certbot.js";
+import {
+	acmeDirectory,
+	certbotSucceeds,
+	makeCertificate,
+	normalizedCalls,
+	seedAccount,
+	validFromProblem,
+} from "./support/certbot.js";
 
 const CERTS = "/nginx/certificates";
 const ACME = "https://acme.test/directory";
@@ -51,9 +58,11 @@ it("issues again at another CA: its server and account, the row and conf follow,
 	const oldConf = await readFile(confOf(created.id), "utf8");
 	const oldAccount = accountOf(oldConf);
 	await api.outside.clearCalls();
+	await api.db("certificate").where({ id: created.id }).update({ npmpro_valid_from: null });
 
 	const done = await admin.post(`${CERTS}/${created.id}/reissue`, { npmpro_acme_server: "https://Second.LAN/dir" });
 	assert.equal(done.status, 200, done.text);
+	assert.equal(validFromProblem(await row(created.id)), null);
 	assert.equal(done.body.npmpro_acme_server, SECOND);
 	assert.equal((await row(created.id)).npmpro_acme_server, SECOND);
 

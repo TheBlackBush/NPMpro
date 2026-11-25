@@ -3,7 +3,14 @@ import { chmod, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { startApi } from "./support/api.js";
-import { acmeDirectory, certbotFails, certbotSucceeds, makeCertificate, normalizedCalls } from "./support/certbot.js";
+import {
+	acmeDirectory,
+	certbotFails,
+	certbotSucceeds,
+	makeCertificate,
+	normalizedCalls,
+	validFromProblem,
+} from "./support/certbot.js";
 
 const CERTS = "/nginx/certificates";
 const ACME = "https://acme.example.test/directory";
@@ -36,7 +43,10 @@ beforeEach(async () => {
 
 it("a renewal run renews, reloads, reads each expiry again and lets the next run start", async () => {
 	const certificate = await requested("renew.example.com");
-	await api.db("certificate").where({ id: certificate.id }).update({ expires_on: "2000-01-01 00:00:00" });
+	await api
+		.db("certificate")
+		.where({ id: certificate.id })
+		.update({ expires_on: "2000-01-01 00:00:00", npmpro_valid_from: null });
 	await api.outside.clearCalls();
 	const reloads = api.outside.control.reloads;
 	await internalCertificate.processExpiringHosts();
@@ -47,6 +57,7 @@ it("a renewal run renews, reloads, reads each expiry again and lets the next run
 	assert.equal(api.outside.control.reloads, reloads + 1);
 	const row = await api.db("certificate").where({ id: certificate.id }).first();
 	assert.notEqual(String(row.expires_on).slice(0, 4), "2000");
+	assert.equal(validFromProblem(row), null);
 	assert.equal(internalCertificate.intervalProcessing, false);
 });
 

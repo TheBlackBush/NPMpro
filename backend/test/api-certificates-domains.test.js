@@ -3,7 +3,14 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { startApi } from "./support/api.js";
-import { acmeDirectory, certbotSucceeds, makeCertificate, normalizedCalls, seedAccount } from "./support/certbot.js";
+import {
+	acmeDirectory,
+	certbotSucceeds,
+	makeCertificate,
+	normalizedCalls,
+	seedAccount,
+	validFromProblem,
+} from "./support/certbot.js";
 import { reloads } from "./support/hosts.js";
 
 const CERTS = "/nginx/certificates";
@@ -301,11 +308,13 @@ it("takes the expiry of the new certificate", async () => {
 	const created = await issued();
 	const longer = await makeCertificate(path.join(api.root, "fake"), "b.example.com", 90);
 	await certbotSucceeds(api, longer);
+	await api.db("certificate").where({ id: created.id }).update({ npmpro_valid_from: null });
 	const done = await put(created.id, ["b.example.com"]);
 	assert.equal(done.status, 200, done.text);
 	const issuedAt = new Date(created.expires_on).getTime();
 	assert.ok(new Date((await row(created.id)).expires_on).getTime() - issuedAt > 50 * 86400000);
 	assert.notEqual(done.body.expires_on, created.expires_on);
+	assert.equal(validFromProblem(await row(created.id), 90), null);
 });
 
 it("a failure after certbot succeeded keeps the row on the new files, reloads nginx, writes the audit entry and answers the error", async () => {
