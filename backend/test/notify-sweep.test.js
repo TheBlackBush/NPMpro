@@ -199,14 +199,44 @@ describe("the notify service", () => {
 				return Promise.resolve(rows.map((row) => ({ id: row.id, ok: true })));
 			},
 		});
-		await service.notify.emit("host.created", { id: 1, type: "proxy_host" });
 		await service.initNotify();
 		try {
+			await service.worker.runOnce();
+			await service.notify.emit("host.created", { id: 1, type: "proxy_host" });
 			await db.knex(DELIVERY).update({ status: "sending" });
 			await service.initNotify();
 			assert.equal((await db.knex(DELIVERY).first()).status, "sending");
 			await service.worker.runOnce();
 			assert.deepEqual(sent, []);
+		} finally {
+			service.worker.stop();
+			service.sweep.stop();
+		}
+	});
+
+	it("an event queued before initNotify is sent once after it, and nothing before it", async () => {
+		const service = serviceOf();
+		const sent = [];
+		service.notify.registerChannel({
+			id: "mail",
+			accepts: () => true,
+			targets: async () => [{ recipient: "a@example.test" }],
+			send: (rows) => {
+				sent.push(rows.map((row) => row.id));
+				return Promise.resolve(rows.map((row) => ({ id: row.id, ok: true })));
+			},
+		});
+		await service.notify.emit("host.created", { id: 1, type: "proxy_host" });
+		await service.worker.runOnce();
+		await turn();
+		assert.deepEqual(sent, []);
+		assert.equal((await db.knex(DELIVERY).first()).status, "pending");
+		await service.initNotify();
+		try {
+			await service.worker.runOnce();
+			await service.worker.runOnce();
+			assert.equal(sent.length, 1);
+			assert.equal((await db.knex(DELIVERY).first()).status, "sent");
 		} finally {
 			service.worker.stop();
 			service.sweep.stop();
@@ -254,6 +284,7 @@ describe("the notify service", () => {
 			},
 		});
 		await service.notify.emit("host.created", { id: 1, type: "proxy_host" });
+		service.worker.start();
 		const running = service.worker.runOnce();
 		await turn();
 		let paused = false;
@@ -269,6 +300,7 @@ describe("the notify service", () => {
 		assert.equal(service.worker.paused(), true);
 		service.resumeNotify();
 		assert.equal(service.worker.paused(), false);
+		service.worker.stop();
 	});
 
 	it("a pause that times out leaves the worker as it was", async () => {
@@ -287,11 +319,13 @@ describe("the notify service", () => {
 			},
 		});
 		await service.notify.emit("host.created", { id: 1, type: "proxy_host" });
+		service.worker.start();
 		const running = service.worker.runOnce();
 		await turn();
 		await assert.rejects(service.pauseNotify({ timeoutMs: 5 }), WRITER_RUNNING);
 		assert.equal(service.worker.paused(), false);
 		release();
 		await running;
+		service.worker.stop();
 	});
 });

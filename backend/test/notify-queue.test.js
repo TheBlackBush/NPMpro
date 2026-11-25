@@ -364,11 +364,21 @@ describe("queue", () => {
 	});
 });
 
+// timers without the poll: a test runs its passes itself (runOnce) after the start
+const noPoll = {
+	setTimeout: (...args) => setTimeout(...args),
+	clearTimeout: (timer) => clearTimeout(timer),
+	setInterval: () => ({ unref() {} }),
+	clearInterval: () => {},
+};
+
 describe("worker", () => {
-	const setup = (channels, extra = {}) => {
+	// a started worker (its start pass finds the queue empty) unless started is false
+	const setup = (channels, { started = true, ...extra } = {}) => {
 		const queue = queueOf();
 		const log = logOf();
-		const worker = createWorker({ queue, channels, log, ...extra });
+		const worker = createWorker({ queue, channels, log, ...(started ? { clock: noPoll } : {}), ...extra });
+		if (started) worker.start();
 		return { queue, worker, log };
 	};
 
@@ -439,7 +449,8 @@ describe("worker", () => {
 	it("a failing queue is logged, not thrown", async () => {
 		const queue = { claimDue: async () => Promise.reject(new Error("db gone")) };
 		const log = logOf();
-		const worker = createWorker({ queue, channels: [channelOf("mail")], log });
+		const worker = createWorker({ queue, channels: [channelOf("mail")], log, clock: noPoll });
+		worker.start();
 		await worker.runOnce();
 		assert.ok(log.lines.some((line) => line.includes("db gone")));
 	});
@@ -599,7 +610,7 @@ describe("worker", () => {
 
 	it("start polls once and stop ends it; kick makes a pass soon", async () => {
 		const channel = channelOf("webhook");
-		const { queue, worker } = setup([channel], { pollMs: 10_000 });
+		const { queue, worker } = setup([channel], { started: false, pollMs: 10_000 });
 		assert.equal(worker.start(), true);
 		assert.equal(worker.start(), false);
 		await queue.add([row({ target_id: 1 })]);
@@ -616,9 +627,10 @@ describe("worker", () => {
 
 	it("the poll runs a pass by itself", async () => {
 		const channel = channelOf("webhook");
-		const { queue, worker } = setup([channel], { pollMs: 20 });
-		await queue.add([row({ target_id: 1 })]);
+		const { queue, worker } = setup([channel], { started: false, pollMs: 20 });
 		worker.start();
+		await worker.runOnce();
+		await queue.add([row({ target_id: 1 })]);
 		await delay(150);
 		worker.stop();
 		assert.equal(channel.sent.length, 1);
@@ -738,17 +750,50 @@ describe("worker", () => {
 
 	it("a kick after stop arms nothing until start again", async () => {
 		const channel = channelOf("webhook");
-		const { queue, worker } = setup([channel], { pollMs: 10_000 });
+		const { queue, worker } = setup([channel], { started: false, pollMs: 10_000 });
+		worker.start();
+		await worker.runOnce();
 		await queue.add([row({ target_id: 1 })]);
 		worker.stop();
 		worker.kick();
 		await delay(120);
 		assert.equal(channel.sent.length, 0);
 		worker.start();
-		worker.kick();
 		await delay(200);
 		worker.stop();
 		assert.equal(channel.sent.length, 1);
+	});
+
+	it("before start no pass runs and no timer is armed; the start sends what was queued, once", async () => {
+		const channel = channelOf("webhook");
+		const timers = [];
+		const counting = {
+			...noPoll,
+			setTimeout: (...args) => {
+				timers.push("timeout");
+				return setTimeout(...args);
+			},
+			setInterval: () => {
+				timers.push("interval");
+				return { unref() {} };
+			},
+		};
+		const { queue, worker } = setup([channel], { started: false, clock: counting });
+		await queue.add([row({ target_id: 1 })]);
+		worker.kick();
+		await worker.runOnce();
+		await delay(120);
+		assert.deepEqual(timers, []);
+		assert.equal(worker.waiting(), true);
+		assert.equal(channel.sent.length, 0);
+		assert.equal((await rows())[0].status, "pending");
+		assert.equal(worker.start(), true);
+		assert.equal(worker.waiting(), false);
+		await worker.runOnce();
+		await worker.runOnce();
+		assert.equal(channel.sent.length, 1);
+		assert.equal((await rows())[0].status, "sent");
+		worker.stop();
 	});
 });
 
