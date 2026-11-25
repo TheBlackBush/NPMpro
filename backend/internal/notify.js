@@ -6,7 +6,26 @@ import { global as logger } from "../logger.js";
 // emit() still queues (a pending row waits for the worker).
 
 const service = createNotifyService({ knex: db(), log: logger });
-const { notify, sweep, worker, registerSweepCheck, initNotify, pauseNotify, resumeNotify, cleanupAfterRestore } =
-	service;
+const {
+	notify,
+	sweep,
+	stateStore,
+	worker,
+	registerSweepCheck,
+	initNotify,
+	pauseNotify,
+	resumeNotify,
+	cleanupAfterRestore,
+} = service;
 
-export { cleanupAfterRestore, initNotify, notify, pauseNotify, registerSweepCheck, resumeNotify, sweep, worker };
+export {
+	cleanupAfterRestore,
+	initNotify,
+	notify,
+	pauseNotify,
+	registerSweepCheck,
+	resumeNotify,
+	stateStore,
+	sweep,
+	worker,
+};

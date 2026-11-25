@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import { LETSENCRYPT_STAGING_SERVER, sameServer } from "../lib/acme-server.js";
 import { assertProviderForNew, runCertbot } from "../lib/certbot.js";
 import { CERTBOT_INI } from "../lib/certbot-ini.js";
+import { cleanCertbotMessage } from "../lib/certbot-message.js";
 import { assertCertificateUse, customCertPath, liveCertPath, mtlsCertFile } from "../lib/certificate-files.js";
 import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
@@ -30,8 +31,16 @@ import certificateAcme, { keyFileOf, renewalParamsOf, revokeBestEffort, runCerto
 import certificateCaa from "./certificate-caa.js";
 import certificateCustom, { ALLOWED_SSL_FILES } from "./certificate-custom.js";
 import certificateInfo from "./certificate-info.js";
+import {
+	checkCertificateExpiry,
+	clearCertificateStates,
+	emitRenewedWhenLater,
+	reportRenewalRun,
+	snapshotBeforeRenewal,
+} from "./certificate-notify.js";
 import internalDnsCredential from "./dns-credential.js";
 import internalNginx from "./nginx.js";
+import { registerSweepCheck } from "./notify.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 import { recoverStapling } from "./stapling-recovery.js";
 
@@ -97,14 +106,18 @@ const followRenewalConf = async (id, target) => {
  * The timer's renewal: one `certbot renew` for every due certificate, run while the lock of every CA is held
  * (withRenewalLocks), so a Replace account never runs while certbot may write a renewal conf back. The confs are made
  * to name usable accounts first (prepareRenewals); a failure is logged.
+ *
+ * @returns {Promise<{error: ?string}>}  the certbot error text of the run, null when certbot exited 0
  */
 const renewDue = () =>
 	withRenewalLocks(async () => {
 		try {
 			const result = await runCertbot(["--config", CERTBOT_INI, "renew", "--quiet"]);
 			if (result) logger.info(`Renew Result: ${result}`);
+			return { error: null };
 		} catch (err) {
 			logger.warn(`Certbot completed with errors: ${err}`);
+			return { error: cleanCertbotMessage(err?.message ?? String(err)) };
 		}
 	});
 
@@ -157,6 +170,9 @@ const internalCertificate = {
 		void internalCertificate.processExpiringHosts();
 	},
 
+	/** Reports the expiry state of every certificate but mTLS ones (the hourly sweep and every renewal run) */
+	checkCertificateExpiry,
+
 	/** Timer run: renews the certificates of expiring hosts */
 	processExpiringHosts: async () => {
 		if (internalCertificate.intervalProcessing) {
@@ -167,7 +183,8 @@ const internalCertificate = {
 		logger.info("Renewing Certbot TLS certs close to expiry...");
 
 		try {
-			await renewDue();
+			const before = await snapshotBeforeRenewal();
+			const renewal = await renewDue();
 
 			try {
 				await internalNginx.reload();
@@ -178,6 +195,7 @@ const internalCertificate = {
 			await recoverStapling();
 
 			const certificates = await certificateModel.query().where("provider", "letsencrypt");
+			const refreshed = [];
 
 			if (certificates && certificates.length > 0) {
 				const updatePromises = certificates.map(async (certificate) => {
@@ -194,6 +212,7 @@ const internalCertificate = {
 								nice_name: getNiceName(certificate.domain_names),
 								...validityColumns(certInfo.dates),
 							});
+						refreshed.push({ id: certificate.id, ...validityColumns(certInfo.dates) });
 					} catch (err) {
 						// one failure must not stop the others
 						logger.error(err);
@@ -203,6 +222,9 @@ const internalCertificate = {
 				await Promise.all(updatePromises);
 				logger.info("Renew Complete");
 			}
+
+			await reportRenewalRun({ ...before, refreshed, error: renewal.error });
+			await internalCertificate.checkCertificateExpiry();
 		} catch (err) {
 			logger.error(err);
 		} finally {
@@ -432,6 +454,7 @@ const internalCertificate = {
 
 				await certificateModel.query().deleteById(row.id);
 			});
+			await clearCertificateStates(row.id);
 
 			await internalAuditLog.add(access, {
 				action: "deleted",
@@ -616,6 +639,7 @@ const internalCertificate = {
 					nice_name: getNiceName(certificate.domain_names),
 					...validityColumns(certInfo.dates),
 				});
+				await emitRenewedWhenLater(certificate, updatedCertificate);
 
 				try {
 					await internalNginx.reload();
@@ -805,6 +829,7 @@ const internalCertificate = {
 					nice_name: getNiceName(certificate.domain_names),
 					...validityColumns(certInfo.dates),
 				});
+				await emitRenewedWhenLater(certificate, updatedCertificate);
 			} catch (err) {
 				await followRenewalConf(certificate.id, target);
 				throw err;
@@ -863,6 +888,9 @@ const internalCertificate = {
 		});
 	},
 };
+
+// the hourly sweep runs the expiry check first
+registerSweepCheck(() => internalCertificate.checkCertificateExpiry());
 
 // a save, re-issue, renewal or delete forgets the certificate's CAA result, also when it failed
 for (const name of ["update", "setDomains", "setDnsCredential", "renew", "reissue", "delete"]) {

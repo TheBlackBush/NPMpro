@@ -48,4 +48,4 @@ const expiryState = (cert, now = new Date()) => {
 	return "ok";
 };
 
-export { expiryState, warningDays, windowMs };
+export { expiryState, toDate, warningDays, windowMs };
