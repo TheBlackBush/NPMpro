@@ -116,11 +116,19 @@ const reportRenewalRun = ({ rows, due, refreshed, error }) =>
 		const dates = new Map(refreshed.map((one) => [one.id, one]));
 		for (const row of rows) {
 			const current = { ...row, ...dates.get(row.id) };
-			if (due.has(row.id) && expiryState(current, now) !== "ok") {
-				await notify.reportState(RENEWAL_FAILED, String(row.id), {
-					state: "bad",
-					source: { ...current, error: text ?? "The renewal did not move the expiry date" },
-				});
+			const after = expiryState(current, now);
+			if (due.has(row.id) && after !== "ok") {
+				// certbot exits 0 when it found nothing due (its renewal point can lie after the warning window): a run
+				// without an error fails a certificate only when it expired, else its state is left as it is
+				if (error !== null || after === "expired") {
+					await notify.reportState(RENEWAL_FAILED, String(row.id), {
+						state: "bad",
+						source: {
+							...current,
+							error: text ?? "The certificate expired and the renewal did not renew it",
+						},
+					});
+				}
 			} else {
 				await notify.reportState(RENEWAL_FAILED, String(row.id), { state: "ok", source: current });
 			}
