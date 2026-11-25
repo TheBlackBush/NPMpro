@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cp } from "node:fs/promises";
+import { cp, rm } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { isoToLocal } from "../lib/backup/rows.js";
@@ -21,6 +21,7 @@ const TOKEN = "cf-token-SECRET-1234567890";
 const MASKED = /Challenge failed with token \*\*\* for the zone/u;
 const GENERIC = /^The renewal failed/u;
 const WENT_WRONG = /Renewal went wrong/u;
+const EXPIRED_TEXT = /expired/u;
 const KEY_PATH = /private_key|\/accounts\//u;
 // a certificate date as the database stores it: naive local text (internal/certificate.js)
 const sql = (ms) => isoToLocal(new Date(ms).toISOString());
@@ -133,6 +134,43 @@ describe("certificate emit points", () => {
 		assert.equal(eventsOf("certificate.renewal_failed.resolved", stuck.id).length, 1);
 		assert.equal(eventsOf("certificate.renewed", stuck.id).length, 1);
 		assert.equal(eventsOf("certificate.renewal_failed").length, 0);
+	});
+
+	it("a run that exits 0 leaves a due certificate's renewal state alone unless it expired", async () => {
+		const soon = await requested("soon0.example.com");
+		const gone = await requested("gone0.example.com");
+		// no readable file: the run keeps the stored dates
+		for (const one of [soon, gone]) await rm(live(one.id), { force: true });
+		await api
+			.db("certificate")
+			.where({ id: soon.id })
+			.update({ expires_on: sql(Date.now() + 5 * DAY), npmpro_valid_from: null });
+		await stale(gone.id, "2020-06-01 00:00:00");
+		const failedState = async (id) =>
+			(
+				await api
+					.db(STATE)
+					.where({ event: "certificate.renewal_failed", object_id: String(id) })
+					.first()
+			)?.state;
+		seen = [];
+		await run();
+		assert.equal(eventsOf("certificate.renewal_failed", soon.id).length, 0);
+		assert.equal(await failedState(soon.id), undefined);
+		const failed = eventsOf("certificate.renewal_failed", gone.id);
+		assert.equal(failed.length, 1);
+		assert.match(failed[0].data.error, EXPIRED_TEXT);
+
+		// a failed run marks it, a later run that exits 0 while it is still due leaves it bad, no resolved event
+		await certbotFails(api, "Renewal went wrong");
+		await run();
+		assert.equal(eventsOf("certificate.renewal_failed", soon.id).length, 1);
+		await certbotSucceeds(api, pair);
+		seen = [];
+		await run();
+		assert.equal(eventsOf("certificate.renewal_failed.resolved", soon.id).length, 0);
+		assert.equal(await failedState(soon.id), "bad");
+		for (const one of [soon, gone]) assert.equal((await admin.delete(`${CERTS}/${one.id}`)).status, 200);
 	});
 
 	it("the expiry check sends soon once, nothing after a restart, and a delete clears the states", async () => {
