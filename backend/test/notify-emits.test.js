@@ -273,6 +273,7 @@ const makeProxy = async (name, extra = {}) => {
 	if (made.status !== 201) throw new Error(made.text);
 	return made.body;
 };
+const ADVANCED_LEAK = /secret-advanced-config-text|advanced_config/u;
 const LONG_ERROR = `nginx: [emerg] ${"x".repeat(400)}`;
 
 describe("host config state emit points", () => {
@@ -287,7 +288,7 @@ describe("host config state emit points", () => {
 		assert.equal(failed[0].data.type, "proxy_host");
 		assert.deepEqual(failed[0].data.domain_names, ["cfg.example.com"]);
 		assert.equal(failed[0].data.error.length, 300);
-		assert.doesNotMatch(JSON.stringify(failed[0]), /secret-advanced-config-text|advanced_config/u);
+		assert.doesNotMatch(JSON.stringify(failed[0]), ADVANCED_LEAK);
 
 		// a second failure of the same host sends nothing more
 		api.outside.control.failNext = LONG_ERROR;
@@ -399,10 +400,10 @@ describe("backup schedule state emit points", () => {
 				audit: async () => {},
 				notify,
 				backup: {
-					scheduledBackup: async () => {
-						if (behaviour === "fail") throw new Error("disk full");
-						return { name: "npmpro-backup-1-s1.npmpro", size: 100 };
-					},
+					scheduledBackup: () =>
+						behaviour === "fail"
+							? Promise.reject(new Error("disk full"))
+							: Promise.resolve({ name: "npmpro-backup-1-s1.npmpro", size: 100 }),
 				},
 				store: {
 					pruneSchedule: async () => [],

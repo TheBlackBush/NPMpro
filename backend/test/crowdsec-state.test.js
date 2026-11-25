@@ -3,7 +3,9 @@ import { describe, it } from "node:test";
 import { createCrowdsecService } from "../lib/crowdsec/service.js";
 
 const MIN = 60_000;
-const CONFIGURED = "ENABLED=true\nAPI_URL=http://lapi.test:8080\nAPI_KEY=lapi-key-secret-123\n";
+const KEY = "lapi-key";
+const CONFIGURED = ["ENABLED=true", "API_URL=http://lapi.test:8080", `API_KEY=${KEY}`, ""].join("\n");
+const DISABLED = ["ENABLED=false", ""].join("\n");
 const quiet = { info: () => {}, warn: () => {}, error: () => {} };
 
 const harness = ({ onState } = {}) => {
@@ -42,7 +44,7 @@ describe("crowdsec unreachable state", () => {
 		assert.equal(h.calls.length, 2);
 		assert.equal(h.calls[1].state, "bad");
 		assert.equal(h.calls[1].error, "CrowdSec request failed: ECONNREFUSED");
-		assert.deepEqual(h.calls[1].secrets, ["lapi-key-secret-123"]);
+		assert.deepEqual(h.calls[1].secrets, [KEY]);
 		h.control.down = false;
 		await h.poll();
 		assert.deepEqual(h.calls.at(-1), { state: "ok" });
@@ -50,7 +52,7 @@ describe("crowdsec unreachable state", () => {
 		const told = h.calls.length;
 		await h.poll();
 		assert.equal(h.calls.length, told);
-		h.control.conf = "ENABLED=false\n";
+		h.control.conf = DISABLED;
 		await h.poll();
 		assert.deepEqual(h.calls.at(-1), { state: "off" });
 	});
