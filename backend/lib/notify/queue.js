@@ -1,5 +1,5 @@
-import { engineOf } from "../database/engine.js";
 import { clean } from "./catalogue.js";
+import { dbTimeOf } from "./db-time.js";
 
 // The persisted delivery queue (npmpro_notification_delivery). A row is pending, sending, sent, failed or dropped. The
 // worker claims due rows (pending to sending), a channel sends them, settle() records the outcome. The payload (the
@@ -45,12 +45,8 @@ const parsePayload = (text) => {
  */
 const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 	const table = () => knex(TABLE);
-	// SQLite has no time type: UTC text that sorts as it compares. The MySQL and Postgres drivers take a Date.
-	const sqlite = engineOf(knex) === "sqlite";
-	const dbTime = (ms) => {
-		const date = new Date(ms);
-		return sqlite ? date.toISOString().replace("T", " ").slice(0, -1) : date;
-	};
+	// the convention of the other tables (db-time.js): naive local text on SQLite, a Date for MySQL and Postgres
+	const dbTime = dbTimeOf(knex);
 
 	/**
 	 * Adds pending rows. A row: { message_id, event, channel, target_id?, recipient?, group_key?, payload, delay_ms? }

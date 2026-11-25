@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { engineOf } from "../database/engine.js";
 import { createKeyedLock } from "../keyed-lock.js";
 import { resolvedOf, stateEvents } from "./catalogue.js";
+import { dbTimeOf } from "./db-time.js";
 
 // The last known state of every state event and its object, in npmpro_notification_state. An event goes out only on
 // a change of the stored state, so a restart (a new store over the same rows) repeats nothing. Reports of one key run
@@ -64,12 +64,8 @@ const parseData = (text) => {
 const createStateStore = ({ knex, clock = { now: () => Date.now() }, reminderHours = () => 24 }) => {
 	const lock = createKeyedLock();
 	const table = () => knex(TABLE);
-	// SQLite has no time type: UTC text that sorts as it compares. The MySQL and Postgres drivers take a Date.
-	const sqlite = engineOf(knex) === "sqlite";
-	const dbTime = (ms) => {
-		const date = new Date(ms);
-		return sqlite ? date.toISOString().replace("T", " ").slice(0, -1) : date;
-	};
+	// the convention of the other tables (db-time.js): naive local text on SQLite, a Date for MySQL and Postgres
+	const dbTime = dbTimeOf(knex);
 
 	const insertRow = async ({ key, event, objectPart, state, json, now }) => {
 		try {

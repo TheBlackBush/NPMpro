@@ -1,5 +1,5 @@
 import db from "../db.js";
-import { engineOf } from "../lib/database/engine.js";
+import { dbTimeOf, msOfDbTime } from "../lib/notify/db-time.js";
 import { createNotifyService } from "../lib/notify/service.js";
 import { MOVED_WATERMARK_KEY } from "../lib/notify/state-store.js";
 import { global as logger } from "../logger.js";
@@ -83,12 +83,9 @@ const fromAudit = async (entry) => {
 	}
 };
 
-const ZONE = /(?:Z|[+-]\d\d:?\d\d)$/u;
+// the audit row's created_on (naive local text on SQLite, a Date elsewhere) as epoch ms; 0 when it is not a time
 const msOf = (value) => {
-	if (value === null || value === undefined) return 0;
-	if (value instanceof Date) return value.getTime();
-	const text = String(value);
-	const ms = Date.parse(ZONE.test(text) ? text : `${text.replace(" ", "T")}Z`);
+	const ms = msOfDbTime(value);
 	return Number.isNaN(ms) ? 0 : ms;
 };
 
@@ -119,8 +116,7 @@ const checkDatabaseMoved = async () => {
 			seen !== null &&
 			(at > (seen.at ?? 0) || (at === (seen.at ?? 0) && row.id > (seen.id ?? 0)));
 		if (seen !== null && !isNew) return;
-		const date = new Date();
-		const since = engineOf(knex) === "sqlite" ? date.toISOString().replace("T", " ").slice(0, -1) : date;
+		const since = dbTimeOf(knex)(Date.now());
 		const data = JSON.stringify({ id: row?.id ?? 0, at });
 		if (stored) await table().where({ key: MOVED_WATERMARK_KEY }).update({ state: "ok", since, data });
 		else {

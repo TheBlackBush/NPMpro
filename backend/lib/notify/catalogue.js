@@ -39,13 +39,14 @@ const scalar = (value) => {
 	return Number.isFinite(value) ? value : undefined;
 };
 
-// a datetime string without a zone is UTC (the database stores UTC), never the server's local time
+// a datetime string without a zone is the server's local time (TZ), as the database stores it (lib/notify/db-time.js),
+// so the ISO date is the real instant
 const iso = (value) => {
 	if (!isSet(value)) return;
 	let date = value;
 	if (!(value instanceof Date)) {
 		const zoneless = typeof value === "string" ? ZONELESS.exec(value) : null;
-		date = new Date(zoneless ? `${zoneless.groups.day}T${zoneless.groups.time}Z` : value);
+		date = new Date(zoneless ? `${zoneless.groups.day}T${zoneless.groups.time}` : value);
 	}
 	return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
 };
