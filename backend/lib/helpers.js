@@ -4,6 +4,8 @@ import { isPostgres } from "./config.js";
 
 const datePeriodPattern = /^(?<amount>[0-9]+)(?<unit>y|Q|M|w|d|h|m|s|ms)$/mu;
 const localDateTimePattern = /^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$/u;
+// the stored local dates the API answers as ISO (the instant in UTC)
+const DATE_KEYS = new Set(["created_on", "modified_on", "expires_on", "npmpro_valid_from"]);
 
 /**
  * Takes an expression such as 30d (units y, Q, M, w, d, h, m, s, ms) and returns a dayjs object of that date in the
@@ -63,7 +65,7 @@ const jsonReplacer = (key, value) => {
 	) {
 		return;
 	}
-	if (["created_on", "modified_on", "expires_on"].includes(key) && localDateTimePattern.test(value)) {
+	if (DATE_KEYS.has(key) && localDateTimePattern.test(value)) {
 		return new Date(value.replace(" ", "T")).toISOString();
 	}
 	return value;
