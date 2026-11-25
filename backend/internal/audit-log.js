@@ -100,7 +100,7 @@ const internalAuditLog = {
 				npmpro_api_token_name: token?.name ?? null,
 			})
 			.then((row) => {
-				fromAudit(row);
+				void fromAudit(row);
 				return row;
 			});
 	},
