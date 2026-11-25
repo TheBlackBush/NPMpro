@@ -139,7 +139,9 @@ function TickDetails({ index, entry, row, probe, now, onChange, disabled }) {
  * @param {"proxy"|"redirection"|"dead"} props.type
  * @param {number} [props.hostId]  the saved host's id; none for a new host
  */
-export function HostDnsRecords({ type, hostId }) {
+export function HostDnsRecords({ type, hostId: savedId }) {
+	// a new host's window holds the id 0: no saved host
+	const hostId = savedId || undefined;
 	const { setValue, getValues } = useFormContext();
 	const readOnly = useReadOnly();
 	const canManage = useCanManage(CERTIFICATES);
