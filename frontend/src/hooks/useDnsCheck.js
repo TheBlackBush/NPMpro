@@ -1,12 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import {
+	adoptHostDnsRecord,
 	checkHostDns,
 	deleteDnsChallenges,
+	getDeadHost,
 	getDnsChallenges,
 	getHostDnsChecks,
+	getProxyHost,
+	getRedirectionHost,
+	leaveHostDnsRecord,
+	probeHostReach,
+	removeHostDnsRecordAtProvider,
 	testDnsCredential,
 } from "src/api/backend";
 import { mergeChecks } from "src/modules/DnsCheck";
+import { pollDelay } from "src/modules/HostDnsRecords";
+import { dnsRecordInvalidations, HOST_TYPES } from "src/modules/HostTypes";
 
 // a test reads at the provider and stores nothing: no query key changes
 const useTestDnsCredential = () => useMutation({ mutationFn: (id) => testDnsCredential(id) });
@@ -58,4 +68,53 @@ const useDeleteDnsChallenges = (id) => {
 	});
 };
 
-export { useCheckHostDns, useDeleteDnsChallenges, useDnsChallenges, useHostDnsChecks, useTestDnsCredential };
+const HOST_GETTERS = { proxy: getProxyHost, redirection: getRedirectionHost, dead: getDeadHost };
+
+// the saved host with its DNS record states (npmproDnsRecords; the host's own query, so a save and the actions refresh it): while a name is
+// pending the job still runs after the save, so the states are read again every few seconds, at most 10 times
+const useHostDnsRecords = (type, hostId) => {
+	const attempts = useRef(0);
+	return useQuery({
+		queryKey: [HOST_TYPES[type].itemKey, hostId],
+		queryFn: () => HOST_GETTERS[type](hostId),
+		staleTime: 60 * 1000,
+		enabled: Boolean(hostId),
+		refetchInterval: (query) => {
+			const delay = pollDelay(query.state.data?.npmproDnsRecords, attempts.current);
+			attempts.current = delay === false ? 0 : attempts.current + 1;
+			return delay;
+		},
+	});
+};
+
+// the reach probe reads and writes nothing that lasts (a token file the server removes again)
+const useProbeHostReach = () => useMutation({ mutationFn: (options) => probeHostReach(options) });
+
+// Adopt and update, Leave alone, Delete at the provider again: the action of a host name's record row
+const RECORD_ACTIONS = {
+	adopt: adoptHostDnsRecord,
+	leave: leaveHostDnsRecord,
+	remove: removeHostDnsRecordAtProvider,
+};
+
+const useHostDnsRecordAction = (type, hostId) => {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ action, id }) => RECORD_ACTIONS[action](id),
+		onSettled: () =>
+			Promise.all(
+				dnsRecordInvalidations(type, hostId).map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+			),
+	});
+};
+
+export {
+	useCheckHostDns,
+	useDeleteDnsChallenges,
+	useDnsChallenges,
+	useHostDnsChecks,
+	useHostDnsRecordAction,
+	useHostDnsRecords,
+	useProbeHostReach,
+	useTestDnsCredential,
+};

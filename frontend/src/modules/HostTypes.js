@@ -12,7 +12,7 @@ export const HOST_TYPES = {
 		itemKey: "dead-host",
 		kind: "dead_hosts",
 		help: "DeadHosts",
-		expand: ["owner", "certificate"],
+		expand: ["owner", "certificate", "dns_records"],
 		noDirectory: "dead-host.no-directory",
 	},
 	redirection: {
@@ -23,7 +23,7 @@ export const HOST_TYPES = {
 		itemKey: "redirection-host",
 		kind: "redirection_hosts",
 		help: "RedirectionHosts",
-		expand: ["owner", "certificate"],
+		expand: ["owner", "certificate", "dns_records"],
 		noDirectory: "redirection-host.no-directory",
 	},
 	stream: {
@@ -45,7 +45,7 @@ export const HOST_TYPES = {
 		itemKey: "proxy-host",
 		kind: "proxy_hosts",
 		help: "ProxyHosts",
-		expand: ["owner", "access_lists", "certificate"],
+		expand: ["owner", "access_lists", "certificate", "dns_records"],
 		noDirectory: "proxy-host.no-directory",
 	},
 };
@@ -81,6 +81,17 @@ export const saveInvalidations = (type, id) => [
 	...accessLists(type),
 	...ddnsSuggestions(type),
 	...dnsChecks(type),
+];
+
+// Adopt and update, Leave alone and Delete at the provider again change the host's record states, the Dynamic DNS list
+// (its managed rows) and the audit log
+export const dnsRecordInvalidations = (type, id) => [
+	[HOST_TYPES[type].itemKey, id],
+	[HOST_TYPES[type].listKey],
+	...dnsChecks(type),
+	["ddns-records"],
+	["ddns-status"],
+	["audit-logs"],
 ];
 
 // a save that answered an error but is stored (nginx could not reload) changed the same caches as a successful one: the

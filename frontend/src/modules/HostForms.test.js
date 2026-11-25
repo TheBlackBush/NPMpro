@@ -391,6 +391,21 @@ it("sends the request fields only for a requested certificate, the DNS box only 
 	assert.deepEqual(requestValues(dns), dns);
 });
 
+it("sends the host record option only after the DNS card was touched, as the ticked names the host still has", () => {
+	const values = { domainNames: ["a.com", "b.com"], certificateId: 5, ...CERTIFICATE_REQUEST_DEFAULTS };
+	assert.deepEqual(requestValues(values), { domainNames: ["a.com", "b.com"], certificateId: 5 });
+	assert.deepEqual(requestValues({ ...values, npmproDnsRecords: undefined }), {
+		domainNames: ["a.com", "b.com"],
+		certificateId: 5,
+	});
+	assert.deepEqual(requestValues({ ...values, npmproDnsRecords: [] }).npmproDnsRecords, []);
+	assert.deepEqual(
+		requestValues({ ...values, npmproDnsRecords: [{ name: "b.com", ipv6: true }, { name: "gone.com" }] })
+			.npmproDnsRecords,
+		[{ name: "b.com", ipv6: true }],
+	);
+});
+
 it("stream: keeps TCP or UDP on and drops TLS and the certificate with UDP", () => {
 	const values = { npmproProxyProtocolForwarding: 1, certificateId: "new", npmproMtlsCertificateId: 2 };
 	const tlsOff = {

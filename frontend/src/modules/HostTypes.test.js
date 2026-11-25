@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
 	deleteInvalidations,
+	dnsRecordInvalidations,
 	HOST_TYPES,
 	saveErrorInvalidations,
 	saveInvalidations,
@@ -69,10 +70,10 @@ it("refreshes the host, its list, the audit log, the host report, the certificat
 });
 
 it("names the list keys, expand lists, sections and help documents of each type", () => {
-	assert.deepEqual(HOST_TYPES.dead.expand, ["owner", "certificate"]);
-	assert.deepEqual(HOST_TYPES.redirection.expand, ["owner", "certificate"]);
+	assert.deepEqual(HOST_TYPES.dead.expand, ["owner", "certificate", "dns_records"]);
+	assert.deepEqual(HOST_TYPES.redirection.expand, ["owner", "certificate", "dns_records"]);
 	assert.deepEqual(HOST_TYPES.stream.expand, ["owner", "certificate"]);
-	assert.deepEqual(HOST_TYPES.proxy.expand, ["owner", "access_lists", "certificate"]);
+	assert.deepEqual(HOST_TYPES.proxy.expand, ["owner", "access_lists", "certificate", "dns_records"]);
 	assert.deepEqual(
 		Object.values(HOST_TYPES).map(({ section, kind, help, noDirectory }) => [section, kind, help, noDirectory]),
 		[
@@ -90,4 +91,15 @@ it("refreshes after a save whose reload failed as after a save, and nothing afte
 	assert.deepEqual(saveErrorInvalidations("stream", reloadFailed), saveInvalidations("stream", 9));
 	assert.deepEqual(saveErrorInvalidations("dead", { payload: { error: { message: "refused" } } }), []);
 	assert.deepEqual(saveErrorInvalidations("dead", new Error("HTTP 502")), []);
+});
+
+it("refreshes the host, its list, the checks, the Dynamic DNS records and the audit log after a record action", () => {
+	assert.deepEqual(dnsRecordInvalidations("proxy", 4), [
+		["proxy-host", 4],
+		["proxy-hosts"],
+		["dns-check-hosts"],
+		["ddns-records"],
+		["ddns-status"],
+		["audit-logs"],
+	]);
 });

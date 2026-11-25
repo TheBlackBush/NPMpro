@@ -7,6 +7,7 @@ import { formatDateTime, intl, T } from "src/locale";
 import { cardLines, checkCounts, checkOfHost, nameLine, namesChanged } from "src/modules/DnsCheck";
 import { showApiError, showSuccess } from "src/notifications";
 import { SettingsCard } from "src/pages/Settings/SettingsCard";
+import { HostDnsRecords } from "./HostDnsRecords";
 import { KeepUpdatedButton, useKeepUpdated } from "./KeepUpdatedHint";
 
 const NOTE = "px-4 py-3 text-sm text-muted-foreground";
@@ -56,7 +57,7 @@ function NameLine({ name, result, keepUpdated, onKeepUpdated }) {
  * The DNS card of a host window's Details tab: one line per name of the form with the host's last check (state,
  * addresses, how it was found, the time), a Check button, and Keep updated beside a name that a credential could keep
  * updated. The check reads the saved host: a new host says to save first, and a change of the names is noted until the
- * host is saved and checked again. Check works in a View window too (it changes nothing).
+ * host is saved and checked again. Check works in a View window too (it changes nothing). Below the names the host record option (HostDnsRecords).
  *
  * @param {Object} props
  * @param {"proxy"|"redirection"|"dead"} props.type
@@ -125,6 +126,7 @@ export function HostDnsCard({ type, hostId, onKeepUpdated }) {
 					<T id="dns-check.save-first" />
 				</p>
 			)}
+			<HostDnsRecords type={type} hostId={hostId} />
 		</SettingsCard>
 	);
 }
