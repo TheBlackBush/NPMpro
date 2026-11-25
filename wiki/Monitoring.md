@@ -57,5 +57,5 @@ Action events mark something that was done. They are sent to webhooks only, in a
 
 - **Host created, updated, enabled, disabled and deleted.**
 - **Certificate issued, renewed and deleted.**
-- **Backup restored.**
+- **Backup succeeded** (a scheduled run) and **backup restored.**
 - **Database moved** and **database move failed.** A move is reported at the first start on the new database.
