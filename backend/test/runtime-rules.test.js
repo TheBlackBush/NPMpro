@@ -33,6 +33,7 @@ const BOOT_ENV = {
 	ACME_SERVER_TLS_VERIFY: "true",
 	CUSTOM_OCSP_STAPLING: "false",
 	CERTBOT_RUN_INTERVAL: "3",
+	CERT_WARNING_DAYS: "14",
 	DEFAULT_CERT_ID: "0",
 	ECH_ROTATION_INTERVAL: "1",
 	TRUST_CLOUDFLARE: "false",
@@ -99,7 +100,12 @@ it("validates the key type and the key size per key type", () => {
 });
 
 it("validates the integer ranges", () => {
-	const cases = { renewal_interval: [1, 499], ech_rotation_interval: [1, 24], log_rotations: [1, 1000] };
+	const cases = {
+		renewal_interval: [1, 499],
+		warning_days: [1, 60],
+		ech_rotation_interval: [1, 24],
+		log_rotations: [1, 1000],
+	};
 	for (const [key, [min, max]] of Object.entries(cases)) {
 		assert.equal(rule(key).validate(min), null);
 		assert.equal(rule(key).validate(max), null);
@@ -153,6 +159,7 @@ it("uses the defaults without stored values and with the envs.sh boot defaults",
 		must_staple: false,
 		server_tls_verify: true,
 		renewal_interval: 3,
+		warning_days: 14,
 		ocsp_stapling: false,
 		custom_ocsp_stapling: false,
 		default_certificate_id: 0,
@@ -196,6 +203,17 @@ it("lets env win and lock the field", () => {
 	const logs = mergeRuntimeConfig("logs", { log_rotations: 20 }, env);
 	assert.equal(logs.values.log_rotations, 7);
 	assert.deepEqual(logs.locked, ["log_rotations"]);
+});
+
+it("takes the warning days from CERT_WARNING_DAYS and locks the field", () => {
+	const certs = mergeRuntimeConfig("certificates", { warning_days: 30 }, userEnv({ CERT_WARNING_DAYS: "21" }));
+	assert.equal(certs.values.warning_days, 21);
+	assert.deepEqual(certs.locked, ["warning_days"]);
+	assert.deepEqual(certs.locked_by, { warning_days: "CERT_WARNING_DAYS" });
+	assert.equal(mergeRuntimeConfig("certificates", { warning_days: 30 }, BOOT_ENV).values.warning_days, 30);
+	assert.equal(rule("warning_days").default, 14);
+	assert.equal(rule("warning_days").applies, "immediately");
+	assert.equal(rule("warning_days").parseEnv("45"), 45);
 });
 
 it("keeps a set env value that envs.sh accepts even outside the UI range", () => {

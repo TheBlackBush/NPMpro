@@ -10,7 +10,7 @@ import { CERTBOT_INI } from "../lib/certbot-ini.js";
 import { assertCertificateUse, customCertPath, liveCertPath, mtlsCertFile } from "../lib/certificate-files.js";
 import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
-import { expiryBounds } from "../lib/expiry.js";
+import { expiryState } from "../lib/expiry.js";
 import { pickCertificateFields } from "../lib/helpers.js";
 import { withoutPageHtml } from "../lib/landing-pages/types.js";
 import { rooted } from "../lib/paths.js";
@@ -116,6 +116,12 @@ const renewalTimer = createRenewalTimer({
 	log: logger,
 });
 
+// the certificate's validity columns from its parsed dates
+const validityColumns = (dates) => ({
+	expires_on: dayjs.unix(dates.to).format("YYYY-MM-DD HH:mm:ss"),
+	npmpro_valid_from: dayjs.unix(dates.from).format("YYYY-MM-DD HH:mm:ss"),
+});
+
 const internalCertificate = {
 	...certificateInfo,
 	...certificateAcme,
@@ -186,7 +192,7 @@ const internalCertificate = {
 							.andWhere("provider", "letsencrypt")
 							.patch({
 								nice_name: getNiceName(certificate.domain_names),
-								expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
+								...validityColumns(certInfo.dates),
 							});
 					} catch (err) {
 						// one failure must not stop the others
@@ -252,7 +258,7 @@ const internalCertificate = {
 					`${internalCertificate.getLiveCertPath(certificate.id)}/fullchain.pem`,
 				);
 				const savedRow = await certificateModel.query().patchAndFetchById(certificate.id, {
-					expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
+					...validityColumns(certInfo.dates),
 				});
 
 				await internalCertificate.addCreatedAuditLog(access, certificate.id, savedRow);
@@ -501,20 +507,22 @@ const internalCertificate = {
 	 * @returns {Promise<{expiring: Number, expired: Number}>}
 	 */
 	getExpiryCounts: async (userId, visibility) => {
-		const { now, soon } = expiryBounds();
-		const format = (date) => dayjs(date).format("YYYY-MM-DD HH:mm:ss");
-		const base = () => {
-			const query = certificateModel.query().whereIn("provider", ["letsencrypt", "other"]);
-			if (visibility !== "all") {
-				query.andWhere("owner_user_id", userId);
-			}
-			return query;
-		};
+		const query = certificateModel
+			.query()
+			.select("id", "expires_on", "npmpro_valid_from")
+			.whereIn("provider", ["letsencrypt", "other"]);
+		if (visibility !== "all") {
+			query.andWhere("owner_user_id", userId);
+		}
 
-		const [expired, expiring] = await Promise.all([
-			base().where("expires_on", "<", format(now)).resultSize(),
-			base().where("expires_on", ">=", format(now)).andWhere("expires_on", "<", format(soon)).resultSize(),
-		]);
+		const now = new Date();
+		let expiring = 0;
+		let expired = 0;
+		for (const row of await query) {
+			const state = expiryState(row, now);
+			if (state === "expired") expired += 1;
+			else if (state === "soon") expiring += 1;
+		}
 
 		return { expiring, expired };
 	},
@@ -551,7 +559,7 @@ const internalCertificate = {
 
 		const certificate = await internalCertificate.update(access, {
 			id: data.id,
-			expires_on: dayjs.unix(validations.certificate.dates.to).format("YYYY-MM-DD HH:mm:ss"),
+			...validityColumns(validations.certificate.dates),
 			domain_names: validations.certificate.cn,
 		});
 
@@ -606,7 +614,7 @@ const internalCertificate = {
 
 				const updatedCertificate = await certificateModel.query().patchAndFetchById(certificate.id, {
 					nice_name: getNiceName(certificate.domain_names),
-					expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
+					...validityColumns(certInfo.dates),
 				});
 
 				try {
@@ -679,7 +687,7 @@ const internalCertificate = {
 				const certInfo = await internalCertificate.getCertificateInfoFromFile(
 					`${internalCertificate.getLiveCertPath(certificate.id)}/fullchain.pem`,
 				);
-				patch.expires_on = dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss");
+				Object.assign(patch, validityColumns(certInfo.dates));
 			} catch (err) {
 				failure = err;
 			}
@@ -795,7 +803,7 @@ const internalCertificate = {
 				updatedCertificate = await certificateModel.query().patchAndFetchById(certificate.id, {
 					npmpro_acme_server: target,
 					nice_name: getNiceName(certificate.domain_names),
-					expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
+					...validityColumns(certInfo.dates),
 				});
 			} catch (err) {
 				await followRenewalConf(certificate.id, target);

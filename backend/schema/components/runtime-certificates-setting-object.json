@@ -9,6 +9,7 @@
 		"must_staple",
 		"server_tls_verify",
 		"renewal_interval",
+		"warning_days",
 		"ocsp_stapling",
 		"custom_ocsp_stapling",
 		"default_certificate_id",
@@ -60,6 +61,12 @@
 			"maximum": 499,
 			"description": "Hours between certificate renewal runs (env CERTBOT_RUN_INTERVAL)"
 		},
+		"warning_days": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 60,
+			"description": "Days before expiry a certificate counts as expiring soon, at most a third of its lifetime (env CERT_WARNING_DAYS)"
+		},
 		"ocsp_stapling": {
 			"type": "boolean",
 			"description": "OCSP stapling for ACME certificates (env ACME_OCSP_STAPLING)"
@@ -90,6 +97,7 @@
 					"must_staple",
 					"server_tls_verify",
 					"renewal_interval",
+					"warning_days",
 					"ocsp_stapling",
 					"custom_ocsp_stapling",
 					"default_certificate_id",
@@ -132,6 +140,11 @@
 					"type": "string",
 					"pattern": "^[A-Z][A-Z0-9_]*$",
 					"description": "Name of the variable that locks the renewal interval: CERTBOT_RUN_INTERVAL"
+				},
+				"warning_days": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$",
+					"description": "Name of the variable that locks the warning days: CERT_WARNING_DAYS"
 				},
 				"ocsp_stapling": {
 					"type": "string",
@@ -194,6 +207,7 @@
 				"must_staple",
 				"server_tls_verify",
 				"renewal_interval",
+				"warning_days",
 				"ocsp_stapling",
 				"custom_ocsp_stapling",
 				"default_certificate_id",
@@ -253,6 +267,15 @@
 						"immediately"
 					],
 					"description": "When a change of the renewal interval takes effect: on save"
+				},
+				"warning_days": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					],
+					"description": "When a change of the warning days takes effect: on save"
 				},
 				"ocsp_stapling": {
 					"type": "string",

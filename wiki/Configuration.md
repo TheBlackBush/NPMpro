@@ -24,6 +24,7 @@ When a saved setting applies:
 | Certificates & TLS | OCSP Must-Staple | `ACME_MUST_STAPLE` | to the next certificate |
 | Certificates & TLS | Verify the ACME server certificate | `ACME_SERVER_TLS_VERIFY` | to the next certificate |
 | Certificates & TLS | Renewal check interval | `CERTBOT_RUN_INTERVAL` | immediately |
+| Certificates & TLS | Warning days: days before expiry a certificate counts as expiring soon (at most a third of its lifetime) | `CERT_WARNING_DAYS` (1 to 60, default 14) | immediately |
 | Certificates & TLS | OCSP stapling for ACME certificates | `ACME_OCSP_STAPLING` | on save, with an nginx reload |
 | Certificates & TLS | OCSP stapling for custom certificates | `CUSTOM_OCSP_STAPLING` | on save, with an nginx reload |
 | Certificates & TLS | Default certificate: Certificate for unknown hosts and the web UI | `DEFAULT_CERT_ID` | on save, with an nginx reload |

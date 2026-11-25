@@ -138,6 +138,8 @@ it("shows every group with its values, locks, restart state and when a change ap
 	assert.equal(certificates.key_type, "ecdsa");
 	assert.equal(certificates.key_size, "secp384r1");
 	assert.equal(certificates.renewal_interval, 3);
+	assert.equal(certificates.warning_days, 14);
+	assert.equal(certificates.applies.warning_days, "immediately");
 	assert.equal(certificates.default_certificate_id, 0);
 	assert.equal(certificates.applies.key_type, "next-certificate");
 	assert.equal(certificates.applies.renewal_interval, "immediately");
@@ -450,6 +452,15 @@ it("takes the renewal and ECH intervals at once, and refuses values out of range
 	}
 	assert.equal((await get("certificates")).renewal_interval, 12);
 	await saved("certificates", { renewal_interval: 3, ech_rotation_interval: 1 });
+});
+
+it("takes the warning days at once, and refuses values out of range", async () => {
+	assert.equal((await saved("certificates", { warning_days: 30 })).warning_days, 30);
+	for (const body of [{ warning_days: 0 }, { warning_days: 61 }, { warning_days: 1.5 }, { warning_days: "soon" }]) {
+		await refused("certificates", body);
+	}
+	assert.equal((await get("certificates")).warning_days, 30);
+	await saved("certificates", { warning_days: 14 });
 });
 
 it("sets the default certificate in the default certificate include, and refuses missing and mTLS ones", async () => {
