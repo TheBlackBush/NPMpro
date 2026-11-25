@@ -80,10 +80,15 @@ const createScheduleService = ({
 
 	const nextAfter = (row, after) => (row.enabled ? nextRun(row, after, zone) : null);
 
-	// the notification of a run and the end of a schedule's state; a failure of the layer never reaches the schedule
-	const notifyRun = async ({ id, name, protection, passphrase }, { result, error }) => {
+	// the notification of a run and the end of a schedule's state; a failure of the layer never reaches the schedule. A
+	// disabled schedule (Run now) keeps no state: disabling cleared it, enabling lets the next run record it again
+	const notifyRun = async ({ id, name, protection, passphrase, enabled }, { result, error }) => {
 		try {
 			const schedule = { id, name };
+			if (!enabled) {
+				if (result) await notify.emit("backup.succeeded", { schedule, file: result.name, size: result.size });
+				return;
+			}
 			// the passphrase never reaches an event, whatever an error text holds
 			const secrets = [];
 			if (!result && protection === "passphrase") {
@@ -269,6 +274,8 @@ const createScheduleService = ({
 					next_run_at: db(nextAfter({ ...fields, last_run_at: current.last_run_at }, at)),
 				});
 			const row = await mustRead(current.id);
+			// a disabled schedule never runs by itself: its failed state goes without an event
+			if (!row.enabled) await clearNotifyState(row.id);
 			const toggled = Object.keys(body).length === 1 && Object.hasOwn(body, "enabled");
 			let action = "updated";
 			if (toggled) action = row.enabled ? "enabled" : "disabled";

@@ -797,6 +797,8 @@ const internalDdnsRecord = {
 				}),
 			),
 		);
+		// a disabled record is no problem any more: its states go without an event, enabling records them again
+		if (!saved.enabled) await clearRecordStates(saved.id);
 		const meta = auditMeta(saved, credential);
 		let action = "updated";
 		if (toggled && Object.keys(data).filter((key) => key !== "id" && key !== "enabled").length === 0) {
@@ -886,7 +888,7 @@ const internalDdnsRecord = {
 // loaded on use: the host record service imports this file
 const hostRecords = async () => (await import("./host-dns-record.js")).default;
 
-// a deleted record has no notification state left; the layer never fails the delete
+// a deleted or disabled record has no notification state left; the layer never fails the delete or the save
 const clearRecordStates = async (id) => {
 	try {
 		await notify.clearState("ddns.record_failed", String(id));
@@ -975,6 +977,8 @@ const ddnsStore = {
 		const next = { ...patch };
 		for (const key of TIME_KEYS) if (key in next) next[key] = toDbTime(next[key]);
 		await ddnsRecordModel.query().patch(next).where("id", id);
+		// a row paused with its host (or set aside) has no states left, as a record the user disables
+		if (patch.enabled === false) await clearRecordStates(id);
 	},
 
 	addHistory: async (id, row) => {

@@ -278,6 +278,8 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 
 			await model.query().where("id", row.id).patch({ enabled: 0 });
 			hostCheckCache.clearHost(hostType, row.id);
+			// a disabled host is no problem any more: its config state goes without an event, enabling records it again
+			clearHostConfig(hostType, row.id);
 
 			const savedRow = await auditAfter(access, "disabled", row.id, () =>
 				internalNginx.removeConfig(hostType, row, { saved: row }),

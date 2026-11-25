@@ -31,6 +31,8 @@ let parts = null;
 // the notification states of a record after a run's save: failed follows its state, stopped follows its meta; a patch
 // without the field leaves that state alone
 const reportRecordState = async (record, patch) => {
+	// a run that set the record aside (disabled) leaves no state: the save cleared them
+	if (patch.enabled === false) return;
 	const source = { record: { id: record.id, name: record.name, provider: record.provider } };
 	if (patch.state !== undefined) {
 		await notify.reportState("ddns.record_failed", String(record.id), {
