@@ -52,6 +52,23 @@ const isStopped = (record) => record?.meta?.stopped === true;
 /** A host's record paused while its host is disabled: never due, never run (the host's enable resumes it) */
 const isPausedByHost = (record) => record?.meta?.paused_by_host === true;
 
+/**
+ * A host's record NPMpro is to create (meta.create_only, until its first successful run): it is only ever created,
+ * never written over. A record found at the name (any value, also the wanted one) turns the row into "exists".
+ */
+const isCreateOnly = (record) => record?.meta?.create_only === true;
+
+/** A record found at the name of a create-only row: what was found, and whether Adopt and update may take it */
+class RecordAppeared extends Error {
+	constructor(found) {
+		super("A record appeared at the name before NPMpro created its own; nothing was written over it");
+		this.found = found;
+		this.adoptAllowed = found.every((one) => one.type !== "CNAME" && one.values.length === 1);
+	}
+}
+
+const foundOf = (type, existing) => ({ type, values: (existing.values ?? []).map(String) });
+
 // what a provider is handed to look a record up: the record id belongs to one record type, so it is not passed on
 const lookupMeta = (meta) => {
 	const { record_id: _ignored, ...rest } = cleanMeta(meta);
@@ -284,6 +301,7 @@ const createDdnsEngine = ({
 			}
 		}
 		const existing = await ctx.provider.read({ ...base, meta: lookupMeta(ctx.meta) });
+		if (existing !== null && isCreateOnly(record)) throw new RecordAppeared([foundOf(unit.type, existing)]);
 		if (existing === null) {
 			await checkOtherType(ctx, unit);
 			const written = await ctx.provider.write({
@@ -319,6 +337,44 @@ const createDdnsEngine = ({
 		});
 		ctx.meta = { ...ctx.meta, ...written?.meta };
 		return { outcome: "changed", change: { kind: "changed", old: existing.values?.[0] ?? null, new: unit.wanted } };
+	};
+
+	/**
+	 * Before a create-only row writes anything: every record type it keeps, and a CNAME, is read at the name; anything
+	 * found throws RecordAppeared (so no type is created beside a record that appeared)
+	 */
+	const assertNothingThere = async (ctx, units) => {
+		const found = [];
+		const types = [...units.map((unit) => unit.type), "CNAME"];
+		for (const type of types) {
+			const existing = await ctx.provider.read({
+				zone: ctx.record.zone,
+				name: ctx.record.name,
+				type,
+				fields: ctx.cred.fields,
+				fetch: ctx.fetch,
+				meta: lookupMeta(ctx.meta),
+			});
+			if (existing !== null) found.push(foundOf(type, existing));
+		}
+		if (found.length > 0) throw new RecordAppeared(found);
+	};
+
+	/** A create-only row whose name holds a record: "exists", disabled, until the user adopts it or leaves it alone */
+	const appearedPatch = (record, err, done) => {
+		const { create_only: _once, ...meta } = cleanMeta(record.meta);
+		const patch = {
+			state: "disabled",
+			enabled: false,
+			error: null,
+			failures: 0,
+			next_try_on: null,
+			last_checked_on: new Date(now()),
+			meta: { ...meta, exists: { found: err.found, adopt_allowed: err.adoptAllowed } },
+		};
+		// a type this run created is NPMpro's (deleted with the row); with none, the row created nothing
+		if (!done.some(({ result }) => result.outcome === "created")) patch.origin = null;
+		return patch;
 	};
 
 	const failurePatch = (record, err, secrets, { countTry }) => {
@@ -376,6 +432,7 @@ const createDdnsEngine = ({
 				ctx.provider = providers.providerById(record.provider);
 				if (!ctx.provider) throw new Error("The provider is not available");
 				ctx.fetch = makeFetch(secrets);
+				if (isCreateOnly(record)) await assertNothingThere(ctx, units);
 				for (const unit of units) {
 					const result = await runUnit(ctx, unit);
 					done.push({ unit, result });
@@ -388,6 +445,14 @@ const createDdnsEngine = ({
 					await store.saveRecord(id, partial);
 					await writeHistory(id, rows);
 					throw err;
+				}
+				if (err instanceof RecordAppeared) {
+					const patch = appearedPatch(record, err, done);
+					const rows = changesOf(done, patch);
+					rows.push({ kind: "failed", message: err.message });
+					await store.saveRecord(id, patch);
+					await writeHistory(id, rows);
+					return { failed: true };
 				}
 				const patch = failurePatch(record, err, secrets, { countTry });
 				const rows = changesOf(done, patch);
@@ -403,6 +468,8 @@ const createDdnsEngine = ({
 			const rows = changesOf(done, patch);
 			if (waitUntil === null) {
 				Object.assign(patch, { state: "ok", failures: 0, next_try_on: null, error: null });
+				// the first successful run created the record: from now on it is kept like any other
+				delete patch.meta.create_only;
 				if (record.state === "failed") rows.push({ kind: "recovered" });
 			} else {
 				// the state and the error stay as they were, so the error's key stays with its text

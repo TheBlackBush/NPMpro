@@ -1,18 +1,20 @@
 import { overridesAcmeChallenge } from "../lib/acme-challenge.js";
-import { DdnsProviderError, scrubSecrets } from "../lib/ddns/errors.js";
+import { scrubSecrets } from "../lib/ddns/errors.js";
 import { providerFetch } from "../lib/ddns/provider-fetch.js";
 import { updaterFor } from "../lib/ddns/providers/index.js";
 import { sameAddress } from "../lib/ddns/providers/record-common.js";
+import { limitConcurrency } from "../lib/dns-check/limit.js";
 import { isPublicAddress, probeReach } from "../lib/dns-check/reach-probe.js";
+import { requestDeadline } from "../lib/dns-check/timing.js";
 import { credentialFields, secretValuesOf } from "../lib/dns-credential-values.js";
 import { coveringZone } from "../lib/dns-domain-match.js";
 import errs from "../lib/error.js";
 import { global as logger } from "../logger.js";
 import dnsCredentialModel from "../models/dns_credential.js";
-import dnsDomainModel from "../models/dns_domain.js";
 import internalAuditLog from "./audit-log.js";
 import { publicAddressOf, writeRecordNow } from "./ddns.js";
 import internalDdnsRecord, { auditMeta, HOST_MODELS, isManaged, managedRows, recordLock } from "./ddns-record.js";
+import { createCoverage, loadZones } from "./dns-check.js";
 import internalDnsCredential from "./dns-credential.js";
 
 // The host record option (D26, D28): a name of a proxy, redirection or 404 host that the user ticked gets its own
@@ -20,16 +22,23 @@ import internalDnsCredential from "./dns-credential.js";
 // by the dynamic DNS engine as a record row with host_type, host_id and origin. Nothing happens for a name that was not
 // ticked, and a host with no rows and no ticks is never looked at further (no provider call, no probe, no detection).
 //
-// A name's state: off (no row), unavailable (a hard check refused the tick: reason), covered (a wildcard or a manual
-// record already serves it: no row), pending, ok, failed (the engine's states), exists (the name already holds
-// another record: nothing written until Adopt and update or Leave alone), paused (the host is disabled) and orphan
-// (a delete at the provider failed: the row stays until it is deleted again or forgotten).
+// A name's state: off (no row), unavailable (a check refused the tick: reason), covered (a wildcard or a manual
+// record already serves it: no row), pending (also while the host's job works on it), ok, failed (the engine's states,
+// or a provider read that failed), exists (the name already holds another record: nothing written until Adopt and
+// update or Leave alone), paused (the host is disabled) and orphan (a delete at the provider failed or found another
+// value: the row stays until it is deleted again or forgotten).
+//
+// The host always saves at once: a save never probes and never calls a provider. It refuses what it can tell without
+// the provider (the name, the rights, the public address, the reach: a probe of the last 10 minutes or the user's
+// confirmation) and leaves the provider work (reads, the row, the engine's write, deletes) to a job that runs after
+// the answer, one per host at a time; its results are read through statesOf.
 //
 // Never overwrite, never delete what NPMpro did not create: a record is adopted only when it already holds the wanted
-// address or the user pressed Adopt and update, and a provider delete runs only for a row with origin "created", only
-// for the address it wrote (the provider's remove refuses anything else). The DNS work runs after the host's save, one
-// name at a time; a row changes only under its record lock, and no record lock is taken while an owner or CA lock is
-// held (a row is inserted under the owner and name locks, then written under the record lock).
+// address in every family or the user pressed Adopt and update; a created row is create-only until its first write
+// (the engine turns it into "exists" when a record appeared at the name); a provider delete runs only for a row with
+// origin "created", only for the addresses it wrote. A row changes only under its record lock, and no record lock is
+// taken while an owner or CA lock is held (a row is inserted under the owner and name locks, then written under the
+// record lock).
 
 const SECTIONS = {
 	proxy_host: "proxy_hosts",
@@ -39,9 +48,10 @@ const SECTIONS = {
 
 // a new record's TTL (R12): 300 s, raised to the provider's minimum; an existing record keeps its own
 const NEW_TTL = 300;
-// a reach probe result the window just asked for is used by the save that follows, so the save does not wait again
+// a reach probe result of the window counts for the save that follows within this time
 const REACH_FRESH_MS = 10 * 60_000;
 const MAX_REACH_ENTRIES = 500;
+const CONCURRENCY = 4;
 
 const LABEL = "[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?";
 const PLAIN_NAME = new RegExp(`^${LABEL}(?:\\.${LABEL})+$`, "u");
@@ -67,11 +77,19 @@ const REASONS = {
 		"Confirm that you checked from outside that ports 80 and 443 reach this server",
 	],
 	readFailed: ["error.host-dns-read-failed", "The record could not be read at the provider"],
+	readSkipped: ["error.host-dns-read-skipped", "The provider was not read now (too many reads): save again later"],
+	coveredByRecord: ["host-dns.covered-by-record", "Kept updated by the Dynamic DNS record"],
+	coveredByWildcard: ["host-dns.covered-by-wildcard", "Covered by a wildcard record"],
+	coveredByOther: ["host-dns.covered-by-other", "Covered by another record"],
 };
 
 const OTHER_OWNER = ["host-dns.other-owner", "Managed by another user"];
+const CHANGED_AT_PROVIDER = "The record at the provider holds another value now; NPMpro left it there";
 
-const typeOfFamily = { A: "last_ipv4", AAAA: "last_ipv6" };
+const FAMILIES = [
+	["A", "last_ipv4"],
+	["AAAA", "last_ipv6"],
+];
 
 const hostSection = (hostType) => {
 	if (!Object.hasOwn(SECTIONS, hostType)) throw new errs.InternalValidationError(`Unknown host type ${hostType}`);
@@ -80,16 +98,25 @@ const hostSection = (hostType) => {
 
 const userIdOf = (access) => access.token.getUserId(1);
 const ownOnly = (access) => access.visibility !== "all";
+const hostKey = (hostType, hostId) => `${hostType}:${hostId}`;
 
 const namesOf = (host) => [
 	...new Set((Array.isArray(host?.domain_names) ? host.domain_names : []).map((name) => String(name).toLowerCase())),
 ];
+
+/** A name no record is made for: a wildcard or a regular expression (or anything else that is no plain name) */
+const nameRefusal = (name) => {
+	if (name.includes("*")) return REASONS.wildcard;
+	if (name.length > 253 || !PLAIN_NAME.test(name)) return REASONS.pattern;
+	return null;
+};
 
 const answer = (name, state, extra = {}) => ({
 	name,
 	state,
 	origin: null,
 	record_id: null,
+	ipv6: null,
 	message: null,
 	reason: null,
 	covered_by: null,
@@ -114,13 +141,15 @@ const existsText = (found) =>
 		.join(" and ")
 		.concat(" already exists here");
 
+const rowBase = (row) => ({ origin: row.origin ?? null, record_id: row.id, ipv6: row.ip_version === "both" });
+
 /**
  * A row as a name's state. A row of a credential the user cannot see shows "Managed by another user", without the
  * provider's message or the values found.
  */
 const answerOfRow = (row, access) => {
 	const state = stateOfRow(row);
-	const base = { origin: row.origin ?? null, record_id: row.id };
+	const base = rowBase(row);
 	if (ownOnly(access) && row.owner_user_id !== userIdOf(access)) {
 		return refused(row.name, state, OTHER_OWNER, base);
 	}
@@ -149,23 +178,25 @@ const judge = (record, wanted) => {
 };
 
 /**
- * What a tick does with what the provider holds at the name: create (nothing there), adopt (every wanted type holds
- * the wanted address, or is free), or exists (another address: adopt_allowed; more than one value or a CNAME: not)
+ * What a tick does with what the coverage read found at the name: create (nothing there), adopt (every wanted family
+ * holds the wanted address), or exists (anything else: adopt_allowed unless a set has more than one value or the name
+ * is a CNAME; a set present for one family only is exists too)
+ *
+ * @param   {Object}  read  the coverage read: { record, aaaa, alias }
  */
 const decide = (read, { ipv4, ipv6 }) => {
-	if (read.cname) {
-		return { kind: "exists", adopt_allowed: false, found: [{ type: "CNAME", values: read.cname.values }] };
+	if (read.alias) {
+		return { kind: "exists", adopt_allowed: false, found: [{ type: "CNAME", values: [read.alias.target] }] };
 	}
-	const units = [{ type: "A", record: read.a, wanted: ipv4 }];
+	const units = [{ type: "A", record: read.record, wanted: ipv4 }];
 	if (ipv6 !== null) units.push({ type: "AAAA", record: read.aaaa, wanted: ipv6 });
 	const verdicts = units.map((unit) => ({ ...unit, verdict: judge(unit.record, unit.wanted) }));
+	if (verdicts.every((unit) => unit.verdict === "none")) return { kind: "create" };
+	if (verdicts.every((unit) => unit.verdict === "equal")) return { kind: "adopt" };
 	const found = verdicts
 		.filter((unit) => unit.verdict !== "none")
 		.map((unit) => ({ type: unit.type, values: unit.record.values.map(String) }));
-	if (verdicts.some((unit) => unit.verdict === "multi")) return { kind: "exists", adopt_allowed: false, found };
-	if (verdicts.some((unit) => unit.verdict === "different")) return { kind: "exists", adopt_allowed: true, found };
-	if (verdicts.every((unit) => unit.verdict === "none")) return { kind: "create" };
-	return { kind: "adopt", found };
+	return { kind: "exists", adopt_allowed: !verdicts.some((unit) => unit.verdict === "multi"), found };
 };
 
 const isSupported = (provider) =>
@@ -175,7 +206,7 @@ const isSupported = (provider) =>
 	typeof provider?.remove === "function" &&
 	provider.zoneless !== true;
 
-const defaultMakeFetch = (secrets) => (url, options) => providerFetch(url, { ...options, secrets });
+const defaultFetchFor = (secrets, deadline) => (url, options) => providerFetch(url, { ...options, secrets, deadline });
 
 /**
  * @param   {Object}    [deps]
@@ -183,7 +214,7 @@ const defaultMakeFetch = (secrets) => (url, options) => providerFetch(url, { ...
  * @param   {Function}  [deps.publicAddress]  (family) -> the detector's confirmed public address, or null
  * @param   {Function}  [deps.probe]          probeReach
  * @param   {Function}  [deps.writeRecord]    (id) -> the engine's run of one record now (updateRecord)
- * @param   {Function}  [deps.makeFetch]      (secrets) -> the guarded fetch handed to a provider
+ * @param   {Function}  [deps.fetchFor]       (secrets, deadline) -> the guarded fetch handed to a provider
  * @param   {Object}    [deps.clock]          { now() } in ms
  * @param   {Object}    [deps.log]            { warn() }
  */
@@ -192,29 +223,20 @@ const createHostDnsRecords = ({
 	publicAddress = publicAddressOf,
 	probe = probeReach,
 	writeRecord = writeRecordNow,
-	makeFetch = defaultMakeFetch,
+	fetchFor = defaultFetchFor,
 	clock = { now: () => Date.now() },
 	log = logger,
 } = {}) => {
 	const reachCache = new Map();
+	// the host jobs: the tail of each host's chain, the names a job works on (counted), and the last job's results
+	// for names that got no row (covered, unavailable, failed)
+	const chains = new Map();
+	const working = new Map();
+	const results = new Map();
 
 	const openCredentialRow = (credential) => {
 		const fields = credentialFields(internalDnsCredential.openValues(credential));
 		return { fields, secrets: secretValuesOf(credential.provider, fields) };
-	};
-
-	/** The zones of the credentials the user may see */
-	const visibleZones = async (access) => {
-		const query = dnsDomainModel
-			.query()
-			.joinRelated("credential")
-			.select("npmpro_dns_domain.name", "npmpro_dns_domain.dns_credential_id", "credential.owner_user_id");
-		if (ownOnly(access)) query.where("credential.owner_user_id", userIdOf(access));
-		return (await query).map((row) => ({
-			name: row.name,
-			credentialId: row.dns_credential_id,
-			ownerUserId: row.owner_user_id,
-		}));
 	};
 
 	/** One detection per call, shared by its names; only a public address counts */
@@ -240,33 +262,35 @@ const createHostDnsRecords = ({
 		return { ipv4: () => of(4), ipv6: () => of(6) };
 	};
 
-	/**
-	 * The provider read of a name (the host check's coverage read): A (and AAAA with ipv6) at the name; when there is
-	 * none, a CNAME at the name (providers with aliases), then the wildcard at the direct parent (providers whose
-	 * wildcard reads are confirmed). A failure throws the provider's error.
-	 */
-	const readName = async ({ provider, zone, name, ipv6, fields, fetch }) => {
-		const read = (target, type) => provider.read({ zone, name: target, type, fields, fetch, meta: {} });
-		const a = await read(name, "A");
-		const aaaa = ipv6 ? await read(name, "AAAA") : null;
-		if (a !== null || aaaa !== null) return { a, aaaa, cname: null, wildcard: null };
-		const cname = provider.aliases === true ? await read(name, "CNAME") : null;
-		if (cname !== null) return { a, aaaa, cname, wildcard: null };
-		const parent = name.slice(name.indexOf(".") + 1);
-		const parentInZone = parent === zone || parent.endsWith(`.${zone}`);
-		if (provider.wildcards !== true || !parentInZone) return { a, aaaa, cname, wildcard: null };
-		const wildcardName = `*.${parent}`;
-		const wildcard = await read(wildcardName, "A");
-		return { a, aaaa, cname, wildcard: wildcard === null ? null : { name: wildcardName, values: wildcard.values } };
+	/** The provider reads of one job or plan: the host check's reader with its read cap, 429 stop and deadline */
+	const readerFor = (access) => {
+		const deadline = requestDeadline();
+		let zones = null;
+		return {
+			coverage: createCoverage(access, limitConcurrency(CONCURRENCY), deadline.signal, { providerFor, fetchFor }),
+			zones: () => {
+				zones ??= loadZones(access);
+				return zones;
+			},
+			addresses: addressesOnce(),
+		};
 	};
 
+	/** A covering row the user may not see is named to nobody: "covered by another record" */
+	const coveredByRow = (access, row, reason) =>
+		ownOnly(access) && row.owner_user_id !== userIdOf(access)
+			? { reason: REASONS.coveredByOther, covered_by: null }
+			: { reason, covered_by: row.name };
+
 	/**
-	 * The hard checks and the coverage of one name for one host (spec Feature 5, Handle and Covered)
+	 * The checks and the coverage of one name for one host (spec Feature 5, Handle and Covered); reads the provider
+	 * through the shared reader
 	 *
 	 * @returns {Promise<Object>}  { name, available, reason, message, covered_by, credential, zone, provider_label,
-	 *          address, ipv6_address, ttl, proxied_allowed, existing } and, internally, read, provider, credentialRow
+	 *          address, ipv6_address, ttl, proxied_allowed, existing, failed } and, internally, read, provider,
+	 *          credentialRow, withIpv6
 	 */
-	const inspect = async (access, { hostType, hostId, name, ipv6, zones, addresses }) => {
+	const inspect = async (access, { hostType, hostId, name, ipv6, reader }) => {
 		const plan = {
 			name,
 			available: false,
@@ -281,12 +305,13 @@ const createHostDnsRecords = ({
 			ttl: null,
 			proxied_allowed: false,
 			existing: null,
+			failed: false,
 		};
 		const no = ([reason, message], extra = {}) => ({ ...plan, reason, message, ...extra });
-		if (name.includes("*")) return no(REASONS.wildcard);
-		if (name.length > 253 || !PLAIN_NAME.test(name)) return no(REASONS.pattern);
+		const refusal = nameRefusal(name);
+		if (refusal !== null) return no(refusal);
 		if (access.level("certificates") !== "manage") return no(REASONS.noRight);
-		const cover = coveringZone(name, await zones(), userIdOf(access));
+		const cover = coveringZone(name, await reader.zones(), userIdOf(access));
 		if (cover === null) return no(REASONS.noCredential);
 		if (cover.credentialIds.length !== 1) return no(REASONS.manyCredentials);
 		const credentialRow = await dnsCredentialModel.query().findById(cover.credentialIds[0]);
@@ -302,61 +327,41 @@ const createHostDnsRecords = ({
 			ttl: Math.max(NEW_TTL, Number.isInteger(provider.minTtl) ? provider.minTtl : 0),
 			proxied_allowed: provider.proxied === true,
 		});
-		const ipv4 = await addresses.ipv4();
+		const ipv4 = await reader.addresses.ipv4();
 		if (ipv4 === null) return no(REASONS.noAddress);
 		plan.address = ipv4;
-		plan.ipv6_address = await addresses.ipv6();
+		plan.ipv6_address = await reader.addresses.ipv6();
 
 		// a record already keeps the name: a manual one covers it, another host's takes it
 		const taken = await managedRows.byName(name);
 		if (taken !== null && !isManaged(taken)) {
-			return no(["host-dns.covered-by-record", "Kept updated by the Dynamic DNS record"], {
-				covered_by: taken.name,
-			});
+			const { reason, covered_by: coveredBy } = coveredByRow(access, taken, REASONS.coveredByRecord);
+			return no(reason, { covered_by: coveredBy ?? "" });
 		}
 		if (taken !== null && (taken.host_type !== hostType || taken.host_id !== hostId)) return no(REASONS.nameTaken);
-		const parent = name.slice(name.indexOf(".") + 1);
-		const manualWildcard = await managedRows.byName(`*.${parent}`);
+		const manualWildcard = await managedRows.byName(`*.${name.slice(name.indexOf(".") + 1)}`);
 		if (manualWildcard !== null) {
-			return no(["host-dns.covered-by-wildcard", `Covered by ${manualWildcard.name}`], {
-				covered_by: manualWildcard.name,
-			});
+			const { reason, covered_by: coveredBy } = coveredByRow(access, manualWildcard, REASONS.coveredByWildcard);
+			return no([reason[0], coveredBy ? `Covered by ${coveredBy}` : reason[1]], { covered_by: coveredBy ?? "" });
 		}
 
-		let opened;
-		try {
-			opened = openCredentialRow(credentialRow);
-		} catch (error) {
-			if (!(error instanceof errs.ValidationError)) throw error;
-			return no([REASONS.readFailed[0], "The DNS credential cannot be read"]);
-		}
 		const withIpv6 = ipv6 === true && plan.ipv6_address !== null;
-		let read;
-		try {
-			read = await readName({
-				provider,
-				zone: cover.zone,
-				name,
-				ipv6: withIpv6,
-				fields: opened.fields,
-				fetch: makeFetch(opened.secrets),
-			});
-		} catch (error) {
-			if (!(error instanceof DdnsProviderError)) throw error;
-			return no([REASONS.readFailed[0], scrubSecrets(error.message, opened.secrets)]);
-		}
-		if (read.wildcard !== null) {
-			return no(["host-dns.covered-by-wildcard", `Covered by ${read.wildcard.name}`], {
+		const read = await reader.coverage(name, { dnsHere: false, withAaaa: withIpv6 });
+		if (read === null) return no(REASONS.unsupported);
+		if (read.skipped) return no(REASONS.readSkipped, { failed: true });
+		if (read.error) return no([REASONS.readFailed[0], read.error], { failed: true });
+		if (read.wildcard) {
+			return no([REASONS.coveredByWildcard[0], `Covered by ${read.wildcard.name}`], {
 				covered_by: read.wildcard.name,
 			});
 		}
 		const existing = [
-			["A", read.a],
-			["AAAA", read.aaaa],
-			["CNAME", read.cname],
+			["A", read.record?.values],
+			["AAAA", read.aaaa?.values],
+			["CNAME", read.alias ? [read.alias.target] : undefined],
 		]
-			.filter(([, record]) => record !== null)
-			.map(([type, record]) => ({ type, values: record.values.map(String) }));
+			.filter(([, values]) => Array.isArray(values))
+			.map(([type, values]) => ({ type, values: values.map(String) }));
 		return {
 			...plan,
 			available: true,
@@ -365,7 +370,10 @@ const createHostDnsRecords = ({
 		};
 	};
 
-	const publicPlan = ({ internal: _internal, ...plan }) => plan;
+	const publicPlan = ({ internal: _internal, failed: _failed, ...plan }) => ({
+		...plan,
+		covered_by: plan.covered_by === "" ? null : plan.covered_by,
+	});
 
 	const overrides = (host) => (host?.locations ?? []).some(overridesAcmeChallenge);
 
@@ -377,13 +385,6 @@ const createHostDnsRecords = ({
 	const remember = (name, address, outcome) => {
 		if (reachCache.size >= MAX_REACH_ENTRIES) reachCache.delete(reachCache.keys().next().value);
 		reachCache.set(`${name}|${address}`, { at: clock.now(), outcome });
-	};
-
-	const runProbe = async ({ name, host, address }) => {
-		const outcome = await probe({ name, address, overridesChallenge: overrides(host) });
-		const done = { result: outcome.result, port: outcome.port ?? null, detail: outcome.detail ?? null };
-		if (address !== null) remember(name, address, done);
-		return done;
 	};
 
 	/** The row of a host the user may see, with the host's manage right; 404 otherwise */
@@ -414,73 +415,92 @@ const createHostDnsRecords = ({
 	};
 
 	/**
-	 * Deletes, at the provider, the addresses a created row wrote; the row's lock is held by the caller. Each address
-	 * deleted is cleared on the row at once, so a later try deletes only what is left.
+	 * Deletes, at the provider, each address a created row wrote, every family with its own value (a provider's
+	 * record id of one family is never handed to the other: none is passed). A deleted address is cleared on the row
+	 * at once, so a later try deletes only what is left; an address the provider holds another value for is kept
+	 * there (and on the row). The row's lock is held by the caller.
 	 *
-	 * @throws  {Error}  the scrubbed failure of the first address that could not be deleted
+	 * @returns {Promise<{ results: Array<{ type, value, outcome }>, error: String|null }>}  outcome gone, changed or
+	 *          failed; error the scrubbed message of the first failure (the other families are not tried after it)
 	 */
 	const deleteWritten = async (row) => {
-		const units = Object.entries(typeOfFamily).filter(([, key]) => typeof row[key] === "string" && row[key] !== "");
-		if (units.length === 0) return;
+		const units = FAMILIES.filter(([, key]) => typeof row[key] === "string" && row[key] !== "");
+		const done = [];
+		if (units.length === 0) return { results: done, error: null };
 		const credentialRow = await dnsCredentialModel.query().findById(row.dns_credential_id);
 		const provider = credentialRow ? providerFor(credentialRow.provider) : null;
-		if (!isSupported(provider)) throw new Error("The DNS credential of this record cannot delete it");
-		const { fields, secrets } = openCredentialRow(credentialRow);
-		const fetch = makeFetch(secrets);
-		for (const [type, key] of units) {
-			try {
-				// gone, or changed (another value is another client's and is kept): either way NPMpro's record is not there
-				await provider.remove({
-					zone: row.zone,
-					name: row.name,
-					type,
-					value: row[key],
-					fields,
-					fetch,
-					meta: { ...row.meta },
-				});
-			} catch (error) {
-				throw new Error(scrubSecrets(error?.message ?? "The delete failed", secrets));
-			}
-			await managedRows.patch(row.id, { [key]: null });
+		if (!isSupported(provider)) {
+			return { results: done, error: "The DNS credential of this record cannot delete it" };
 		}
+		const { fields, secrets } = openCredentialRow(credentialRow);
+		const fetch = fetchFor(secrets);
+		const { record_id: _recordId, ...meta } = row.meta ?? {};
+		for (const [type, key] of units) {
+			const value = row[key];
+			let removed;
+			try {
+				removed = await provider.remove({ zone: row.zone, name: row.name, type, value, fields, fetch, meta });
+			} catch (error) {
+				done.push({ type, value, outcome: "failed" });
+				return { results: done, error: scrubSecrets(error?.message ?? "The delete failed", secrets) };
+			}
+			const outcome = removed?.changed === true ? "changed" : "gone";
+			done.push({ type, value, outcome });
+			if (outcome === "gone") await managedRows.patch(row.id, { [key]: null });
+		}
+		return { results: done, error: null };
+	};
+
+	/** The orphan patch of a row whose delete failed or found another value: kept, never run by the engine */
+	const orphanPatch = (row, message, note) => {
+		const { paused_by_host: _paused, error_i18n: _key, error_values: _values, ...meta } = row.meta ?? {};
+		return {
+			enabled: false,
+			state: "failed",
+			error: message,
+			failures: 0,
+			next_try_on: null,
+			meta: { ...meta, orphan: true, ...(note ? { orphan_note: note } : {}) },
+		};
 	};
 
 	/**
-	 * Releases a row (an unticked or removed name, a deleted host): a created row's record is deleted at the provider
-	 * first, an adopted one (and a name that held another record) is left there. A failed provider delete keeps the
-	 * row as an orphan, never stopping the host's change. Runs under the row's lock, the provider work as the system
-	 * (the credential, whoever owns it), audited with the user.
+	 * Deletes a created row's records at the provider and settles the row: removed when every address is gone,
+	 * else an orphan (a failure, or another value at the provider: "changed", which is kept there). Audited with
+	 * every result. The row's lock is held by the caller.
+	 *
+	 * @returns {Promise<boolean>}  whether the row was removed
+	 */
+	const settleDelete = async (access, row, action) => {
+		const { results: done, error } = await deleteWritten(row);
+		const changed = done.some((one) => one.outcome === "changed");
+		if (error !== null || changed) {
+			const message = error ?? CHANGED_AT_PROVIDER;
+			await managedRows.patch(row.id, orphanPatch(row, message, error === null ? "changed" : null));
+			await audit(access, "orphaned", row, { results: done, error: message });
+			return false;
+		}
+		await managedRows.remove(row.id);
+		await audit(access, action, row, { at_provider: true, results: done });
+		return true;
+	};
+
+	/**
+	 * Releases a row (an unticked or removed name, a deleted host): a created row's records are deleted at the
+	 * provider first (only the addresses it wrote); an adopted one, and a name that held another record, is left
+	 * there. A failed or refused delete keeps the row as an orphan, never stopping the host's change. Runs under the
+	 * row's lock, the provider work as the system (the credential, whoever owns it), audited with the user.
 	 */
 	const release = (access, id) =>
 		recordLock(id, async () => {
 			const row = await managedRows.get(id);
 			if (!row) return;
-			const atProvider = row.origin === "created" && !row.meta?.exists;
-			if (atProvider) {
-				try {
-					await deleteWritten(row);
-				} catch (error) {
-					const {
-						paused_by_host: _paused,
-						error_i18n: _key,
-						error_values: _values,
-						...meta
-					} = row.meta ?? {};
-					await managedRows.patch(id, {
-						enabled: false,
-						state: "failed",
-						error: error.message,
-						failures: 0,
-						next_try_on: null,
-						meta: { ...meta, orphan: true },
-					});
-					await audit(access, "orphaned", row, { error: error.message });
-					return;
-				}
+			if (row.origin === "created") {
+				await settleDelete(access, row, "removed");
+				return;
 			}
 			await managedRows.remove(id);
-			await audit(access, "removed", row, { at_provider: atProvider });
+			await audit(access, "removed", row, { at_provider: false });
 		});
 
 	/** An orphan of this host whose name is ticked again: its record is NPMpro's, so the row is simply resumed */
@@ -488,7 +508,7 @@ const createHostDnsRecords = ({
 		recordLock(row.id, async () => {
 			const current = await managedRows.get(row.id);
 			if (current?.meta?.orphan !== true) return;
-			const { orphan: _orphan, ...meta } = current.meta;
+			const { orphan: _orphan, orphan_note: _note, ...meta } = current.meta;
 			await managedRows.patch(row.id, {
 				enabled: true,
 				state: "pending",
@@ -500,36 +520,29 @@ const createHostDnsRecords = ({
 			await audit(access, "resumed", row);
 		});
 
-	/** A tick of a name that has no row of this host: the checks, the reach, the read, then the row */
-	const tick = async (access, { hostType, host, entry, zones, addresses }) => {
+	/**
+	 * The job's part of a tick: the checks that read, the coverage read, then the row (and the engine's write)
+	 *
+	 * @returns {Promise<Object|null>}  the name's answer when no row was made, else null
+	 */
+	const tick = async (access, { hostType, host, entry, reach, reader }) => {
 		const { name } = entry;
-		if (access.level("certificates") !== "manage") return refused(name, "unavailable", REASONS.noRight);
-		if (host.enabled === false) return refused(name, "unavailable", REASONS.hostDisabled);
-		const plan = await inspect(access, { hostType, hostId: host.id, name, ipv6: entry.ipv6, zones, addresses });
+		const plan = await inspect(access, { hostType, hostId: host.id, name, ipv6: entry.ipv6, reader });
 		if (plan.covered_by !== null) {
-			return answer(name, "covered", { reason: plan.reason, message: plan.message, covered_by: plan.covered_by });
+			return answer(name, "covered", {
+				reason: plan.reason,
+				message: plan.message,
+				covered_by: plan.covered_by === "" ? null : plan.covered_by,
+			});
 		}
 		if (!plan.available) {
-			const state = plan.reason === REASONS.readFailed[0] ? "failed" : "unavailable";
-			return answer(name, state, { reason: plan.reason, message: plan.message });
-		}
-
-		// reach (D28, soft): a proof lets the tick stand, anything else needs the user's "I checked from outside"
-		const reach = remembered(name, plan.address) ?? (await runProbe({ name, host, address: plan.address }));
-		const confirmed = entry.reach_confirmed === true;
-		if (reach.result !== "reachable" && !confirmed) {
-			return refused(name, "unavailable", REASONS.reach, { reach });
+			return answer(name, plan.failed ? "failed" : "unavailable", { reason: plan.reason, message: plan.message });
 		}
 		const { read, provider, credentialRow, withIpv6 } = plan.internal;
 		const ipv6 = withIpv6 ? plan.ipv6_address : null;
 		const verdict = decide(read, { ipv4: plan.address, ipv6 });
 		const meta = {
-			reach: {
-				...reach,
-				confirmed,
-				checked_on: new Date(clock.now()).toISOString(),
-				user_id: userIdOf(access),
-			},
+			reach: { ...reach, checked_on: new Date(clock.now()).toISOString(), user_id: userIdOf(access) },
 		};
 		const values = {
 			owner_user_id: credentialRow.owner_user_id,
@@ -548,6 +561,8 @@ const createHostDnsRecords = ({
 		};
 		if (verdict.kind === "create") {
 			Object.assign(values, { origin: "created", enabled: true, state: "pending", ttl: plan.ttl });
+			// only ever created: a record that appears at the name before the first write makes the row "exists"
+			meta.create_only = true;
 			// Cloudflare's Proxied box is used once, by the create (R13); a later write never changes the flag
 			if (entry.proxied === true && provider.proxied === true) meta.proxied_on_create = true;
 		} else if (verdict.kind === "adopt") {
@@ -556,10 +571,10 @@ const createHostDnsRecords = ({
 				enabled: true,
 				state: "ok",
 				last_ipv4: plan.address,
-				last_ipv6: ipv6 !== null && judge(read.aaaa, ipv6) === "equal" ? ipv6 : null,
+				last_ipv6: ipv6,
 				last_checked_on: new Date(clock.now()),
 			});
-			if (typeof read.a?.proxied === "boolean") meta.proxied_a = read.a.proxied;
+			if (typeof read.record?.proxied === "boolean") meta.proxied_a = read.record.proxied;
 		} else {
 			Object.assign(values, { origin: null, enabled: false, state: "disabled" });
 			meta.exists = { found: verdict.found, adopt_allowed: verdict.adopt_allowed };
@@ -584,17 +599,51 @@ const createHostDnsRecords = ({
 		return null;
 	};
 
+	/** Runs job after the host's earlier jobs; the names it works on show pending until it ends */
+	const schedule = (key, names, job) => {
+		const counts = working.get(key) ?? new Map();
+		working.set(key, counts);
+		for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
+		const tail = (chains.get(key) ?? Promise.resolve())
+			.then(job)
+			.catch((error) => log?.warn?.(`Host DNS records: the job of ${key} failed: ${error?.message}`))
+			.finally(() => {
+				for (const name of names) {
+					const left = (counts.get(name) ?? 1) - 1;
+					if (left > 0) counts.set(name, left);
+					else counts.delete(name);
+				}
+				if (chains.get(key) === tail) chains.delete(key);
+			});
+		chains.set(key, tail);
+	};
+
+	const resultsOf = (key) => {
+		if (!results.has(key)) results.set(key, new Map());
+		return results.get(key);
+	};
+
 	/** The name states of a host: its names in order, then rows of names it no longer has (orphans) */
-	const statesOf = async (access, hostType, host, transient = new Map()) => {
+	const statesOf = async (access, hostType, host) => {
+		const key = hostKey(hostType, host.id);
 		const rows = await managedRows.ofHost(hostType, host.id);
 		const names = namesOf(host);
+		const busy = working.get(key) ?? new Map();
+		const last = results.get(key) ?? new Map();
 		const list = names.map((name) => {
-			if (transient.has(name)) return transient.get(name);
 			const row = rows.find((one) => one.name === name);
+			if (busy.has(name)) return answer(name, "pending", row ? rowBase(row) : {});
+			if (last.has(name)) return last.get(name);
 			return row ? answerOfRow(row, access) : answer(name, "off");
 		});
 		for (const row of rows) if (!names.includes(row.name)) list.push(answerOfRow(row, access));
 		return list;
+	};
+
+	const hasOption = async (hostType, host) => {
+		const key = hostKey(hostType, host.id);
+		if ((working.get(key)?.size ?? 0) > 0 || (results.get(key)?.size ?? 0) > 0) return true;
+		return (await managedRows.ofHost(hostType, host.id)).length > 0;
 	};
 
 	const dedupe = (wanted) => {
@@ -614,9 +663,42 @@ const createHostDnsRecords = ({
 		return row;
 	};
 
+	/**
+	 * The part of a tick a save decides at once, without the provider: the name, the rights, the host, the public
+	 * address and the reach (a probe of the last 10 minutes or the user's confirmation). Never probes.
+	 *
+	 * @returns {Promise<{ refusal: Object|null, reach: Object|null }>}
+	 */
+	const precheck = async (access, { host, entry, addresses }) => {
+		const { name } = entry;
+		const refusal = nameRefusal(name);
+		if (refusal !== null) return { refusal: refused(name, "unavailable", refusal) };
+		if (access.level("certificates") !== "manage") {
+			return { refusal: refused(name, "unavailable", REASONS.noRight) };
+		}
+		if (host.enabled === false) return { refusal: refused(name, "unavailable", REASONS.hostDisabled) };
+		const address = await addresses.ipv4();
+		if (address === null) return { refusal: refused(name, "unavailable", REASONS.noAddress) };
+		const probed = remembered(name, address);
+		const confirmed = entry.reach_confirmed === true;
+		if (!confirmed && probed?.result !== "reachable") {
+			return { refusal: refused(name, "unavailable", REASONS.reach, { reach: probed }) };
+		}
+		return {
+			refusal: null,
+			reach: {
+				result: probed?.result ?? null,
+				port: probed?.port ?? null,
+				detail: probed?.detail ?? null,
+				confirmed,
+			},
+		};
+	};
+
 	return {
 		/**
-		 * The hard checks and the coverage of a host's names, for the DNS card (reads only)
+		 * The checks and the coverage of a host's names, for the DNS card (reads the provider; the route's caller
+		 * checks the host type's right)
 		 *
 		 * @param   {Access}  access
 		 * @param   {{ hostType: String, host: Object, names?: String[] }}  options  host: the saved row or the form's
@@ -626,48 +708,43 @@ const createHostDnsRecords = ({
 		 */
 		planNames: async (access, { hostType, host, names }) => {
 			hostSection(hostType);
-			let zonesPromise = null;
-			const zones = () => {
-				zonesPromise ??= visibleZones(access);
-				return zonesPromise;
-			};
-			const addresses = addressesOnce();
+			const reader = readerFor(access);
 			const list = Array.isArray(names) ? names.map((name) => String(name).toLowerCase()) : namesOf(host);
 			const plans = [];
 			for (const name of [...new Set(list)]) {
-				plans.push(
-					publicPlan(
-						await inspect(access, { hostType, hostId: host?.id, name, ipv6: true, zones, addresses }),
-					),
-				);
+				plans.push(publicPlan(await inspect(access, { hostType, hostId: host?.id, name, ipv6: true, reader })));
 			}
 			return plans;
 		},
 
 		/**
 		 * The reach probe of one name (POST /nginx/dns-check/reach): to the confirmed public IPv4 only; the result is
-		 * kept for the save that follows
+		 * kept for 10 minutes, for the save that follows
 		 *
 		 * @returns {Promise<{ result, port, detail, address }>}
 		 */
 		reach: async (access, { hostType, host, name }) => {
 			access.can(`${hostSection(hostType)}:manage`);
 			const plain = String(name ?? "").toLowerCase();
-			if (plain.length > 253 || !PLAIN_NAME.test(plain)) {
-				throw new errs.ValidationError(REASONS.pattern[1], REASONS.pattern[0]);
-			}
+			if (nameRefusal(plain) !== null) throw new errs.ValidationError(REASONS.pattern[1], REASONS.pattern[0]);
 			const address = await addressesOnce().ipv4();
-			return { ...(await runProbe({ name: plain, host, address })), address };
+			const outcome = await probe({ name: plain, address, overridesChallenge: overrides(host) });
+			const done = { result: outcome.result, port: outcome.port ?? null, detail: outcome.detail ?? null };
+			if (address !== null) remember(plain, address, done);
+			return { ...done, address };
 		},
 
 		/**
-		 * After a host's create or update: the ticks of `wanted` and the names it dropped or the host lost. A host
-		 * with no rows and no ticks is not looked at further.
+		 * After a host's create or update. Answers at once: it never probes and never calls a provider. The ticks
+		 * refused without the provider answer now; the provider work (the releases of unticked or lost names, the
+		 * reads and rows of new ticks, the engine's write) runs afterwards as the host's job (idle() waits for it),
+		 * and its names show pending until it ends. A host with no rows and no ticks is not looked at further.
 		 *
 		 * @param   {Access}  access  the user (rights of a tick; the audit)
 		 * @param   {Object}  options
 		 * @param   {String}  options.hostType   proxy_host, redirection_host or dead_host
-		 * @param   {Object}  [options.hostBefore]  the host before the save (null for a create); not read: the host's rows tell what it had
+		 * @param   {Object}  [options.hostBefore]  the host before the save (null for a create); not read: the host's
+		 *          rows tell what it had
 		 * @param   {Object}  options.hostAfter  the saved host (id, domain_names, enabled, locations)
 		 * @param   {Array|undefined}  options.wanted  the request's npmpro_dns_records ([{ name, proxied, ipv6,
 		 *          reach_confirmed }]); undefined: the option is not changed (only names the host lost are released)
@@ -675,43 +752,89 @@ const createHostDnsRecords = ({
 		 */
 		applyHost: async (access, { hostType, hostAfter, wanted }) => {
 			hostSection(hostType);
+			const key = hostKey(hostType, hostAfter.id);
 			const rows = await managedRows.ofHost(hostType, hostAfter.id);
 			const ticks = Array.isArray(wanted) ? dedupe(wanted) : null;
-			if (rows.length === 0 && (ticks === null || ticks.size === 0)) return [];
-			const names = namesOf(hostAfter);
-			const transient = new Map();
-			// first the releases: an unticked name, or one the host no longer has
-			for (const row of rows) {
-				if (row.meta?.orphan === true) continue;
-				if (names.includes(row.name) && (ticks === null || ticks.has(row.name))) continue;
-				await release(access, row.id);
+			const busy = (working.get(key)?.size ?? 0) > 0;
+			if (rows.length === 0 && !busy && (ticks === null || ticks.size === 0)) {
+				results.delete(key);
+				return [];
 			}
-			if (ticks !== null) {
-				let zonesPromise = null;
-				const zones = () => {
-					zonesPromise ??= visibleZones(access);
-					return zonesPromise;
-				};
-				const addresses = addressesOnce();
+			const names = namesOf(hostAfter);
+			const last = resultsOf(key);
+			// a save that sets the option forgets the results of names it does not tick
+			if (ticks !== null) for (const name of [...last.keys()]) if (!ticks.has(name)) last.delete(name);
+			// the ticks of names without a row are checked now, without the provider; a refusal answers at once
+			const checked = new Map();
+			const addresses = addressesOnce();
+			for (const entry of ticks?.values() ?? []) {
+				if (!names.includes(entry.name)) continue;
+				const row = rows.find((one) => one.name === entry.name);
+				if (row) continue;
+				const check = await precheck(access, { host: hostAfter, entry, addresses });
+				checked.set(entry.name, check);
+				if (check.refusal === null) last.delete(entry.name);
+				else last.set(entry.name, check.refusal);
+			}
+			const releasing = rows
+				.filter((row) => !names.includes(row.name) || (ticks !== null && !ticks.has(row.name)))
+				.filter((row) => row.meta?.orphan !== true)
+				.map((row) => row.name);
+			const ticking = [...checked].filter(([, check]) => check.refusal === null).map(([name]) => name);
+			const resuming = rows
+				.filter((row) => row.meta?.orphan === true && ticks?.has(row.name) && names.includes(row.name))
+				.map((row) => row.name);
+			const touched = [...new Set([...releasing, ...ticking, ...resuming])];
+			if (touched.length === 0 && !busy) return await statesOf(access, hostType, hostAfter);
+
+			// the provider work, after the host's earlier jobs: decided again on the rows as they are then
+			schedule(key, touched, async () => {
+				const now = await managedRows.ofHost(hostType, hostAfter.id);
+				for (const row of now) {
+					if (row.meta?.orphan === true) continue;
+					if (names.includes(row.name) && (ticks === null || ticks.has(row.name))) continue;
+					await release(access, row.id);
+				}
+				if (ticks === null) return;
+				let reader = null;
 				for (const entry of ticks.values()) {
 					if (!names.includes(entry.name)) continue;
-					const row = rows.find((one) => one.name === entry.name);
-					if (row && row.meta?.orphan !== true) continue;
-					if (row) {
-						// an orphan of this host ticked again: needs the right of a tick, as a new one
-						if (access.level("certificates") !== "manage") {
-							transient.set(entry.name, refused(entry.name, "unavailable", REASONS.noRight));
-							continue;
-						}
-						await resume(access, row);
-						await writeNow(row.id);
+					const row = now.find((one) => one.name === entry.name);
+					if (row && row.meta?.orphan !== true) {
+						resultsOf(key).delete(entry.name);
 						continue;
 					}
-					const result = await tick(access, { hostType, host: hostAfter, entry, zones, addresses });
-					if (result !== null) transient.set(entry.name, result);
+					if (row) {
+						// an orphan of this host ticked again: needs the right of a tick, as a new one
+						if (access.level("certificates") === "manage") {
+							resultsOf(key).delete(entry.name);
+							await resume(access, row);
+							await writeNow(row.id);
+						} else resultsOf(key).set(entry.name, refused(entry.name, "unavailable", REASONS.noRight));
+						continue;
+					}
+					const check =
+						checked.get(entry.name) ?? (await precheck(access, { host: hostAfter, entry, addresses }));
+					if (check.refusal !== null) {
+						resultsOf(key).set(entry.name, check.refusal);
+						continue;
+					}
+					reader ??= readerFor(access);
+					const result = await tick(access, { hostType, host: hostAfter, entry, reach: check.reach, reader });
+					if (result === null) resultsOf(key).delete(entry.name);
+					else resultsOf(key).set(entry.name, result);
 				}
-			}
-			return await statesOf(access, hostType, hostAfter, transient);
+			});
+			return await statesOf(access, hostType, hostAfter);
+		},
+
+		/**
+		 * Resolves when the host's jobs (of saves and deletes until now) have ended; for the tests and for a caller
+		 * that wants the provider's results
+		 */
+		idle: async (hostType, hostId) => {
+			const key = hostKey(hostType, hostId);
+			while (chains.has(key)) await chains.get(key);
 		},
 
 		/** A disabled host keeps its records and pauses its rows (no provider call) */
@@ -734,7 +857,7 @@ const createHostDnsRecords = ({
 			return await statesOf(access, hostType, host);
 		},
 
-		/** An enabled host resumes its paused rows: pending, written by the next cycle */
+		/** An enabled host resumes its paused rows: pending, written by the next cycle (no provider call) */
 		onEnable: async (access, { hostType, host }) => {
 			hostSection(hostType);
 			const rows = await managedRows.ofHost(hostType, host.id);
@@ -758,20 +881,31 @@ const createHostDnsRecords = ({
 			return await statesOf(access, hostType, host);
 		},
 
-		/** A deleted host: as unticking every name (created records deleted at the provider, adopted ones released) */
+		/**
+		 * A deleted host: as unticking every name (created records deleted at the provider, adopted ones released),
+		 * as the host's job after the delete's answer. Answers the rows as they are now; the orphans it leaves are in
+		 * the Dynamic DNS list.
+		 */
 		onDelete: async (access, { hostType, host }) => {
 			hostSection(hostType);
-			for (const row of await managedRows.ofHost(hostType, host.id)) {
-				if (row.meta?.orphan !== true) await release(access, row.id);
-			}
-			return (await managedRows.ofHost(hostType, host.id)).map((row) => answerOfRow(row, access));
+			const key = hostKey(hostType, host.id);
+			const rows = (await managedRows.ofHost(hostType, host.id)).filter((row) => row.meta?.orphan !== true);
+			results.delete(key);
+			if (rows.length === 0) return [];
+			schedule(
+				key,
+				rows.map((row) => row.name),
+				async () => {
+					for (const row of rows) await release(access, row.id);
+				},
+			);
+			return rows.map((row) => answer(row.name, "pending", rowBase(row)));
 		},
 
 		/** The name states of a saved host (expand=dns_records); [] for a host without the option */
 		statesOf: async (access, { hostType, host }) => {
 			hostSection(hostType);
-			const rows = await managedRows.ofHost(hostType, host.id);
-			return rows.length === 0 ? [] : await statesOf(access, hostType, host);
+			return (await hasOption(hostType, host)) ? await statesOf(access, hostType, host) : [];
 		},
 
 		/**
@@ -791,7 +925,7 @@ const createHostDnsRecords = ({
 						"error.host-dns-adopt-refused",
 					);
 				}
-				const { exists: _exists, ...meta } = current.meta;
+				const { exists: _exists, create_only: _once, ...meta } = current.meta;
 				await managedRows.patch(id, {
 					origin: "adopted",
 					enabled: true,
@@ -837,15 +971,7 @@ const createHostDnsRecords = ({
 			}
 			await recordLock(id, async () => {
 				const row = await managedRows.get(id);
-				if (row?.meta?.orphan !== true) return;
-				try {
-					await deleteWritten(row);
-				} catch (error) {
-					await managedRows.patch(id, { error: error.message });
-					return;
-				}
-				await managedRows.remove(id);
-				await audit(access, "removed", row, { at_provider: true });
+				if (row?.meta?.orphan === true) await settleDelete(access, row, "removed");
 			});
 			const left = await managedRows.get(id);
 			return left ? answerOfRow(left, access) : answer(visible.name, "off");

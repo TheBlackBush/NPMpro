@@ -54,7 +54,7 @@ const publicView = (entry) => ({
 
 const namesOf = (row) => [...new Set((Array.isArray(row.domain_names) ? row.domain_names : []).map(String))];
 
-/** the zones of the credentials the user may see, with their credential ids */
+/** the zones of the credentials the user may see, with their credential ids (also the host record option's) */
 const loadZones = async (access) => {
 	const query = dnsDomainModel
 		.query()
@@ -85,11 +85,25 @@ class ReadSkipped extends Error {
  * is already here on a provider whose answers are not the record (only Cloudflare is read always). { skipped } when
  * the request's reads are used up or the credential answered 429: the name keeps its DNS answer.
  *
+ * The host record option (host-dns-record.js) reads through the same reader, with withAaaa (the AAAA at the name
+ * too, when its box is ticked) and dnsHere false.
+ *
  * @param   {Access}    access
  * @param   {Function}  limit   the request's concurrency limit
  * @param   {AbortSignal}  signal  the request's deadline
+ * @param   {Object}    [deps]  the providers and their fetch (a test's fakes)
+ * @param   {Function}  [deps.providerFor]  (credential provider) -> the provider with read and write, or null
+ * @param   {Function}  [deps.fetchFor]     (secrets, deadline) -> the guarded fetch handed to a provider
  */
-const createCoverage = (access, limit, signal) => {
+const createCoverage = (
+	access,
+	limit,
+	signal,
+	{
+		providerFor = updaterFor,
+		fetchFor = (secrets, deadline) => (url, options) => providerFetch(url, { ...options, secrets, deadline }),
+	} = {},
+) => {
 	const manage = access.level("certificates") === "manage";
 	let zones = null;
 	const credentials = new Map();
@@ -131,7 +145,7 @@ const createCoverage = (access, limit, signal) => {
 		return metas.get(key);
 	};
 
-	return async (name, { dnsHere }) => {
+	return async (name, { dnsHere, withAaaa = false }) => {
 		if (!manage) return null;
 		zones ??= loadZones(access);
 		const host = bareName(name);
@@ -139,7 +153,7 @@ const createCoverage = (access, limit, signal) => {
 		if (cover === null || cover.credentialIds.length !== 1) return null;
 		const credentialId = cover.credentialIds[0];
 		const row = await credentialOf(credentialId);
-		const provider = updaterFor(row?.provider);
+		const provider = providerFor(row?.provider);
 		if (provider === null) return null;
 		if (dnsHere && provider.proxied !== true) return null;
 
@@ -153,7 +167,7 @@ const createCoverage = (access, limit, signal) => {
 			return { record: null, wildcard: null, error: UNREADABLE };
 		}
 		const deadline = AbortSignal.any([signal, AbortSignal.timeout(PROVIDER_DEADLINE_MS)]);
-		const fetch = (url, options) => providerFetch(url, { ...options, secrets, deadline });
+		const fetch = fetchFor(secrets, deadline);
 		const base = { zone: cover.zone, fields, fetch };
 		const read = async (readName, type = "A") => {
 			const meta = await metaOf(credentialId, provider, base);
@@ -161,8 +175,14 @@ const createCoverage = (access, limit, signal) => {
 		};
 		try {
 			const record = await read(host);
-			if (record !== null)
-				return { record: { values: record.values, proxied: record.proxied === true }, wildcard: null };
+			const aaaa = withAaaa ? await read(host, "AAAA") : null;
+			if (record !== null || aaaa !== null) {
+				return {
+					record: record === null ? null : { values: record.values, proxied: record.proxied === true },
+					...(withAaaa ? { aaaa: aaaa === null ? null : { values: aaaa.values } } : {}),
+					wildcard: null,
+				};
+			}
 			if (provider.aliases === true) {
 				const cname = await read(host, "CNAME");
 				const target = cname === null ? null : bareName(cname.values[0]);
@@ -336,4 +356,5 @@ const internalDnsCheck = {
 	clearHost: (type, id) => hostCheckCache.clearHost(type, id),
 };
 
+export { createCoverage, loadZones };
 export default internalDnsCheck;

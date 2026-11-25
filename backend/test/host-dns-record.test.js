@@ -33,19 +33,21 @@ const fake = {
 	calls: { read: 0, write: 0, remove: 0 },
 	writes: [],
 	removes: [],
-	fail: { write: false, remove: false },
+	fail: { write: false, remove: false, read429: false },
+	ids: 0,
 	reset() {
 		this.calls = { read: 0, write: 0, remove: 0 };
 		this.writes = [];
 		this.removes = [];
-		this.fail = { write: false, remove: false };
+		this.fail = { write: false, remove: false, read429: false };
 		provider.minTtl = 60;
 	},
 	total() {
 		return this.calls.read + this.calls.write + this.calls.remove;
 	},
 	set(name, type, values, extra = {}) {
-		this.records.set(`${name}|${type}`, { values, ttl: 120, proxied: false, ...extra });
+		this.ids += 1;
+		this.records.set(`${name}|${type}`, { id: `rec${this.ids}`, values, ttl: 120, proxied: false, ...extra });
 	},
 	get(name, type) {
 		return this.records.get(`${name}|${type}`) ?? null;
@@ -64,10 +66,13 @@ const provider = {
 	minTtl: 60,
 	read({ name, type }) {
 		fake.calls.read += 1;
+		if (fake.fail.read429) {
+			return Promise.reject(new DdnsProviderError({ providerStatus: 429, code: "rate", message: "HTTP 429" }));
+		}
 		const found = fake.get(name, type);
 		return Promise.resolve(
 			found
-				? { values: [...found.values], ttl: found.ttl, proxied: found.proxied, meta: { record_id: "r1" } }
+				? { values: [...found.values], ttl: found.ttl, proxied: found.proxied, meta: { record_id: found.id } }
 				: null,
 		);
 	},
@@ -80,7 +85,8 @@ const provider = {
 		fake.set(name, type, [ip], { ttl: ttl ?? old?.ttl ?? 1, proxied: old?.proxied ?? proxied });
 		return Promise.resolve({ meta: {}, created: !existing });
 	},
-	remove({ name, type, value }) {
+	// as Cloudflare: a stored record id that is not the found record's means another client's record (changed)
+	remove({ name, type, value, meta }) {
 		fake.calls.remove += 1;
 		fake.removes.push({ name, type, value });
 		if (fake.fail.remove) {
@@ -88,7 +94,7 @@ const provider = {
 		}
 		const found = fake.get(name, type);
 		if (found === null) return Promise.resolve({ gone: true });
-		if (found.values.length !== 1 || found.values[0] !== value)
+		if (found.values.length !== 1 || found.values[0] !== value || (meta?.record_id && meta.record_id !== found.id))
 			return Promise.resolve({ gone: false, changed: true });
 		fake.records.delete(`${name}|${type}`);
 		return Promise.resolve({ gone: true });
@@ -111,7 +117,7 @@ const accessOf = ({ userId = 1, certificates = "manage", hosts = "manage", visib
 });
 const manager = accessOf();
 
-const makeService = () =>
+const makeService = (extra = {}) =>
 	createHostDnsRecords({
 		providerFor: (credentialProvider) => (credentialProvider === "cloudflare" ? provider : null),
 		publicAddress: (family) => {
@@ -130,6 +136,7 @@ const makeService = () =>
 		writeRecord: (id) => engine.updateRecord(id),
 		clock,
 		log: { warn: () => undefined },
+		...extra,
 	});
 
 /** A host as the host service hands it over; a real host row when the test needs one (Adopt, Leave, the label) */
@@ -153,8 +160,29 @@ const freshName = (prefix = "n") => {
 	return `${prefix}${nameCount}.${ZONE}`;
 };
 
-const apply = (host, wanted, access = manager) =>
-	service.applyHost(access, { hostType: "proxy_host", hostBefore: null, hostAfter: host, wanted });
+// a tick in these tests says "I checked from outside" unless it sets reach_confirmed itself
+const confirmedTicks = (wanted) =>
+	wanted?.map((entry) => ("reach_confirmed" in entry ? entry : { ...entry, reach_confirmed: true }));
+const settle = (host) => service.idle("proxy_host", host.id);
+const runEngine = (id) => engine.updateRecord(id);
+const hostStates = (host, access = manager) => service.statesOf(access, { hostType: "proxy_host", host });
+/** A save: its answer comes at once; the host's job is then waited for and the states read back */
+const apply = async (host, wanted, access = manager) => {
+	await service.applyHost(access, {
+		hostType: "proxy_host",
+		hostBefore: null,
+		hostAfter: host,
+		wanted: confirmedTicks(wanted),
+	});
+	await service.idle("proxy_host", host.id);
+	return await hostStates(host, access);
+};
+/** A host's delete and its job; the states left (orphans) */
+const deleteHost = async (host) => {
+	await service.onDelete(manager, { hostType: "proxy_host", host });
+	await service.idle("proxy_host", host.id);
+	return await hostStates(host);
+};
 const stateOf = (states, name) => states.find((one) => one.name === name);
 const rowOf = (name) => api.db("npmpro_ddns_record").where({ name }).first();
 const metaOf = async (name) => JSON.parse((await rowOf(name)).meta ?? "{}");
@@ -270,10 +298,8 @@ describe("the life cycle of a name, one transition per row", () => {
 		},
 		{
 			from: "off",
-			event: "tick, reach not confirmed",
-			setup: () => {
-				probe.result = "could-not-confirm";
-			},
+			event: "tick, reach neither proven nor confirmed",
+			tick: { reach_confirmed: false },
 			to: "unavailable",
 			reason: "error.host-dns-reach-unconfirmed",
 			calls: { write: 0, remove: 0 },
@@ -419,7 +445,6 @@ describe("the life cycle of a name, one transition per row", () => {
 	];
 
 	const noRow = new Set(["covered", "unavailable", "off"]);
-	const hostStates = (host) => service.statesOf(manager, { hostType: "proxy_host", host });
 
 	for (const row of TABLE) {
 		it(`${row.from} --${row.event}--> ${row.to}`, async () => {
@@ -429,11 +454,11 @@ describe("the life cycle of a name, one transition per row", () => {
 			await row.build?.(host, name);
 			await row.setup?.(name);
 			const start = { ...fake.calls };
-			// a tick's answer is the save's answer (a refused or covered tick keeps no row); after another event the
-			// host's states
-			const event = row.run ?? ((on, named) => apply(on, [{ name: named }]));
-			const answered = await event(host, name);
-			const states = row.run ? await hostStates(host) : answered;
+			// the states after the event and the host's job (a refused or covered tick keeps no row, only its result)
+			const event = row.run ?? ((on, named) => apply(on, [{ name: named, ...row.tick }]));
+			await event(host, name);
+			await settle(host);
+			const states = await hostStates(host);
 			const shown = stateOf(states, name) ?? { state: "off" };
 			const expected = {
 				state: row.to,
@@ -457,7 +482,9 @@ describe("the life cycle in detail", () => {
 	it("a created record: A at the public address, TTL 300, not proxied, written by the engine with a history row", async () => {
 		const name = freshName("c");
 		const host = hostOf([name, freshName("other")]);
-		const states = await apply(host, [{ name }]);
+		// the window probed the name a moment ago: the save takes that result, the box is not needed
+		assert.equal((await service.reach(manager, { hostType: "proxy_host", host, name })).result, "reachable");
+		const states = await apply(host, [{ name, reach_confirmed: false }]);
 		assert.equal(stateOf(states, name).state, "ok");
 		assert.equal(stateOf(states, name).origin, "created");
 		assert.equal(states[1].state, "off", "a name that was not ticked is not touched");
@@ -488,7 +515,7 @@ describe("the life cycle in detail", () => {
 		assert.equal(stateOf(states, name).origin, "adopted");
 		assert.equal(fake.calls.write, 0);
 		assert.equal((await rowOf(name)).ttl, null, "an existing record keeps its TTL");
-		await service.onDelete(manager, { hostType: "proxy_host", host });
+		await deleteHost(host);
 		assert.equal(fake.calls.remove, 0);
 		assert.deepEqual(fake.get(name, "A").values, [IP4]);
 		assert.equal(await rowOf(name), undefined);
@@ -559,12 +586,8 @@ describe("the life cycle in detail", () => {
 		const host = hostOf([oldName]);
 		await apply(host, [{ name: oldName }]);
 		fake.reset();
-		const states = await service.applyHost(manager, {
-			hostType: "proxy_host",
-			hostBefore: host,
-			hostAfter: { ...host, domain_names: [newName] },
-			wanted: [{ name: newName }],
-		});
+		const renamed = { ...host, domain_names: [newName] };
+		const states = await apply(renamed, [{ name: newName }]);
 		assert.deepEqual(fake.removes, [{ name: oldName, type: "A", value: IP4 }]);
 		assert.equal(fake.get(oldName, "A"), null);
 		assert.equal(stateOf(states, newName).state, "ok");
@@ -618,8 +641,17 @@ describe("the life cycle in detail", () => {
 		const host = hostOf([made, taken]);
 		await apply(host, [{ name: made }, { name: taken }]);
 		fake.reset();
-		const states = await service.onDelete(manager, { hostType: "proxy_host", host });
-		assert.deepEqual(states, []);
+		const answered = await service.onDelete(manager, { hostType: "proxy_host", host });
+		assert.deepEqual(
+			answered.map((one) => [one.name, one.state]),
+			[
+				[made, "pending"],
+				[taken, "pending"],
+			],
+		);
+		assert.equal(fake.total(), 0, "the delete answers before the provider work");
+		await service.idle("proxy_host", host.id);
+		assert.deepEqual(await hostStates(host), []);
 		assert.deepEqual(fake.removes, [{ name: made, type: "A", value: IP4 }]);
 		assert.deepEqual(fake.get(taken, "A").values, [IP4]);
 		assert.equal(await rowOf(made), undefined);
@@ -632,7 +664,7 @@ describe("the life cycle in detail", () => {
 		await apply(host, [{ name }]);
 		fake.reset();
 		fake.fail.remove = true;
-		const states = await service.onDelete(manager, { hostType: "proxy_host", host });
+		const states = await deleteHost(host);
 		assert.equal(states[0].state, "orphan");
 		assert.equal(states[0].message, "HTTP 500 at the provider");
 		const row = await rowOf(name);
@@ -826,32 +858,101 @@ describe("checks before a tick", () => {
 		assert.equal(plan.reason, "error.host-dns-no-public-address");
 	});
 
-	it("reach not proven needs the confirmation; it is stored; the window's probe is reused by the save", async () => {
-		probe.result = "could-not-confirm";
+	it("a save never probes: a probe of the last 10 minutes or the confirmation, else unavailable", async () => {
 		const name = freshName("reach");
 		const host = hostOf([name]);
-		const refused = await apply(host, [{ name }]);
+		const refused = await apply(host, [{ name, reach_confirmed: false }]);
 		assert.equal(stateOf(refused, name).state, "unavailable");
 		assert.equal(stateOf(refused, name).reason, "error.host-dns-reach-unconfirmed");
-		assert.equal(stateOf(refused, name).reach.result, "could-not-confirm");
-		assert.equal(fake.calls.write, 0);
+		assert.equal(probe.calls, 0, "the save did not probe");
+		assert.equal(fake.total(), 0);
 		assert.equal(await rowOf(name), undefined);
 
+		// the window's probe could not confirm it: still refused without the box, accepted with it
+		probe.result = "could-not-confirm";
 		const probed = await service.reach(manager, { hostType: "proxy_host", host, name });
 		assert.equal(probed.result, "could-not-confirm");
 		assert.equal(probed.address, IP4);
-		const calls = probe.calls;
+		const again = await apply(host, [{ name, reach_confirmed: false }]);
+		assert.equal(stateOf(again, name).reach.result, "could-not-confirm");
 		const states = await apply(host, [{ name, reach_confirmed: true }]);
 		assert.equal(stateOf(states, name).state, "ok");
-		assert.equal(probe.calls, calls, "the save used the probe of a moment ago");
 		const meta = await metaOf(name);
 		assert.equal(meta.reach.result, "could-not-confirm");
 		assert.equal(meta.reach.confirmed, true);
-		// ten minutes later the result is old: the next tick probes again
-		clock.at += 11 * 60_000;
+		assert.equal(probe.calls, 1);
+
+		// a proof counts for 10 minutes, then the save needs the box again
+		probe.result = "reachable";
 		const later = freshName("later");
-		await apply(hostOf([later]), [{ name: later, reach_confirmed: true }]);
-		assert.equal(probe.calls, calls + 1);
+		const laterHost = hostOf([later]);
+		await service.reach(manager, { hostType: "proxy_host", host: laterHost, name: later });
+		clock.at += 11 * 60_000;
+		const old = await apply(laterHost, [{ name: later, reach_confirmed: false }]);
+		assert.equal(stateOf(old, later).reason, "error.host-dns-reach-unconfirmed");
+		assert.equal(probe.calls, 2);
+	});
+
+	it("a save answers before any provider work: pending, then the job's result", async () => {
+		const name = freshName("now");
+		const gone = freshName("gone");
+		const host = hostOf([name, gone]);
+		await apply(host, [{ name: gone }]);
+		fake.reset();
+		const answered = await service.applyHost(manager, {
+			hostType: "proxy_host",
+			hostBefore: host,
+			hostAfter: host,
+			wanted: [{ name, reach_confirmed: true }],
+		});
+		assert.deepEqual(
+			answered.map((one) => [one.name, one.state]),
+			[
+				[name, "pending"],
+				[gone, "pending"],
+			],
+		);
+		assert.equal(fake.total(), 0, "no provider call inside the save");
+		assert.equal(probe.calls, 0, "no probe inside the save");
+		await service.idle("proxy_host", host.id);
+		assert.deepEqual(
+			(await hostStates(host)).map((one) => [one.name, one.state]),
+			[
+				[name, "ok"],
+				[gone, "off"],
+			],
+		);
+		assert.deepEqual(fake.removes, [{ name: gone, type: "A", value: IP4 }]);
+	});
+
+	it("a host's jobs run one after another", async () => {
+		const name = freshName("serial");
+		const host = hostOf([name]);
+		const order = [];
+		const write = provider.write;
+		provider.write = async (args) => {
+			order.push("write");
+			return await write(args);
+		};
+		const remove = provider.remove;
+		provider.remove = async (args) => {
+			order.push("remove");
+			return await remove(args);
+		};
+		try {
+			await service.applyHost(manager, {
+				hostType: "proxy_host",
+				hostAfter: host,
+				wanted: confirmedTicks([{ name }]),
+			});
+			await service.applyHost(manager, { hostType: "proxy_host", hostAfter: host, wanted: [] });
+			await service.idle("proxy_host", host.id);
+		} finally {
+			provider.write = write;
+			provider.remove = remove;
+		}
+		assert.deepEqual(order, ["write", "remove"]);
+		assert.equal(await rowOf(name), undefined);
 	});
 
 	it("the reach probe takes plain names and the host type's manage right", async () => {
@@ -993,5 +1094,158 @@ describe("a host's records in the Dynamic DNS list", () => {
 			internalDdnsRecord.removeAtProvider(manager, { id: row.id }),
 			(error) => error instanceof errs.ValidationError,
 		);
+	});
+});
+
+describe("never over or under another client's record", () => {
+	const auditOf = (action, name) =>
+		api
+			.db("audit_log")
+			.where({ object_type: "ddns-record", action })
+			.then((rows) => rows.map((row) => JSON.parse(row.meta)).filter((meta) => meta.name === name));
+
+	for (const [label, value] of [
+		["another address", OTHER],
+		["the wanted address", IP4],
+	]) {
+		it(`a record with ${label} that appears between the read and the write: exists, nothing written`, async () => {
+			const name = freshName("gap");
+			const host = hostOf([name]);
+			const racing = makeService({
+				writeRecord: (id) => {
+					fake.set(name, "A", [value]);
+					return runEngine(id);
+				},
+			});
+			await racing.applyHost(manager, {
+				hostType: "proxy_host",
+				hostAfter: host,
+				wanted: confirmedTicks([{ name }]),
+			});
+			await racing.idle("proxy_host", host.id);
+			const line = stateOf(await racing.statesOf(manager, { hostType: "proxy_host", host }), name);
+			assert.equal(line.state, "exists");
+			assert.equal(line.origin, null);
+			assert.equal(line.adopt_allowed, true);
+			assert.deepEqual(line.found, [{ type: "A", values: [value] }]);
+			assert.equal(fake.calls.write, 0);
+			// releasing it calls no provider: NPMpro created nothing
+			await apply(host, []);
+			assert.equal(fake.calls.remove, 0);
+			assert.deepEqual(fake.get(name, "A").values, [value]);
+		});
+	}
+
+	it("a failed create retried after a record appeared: exists, the record is not written over", async () => {
+		const name = freshName("retry");
+		const host = hostOf([name]);
+		fake.fail.write = true;
+		assert.equal(stateOf(await apply(host, [{ name }]), name).state, "failed");
+		assert.equal((await metaOf(name)).create_only, true);
+		fake.fail.write = false;
+		fake.set(name, "A", [OTHER]);
+		const writes = fake.calls.write;
+		await engine.cycle({ force: true, ids: [(await rowOf(name)).id] });
+		assert.equal(fake.calls.write, writes);
+		const line = stateOf(await hostStates(host), name);
+		assert.equal(line.state, "exists");
+		assert.deepEqual(fake.get(name, "A").values, [OTHER]);
+		assert.equal((await rowOf(name)).enabled, 0);
+	});
+
+	it("the first successful write ends create-only: later runs keep the record like any other", async () => {
+		const name = freshName("once");
+		await apply(hostOf([name]), [{ name }]);
+		assert.equal((await metaOf(name)).create_only, undefined);
+		fake.set(name, "A", [OTHER]);
+		await engine.cycle({ force: true, ids: [(await rowOf(name)).id] });
+		assert.deepEqual(fake.get(name, "A").values, [IP4], "the engine put its address back");
+	});
+
+	it("an A and AAAA row deletes each family with its own value; another value at the provider makes an orphan", async () => {
+		net.ipv6 = IP6;
+		const name = freshName("fam");
+		const host = hostOf([name]);
+		const line = stateOf(await apply(host, [{ name, ipv6: true }]), name);
+		assert.equal(line.ipv6, true);
+		// a record id stored for one family is never handed to the other's delete
+		const row = await rowOf(name);
+		const meta = { ...JSON.parse(row.meta), record_id: fake.get(name, "AAAA").id };
+		await api
+			.db("npmpro_ddns_record")
+			.where({ id: row.id })
+			.update({ meta: JSON.stringify(meta) });
+		await apply(host, []);
+		assert.deepEqual(fake.removes, [
+			{ name, type: "A", value: IP4 },
+			{ name, type: "AAAA", value: IP6 },
+		]);
+		assert.equal(fake.get(name, "A"), null);
+		assert.equal(fake.get(name, "AAAA"), null);
+		assert.equal(await rowOf(name), undefined);
+		assert.deepEqual((await auditOf("removed", name))[0].results, [
+			{ type: "A", value: IP4, outcome: "gone" },
+			{ type: "AAAA", value: IP6, outcome: "gone" },
+		]);
+
+		// someone changed the A at the provider: it stays there, the row stays as an orphan with a note
+		const changed = freshName("chg");
+		const other = hostOf([changed]);
+		await apply(other, [{ name: changed }]);
+		fake.set(changed, "A", [OTHER]);
+		const states = await apply(other, []);
+		assert.equal(stateOf(states, changed).state, "orphan");
+		assert.deepEqual(fake.get(changed, "A").values, [OTHER]);
+		assert.equal((await metaOf(changed)).orphan_note, "changed");
+		assert.deepEqual((await auditOf("orphaned", changed))[0].results, [
+			{ type: "A", value: IP4, outcome: "changed" },
+		]);
+	});
+
+	it("a set present for one family only is exists, not adopted", async () => {
+		net.ipv6 = IP6;
+		const name = freshName("half");
+		fake.set(name, "A", [IP4]);
+		const line = stateOf(await apply(hostOf([name]), [{ name, ipv6: true }]), name);
+		assert.equal(line.state, "exists");
+		assert.equal(line.adopt_allowed, true);
+		assert.deepEqual(line.found, [{ type: "A", values: [IP4] }]);
+		assert.equal(fake.calls.write, 0);
+	});
+
+	it("a provider read the shared reader skipped (429) is failed; nothing is made", async () => {
+		const name = freshName("busy");
+		fake.fail.read429 = true;
+		const line = stateOf(await apply(hostOf([name]), [{ name }]), name);
+		assert.equal(line.state, "failed");
+		assert.equal(line.reason, "error.host-dns-read-skipped");
+		assert.equal(await rowOf(name), undefined);
+		assert.equal(fake.calls.write, 0);
+	});
+
+	it("another owner's covering record is not named", async () => {
+		const name = freshName("hidden");
+		const owner = await api.limited({ visibility: "user", certificates: "manage" });
+		await api.db("npmpro_ddns_record").insert({
+			owner_user_id: owner.user.id,
+			dns_credential_id: null,
+			provider: "custom",
+			name,
+			zone: "",
+			kind: "address",
+			ip_version: "ipv4",
+			enabled: true,
+			state: "pending",
+			failures: 0,
+			created_on: "2026-11-25 10:00:00",
+			modified_on: "2026-11-25 10:00:00",
+		});
+		const own = accessOf({ visibility: "user" });
+		const [plan] = await service.planNames(own, { hostType: "proxy_host", host: hostOf([name]) });
+		assert.equal(plan.reason, "host-dns.covered-by-other");
+		assert.equal(plan.covered_by, null);
+		assert.equal(plan.message, "Covered by another record");
+		const [seen] = await service.planNames(manager, { hostType: "proxy_host", host: hostOf([name]) });
+		assert.equal(seen.covered_by, name);
 	});
 });
