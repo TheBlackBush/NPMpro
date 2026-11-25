@@ -843,11 +843,21 @@ describe("action events from the audit hook", () => {
 			action: "move-failed",
 			object_type: "database",
 			object_id: 0,
-			meta: { name: "pg", step: "copy", error: "boom" },
+			meta: {
+				name: "postgres db:5432/npmpro",
+				from: "sqlite /data/npmpro/database.sqlite",
+				step: "copy",
+				error: "boom",
+			},
 		});
 		await internalAuditLog.add(null, { user_id: 1, action: "updated", object_type: "setting", meta: { id: "x" } });
 		await waitFor(2);
 		assert.deepEqual(seen.map((one) => one.type).sort(), ["backup.restored", "database.move_failed"]);
+		assert.deepEqual(seen.find((one) => one.type === "database.move_failed").data, {
+			from: "sqlite /data/npmpro/database.sqlite",
+			to: "postgres db:5432/npmpro",
+			error: "boom",
+		});
 		assert.deepEqual(seen.find((one) => one.type === "backup.restored").data.types, ["hosts", "certificates"]);
 		assert.doesNotMatch(JSON.stringify(seen), PASSPHRASE);
 	});
