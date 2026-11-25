@@ -1,0 +1,87 @@
+{
+	"operationId": "removeHostDnsRecordAtProvider",
+	"summary": "Delete an orphan record at the provider again",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "recordID",
+			"description": "ID of the dynamic DNS record of a host name, as the list shows it",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"required": true,
+			"example": 12
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The name state after: `off` once deleted, else `orphan` with the new error",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"name": "app.example.com",
+								"state": "off",
+								"origin": null,
+								"record_id": null,
+								"ipv6": null,
+								"message": null,
+								"reason": null,
+								"covered_by": null,
+								"found": null,
+								"adopt_allowed": null
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../../components/host-dns-record-state.json"
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "The record is not an orphan (`error.ddns-not-orphan`)",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"403": {
+			"description": "The user lacks a needed right",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"404": {
+			"description": "The record or its host does not exist or the user may not see it",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/error.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "A record NPMpro made for a host stayed at the provider because its delete failed (an orphan). This tries the delete again for each address left; on success the row is removed. When the provider now holds another value than the one NPMpro wrote, that record is left there and the row stays an orphan with a note.\n\nNeeds: Certificates manage, the credential visible"
+}

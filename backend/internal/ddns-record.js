@@ -128,6 +128,8 @@ const HOST_MODELS = {
 	dead_host: deadHostModel,
 };
 
+const HOST_SECTIONS = { proxy_host: "proxy_hosts", redirection_host: "redirection_hosts", dead_host: "dead_hosts" };
+
 const hostKey = (hostType, hostId) => `${hostType}:${hostId}`;
 
 /** A record made through a host's DNS option: it belongs to that host and changes only through it */
@@ -140,14 +142,19 @@ const isOrphan = (row) => isManaged(row) && row.meta?.orphan === true;
  * The label of each host the rows belong to (its first name), by `host_type:host_id`; a host that is gone has none
  *
  * @param   {Object[]}  rows
+ * @param   {Access}  [access]  the user: a host type they may not view, or a host they may not see, has no label
  * @returns {Promise<Map<String, String>>}
  */
-const hostLabelsOf = async (rows) => {
+const hostLabelsOf = async (rows, access) => {
 	const labels = new Map();
 	for (const [hostType, model] of Object.entries(HOST_MODELS)) {
+		// the label is a host's name: only for a user who may view that host type, and only the hosts they may see
+		if (access && access.level(HOST_SECTIONS[hostType]) === "hidden") continue;
 		const ids = [...new Set(rows.filter((row) => row.host_type === hostType).map((row) => row.host_id))];
 		if (ids.length === 0) continue;
-		for (const host of await model.query().whereIn("id", ids).select("id", "domain_names")) {
+		const hosts = model.query().whereIn("id", ids).select("id", "domain_names");
+		if (access && access.visibility !== "all") hosts.where("owner_user_id", access.token.getUserId(1));
+		for (const host of await hosts) {
 			const first = Array.isArray(host.domain_names) ? host.domain_names[0] : null;
 			if (typeof first === "string") labels.set(hostKey(hostType, host.id), first);
 		}
@@ -198,7 +205,7 @@ const toPublic = (row, access, labels) => {
 };
 
 /** toPublic of one row, with its host label */
-const publicOf = async (row, access) => toPublic(row, access, await hostLabelsOf([row]));
+const publicOf = async (row, access) => toPublic(row, access, await hostLabelsOf([row], access));
 
 /** A user's change or delete of a record that belongs to a host: refused, it changes only through the host */
 const assertNotManaged = (row) => {
@@ -689,7 +696,7 @@ const internalDdnsRecord = {
 		}
 		if (expandOf(expand)) rows.withGraphFetched(expandOf(expand));
 		const found = await rows;
-		const labels = await hostLabelsOf(found);
+		const labels = await hostLabelsOf(found, access);
 		return found.map((row) => toPublic(row, access, labels));
 	},
 

@@ -281,6 +281,9 @@
 						},
 						"npmpro_page_maintenance_html": {
 							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_page_maintenance_html"
+						},
+						"npmpro_dns_records": {
+							"$ref": "../../../../common.json#/properties/npmpro_dns_records"
 						}
 					}
 				},

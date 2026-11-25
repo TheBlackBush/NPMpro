@@ -1,0 +1,87 @@
+{
+	"operationId": "leaveHostDnsRecord",
+	"summary": "Leave a host name's record alone",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "recordID",
+			"description": "ID of the dynamic DNS record of a host name, as the list shows it",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"required": true,
+			"example": 12
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The name state after: `off`",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"name": "app.example.com",
+								"state": "off",
+								"origin": null,
+								"record_id": null,
+								"ipv6": null,
+								"message": null,
+								"reason": null,
+								"covered_by": null,
+								"found": null,
+								"adopt_allowed": null
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../../components/host-dns-record-state.json"
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "The record is not a name that holds another record (`error.host-dns-leave-refused`)",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"403": {
+			"description": "The user lacks a needed right",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"404": {
+			"description": "The record or its host does not exist or the user may not see it",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/error.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "A name of a host held another record, so nothing was written. This removes the record row and leaves the name as it is at the provider; the name is no longer ticked.\n\nNeeds: the manage right of the record's host type"
+}

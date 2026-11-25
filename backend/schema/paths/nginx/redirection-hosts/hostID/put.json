@@ -183,6 +183,9 @@
 						},
 						"npmpro_propagation_seconds": {
 							"$ref": "../../../../components/certificate-object.json#/properties/npmpro_propagation_seconds"
+						},
+						"npmpro_dns_records": {
+							"$ref": "../../../../common.json#/properties/npmpro_dns_records"
 						}
 					}
 				},

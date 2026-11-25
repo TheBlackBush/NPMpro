@@ -106,12 +106,13 @@ router.use("/api/monitoring", monitoringRoutes);
 router.use("/api/settings", settingsRoutes);
 router.use("/api/version", versionRoutes);
 const PLAIN_EXPAND = ["owner", "certificate"];
+const WITH_DNS_EXPAND = [...PLAIN_EXPAND, "dns_records"];
 router.use(
 	"/api/nginx/proxy-hosts",
 	hostRouter({
 		internal: internalProxyHost,
 		path: "/nginx/proxy-hosts",
-		expandEnum: ["owner", "access_lists", "certificate"],
+		expandEnum: ["owner", "access_lists", "certificate", "dns_records"],
 		idParam: "host_id",
 	}),
 );
@@ -120,7 +121,7 @@ router.use(
 	hostRouter({
 		internal: internalRedirectionHost,
 		path: "/nginx/redirection-hosts",
-		expandEnum: PLAIN_EXPAND,
+		expandEnum: WITH_DNS_EXPAND,
 		idParam: "host_id",
 	}),
 );
@@ -129,7 +130,7 @@ router.use(
 	hostRouter({
 		internal: internalDeadHost,
 		path: "/nginx/dead-hosts",
-		expandEnum: PLAIN_EXPAND,
+		expandEnum: WITH_DNS_EXPAND,
 		idParam: "host_id",
 	}),
 );

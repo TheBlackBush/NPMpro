@@ -711,7 +711,7 @@ const createHostDnsRecords = ({
 		 *          provider_label, address, ipv6_address, ttl, proxied_allowed, existing }]
 		 */
 		planNames: async (access, { hostType, host, names }) => {
-			hostSection(hostType);
+			access.can(`${hostSection(hostType)}:view`);
 			const reader = readerFor(access);
 			const list = Array.isArray(names) ? names.map((name) => String(name).toLowerCase()) : namesOf(host);
 			const plans = [];
@@ -719,6 +719,17 @@ const createHostDnsRecords = ({
 				plans.push(publicPlan(await inspect(access, { hostType, hostId: host?.id, name, ipv6: true, reader })));
 			}
 			return plans;
+		},
+
+		/**
+		 * The host of a reach probe: the saved row (with its locations) of a host the user may manage; 404 otherwise
+		 *
+		 * @returns {Promise<Object>}
+		 */
+		hostFor: async (access, { hostType, hostId }) => {
+			const host = await hostOf(access, hostType, hostId);
+			if (hostType !== "proxy_host") return host;
+			return await HOST_MODELS[hostType].query().findById(hostId).withGraphFetched("locations");
 		},
 
 		/**

@@ -79,6 +79,7 @@ const hostRouter = ({ internal, path, expandEnum, idParam }) => {
 			const row = await internal.get(res.locals.access, {
 				id: Number.parseInt(data[idParam], 10),
 			});
+			if (internal.addDnsRecords) await internal.addDnsRecords(res.locals.access, row);
 			res.status(200).send(withoutRelatedPageHtml(row));
 		})
 		.put(async (req, res) => {

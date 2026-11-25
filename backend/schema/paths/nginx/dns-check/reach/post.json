@@ -1,0 +1,158 @@
+{
+	"operationId": "probeHostReach",
+	"summary": "Check that a host name reaches this server",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "The name to probe",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"host_type",
+						"name"
+					],
+					"properties": {
+						"host_type": {
+							"type": "string",
+							"enum": [
+								"proxy_host",
+								"redirection_host",
+								"dead_host"
+							],
+							"description": "The host type of the name",
+							"example": "proxy_host"
+						},
+						"host_id": {
+							"type": "integer",
+							"minimum": 1,
+							"description": "The saved host the name belongs to; leave it out for a host not saved yet. A host that overrides the ACME challenge path answers `overridden`",
+							"example": 1
+						},
+						"name": {
+							"type": "string",
+							"maxLength": 255,
+							"description": "A plain host name (no wildcard, no pattern)",
+							"example": "app.example.com"
+						}
+					}
+				},
+				"example": {
+					"host_type": "proxy_host",
+					"host_id": 1,
+					"name": "app.example.com"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "The probe result",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"result": "reachable",
+								"port": 80,
+								"detail": null,
+								"address": "203.0.113.7"
+							}
+						}
+					},
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"result",
+							"port",
+							"detail",
+							"address"
+						],
+						"properties": {
+							"result": {
+								"type": "string",
+								"enum": [
+									"reachable",
+									"could-not-confirm",
+									"router-answered",
+									"no-public-address",
+									"overridden"
+								],
+								"description": "`reachable`: the request to this server's public address came back with the proof; `could-not-confirm`: no answer; `router-answered`: something other than this server answered; `no-public-address`: no public IPv4 was found; `overridden`: the host overrides the challenge path",
+								"example": "reachable"
+							},
+							"port": {
+								"type": [
+									"integer",
+									"null"
+								],
+								"description": "The port that answered (80 or 443)",
+								"example": 80
+							},
+							"detail": {
+								"type": [
+									"string",
+									"null"
+								],
+								"description": "A short note on the result",
+								"example": null
+							},
+							"address": {
+								"type": [
+									"string",
+									"null"
+								],
+								"description": "The public address that was probed",
+								"example": "203.0.113.7"
+							}
+						}
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "The name is a wildcard or a pattern, or not one of the host's names",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"403": {
+			"description": "The user may not manage this host type",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"404": {
+			"description": "The host does not exist or the user may not see it",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/error.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Writes a one-time token file under the ACME challenge path, asks this server's confirmed public IPv4 for it (port 80, then 443) with the name as Host and SNI, and removes the file. It connects only to that public address, never to a typed or resolved one. A result of the last 10 minutes lets the save of the same name follow without a second probe. It never says \"unreachable\": an answer from inside the network cannot tell.\n\nNeeds: the manage right of the host type"
+}

@@ -409,6 +409,14 @@
 			},
 			"example": [],
 			"description": "The access lists applied to the host itself, in the order they were chosen. Set npmpro_access_list_ids to change them; a request never sends this field."
+		},
+		"npmpro_dns_records": {
+			"type": "array",
+			"readOnly": true,
+			"description": "The states of the host's DNS records (the host record option), one per name, then any record row of a name the host no longer has. Present only for a host with the option (and with `expand=dns_records` in lists); a request sets the option with the field of the same name, see the request schemas.",
+			"items": {
+				"$ref": "./host-dns-record-state.json"
+			}
 		}
 	}
 }

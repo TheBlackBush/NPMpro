@@ -1,0 +1,87 @@
+{
+	"operationId": "adoptHostDnsRecord",
+	"summary": "Adopt and update a host name's record",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "recordID",
+			"description": "ID of the dynamic DNS record of a host name, as the list shows it",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"required": true,
+			"example": 12
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The name state after the write (`ok`, or `failed` with the provider's message)",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"name": "app.example.com",
+								"state": "ok",
+								"origin": "adopted",
+								"record_id": 12,
+								"ipv6": false,
+								"message": null,
+								"reason": null,
+								"covered_by": null,
+								"found": null,
+								"adopt_allowed": null
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../../components/host-dns-record-state.json"
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "The record is not a name that holds another record, or it cannot be adopted (`error.host-dns-adopt-refused`)",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"403": {
+			"description": "The user lacks a needed right",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"404": {
+			"description": "The record or its host does not exist or the user may not see it",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/error.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "A name of a host held another single address, so nothing was written. This takes the record over: the Dynamic DNS updater owns it from now on and writes the wanted address now, the old value goes into the record's history. A set with more than one value or a CNAME cannot be adopted. An adopted record is never deleted at the provider.\n\nNeeds: the manage right of the record's host type and Certificates manage, the credential visible"
+}

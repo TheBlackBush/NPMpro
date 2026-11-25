@@ -4,14 +4,39 @@ import { castJsonIfNeed } from "../lib/helpers.js";
 import { assertHostConfig } from "../lib/host-config-guard.js";
 import { uniqueTags } from "../lib/host-tags.js";
 import { auditPageHtml, withoutPageHtml } from "../lib/landing-pages/types.js";
+import { global as logger } from "../logger.js";
 import internalAuditLog from "./audit-log.js";
 import internalCertificate from "./certificate.js";
 import internalHost from "./host.js";
+import internalHostDnsRecord from "./host-dns-record.js";
 import internalNginx from "./nginx.js";
+
+const DNS_RECORDS = "dns_records";
 
 // two tags that differ only in case are one tag
 const withUniqueTags = (data) =>
 	Array.isArray(data.npmpro_tags) ? { ...data, npmpro_tags: uniqueTags(data.npmpro_tags) } : data;
+
+/**
+ * The DNS work of a host's option (npmpro_dns_records) runs after the host's save, outside its transaction, and never
+ * fails the request: an error is logged and the answer simply has no states.
+ *
+ * @returns {Promise<Object[]|null>}
+ */
+const dnsStates = async (label, work) => {
+	try {
+		return await work();
+	} catch (error) {
+		logger.warn(`Host DNS records: ${label} failed: ${error?.message}`);
+		return null;
+	}
+};
+
+/** The answer carries the name states only when the host has the option (a host without it is answered as before) */
+const withDnsStates = (row, states) => {
+	if (Array.isArray(states) && states.length > 0) row.npmpro_dns_records = states;
+	return row;
+};
 
 /** The hooks of a host with domain names; a type replaces what differs */
 const domainHooks = (model, takenType) => ({
@@ -73,7 +98,8 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 	};
 
 	const service = {
-		create: async (access, data) => {
+		create: async (access, input) => {
+			const { npmpro_dns_records: wanted, ...data } = input;
 			let thisData = flow.prepareCreate(withUniqueTags(data));
 			const createCertificate = await internalHost.checkCertificates(access, thisData);
 
@@ -90,13 +116,25 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 
 			const createdRow = await flow.insertRow(thisData);
 
-			return auditAfter(access, "created", createdRow.id, async () => {
+			const savedRow = await auditAfter(access, "created", createdRow.id, async () => {
 				const row = await service.get(access, { id: createdRow.id, expand });
 				await internalNginx.configure(model, hostType, row);
 			});
+			return withDnsStates(
+				savedRow,
+				await dnsStates("the create", () =>
+					internalHostDnsRecord.applyHost(access, {
+						hostType,
+						hostBefore: null,
+						hostAfter: savedRow,
+						wanted,
+					}),
+				),
+			);
 		},
 
-		update: async (access, data) => {
+		update: async (access, input) => {
+			const { npmpro_dns_records: wanted, ...data } = input;
 			let existingRow = flow.loadExistingFirst ? await service.get(access, { id: data.id }) : undefined;
 			let thisData = flow.prepareUpdate(withUniqueTags(data), existingRow);
 			const createCertificate = await internalHost.checkCertificates(access, thisData);
@@ -121,10 +159,21 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 			await flow.patchRow(thisData);
 			hostCheckCache.clearHost(hostType, thisData.id);
 
-			return auditAfter(access, "updated", thisData.id, async () => {
+			const savedRow = await auditAfter(access, "updated", thisData.id, async () => {
 				const row = await service.get(access, { id: thisData.id, expand });
 				await internalNginx.configure(model, hostType, row);
 			});
+			return withDnsStates(
+				savedRow,
+				await dnsStates("the update", () =>
+					internalHostDnsRecord.applyHost(access, {
+						hostType,
+						hostBefore: existingRow,
+						hostAfter: savedRow,
+						wanted,
+					}),
+				),
+			);
 		},
 
 		get: async (access, data) => {
@@ -155,13 +204,17 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 			await flow.deleteRow(row);
 			hostCheckCache.clearHost(hostType, row.id);
 
+			let states = null;
 			try {
 				await internalNginx.removeConfig(hostType, row, flow.removeOptions(row));
 			} finally {
+				states = await dnsStates("the delete", () =>
+					internalHostDnsRecord.onDelete(access, { hostType, host: row }),
+				);
 				await audit(access, "deleted", row.id, row);
 			}
 
-			return row;
+			return withDnsStates(row, states);
 		},
 
 		enable: async (access, data) => {
@@ -179,8 +232,14 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 			await model.query().where("id", row.id).patch({ enabled: 1 });
 			hostCheckCache.clearHost(hostType, row.id);
 
-			return auditAfter(access, "enabled", row.id, () =>
+			const savedRow = await auditAfter(access, "enabled", row.id, () =>
 				internalNginx.configure(model, hostType, row, { change: true }),
+			);
+			return withDnsStates(
+				savedRow,
+				await dnsStates("the enable", () =>
+					internalHostDnsRecord.onEnable(access, { hostType, host: savedRow }),
+				),
 			);
 		},
 
@@ -195,8 +254,14 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 			await model.query().where("id", row.id).patch({ enabled: 0 });
 			hostCheckCache.clearHost(hostType, row.id);
 
-			return auditAfter(access, "disabled", row.id, () =>
+			const savedRow = await auditAfter(access, "disabled", row.id, () =>
 				internalNginx.removeConfig(hostType, row, { saved: row }),
+			);
+			return withDnsStates(
+				savedRow,
+				await dnsStates("the disable", () =>
+					internalHostDnsRecord.onDisable(access, { hostType, host: savedRow }),
+				),
 			);
 		},
 
@@ -215,12 +280,28 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 				flow.applySearch(query, searchQuery);
 			}
 
-			if (expandList) query.withGraphFetched(`[${expandList.join(", ")}]`);
+			// dns_records is not a relation: the name states of each host that has the option
+			const relations = (expandList ?? []).filter((name) => name !== DNS_RECORDS);
+			if (relations.length > 0) query.withGraphFetched(`[${relations.join(", ")}]`);
 
 			// the list has no page HTML, neither its own nor that of the access lists it expands
 			query.runAfter((rows) => (Array.isArray(rows) ? rows.map(withoutPageHtml) : rows));
+			if (expandList?.includes(DNS_RECORDS)) {
+				query.runAfter(async (rows) => {
+					if (Array.isArray(rows)) for (const row of rows) await service.addDnsRecords(access, row);
+					return rows;
+				});
+			}
 
 			return query;
+		},
+
+		/** Adds the name states of the host's DNS option to a row the user may view (none for a host without it) */
+		addDnsRecords: async (access, row) => {
+			const states = await dnsStates("the read", () =>
+				internalHostDnsRecord.statesOf(access, { hostType, host: row }),
+			);
+			return withDnsStates(row, states);
 		},
 
 		getCount: (...args) => internalHost.hostCounts(model).getCount(...args),
