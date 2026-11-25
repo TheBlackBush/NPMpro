@@ -1,6 +1,7 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
 import auditLogModel from "../models/audit-log.js";
+import { fromAudit } from "./notify.js";
 
 const internalAuditLog = {
 	/**
@@ -86,15 +87,22 @@ const internalAuditLog = {
 
 		// the API token of the request (or the one given), so the log shows which token acted
 		const token = given ?? access?.apiToken ?? null;
-		return auditLogModel.query().insert({
-			user_id: entry.user_id,
-			action: entry.action,
-			object_type: entry.object_type || "",
-			object_id: entry.object_id || 0,
-			meta: entry.meta || {},
-			npmpro_api_token_id: token?.id ?? null,
-			npmpro_api_token_name: token?.name ?? null,
-		});
+		// the action events follow the row: they run after the insert, never in the caller's path, and never fail it
+		return auditLogModel
+			.query()
+			.insert({
+				user_id: entry.user_id,
+				action: entry.action,
+				object_type: entry.object_type || "",
+				object_id: entry.object_id || 0,
+				meta: entry.meta || {},
+				npmpro_api_token_id: token?.id ?? null,
+				npmpro_api_token_name: token?.name ?? null,
+			})
+			.then((row) => {
+				fromAudit(row);
+				return row;
+			});
 	},
 };
 

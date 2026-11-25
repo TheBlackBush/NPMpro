@@ -276,6 +276,8 @@ const makeProxy = async (name, extra = {}) => {
 const ADVANCED_LEAK = /secret-advanced-config-text|advanced_config/u;
 const settle = async () => (await import("../internal/host-notify.js")).settledHostReports();
 const URL_SECRETS = /pw123|abc9876/u;
+const SECRET_META = /secret-advanced-config-text|advanced_config|locations|"meta"|@/u;
+const PASSPHRASE = /secret-pass-1/u;
 const LAPI_KEY = /lapi-key-9/u;
 const NOT_STORED = /not stored/u;
 const LONG_ERROR = `nginx: [emerg] ${"x".repeat(400)}`;
@@ -283,7 +285,7 @@ const LONG_ERROR = `nginx: [emerg] ${"x".repeat(400)}`;
 describe("host config state emit points", () => {
 	it("a config error sends one event with 300 characters and no advanced config, the fix resolves it", async () => {
 		const host = await makeProxy("cfg.example.com", { advanced_config: "# secret-advanced-config-text" });
-		assert.equal(seen.length, 0);
+		assert.equal(seen.filter((one) => one.type !== "host.created").length, 0);
 		api.outside.control.failNext = LONG_ERROR;
 		const bad = await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 81 });
 		assert.equal(bad.body.npmpro_nginx_online, false, bad.text);
@@ -670,5 +672,153 @@ describe("CrowdSec state emit points", () => {
 			restore();
 			stateStore.report = original;
 		}
+	});
+});
+
+describe("action events from the audit hook", () => {
+	let internalAuditLog;
+	let checkDatabaseMoved;
+	const MOVED = "database.moved:audit";
+	const actions = () => seen.filter((one) => one.type.startsWith("host."));
+	const waitFor = async (count, pick = () => seen) => {
+		for (let tries = 0; tries < 100 && pick().length < count; tries += 1) {
+			await new Promise((resolve) => setTimeout(resolve, 20));
+		}
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	};
+	const quiet = () => new Promise((resolve) => setTimeout(resolve, 100));
+	before(async () => {
+		internalAuditLog = (await import("../internal/audit-log.js")).default;
+		({ checkDatabaseMoved } = await import("../internal/notify.js"));
+	});
+
+	it("a host create, update, disable, enable and delete each send one host event without the config or the meta", async () => {
+		const host = await makeProxy("act.example.com", {
+			advanced_config: "# secret-advanced-config-text",
+			locations: [{ path: "/x", forward_host: "10.0.0.2", forward_port: 80, forward_scheme: "http" }],
+		});
+		await waitFor(1, actions);
+		assert.equal((await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 81 })).status, 200);
+		await waitFor(2, actions);
+		assert.equal((await admin.post(`/nginx/proxy-hosts/${host.id}/disable`)).status, 200);
+		await waitFor(3, actions);
+		assert.equal((await admin.post(`/nginx/proxy-hosts/${host.id}/enable`)).status, 200);
+		await waitFor(4, actions);
+		assert.equal((await admin.delete(`/nginx/proxy-hosts/${host.id}`)).status, 200);
+		await waitFor(5, actions);
+		await settle();
+		const sent = actions().filter((one) => !one.type.includes("config_error"));
+		assert.deepEqual(
+			sent.map((one) => one.type),
+			["host.created", "host.updated", "host.disabled", "host.enabled", "host.deleted"],
+		);
+		for (const one of sent) {
+			assert.equal(one.data.id, host.id);
+			assert.equal(one.data.type, "proxy_host");
+			assert.deepEqual(one.data.domain_names, ["act.example.com"]);
+			assert.equal(typeof one.data.user.id, "number");
+			assert.doesNotMatch(JSON.stringify(one), SECRET_META);
+		}
+	});
+
+	it("a certificate create and delete send certificate events", async () => {
+		const made = await requested("issued.example.com");
+		await waitFor(1);
+		assert.equal((await admin.delete(`${CERTS}/${made.id}`)).status, 200);
+		await waitFor(2, () =>
+			seen.filter((one) => one.type.startsWith("certificate.") && !one.type.includes("expir")),
+		);
+		assert.equal(eventsOf("certificate.issued", made.id).length, 1);
+		assert.equal(eventsOf("certificate.deleted", made.id).length, 1);
+	});
+
+	it("a backup restore and a database move failure send events, another type nothing", async () => {
+		await internalAuditLog.add(null, {
+			user_id: 1,
+			action: "restored",
+			object_type: "backup",
+			object_id: 0,
+			meta: { name: "b.zip", types: ["hosts", "certificates"], passphrase: "secret-pass-1" },
+		});
+		await internalAuditLog.add(null, {
+			user_id: 1,
+			action: "move-failed",
+			object_type: "database",
+			object_id: 0,
+			meta: { name: "pg", step: "copy", error: "boom" },
+		});
+		await internalAuditLog.add(null, { user_id: 1, action: "updated", object_type: "setting", meta: { id: "x" } });
+		await waitFor(2);
+		assert.deepEqual(seen.map((one) => one.type).sort(), ["backup.restored", "database.move_failed"]);
+		assert.deepEqual(seen.find((one) => one.type === "backup.restored").data.types, ["hosts", "certificates"]);
+		assert.doesNotMatch(JSON.stringify(seen), PASSPHRASE);
+	});
+
+	it("an add whose notify call throws still resolves the inserted row", async () => {
+		const original = notify.emit;
+		notify.emit = () => {
+			throw new Error("emit broke");
+		};
+		try {
+			const row = await internalAuditLog.add(null, {
+				user_id: 1,
+				action: "restored",
+				object_type: "backup",
+				object_id: 0,
+				meta: { types: ["hosts"] },
+			});
+			assert.equal(row.action, "restored");
+			assert.ok(row.id > 0);
+			await quiet();
+		} finally {
+			notify.emit = original;
+		}
+	});
+
+	describe("checkDatabaseMoved", () => {
+		const movedRow = (from, to) =>
+			internalAuditLog.add(null, {
+				user_id: 1,
+				action: "moved",
+				object_type: "database",
+				object_id: 0,
+				meta: { name: to, from },
+			});
+		beforeEach(async () => {
+			await api.db(STATE).where({ key: MOVED }).delete();
+			await api.db("audit_log").where({ object_type: "database", action: "moved" }).delete();
+		});
+
+		it("with no state row it stores the id silently, a newer row sends one event, the same row again none", async () => {
+			const first = await movedRow("sqlite", "postgres a");
+			await checkDatabaseMoved();
+			await quiet();
+			assert.equal(seen.length, 0);
+			const stored = await api.db(STATE).where({ key: MOVED }).first();
+			assert.equal(stored.state, "ok");
+			assert.equal(JSON.parse(stored.data).id, first.id);
+
+			await checkDatabaseMoved();
+			await quiet();
+			assert.equal(seen.length, 0);
+
+			const second = await movedRow("postgres a", "mysql b");
+			await checkDatabaseMoved();
+			await waitFor(1);
+			assert.equal(seen.length, 1);
+			assert.equal(seen[0].type, "database.moved");
+			assert.equal(seen[0].data.from, "postgres a");
+			assert.equal(seen[0].data.to, "mysql b");
+			assert.equal(JSON.parse((await api.db(STATE).where({ key: MOVED }).first()).data).id, second.id);
+
+			await checkDatabaseMoved();
+			await quiet();
+			assert.equal(seen.length, 1);
+		});
+
+		it("with no moved row it stores nothing", async () => {
+			await checkDatabaseMoved();
+			assert.equal((await api.db(STATE).where({ key: MOVED })).length, 0);
+		});
 	});
 });
