@@ -446,7 +446,10 @@ it("a restore removes the notification states of objects that are gone and keeps
 	const done = await admin.post(`${BASE}/restore/${token}`, { types: ["dns_credentials", "ddns"], confirm: true });
 	assert.equal(done.status, 200, done.text);
 	const [restored] = await api.db("npmpro_ddns_record").where({ name: "home.ddns-nt.example" });
-	const keys = (await api.db("npmpro_notification_state").pluck("object_id")).sort();
+	// the hosts the restore regenerates write their own ok states: only the DDNS ones are compared
+	const keys = (
+		await api.db("npmpro_notification_state").where({ event: "ddns.record_failed" }).pluck("object_id")
+	).sort();
 	assert.equal(restored.id, record.body.id);
 	assert.deepEqual(keys, [String(record.body.id)]);
 });
