@@ -573,6 +573,67 @@ it("the reach route needs the host type's manage right, a name of the host and a
 	assert.equal(overridden.body.result, "overridden");
 });
 
+it("the plan route answers per name, for an unsaved host too, and never names another owner's credential", async () => {
+	const plan = (session, body) => record(session.post("/nginx/dns-check/plan", body));
+	const free = "free.host-dns.example";
+	const taken = "exists.host-dns.example";
+	setRecord(taken, "A", "192.0.2.5");
+	const answered = await plan(admin, {
+		host_type: "proxy_host",
+		names: [free, "FREE.host-dns.example", taken, "*.host-dns.example", "nowhere.invalid-zone.test"],
+	});
+	assert.equal(answered.status, 200, answered.text);
+	assert.equal(answered.body.address, PUBLIC_IP);
+	assert.equal(answered.body.host_disabled, false);
+	assert.deepEqual(
+		answered.body.names.map((entry) => entry.name),
+		[free, taken, "*.host-dns.example", "nowhere.invalid-zone.test"],
+	);
+	const [one, existing, wildcard, none] = answered.body.names;
+	assert.equal(one.available, true);
+	assert.equal(one.zone, "host-dns.example");
+	assert.equal(one.ttl, 300);
+	assert.equal(one.proxied_allowed, true);
+	assert.equal(one.credential.name.startsWith("Host record credential"), true);
+	assert.deepEqual(existing.existing, [{ type: "A", values: ["192.0.2.5"] }]);
+	assert.equal(wildcard.reason, "error.host-dns-wildcard");
+	assert.equal(none.reason, "error.host-dns-no-credential");
+	assert.ok(!answered.text.includes(TOKEN));
+	// a saved disabled host is reported, an unknown host is a 404
+	const host = await created(["off.host-dns.example"]);
+	assert.equal((await admin.post(`${hostUrl(host.id)}/disable`)).status, 200);
+	const disabled = await plan(admin, { host_type: "proxy_host", host_id: host.id, names: ["off.host-dns.example"] });
+	assert.equal(disabled.body.host_disabled, true);
+	assert.equal((await plan(admin, { host_type: "proxy_host", host_id: 99_999, names: [free] })).status, 404);
+	// the view right of the host type decides, Certificates manage decides the provider side
+	const hidden = await manager({ proxy_hosts: "hidden" });
+	assert.equal((await plan(hidden, { host_type: "proxy_host", names: [free] })).status, 403);
+	const viewer = await manager({ certificates: "view" });
+	const noRight = await plan(viewer, { host_type: "proxy_host", names: [free] });
+	assert.equal(noRight.status, 200, noRight.text);
+	assert.equal(noRight.body.names[0].reason, "error.host-dns-no-right");
+	assert.equal(noRight.body.names[0].credential, null);
+	assert.equal(noRight.body.address, PUBLIC_IP);
+	// another owner's credential is not named to a user who cannot see it
+	const user = await api.limited({
+		visibility: "user",
+		proxy_hosts: "manage",
+		access_lists: "view",
+		certificates: "manage",
+	});
+	const other = await plan(user, { host_type: "proxy_host", names: [free] });
+	assert.equal(other.status, 200, other.text);
+	assert.equal(other.body.names[0].credential, null);
+	assert.equal(other.body.names[0].reason, "error.host-dns-no-credential");
+	assert.ok(!other.text.includes("Host record credential"));
+	// another user's host is a 404
+	const adminHost = await created(["plan-adminhost.host-dns.example"]);
+	assert.equal((await plan(user, { host_type: "proxy_host", host_id: adminHost.id, names: [free] })).status, 404);
+	// nothing was written
+	assert.deepEqual(callsOf("POST"), []);
+	assert.deepEqual(callsOf("DELETE"), []);
+});
+
 it("no token in any answer, audit entry or history row", async () => {
 	const joined = everyAnswer.join("\n");
 	assert.ok(!joined.includes(TOKEN));

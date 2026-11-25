@@ -30,6 +30,7 @@
 	"post /nginx/dns-credentials/{credentialID}/test": "69923eab1aa9a6cfc098c400fc244871ccae3e005ede1db1d05380bacf5e25bb",
 	"get /nginx/dns-credentials/{credentialID}/challenges": "69923eab1aa9a6cfc098c400fc244871ccae3e005ede1db1d05380bacf5e25bb",
 	"post /nginx/dns-credentials/{credentialID}/challenges/delete": "de1c19786ccbd423a181e9ba21fba7e40f32e22bda0243fc85254d175c9d4c04",
+	"post /nginx/dns-check/plan": "48ec1b59d024197e936b949fea8d4e580c895c9b4a4017634fc517c933995092",
 	"post /nginx/dns-check/reach": "22bd9cb1c7ecff89681dda5142b15990ff2862c08593f002c73a9deac3b9a7a4",
 	"post /nginx/dns-check/hosts": "911fd4013f20936227fbbc80da83fc8f02b110f426dc38759967b62ba4285804",
 	"get /nginx/ddns-records": "9a053a589ec0a506642a7d98b5d001c3472dd03bcbbd19e17bafa062ca031b0b",

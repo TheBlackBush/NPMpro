@@ -23,6 +23,23 @@ router
 	});
 
 /**
+ * /api/nginx/dns-check/plan
+ */
+router
+	.route("/plan")
+	.all(jwtdecode())
+	.post(async (req, res) => {
+		const payload = apiValidator(getValidationSchema("/nginx/dns-check/plan", "post"), req.body);
+		res.status(200).send(
+			await internalHostDnsRecord.planHost(res.locals.access, {
+				hostType: payload.host_type,
+				hostId: payload.host_id,
+				names: payload.names,
+			}),
+		);
+	});
+
+/**
  * /api/nginx/dns-check/reach
  */
 router

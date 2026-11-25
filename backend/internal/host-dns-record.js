@@ -722,6 +722,37 @@ const createHostDnsRecords = ({
 		},
 
 		/**
+		 * The plan of a host's names for the DNS card (POST /nginx/dns-check/plan): read only. One entry per name as
+		 * planNames, plus the public addresses as this server knows them (detected when unknown) and whether the saved
+		 * host is disabled. A host that is not saved yet is planned by its type alone.
+		 *
+		 * @param   {Access}  access
+		 * @param   {{ hostType: String, hostId?: Number, names: String[] }}  options
+		 * @returns {Promise<{ address: String|null, ipv6_address: String|null, host_disabled: Boolean, names: Object[] }>}
+		 */
+		planHost: async (access, { hostType, hostId, names }) => {
+			access.can(`${hostSection(hostType)}:view`);
+			let host = null;
+			if (hostId !== undefined && hostId !== null) {
+				host = await HOST_MODELS[hostType].query().findById(hostId);
+				if (!host || (ownOnly(access) && host.owner_user_id !== userIdOf(access))) {
+					throw new errs.ItemNotFoundError(hostId);
+				}
+			}
+			const reader = readerFor(access);
+			const plans = [];
+			for (const name of [...new Set((names ?? []).map((one) => String(one).toLowerCase()))]) {
+				plans.push(publicPlan(await inspect(access, { hostType, hostId: host?.id, name, ipv6: true, reader })));
+			}
+			return {
+				address: await reader.addresses.ipv4(),
+				ipv6_address: await reader.addresses.ipv6(),
+				host_disabled: host !== null && host.enabled === false,
+				names: plans,
+			};
+		},
+
+		/**
 		 * The host of a reach probe: the saved row (with its locations) of a host the user may manage; 404 otherwise
 		 *
 		 * @returns {Promise<Object>}

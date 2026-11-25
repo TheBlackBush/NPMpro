@@ -297,6 +297,11 @@
 				"$ref": "./paths/nginx/dns-credentials/credentialID/challenges/delete/post.json"
 			}
 		},
+		"/nginx/dns-check/plan": {
+			"post": {
+				"$ref": "./paths/nginx/dns-check/plan/post.json"
+			}
+		},
 		"/nginx/dns-check/reach": {
 			"post": {
 				"$ref": "./paths/nginx/dns-check/reach/post.json"
