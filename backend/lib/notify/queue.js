@@ -14,12 +14,18 @@ const URL_USERINFO = /(?<scheme>\b[a-z][a-z0-9+.-]*:\/\/)[^\s/?#@]*@/giu;
 const URL_QUERY = /(?<url>\b[a-z][a-z0-9+.-]*:\/\/[^\s?#]*)[?#]\S*/giu;
 
 /**
- * Error text that is safe to store and log: clean(), and a URL in it loses its credentials and its query
+ * Error text that is safe to store and log: a URL in it loses its credentials and its query, then clean()
  *
  * @param   {*}  text
  * @returns {String}
  */
-const safeError = (text) => clean(text).replace(URL_USERINFO, "$<scheme>***@").replace(URL_QUERY, "$<url>?***");
+// the URLs are scrubbed before clean() cuts the text, so a cut never leaves part of a password or token behind
+const safeError = (text) =>
+	clean(
+		String(text ?? "")
+			.replace(URL_USERINFO, "$<scheme>***@")
+			.replace(URL_QUERY, "$<url>?***"),
+	);
 
 const textOrNull = (value) => (value === undefined || value === null ? null : String(value));
 

@@ -677,6 +677,21 @@ describe("worker", () => {
 		assert.ok(log.lines.some((line) => line.includes("send failed")));
 	});
 
+	it("a URL cut at the length limit keeps no part of its password", async () => {
+		const secret = "longpassword-0123456789";
+		const prefix = "x".repeat(300 - "https://user:longpass".length);
+		const channel = channelOf("webhook", {
+			send: () => Promise.reject(new Error(`${prefix}https://user:${secret}@hook.example/x`)),
+		});
+		const { queue, worker, log } = setup([channel]);
+		await queue.add([row({ target_id: 1 })]);
+		await worker.runOnce();
+		const [only] = await rows();
+		for (const text of [only.error, ...log.lines]) {
+			assert.ok(!text.includes("longpass"), text);
+		}
+	});
+
 	it("the settle failure line keeps no password or token either", async () => {
 		const channel = channelOf("webhook");
 		const { queue, worker, log } = setup([channel]);
