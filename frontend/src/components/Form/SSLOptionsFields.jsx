@@ -3,6 +3,7 @@ import { DNSProviderFields, DomainNamesField, SwitchField } from "src/components
 import { T } from "src/locale";
 import { domainNamesOptions } from "src/modules/HostForms";
 import { tlsDisabledReasons } from "src/modules/TlsOptions";
+import { CaaNote } from "./CaaNote";
 import { FormSection } from "./FormSection";
 import { MtlsCertificateField } from "./SSLCertificateField";
 import { SwitchList } from "./SwitchList";
@@ -54,6 +55,7 @@ function TlsSwitch({ name, onTlsChange, shown, reason, ...props }) {
  */
 export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 	const watched = useWatch({ name: TLS_FIELDS });
+	const domainNames = useWatch({ name: "domainNames" });
 	const values = Object.fromEntries(TLS_FIELDS.map((name, index) => [name, watched[index]]));
 	const reasons = tlsDisabledReasons(values, { forHttp, forProxyHost });
 	const onTlsChange = useTlsChange({ forHttp });
@@ -140,6 +142,8 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 					</SwitchList>
 					{forHttp ? null : <DomainNamesField {...domainNamesOptions({}, { forHttp })} />}
 					{values.npmproDnsChallenge ? <DNSProviderFields className="mb-0" /> : null}
+					{/* the request uses the instance CA (the host windows have no CA select) */}
+					<CaaNote names={domainNames} dnsChallenge={Boolean(values.npmproDnsChallenge)} className="mt-3" />
 				</FormSection>
 			) : null}
 		</>

@@ -1,0 +1,112 @@
+{
+	"type": "object",
+	"description": "The leftover ACME challenge TXT records of a DNS credential",
+	"required": [
+		"supported",
+		"busy",
+		"items",
+		"skipped_cnames",
+		"truncated"
+	],
+	"additionalProperties": false,
+	"properties": {
+		"supported": {
+			"type": "boolean",
+			"description": "False when the provider has no confirmed TXT list and delete; nothing was asked of any outside service then"
+		},
+		"busy": {
+			"type": "boolean",
+			"description": "A certbot run of this instance is going on: every item is in use and a delete is refused"
+		},
+		"items": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"key",
+					"name",
+					"id",
+					"values",
+					"age_seconds",
+					"recent",
+					"preselected"
+				],
+				"properties": {
+					"key": {
+						"type": "string",
+						"description": "Name and id (`set` for a provider that addresses the whole TXT set)"
+					},
+					"name": {
+						"type": "string",
+						"description": "The full record name"
+					},
+					"id": {
+						"type": [
+							"string",
+							"null"
+						],
+						"description": "The provider's record id, null for a whole TXT set"
+					},
+					"values": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "The TXT values without the provider's quotes"
+					},
+					"age_seconds": {
+						"type": [
+							"integer",
+							"null"
+						],
+						"description": "Seconds since the provider's change time, null when the provider gives none"
+					},
+					"recent": {
+						"type": "boolean",
+						"description": "Younger than 10 minutes: another ACME client may be using it"
+					},
+					"preselected": {
+						"type": "boolean",
+						"description": "A known age over 1 hour and no run going on"
+					}
+				}
+			},
+			"description": "The leftover TXT records, sorted by name"
+		},
+		"skipped_cnames": {
+			"type": "integer",
+			"description": "CNAME records at challenge names (delegations), left out"
+		},
+		"truncated": {
+			"type": "boolean",
+			"description": "More than 500 items across the credential's zones, more than 25 pages of a zone or more than 100 zones: the list is cut"
+		},
+		"failed_zones": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"zone",
+					"message"
+				],
+				"properties": {
+					"zone": {
+						"type": "string",
+						"description": "The credential domain that could not be listed"
+					},
+					"message": {
+						"type": "string",
+						"description": "The provider's answer without any secret"
+					}
+				}
+			},
+			"description": "Only when some of the zones could not be listed (for example a domain the provider does not know as a zone); the others are listed. When every zone fails the call answers 400"
+		},
+		"error_i18n": {
+			"type": "string",
+			"description": "`error.dns-cleanup-no-domains` when the credential has no domains"
+		}
+	}
+}

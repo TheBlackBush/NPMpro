@@ -1,4 +1,4 @@
-import { collectZones, failAnswer, malformed } from "./zone-common.js";
+import { collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
 const PER_PAGE = 500;
 const HINT = "The account API key of bunny.net (dash.bunny.net, Account settings)";
@@ -8,8 +8,10 @@ export default {
 	id: "bunny",
 	label: "bunny.net",
 	credentialProvider: "bunny",
-	listZones: ({ fields, fetch }) =>
+	testRefusal: statusRefusal({ 401: "wrong-key" }),
+	listZones: ({ fields, fetch, maxPages }) =>
 		collectZones({
+			maxPages,
 			fetchPage: async (page) => {
 				const secrets = [fields.dns_bunny_api_key];
 				const res = await fetch(`https://api.bunny.net/dnszone?page=${page}&perPage=${PER_PAGE}`, {

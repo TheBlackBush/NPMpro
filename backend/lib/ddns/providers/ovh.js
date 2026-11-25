@@ -1,6 +1,17 @@
 import { createHash } from "node:crypto";
 import { DdnsProviderError } from "../errors.js";
 import {
+	assertChallengeItem,
+	changedSet,
+	collectChallenges,
+	fullName,
+	PREFIX,
+	requireId,
+	sameValues,
+	settleDelete,
+	unquote,
+} from "./challenge-common.js";
+import {
 	plainTarget,
 	recordGone,
 	refuseMultiple,
@@ -79,6 +90,8 @@ const ovhRequest = async ({ fields, fetch, method = "GET", path, body }) => {
 const HINT = "A right on /domain/zone/{zone}/record and /domain/zone/{zone}/refresh";
 // one name has a handful of records; a longer list is not one record set and is not changed
 const MAX_RECORDS = 20;
+// the records of a challenge listing are read this many per page
+const CHALLENGE_BATCH = 20;
 const zonePath = (zone) => `/domain/zone/${encodeURIComponent(zone)}`;
 
 /** The API refuses new apex names, so this is reached only for a stored apex record. The apex is refused until OVH documents how it is spelled (the spec only says subDomain is a nullable string) */
@@ -98,14 +111,14 @@ const refusals = (zone, name) => {
 };
 
 /** Applies the pending record changes: OVH shows a change in the zone only after this call */
-const refreshZone = async ({ zone, fields, fetch }) => {
+const refreshZone = async ({ zone, fields, fetch, did = "saved" }) => {
 	const res = await ovhRequest({ fields, fetch, method: "POST", path: `${zonePath(zone)}/refresh` });
 	if (res.status >= 200 && res.status < 300) return;
 	try {
 		if (res.status === 404) throw zoneNotFound(res, secretsOf(fields));
 		failAnswer(res, { hint: HINT, secrets: secretsOf(fields) });
 	} catch (err) {
-		err.message = `The record was saved but the zone refresh failed: ${err.message}`;
+		err.message = `The record was ${did} but the zone refresh failed: ${err.message}`;
 		throw err;
 	}
 };
@@ -206,8 +219,92 @@ export default {
 		await refreshAfterSave({ zone, fields, fetch, meta, recordId: createdId });
 		return { meta: { ...meta, record_id: createdId, refresh_pending: false }, created: true };
 	},
-	listZones: ({ fields, fetch }) =>
+	// a wrong key and a missing right both answer 403 (observed): the Test says "refused"
+	/**
+	 * The TXT records of the zone: the id list, then each record in batches of 20 (one batch is one page). The name
+	 * filter's matching is not documented, so the prefix is filtered here. Records have no time.
+	 */
+	async listChallenges({ zone, fields, fetch }) {
+		const secrets = secretsOf(fields);
+		const listIds = async (query) => {
+			const res = await ovhRequest({ fields, fetch, path: `${zonePath(zone)}/record?${query}` });
+			if (res.status === 404) throw zoneNotFound(res, secrets);
+			if (res.status !== 200) failAnswer(res, { hint: HINT, secrets });
+			if (!Array.isArray(res.json) || !res.json.every(Number.isInteger)) throw malformed(res, secrets);
+			return res.json;
+		};
+		const readRecord = async (id) => {
+			const res = await ovhRequest({ fields, fetch, path: `${zonePath(zone)}/record/${id}` });
+			// a record deleted since the list was read is no record
+			if (res.status === 404) return null;
+			if (res.status !== 200) failAnswer(res, { hint: HINT, secrets });
+			if (typeof res.json?.target !== "string") throw malformed(res, secrets);
+			return res.json;
+		};
+		const ids = await listIds("fieldType=TXT");
+		return collectChallenges({
+			zone,
+			fetchPage: async (page) => {
+				const batch = ids.slice((page - 1) * CHALLENGE_BATCH, page * CHALLENGE_BATCH);
+				const records = [];
+				for (const id of batch) {
+					const record = await readRecord(id);
+					if (record) {
+						records.push({
+							name: fullName(zone, record.subDomain, true),
+							type: record.fieldType,
+							id,
+							values: [record.target],
+						});
+					}
+				}
+				return { records, more: page * CHALLENGE_BATCH < ids.length };
+			},
+			cnames: async () => {
+				const found = await listIds(`fieldType=CNAME&subDomain=${PREFIX}`);
+				let count = 0;
+				for (const id of found.slice(0, MAX_RECORDS)) {
+					const record = await readRecord(id);
+					if (record?.fieldType === "CNAME" && String(record.subDomain ?? "").toLowerCase() === PREFIX)
+						count++;
+				}
+				return count;
+			},
+		});
+	},
+	/**
+	 * Reads the record first and deletes only the TXT record with the listed name and value, then refreshes the zone
+	 * (a failed refresh is a failure)
+	 */
+	async removeChallenge({ zone, item, fields, fetch }) {
+		assertChallengeItem(zone, item);
+		requireId(item, (id) => Number.isInteger(id) && id > 0);
+		const secrets = secretsOf(fields);
+		const path = `${zonePath(zone)}/record/${item.id}`;
+		const read = await ovhRequest({ fields, fetch, path });
+		if (read.status === 404) return { gone: true };
+		if (read.status !== 200) failAnswer(read, { hint: HINT, secrets });
+		const record = read.json;
+		if (
+			record?.fieldType !== "TXT" ||
+			fullName(zone, record.subDomain, true) !== item.name ||
+			!sameValues([unquote(record.target)], item.values)
+		) {
+			return changedSet();
+		}
+		const res = await ovhRequest({ fields, fetch, method: "DELETE", path });
+		const done = await settleDelete({
+			res,
+			ok: (answer) => answer.status >= 200 && answer.status < 300,
+			recheck: async () => (await ovhRequest({ fields, fetch, path })).status === 404,
+			fail: (answer) => failAnswer(answer, { hint: HINT, secrets }),
+		});
+		if (!done.gone) await refreshZone({ zone, fields, fetch, did: "deleted" });
+		return done;
+	},
+	listZones: ({ fields, fetch, maxPages }) =>
 		collectZones({
+			maxPages,
 			fetchPage: async () => {
 				const secrets = secretsOf(fields);
 				const res = await ovhRequest({ fields, fetch, path: "/domain/zone" });

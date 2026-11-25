@@ -1,4 +1,5 @@
 import express from "express";
+import internalDnsChallenges from "../../internal/dns-challenges.js";
 import internalDnsCredential from "../../internal/dns-credential.js";
 import internalDnsProviderDomains from "../../internal/dns-provider-domains.js";
 import jwtdecode from "../../lib/express/jwt-decode.js";
@@ -89,6 +90,53 @@ router
 		res.status(200).send(
 			await internalDnsProviderDomains.get(res.locals.access, {
 				id: Number.parseInt(req.params.credential_id, 10),
+			}),
+		);
+	});
+
+/**
+ * /api/nginx/dns-credentials/123/test
+ */
+router
+	.route("/:credential_id/test")
+	.all(jwtdecode())
+	.post(async (req, res) => {
+		res.status(200).send(
+			await internalDnsCredential.test(res.locals.access, {
+				id: Number.parseInt(req.params.credential_id, 10),
+			}),
+		);
+	});
+
+/**
+ * /api/nginx/dns-credentials/123/challenges
+ */
+router
+	.route("/:credential_id/challenges")
+	.all(jwtdecode())
+	.get(async (req, res) => {
+		res.status(200).send(
+			await internalDnsChallenges.get(res.locals.access, {
+				id: Number.parseInt(req.params.credential_id, 10),
+			}),
+		);
+	});
+
+/**
+ * /api/nginx/dns-credentials/123/challenges/delete
+ */
+router
+	.route("/:credential_id/challenges/delete")
+	.all(jwtdecode())
+	.post(async (req, res) => {
+		const payload = apiValidator(
+			getValidationSchema("/nginx/dns-credentials/{credentialID}/challenges/delete", "post"),
+			req.body,
+		);
+		res.status(200).send(
+			await internalDnsChallenges.delete(res.locals.access, {
+				id: Number.parseInt(req.params.credential_id, 10),
+				items: payload.items,
 			}),
 		);
 	});

@@ -1,0 +1,59 @@
+{
+	"operationId": "getDnsHostChecks",
+	"summary": "List the cached DNS checks of hosts",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The cached results of the proxy, redirection and 404 hosts the user may view; none for a host not checked since the last restart or change",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"type": "proxy",
+									"id": 1,
+									"checked_on": "2026-11-24T09:00:00.000Z",
+									"names": [
+										{
+											"name": "app.example.com",
+											"state": "here",
+											"via": "dns",
+											"proxied": false,
+											"ipv4": {
+												"found": [
+													"203.0.113.7"
+												],
+												"public": "203.0.113.7"
+											},
+											"ipv6": {
+												"found": [],
+												"public": null
+											},
+											"reason": null,
+											"message": null
+										}
+									]
+								}
+							]
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/dns-host-check-list.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Answers what the last checks found, without any lookup. A host's result is dropped when the host changes, is enabled, disabled or deleted. The provider read in a result exists only for a user who manages certificates.\n\nNeeds: the view right of each host type (a type the user may not view is left out)"
+}

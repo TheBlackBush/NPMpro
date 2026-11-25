@@ -1,4 +1,4 @@
-import { bearer, collectZones, failAnswer, malformed } from "./zone-common.js";
+import { bearer, collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
 const PER_PAGE = 100;
 const HINT = "A token with the domains read-only scope";
@@ -8,8 +8,10 @@ export default {
 	id: "linode",
 	label: "Linode",
 	credentialProvider: "linode",
-	listZones: ({ fields, fetch }) =>
+	testRefusal: statusRefusal({ 401: "wrong-key", 403: "missing-right" }),
+	listZones: ({ fields, fetch, maxPages }) =>
 		collectZones({
+			maxPages,
 			fetchPage: async (page) => {
 				const secrets = [fields.dns_linode_key];
 				const res = await fetch(`https://api.linode.com/v4/domains?page=${page}&page_size=${PER_PAGE}`, {

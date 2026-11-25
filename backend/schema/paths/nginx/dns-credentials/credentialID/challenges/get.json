@@ -1,0 +1,84 @@
+{
+	"operationId": "getDnsCredentialChallenges",
+	"summary": "List leftover ACME challenge records of a DNS credential",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "credentialID",
+			"description": "ID of the DNS credential, as the list shows it",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"required": true,
+			"example": 1
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The leftover `_acme-challenge` TXT records in the credential's domains",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"supported": true,
+								"busy": false,
+								"items": [
+									{
+										"key": "_acme-challenge.example.com|abc123",
+										"name": "_acme-challenge.example.com",
+										"id": "abc123",
+										"values": [
+											"token-value"
+										],
+										"age_seconds": 7200,
+										"recent": false,
+										"preselected": true
+									}
+								],
+								"skipped_cnames": 0,
+								"truncated": false
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../../components/dns-challenge-list.json"
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "Every zone failed: the provider refused the credential or the request failed (`error.dns-cleanup-failed`)",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"404": {
+			"description": "The credential does not exist or belongs to another user",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/error.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Lists the TXT records named `_acme-challenge` or below it in the credential's domains (its zones), read from the provider with the saved secret opened for this one call. Only TXT records are listed; CNAME records at those names (a delegation) are left out and counted in `skipped_cnames`. At most 500 items across the zones and 25 pages per zone (`truncated`). A zone that cannot be listed is named in `failed_zones` and the others are listed; only when every zone fails is the answer 400. `age_seconds` comes from the provider's change time and is null when the provider gives none; `recent` is true under 10 minutes; `preselected` only for a known age over 1 hour. While a certbot run of this instance is going on `busy` is true and every item is in use. A credential without domains answers no items and `error_i18n` `error.dns-cleanup-no-domains`. For a provider without a confirmed list and delete `supported` is false and no outside request is made.\n\nNeeds: Certificates manage"
+}

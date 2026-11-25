@@ -1,6 +1,16 @@
 import { DdnsProviderError } from "../errors.js";
+import {
+	assertChallengeItem,
+	changedSet,
+	collectChallenges,
+	fullName,
+	PREFIX,
+	sameValues,
+	settleDelete,
+	unquote,
+} from "./challenge-common.js";
 import { pathName, recordGone, refuseMultiple, refuseWildcard, relativeName, zoneNotFound } from "./record-common.js";
-import { collectZones, failAnswer, malformed } from "./zone-common.js";
+import { collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
 const DEFAULT_ENDPOINT = "https://desec.io/api/v1/";
 const HINT = "A token that may read and change the RRsets of the domain";
@@ -54,6 +64,21 @@ const baseOf = (value) => {
 		});
 	}
 	return `${url.origin}${url.pathname.replace(TRAILING_SLASHES, "")}/`;
+};
+
+/**
+ * A cursor link of an answer as an absolute URL; one of another origin is never followed: it would send the token
+ * elsewhere.
+ */
+const sameOriginLink = (base, link, res, secrets) => {
+	let target;
+	try {
+		target = new URL(link, base);
+	} catch {
+		throw malformed(res, secrets);
+	}
+	if (target.origin !== base.origin) throw malformed(res, secrets);
+	return target.href;
 };
 
 const headersOf = (fields, json = false) => ({
@@ -139,26 +164,88 @@ export default {
 		if (res.status !== 201 && res.status !== 200) failAnswer(res, { hint: HINT, secrets });
 		return { meta: { ...meta }, created: true };
 	},
+	// only a 401 is documented (observed); the refusal of a restricted token's write is not
+	testRefusal: statusRefusal({ 401: "wrong-key" }),
+	/** The TXT RRsets of the domain (a set is one item), cursor paged by the Link header; `touched` is the time */
+	listChallenges({ zone, fields, fetch }) {
+		const secrets = secretsOf(fields);
+		const base = new URL(baseOf(fields.dns_desec_endpoint));
+		const root = rrsetsUrl(fields, zone);
+		let url = `${root}?type=TXT`;
+		return collectChallenges({
+			zone,
+			fetchPage: async () => {
+				const res = await fetch(url, { headers: headersOf(fields) });
+				if (res.status === 404) throw zoneNotFound(res, secrets);
+				if (res.status !== 200) failAnswer(res, { hint: HINT, secrets });
+				if (!Array.isArray(res.json)) throw malformed(res, secrets);
+				const next = linkOf(res.headers?.get?.("link") ?? "", "next");
+				if (next !== undefined) url = sameOriginLink(base, next, res, secrets);
+				return {
+					records: res.json.map((rrset) => ({
+						name: fullName(zone, rrset?.subname, true),
+						type: rrset?.type,
+						id: null,
+						values: Array.isArray(rrset?.records) ? rrset.records : [],
+						changed_on: rrset?.touched ?? rrset?.created,
+					})),
+					more: next !== undefined,
+				};
+			},
+			cnames: async () => {
+				const res = await fetch(`${root}?type=CNAME&subname=${PREFIX}`, { headers: headersOf(fields) });
+				if (res.status !== 200) failAnswer(res, { hint: HINT, secrets });
+				if (!Array.isArray(res.json)) throw malformed(res, secrets);
+				return res.json.filter((rrset) => rrset?.type === "CNAME").length;
+			},
+		});
+	},
+	/** Deletes the whole RRset, but only when it still holds exactly the values the list showed; 204 also when gone */
+	async removeChallenge({ zone, item, fields, fetch }) {
+		assertChallengeItem(zone, item);
+		const secrets = secretsOf(fields);
+		const url = `${rrsetsUrl(fields, zone)}${pathName(zone, item.name)}/TXT/`;
+		// null: the RRset is not there; a 404 may also be a missing domain, which the domain's own list tells (a failure)
+		const read = async () => {
+			const res = await fetch(url, { headers: headersOf(fields) });
+			if (res.status === 404) {
+				const zoneRes = await fetch(
+					`${rrsetsUrl(fields, zone)}?type=TXT&subname=${encodeURIComponent(PREFIX)}`,
+					{
+						headers: headersOf(fields),
+					},
+				);
+				if (zoneRes.status === 404) throw zoneNotFound(zoneRes, secrets);
+				if (zoneRes.status !== 200) failAnswer(zoneRes, { hint: HINT, secrets });
+				return null;
+			}
+			if (res.status !== 200) failAnswer(res, { hint: HINT, secrets });
+			if (!Array.isArray(res.json?.records)) throw malformed(res, secrets);
+			return res.json.records;
+		};
+		const current = await read();
+		if (current === null) return { gone: true };
+		if (!sameValues(current.map(unquote), item.values)) return changedSet();
+		const res = await fetch(url, { method: "DELETE", headers: headersOf(fields) });
+		return settleDelete({
+			res,
+			ok: (answer) => answer.status === 204,
+			recheck: async () => (await read()) === null,
+			fail: (answer) => failAnswer(answer, { hint: HINT, secrets }),
+		});
+	},
 	/**
 	 * The domains, newest first. The Link header cursor (rel="next") is followed; a 400 that carries a rel="first"
 	 * link (more than 500 domains need a cursor) is followed once. Links of another origin are never followed: they
 	 * would send the token elsewhere.
 	 */
-	listZones: ({ fields, fetch }) => {
+	listZones: ({ fields, fetch, maxPages }) => {
 		let base = null;
 		let url = null;
 		let firstTried = false;
-		const follow = (link, res, secrets) => {
-			let target;
-			try {
-				target = new URL(link, base);
-			} catch {
-				throw malformed(res, secrets);
-			}
-			if (target.origin !== base.origin) throw malformed(res, secrets);
-			return target.href;
-		};
+		const follow = (link, res, secrets) => sameOriginLink(base, link, res, secrets);
 		return collectZones({
+			maxPages,
 			fetchPage: async () => {
 				const secrets = secretsOf(fields);
 				if (base === null) {

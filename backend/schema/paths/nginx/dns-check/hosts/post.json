@@ -1,0 +1,134 @@
+{
+	"operationId": "checkDnsHosts",
+	"summary": "Check where host names point",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "The hosts to check",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"hosts"
+					],
+					"properties": {
+						"hosts": {
+							"type": "array",
+							"minItems": 1,
+							"maxItems": 50,
+							"items": {
+								"type": "object",
+								"additionalProperties": false,
+								"required": [
+									"type",
+									"id"
+								],
+								"properties": {
+									"type": {
+										"type": "string",
+										"enum": [
+											"proxy",
+											"redirection",
+											"dead"
+										],
+										"description": "The host type: `proxy`, `redirection` or `dead` (a 404 host)"
+									},
+									"id": {
+										"type": "integer",
+										"minimum": 1,
+										"description": "The host's id"
+									}
+								}
+							},
+							"description": "The hosts to check, 1 to 50, with at most 200 names across them"
+						}
+					}
+				},
+				"example": {
+					"hosts": [
+						{
+							"type": "proxy",
+							"id": 1
+						}
+					]
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "One result per host, in the order asked",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"type": "proxy",
+									"id": 1,
+									"checked_on": "2026-11-24T09:00:00.000Z",
+									"names": [
+										{
+											"name": "app.example.com",
+											"state": "here",
+											"via": "dns",
+											"proxied": false,
+											"ipv4": {
+												"found": [
+													"203.0.113.7"
+												],
+												"public": "203.0.113.7"
+											},
+											"ipv6": {
+												"found": [],
+												"public": null
+											},
+											"reason": null,
+											"message": null
+										}
+									]
+								}
+							]
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/dns-host-check-list.json"
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "No host, more than 50, or more than 200 names across the hosts (`error.dns-check-too-many-names`)",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"404": {
+			"description": "A host does not exist or the user may not view it; nothing is checked then",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/error.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Looks up the A and AAAA records of each name through the check resolver and compares them with this instance's public addresses. A user who manages certificates also gets the record at the provider of a visible DNS credential that covers the name (always for Cloudflare, else only when the DNS answer is not this instance's address). A host checked within the last 30 seconds answers from the cache. Wildcard and regular expression names are skipped. A request ends within 60 seconds: a name not checked by then answers `unknown` with the reason `timeout`, and its host is not cached. At most 50 provider reads are made per request, and none more for a credential after it answered 429; the other names keep their DNS answer with the reason `provider-read-skipped`.\n\nNeeds: the view right of each host type"
+}

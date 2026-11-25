@@ -1,6 +1,16 @@
 import { DdnsProviderError } from "../errors.js";
+import {
+	assertChallengeItem,
+	changedSet,
+	collectChallenges,
+	fullName,
+	PREFIX,
+	requireId,
+	sameValues,
+	settleDelete,
+} from "./challenge-common.js";
 import { dotted, jsonHeaders, plainTarget, refuseMultiple, relativeName, zoneNotFound } from "./record-common.js";
-import { bearer, collectZones, failAnswer, malformed } from "./zone-common.js";
+import { bearer, collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
 const HINT = "domain:read and domain:update";
 const secretsOf = (fields) => [fields.dns_digitalocean_token];
@@ -75,8 +85,74 @@ export default {
 		check(res, fields, [200, 201]);
 		return { meta: { ...meta, record_id: res.json?.domain_record?.id ?? null }, created: true };
 	},
-	listZones: ({ fields, fetch }) =>
+	testRefusal: statusRefusal({ 401: "wrong-key", 403: "missing-right" }),
+	/** The TXT records of the zone (the name filter is exact, so the prefix is filtered here); no record has a time */
+	listChallenges({ zone, fields, fetch }) {
+		const headers = bearer(fields.dns_digitalocean_token);
+		return collectChallenges({
+			zone,
+			fetchPage: async (page) => {
+				const res = await fetch(`${recordsUrl(zone)}?type=TXT&page=${page}&per_page=200`, { headers });
+				check(res, fields);
+				if (!Array.isArray(res.json?.domain_records)) throw malformed(res, secretsOf(fields));
+				return {
+					records: res.json.domain_records.map((record) => ({
+						name: fullName(zone, record?.name, true),
+						type: record?.type,
+						id: record?.id,
+						values: [record?.data],
+					})),
+					more: Boolean(res.json.links?.pages?.next),
+				};
+			},
+			// the TXT list cannot show a CNAME: one exact lookup of the challenge name
+			cnames: async () => {
+				const res = await fetch(
+					`${recordsUrl(zone)}?type=CNAME&name=${PREFIX}.${encodeURIComponent(zone.toLowerCase())}`,
+					{
+						headers,
+					},
+				);
+				check(res, fields);
+				if (!Array.isArray(res.json?.domain_records)) throw malformed(res, secretsOf(fields));
+				return res.json.domain_records.filter((record) => record?.type === "CNAME").length;
+			},
+		});
+	},
+	/**
+	 * Reads the records at the item's name first and deletes only the TXT record with the listed id and value; a
+	 * delete that fails is read again (a missing zone is a failure, never "gone")
+	 */
+	async removeChallenge({ zone, item, fields, fetch }) {
+		assertChallengeItem(zone, item);
+		requireId(item, (id) => Number.isInteger(id) && id > 0);
+		const headers = bearer(fields.dns_digitalocean_token);
+		const find = async () => {
+			const res = await fetch(`${recordsUrl(zone)}?name=${encodeURIComponent(item.name)}`, { headers });
+			check(res, fields);
+			if (!Array.isArray(res.json?.domain_records)) throw malformed(res, secretsOf(fields));
+			return res.json.domain_records.find((entry) => entry?.id === item.id) ?? null;
+		};
+		const record = await find();
+		if (record === null) return { gone: true };
+		if (
+			record.type !== "TXT" ||
+			fullName(zone, record.name, true) !== item.name ||
+			!sameValues([String(record.data ?? "")], item.values)
+		) {
+			return changedSet();
+		}
+		const res = await fetch(`${recordsUrl(zone)}/${item.id}`, { method: "DELETE", headers });
+		return settleDelete({
+			res,
+			ok: (answer) => answer.status === 204 || answer.status === 200,
+			recheck: async () => (await find()) === null,
+			fail: (answer) => failAnswer(answer, { hint: HINT, secrets: secretsOf(fields) }),
+		});
+	},
+	listZones: ({ fields, fetch, maxPages }) =>
 		collectZones({
+			maxPages,
 			fetchPage: async (page) => {
 				const secrets = [fields.dns_digitalocean_token];
 				const res = await fetch(`https://api.digitalocean.com/v2/domains?page=${page}&per_page=200`, {

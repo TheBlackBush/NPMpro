@@ -2,10 +2,12 @@ import { useWatch } from "react-hook-form";
 import {
 	DirectoryField,
 	DomainNamesField,
+	HostDnsCard,
 	ModalTabs,
 	NginxConfigField,
 	PageChoiceField,
 	PageLines,
+	ReadOnlyFields,
 	SSLCertificateField,
 	SSLOptionsFields,
 	TabPane,
@@ -32,30 +34,35 @@ function DeadHostFields({ isAdmin, hostId }) {
 	});
 	return (
 		<ModalTabs tabs={DEAD_HOST_TABS} markers={{ advanced: advancedConfig?.trim() ? "*" : null }}>
-			<TabPane id="details">
-				<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
-				<TextField
-					name="npmproDescription"
-					label={<T id="host.description" />}
-					type="text"
-					maxLength={255}
-					placeholder={intl.formatMessage({ id: "host.description.placeholder" })}
-				/>
-				<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
-					<DirectoryField className="mb-0" labelId="dead-host.directory" />
-					<TagsField className="mb-0" />
-				</div>
-				<PageLines className="mt-4">
-					<PageChoiceField
-						name="npmproPage"
-						htmlName="npmproPageHtml"
-						title={<T id="landing-pages.field.page" />}
-						codes={PLACE_FIELDS.deadHost[0].codes}
-						choices={PLACE_FIELDS.deadHost[0].choices}
-						field={PLACE_FIELDS.deadHost[0]}
-						previewHref={isAdmin && hostId ? previewPath({ source: "dead-host", id: hostId }) : null}
+			<TabPane id="details" selfReadOnly>
+				<ReadOnlyFields>
+					<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
+				</ReadOnlyFields>
+				<HostDnsCard type="dead" hostId={hostId} />
+				<ReadOnlyFields>
+					<TextField
+						name="npmproDescription"
+						label={<T id="host.description" />}
+						type="text"
+						maxLength={255}
+						placeholder={intl.formatMessage({ id: "host.description.placeholder" })}
 					/>
-				</PageLines>
+					<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
+						<DirectoryField className="mb-0" labelId="dead-host.directory" />
+						<TagsField className="mb-0" />
+					</div>
+					<PageLines className="mt-4">
+						<PageChoiceField
+							name="npmproPage"
+							htmlName="npmproPageHtml"
+							title={<T id="landing-pages.field.page" />}
+							codes={PLACE_FIELDS.deadHost[0].codes}
+							choices={PLACE_FIELDS.deadHost[0].choices}
+							field={PLACE_FIELDS.deadHost[0]}
+							previewHref={isAdmin && hostId ? previewPath({ source: "dead-host", id: hostId }) : null}
+						/>
+					</PageLines>
+				</ReadOnlyFields>
 			</TabPane>
 			<TabPane id="tls">
 				<SSLCertificateField label="ssl-certificate" allowNew />

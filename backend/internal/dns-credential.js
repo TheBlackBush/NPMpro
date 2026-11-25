@@ -1,7 +1,9 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
 import { assertProviderForNew } from "../lib/certbot.js";
-import { buildValues, publicView, toIni } from "../lib/dns-credential-values.js";
+import { zoneLister } from "../lib/ddns/providers/index.js";
+import { testCredential } from "../lib/dns-check/credential-test.js";
+import { buildValues, credentialFields, publicView, secretValuesOf, toIni } from "../lib/dns-credential-values.js";
 import errs from "../lib/error.js";
 import { rooted } from "../lib/paths.js";
 import { defaultSecretBox, SecretBoxError } from "../lib/secret-box.js";
@@ -66,6 +68,31 @@ const internalDnsCredential = {
 	},
 
 	getPublic: async (access, data) => toPublic(await internalDnsCredential.get(access, data)),
+
+	/**
+	 * Reads once through the saved credential (one zone page, one record read) and stores nothing, no audit row
+	 *
+	 * @param   {Access}  access
+	 * @param   {{ id: number }}  data
+	 * @returns {Promise<Object>}  { supported, state, zones_seen, needs, message, checked_on }
+	 */
+	test: async (access, { id }) => {
+		access.can("certificates:manage");
+		const row = await internalDnsCredential.get(access, { id });
+		const checkedOn = new Date().toISOString();
+		const provider = zoneLister(row.provider);
+		if (provider === null) {
+			return { supported: false, state: null, zones_seen: 0, needs: null, message: null, checked_on: checkedOn };
+		}
+		const fields = credentialFields(internalDnsCredential.openValues(row));
+		const result = await testCredential({
+			provider,
+			fields,
+			secrets: secretValuesOf(row.provider, fields),
+			domains: await internalDnsDomain.namesOf(row.id),
+		});
+		return { ...result, checked_on: checkedOn };
+	},
 
 	create: async (access, data) => {
 		access.can("certificates:manage");

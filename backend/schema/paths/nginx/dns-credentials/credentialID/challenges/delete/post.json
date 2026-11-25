@@ -1,0 +1,212 @@
+{
+	"operationId": "deleteDnsCredentialChallenges",
+	"summary": "Delete chosen leftover ACME challenge records",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "credentialID",
+			"description": "ID of the DNS credential, as the list shows it",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"required": true,
+			"example": 1
+		}
+	],
+	"requestBody": {
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"items"
+					],
+					"properties": {
+						"items": {
+							"type": "array",
+							"minItems": 1,
+							"maxItems": 100,
+							"description": "The records to delete, as the list showed them",
+							"items": {
+								"type": "object",
+								"additionalProperties": false,
+								"required": [
+									"name",
+									"id",
+									"values"
+								],
+								"properties": {
+									"name": {
+										"type": "string",
+										"minLength": 1,
+										"maxLength": 255,
+										"description": "The full record name"
+									},
+									"id": {
+										"type": [
+											"string",
+											"null"
+										],
+										"maxLength": 255,
+										"description": "The provider's record id, null for a provider that addresses the whole TXT set"
+									},
+									"values": {
+										"type": "array",
+										"maxItems": 100,
+										"description": "The record's TXT values as the list showed them",
+										"items": {
+											"type": "string",
+											"maxLength": 4096
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"example": {
+					"items": [
+						{
+							"name": "_acme-challenge.example.com",
+							"id": "abc123",
+							"values": [
+								"token-value"
+							]
+						}
+					]
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "One result per item, in the order sent",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"results": [
+									{
+										"key": "_acme-challenge.example.com|abc123",
+										"name": "_acme-challenge.example.com",
+										"id": "abc123",
+										"result": "deleted"
+									}
+								]
+							}
+						}
+					},
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"results"
+						],
+						"properties": {
+							"results": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"additionalProperties": false,
+									"required": [
+										"key",
+										"name",
+										"id",
+										"result"
+									],
+									"properties": {
+										"key": {
+											"type": "string",
+											"description": "Name and id of the item, as the list showed them"
+										},
+										"name": {
+											"type": "string",
+											"description": "The full record name"
+										},
+										"id": {
+											"type": [
+												"string",
+												"null"
+											],
+											"description": "The provider's record id, null for a whole TXT set"
+										},
+										"result": {
+											"type": "string",
+											"enum": [
+												"deleted",
+												"gone",
+												"skipped",
+												"failed"
+											],
+											"description": "`deleted`: removed. `gone`: it was no longer there. `skipped`: not touched, see `reason`. `failed`: the provider refused or failed, see `message`"
+										},
+										"reason": {
+											"type": "string",
+											"enum": [
+												"changed",
+												"outside",
+												"busy"
+											],
+											"description": "Only with `skipped`. `changed`: the record differs from the list (another value, another name or id). `outside`: the name is not in the credential's domains. `busy`: a certbot run of this instance started during the deletes, so this and the items after it were not deleted"
+										},
+										"message": {
+											"type": "string",
+											"description": "Only with `failed`: the provider's answer without any secret, or `Unexpected error` when the zone failed for another reason (logged)"
+										}
+									}
+								},
+								"description": "One result per item sent, in the same order"
+							}
+						}
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "The body is invalid",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"404": {
+			"description": "The credential does not exist or belongs to another user",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"409": {
+			"description": "A certificate request or renewal is running (`error.dns-cleanup-busy`)",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../../components/error.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Deletes the chosen TXT records. Runs under the lock of every CA (those with an account row or a renewal conf and every CA a certificate may be requested from), so no certificate request or renewal starts beside it; it takes only the locks (no account is registered and no renewal conf is written). It is refused with 409 while a certbot run of this instance is going on, and the counter is read again before each delete call. Each zone settles on its own. The credential's domains are listed again first: only an item still present with the same name, id and values is deleted (a provider that addresses the whole TXT set deletes the whole set only when it is still what the list showed); an item outside the credential's domains is never touched. One audit entry (`dns-credential`, `challenges-deleted`) names the credential and the deleted record names, never their values.\n\nNeeds: Certificates manage"
+}

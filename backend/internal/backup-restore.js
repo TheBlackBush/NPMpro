@@ -13,6 +13,8 @@ import {
 	swapFiles,
 } from "../lib/backup/restore-files.js";
 import { allowFile, RESTORE_ORDER, TYPES } from "../lib/backup/types.js";
+import { caaCache } from "../lib/dns-check/caa-cache.js";
+import { hostCheckCache } from "../lib/dns-check/host-cache.js";
 import { withAllOwnerLocks } from "../lib/dns-domain-lock.js";
 import { isRestartRule, rulesOf } from "../lib/runtime-rules.js";
 import { invalid, isTypeList, unknownMigrations, withoutStage } from "./backup-shared.js";
@@ -205,7 +207,7 @@ const createRestore = (
 	 *
 	 * @returns {Promise<{ result, runtimeFailed: string[], offline: Array }>}
 	 */
-	const applyWithRollback = async ({
+	const applyWithRollbackInner = async ({
 		what,
 		page = false,
 		access,
@@ -307,6 +309,16 @@ const createRestore = (
 			log.error(`Could not write the audit log entry of the ${what}: ${error.message}`);
 		}
 		return { result, runtimeFailed, offline };
+	};
+
+	// the restored hosts replace the checked ones: no cached host check survives, and none in flight is stored
+	const applyWithRollback = async (options) => {
+		try {
+			return await applyWithRollbackInner(options);
+		} finally {
+			hostCheckCache.clearAll();
+			caaCache.clearAll();
+		}
 	};
 
 	const runRestore = async ({ access, adminUserId, entry, types }) => {

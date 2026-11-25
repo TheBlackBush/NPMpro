@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Globe, Plus } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import {
 	Button,
 	ErrorAlert,
@@ -10,14 +10,29 @@ import {
 	ListToolbar,
 	LoadingPage,
 } from "src/components";
-import { getDirectory, useDirectorySuggestions, useListFilters, usePaging } from "src/hooks";
-import { T } from "src/locale";
+import {
+	getDirectory,
+	useCheckHostDns,
+	useDirectorySuggestions,
+	useHostDnsChecks,
+	useListFilters,
+	usePaging,
+} from "src/hooks";
+import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
+import { checkBatches, checkCounts, checksOfType } from "src/modules/DnsCheck";
 import { addTag, tagNames } from "src/modules/HostTags";
 import { deleteInvalidations, toggleInvalidations } from "src/modules/HostTypes";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { MANAGE } from "src/modules/Permissions";
-import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
+import {
+	getNginxConfigError,
+	showApiError,
+	showNginxConfigError,
+	showObjectSuccess,
+	showSuccess,
+	showWarning,
+} from "src/notifications";
 
 const FILTERS = ["status", "tls", "group", "tags"];
 
@@ -31,6 +46,16 @@ export function HostListPage({ list }) {
 	// only the ids, headers and sortability are read here; the cells render in the table
 	const columns = list.useColumns();
 	const { isFetching, isPending, isError, error, data } = list.useList(list.expand);
+	// the DNS check: streams have no names, so no badge and no button
+	const hasDnsCheck = list.type !== "stream";
+	const { data: dnsChecks } = useHostDnsChecks({ enabled: hasDnsCheck });
+	const dnsChecksById = useMemo(
+		() => (hasDnsCheck ? checksOfType(dnsChecks, list.type) : undefined),
+		[hasDnsCheck, dnsChecks, list.type],
+	);
+	const { mutateAsync: checkDns, isPending: isChecking } = useCheckHostDns();
+	// the hosts of the page the table shows now (set while it renders)
+	const pageRowsRef = useRef([]);
 	const groups = useDirectorySuggestions(data);
 	// only the tags of this list: a tag of another host type would filter this one to nothing
 	const tags = useMemo(() => tagNames(data ?? []), [data]);
@@ -93,6 +118,24 @@ export function HostListPage({ list }) {
 		}
 	};
 
+	const handleCheckDns = async () => {
+		const batches = checkBatches(list.type, pageRowsRef.current);
+		if (batches.length === 0) {
+			showWarning(intl.formatMessage({ id: "dns-check.nothing" }));
+			return;
+		}
+		try {
+			// one request after the other: each runs its lookups four at a time
+			const hosts = await batches.reduce(
+				async (done, batch) => [...(await done), ...(await checkDns(batch))],
+				Promise.resolve([]),
+			);
+			showSuccess(intl.formatMessage({ id: "dns-check.toast" }, checkCounts(hosts)));
+		} catch (err) {
+			showApiError(err);
+		}
+	};
+
 	const handleDelete = (id) => {
 		const host = hostOf(id);
 		showDeleteConfirmModal({
@@ -122,6 +165,12 @@ export function HostListPage({ list }) {
 						permissionSection={list.section}
 						hasItems={Boolean(data?.length)}
 					/>
+					{hasDnsCheck && data?.length ? (
+						<Button size="sm" onClick={handleCheckDns} isLoading={isChecking} data-dns-check-page>
+							<Globe data-icon="inline-start" aria-hidden="true" />
+							<T id="dns-check.check-dns" />
+						</Button>
+					) : null}
 					<HasPermission section={list.section} permission={MANAGE} hideError>
 						{data?.length ? (
 							<Button color="primary" size="sm" onClick={() => showModal("new")}>
@@ -149,6 +198,8 @@ export function HostListPage({ list }) {
 			<Table
 				data={displayedHosts}
 				paging={paging}
+				dnsChecks={dnsChecksById}
+				pageRowsRef={pageRowsRef}
 				groupBy={groupingActive ? getDirectory : undefined}
 				renderGroupLabel={(key) => (key === "" ? <T id={list.noDirectory} /> : key)}
 				isFiltered={isFiltered}

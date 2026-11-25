@@ -1,4 +1,15 @@
 import { DdnsProviderError } from "../errors.js";
+import {
+	assertChallengeItem,
+	changedSet,
+	collectChallenges,
+	fullName,
+	PREFIX,
+	requireId,
+	sameValues,
+	settleDelete,
+	unquote,
+} from "./challenge-common.js";
 import { jsonHeaders, plainTarget, refuseMultiple, zoneNotFound } from "./record-common.js";
 import { bearer, collectZones, failAnswer, malformed } from "./zone-common.js";
 
@@ -20,6 +31,7 @@ const isAuthRefusal = (body) => body?.errors?.some?.((error) => AUTH_CODES.has(e
 const secretsOf = (fields) =>
 	[fields.dns_cloudflare_api_token, fields.dns_cloudflare_api_key].filter((value) => typeof value === "string");
 
+const HEX_ID = /^[0-9a-f]{32}$/u;
 const API = "https://api.cloudflare.com/client/v4";
 
 const check = (res, fields, okStatuses = [200]) => {
@@ -73,6 +85,10 @@ export default {
 	aliases: true,
 	// the lowest TTL of a record that is not proxied on the plans below Enterprise (Cloudflare docs, TTL)
 	minTtl: 60,
+	/** The zone id as meta, looked up once: a caller that reads many names of a zone passes it to each read */
+	async zoneMeta(args) {
+		return { zone_id: await zoneIdOf({ ...args, meta: undefined }) };
+	},
 	/** The record's values (more than one: the engine marks it Failed), its ttl and proxied flag; null when missing */
 	read(args) {
 		return withZone(args, async ({ name, type, fields, fetch, meta }, zoneId) => {
@@ -138,8 +154,81 @@ export default {
 			return { meta: { ...next, record_id: res.json?.result?.id ?? null }, created: true };
 		});
 	},
-	listZones: ({ fields, fetch }) =>
+	/**
+	 * After a 401 or 403 of the zone list: the token verify call tells a wrong token (401, code 1000) from a missing
+	 * right; any other answer (an account owned token, a key group) stays "refused". Reads only.
+	 */
+	async verifyRefusal({ fields, fetch }) {
+		if (!fields.dns_cloudflare_api_token) return "refused";
+		const res = await fetch(`${API}/user/tokens/verify`, { headers: authHeaders(fields) });
+		const wrong = res.status === 401 && res.json?.errors?.some?.((error) => error?.code === 1000) === true;
+		return wrong ? "wrong-key" : "refused";
+	},
+	/** The TXT records (and CNAMEs, counted) at or below _acme-challenge: the name filter is a prefix, filtered again here */
+	async listChallenges({ zone, fields, fetch }) {
+		const zoneId = await zoneIdOf({ zone, fields, fetch });
+		return collectChallenges({
+			zone,
+			fetchPage: async (page) => {
+				const res = await fetch(
+					`${API}/zones/${zoneId}/dns_records?name.startswith=${PREFIX}&per_page=100&page=${page}`,
+					{ headers: authHeaders(fields) },
+				);
+				check(res, fields);
+				if (!Array.isArray(res.json?.result)) throw malformed(res, secretsOf(fields));
+				const info = res.json.result_info;
+				return {
+					records: res.json.result.map((record) => ({
+						name: fullName(zone, record?.name),
+						type: record?.type,
+						id: record?.id,
+						values: [record?.content],
+						changed_on: record?.modified_on ?? record?.created_on,
+					})),
+					more: typeof info?.page === "number" && info.page < (info.total_pages ?? 0),
+				};
+			},
+		});
+	},
+	/**
+	 * Reads the records at the item's name first and deletes only the TXT record with the listed id and value (another
+	 * record, name or value is "changed", an absent one "gone"); an answer that is not a success is checked by a new read.
+	 */
+	async removeChallenge({ zone, item, fields, fetch }) {
+		assertChallengeItem(zone, item);
+		requireId(item, (id) => typeof id === "string" && HEX_ID.test(id));
+		const zoneId = await zoneIdOf({ zone, fields, fetch });
+		const find = async () => {
+			const res = await fetch(`${API}/zones/${zoneId}/dns_records?name.exact=${encodeURIComponent(item.name)}`, {
+				headers: authHeaders(fields),
+			});
+			check(res, fields);
+			if (!Array.isArray(res.json?.result)) throw malformed(res, secretsOf(fields));
+			return res.json.result.find((entry) => entry?.id === item.id) ?? null;
+		};
+		const record = await find();
+		if (record === null) return { gone: true };
+		if (
+			record.type !== "TXT" ||
+			fullName(zone, record.name) !== item.name ||
+			!sameValues([unquote(record.content)], item.values)
+		) {
+			return changedSet();
+		}
+		const res = await fetch(`${API}/zones/${zoneId}/dns_records/${item.id}`, {
+			method: "DELETE",
+			headers: authHeaders(fields),
+		});
+		return settleDelete({
+			res,
+			ok: (answer) => answer.status === 200 && answer.json?.success !== false,
+			recheck: async () => (await find()) === null,
+			fail: (answer) => check(answer, fields),
+		});
+	},
+	listZones: ({ fields, fetch, maxPages }) =>
 		collectZones({
+			maxPages,
 			fetchPage: async (page) => {
 				const res = await fetch(`https://api.cloudflare.com/client/v4/zones?page=${page}&per_page=50`, {
 					headers: authHeaders(fields),

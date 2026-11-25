@@ -63,6 +63,25 @@ const updaterFor = (credentialProvider) => {
 	return typeof provider?.read === "function" && typeof provider?.write === "function" ? provider : null;
 };
 
+/** A provider that can list and delete its `_acme-challenge` TXT records (the cleanup) */
+const cleansChallenges = (credentialProvider) => {
+	const provider = providerForCredential(credentialProvider);
+	return typeof provider?.listChallenges === "function" && typeof provider?.removeChallenge === "function";
+};
+
+/**
+ * How a refused call of the credential Test reads: "wrong-key", "missing-right" or "refused" (the provider cannot
+ * tell the two apart, or the status is not mapped)
+ *
+ * @param   {Object|String} provider  an entry of PROVIDERS or a credential provider
+ * @param   {Error}         err       the error of the refused call (providerStatus)
+ * @returns {"wrong-key"|"missing-right"|"refused"}
+ */
+const refusalOf = (provider, err) => {
+	const entry = typeof provider === "string" ? providerForCredential(provider) : provider;
+	return typeof entry?.testRefusal === "function" ? entry.testRefusal(err) : "refused";
+};
+
 /** The updater providers as GET /nginx/ddns/providers shows them */
 const PROVIDER_LIST = Object.freeze(
 	PROVIDERS.filter((provider) => typeof provider.read === "function" && typeof provider.write === "function").map(
@@ -98,14 +117,20 @@ const ZONE_LIST_DEADLINE_MS = 60_000;
  * @param   {Object}   options.fields      the credential's fields
  * @param   {String[]} options.secrets     values scrubbed from every message
  * @param   {number}   [options.deadlineMs]
+ * @param   {number}   [options.maxPages]    stop after this many page calls (the credential Test reads one)
+ * @param   {Function} [options.fetch]       the provider call (the credential Test passes its own); providerFetch with the secrets by default
  * @returns {Promise<String[]>}  with truncated: true when the list was cut
  */
-const listProviderZones = async (provider, { fields, secrets, deadlineMs = ZONE_LIST_DEADLINE_MS }) => {
+const listProviderZones = async (
+	provider,
+	{ fields, secrets, deadlineMs = ZONE_LIST_DEADLINE_MS, maxPages, fetch },
+) => {
 	const deadline = AbortSignal.timeout(deadlineMs);
 	try {
 		return await provider.listZones({
 			fields,
-			fetch: (url, options) => providerFetch(url, { ...options, secrets, deadline }),
+			maxPages,
+			fetch: fetch ?? ((url, options) => providerFetch(url, { ...options, secrets, deadline })),
 		});
 	} catch (err) {
 		if (deadline.aborted && err?.name === "DdnsProviderError" && err.code === "timeout") {
@@ -120,12 +145,14 @@ const listProviderZones = async (provider, { fields, secrets, deadlineMs = ZONE_
 };
 
 export {
+	cleansChallenges,
 	listProviderZones,
 	listsDomains,
 	PROVIDER_LIST,
 	PROVIDERS,
 	providerById,
 	providerForCredential,
+	refusalOf,
 	updaterFor,
 	ZONE_LIST_DEADLINE_MS,
 	zoneLister,

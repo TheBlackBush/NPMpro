@@ -7,6 +7,7 @@ import {
 	ApiErrorContent,
 	AppModal,
 	Button,
+	CaaNote,
 	DomainNamesField,
 	ErrorAlert,
 	FormSubmit,
@@ -47,6 +48,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 	});
 	const { isSubmitting } = methods.formState;
 	const domains = useWatch({ control: methods.control, name: "domainNames" });
+	const server = useWatch({ control: methods.control, name: "npmproAcmeServer" });
 
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
@@ -108,6 +110,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 					</NoticeAlert>
 					<DomainNamesField forCertificate onChange={() => setTestResults(null)} />
 					<AcmeServerField />
+					<CaaNote names={domains} server={server} className="mb-3" />
 
 					<SwitchList>
 						<SwitchField

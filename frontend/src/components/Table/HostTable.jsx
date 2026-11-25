@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { EmptyData } from "src/components/EmptyData";
+import { pageRows } from "src/modules/TableGroups";
 import { TableLayout } from "./TableLayout";
 import { PagedTable } from "./TablePagination";
 import { PAGED_FEATURES, useAppTable } from "./useAppTable";
@@ -7,6 +9,8 @@ import { PAGED_FEATURES, useAppTable } from "./useAppTable";
  * The table of a host list: rows sorted by the list page, row handlers through the table meta, the empty state
  *
  * @param {Object} props.empty  { icon, section, object, objects } of the empty state; section is also the permission
+ * @param {Map} [props.dnsChecks]  the cached DNS checks of the host type by host id (the badge after the names)
+ * @param {{ current: Array }} [props.pageRowsRef]  receives the hosts of the page shown (what "Check DNS" checks)
  */
 export function HostTable({
 	columns,
@@ -27,6 +31,8 @@ export function HostTable({
 	groupBy,
 	renderGroupLabel,
 	paging,
+	dnsChecks,
+	pageRowsRef,
 }) {
 	// a grouped list cuts its pages after the groups are ordered (TableBody), so the table passes every row on
 	const pagination = groupBy
@@ -38,10 +44,24 @@ export function HostTable({
 		data,
 		meta: {
 			isFetching,
+			dnsChecks,
 			actions: { onClone, onDelete, onDisableToggle, onEdit, onTagClick },
 		},
 		state: { sorting, pagination },
 		onSortingChange,
+	});
+
+	// what "Check DNS" checks: the rows of the page as the table orders and groups them, kept after each render
+	const shownRows = tableInstance.getRowModel().rows.map((row) => row.original);
+	useEffect(() => {
+		if (pageRowsRef) {
+			pageRowsRef.current = pageRows({
+				rows: shownRows,
+				keyOf: groupBy,
+				pageIndex: paging.pageIndex,
+				pageSize: paging.pageSize,
+			});
+		}
 	});
 
 	return (

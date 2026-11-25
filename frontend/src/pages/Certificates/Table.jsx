@@ -10,12 +10,15 @@ import {
 	GravatarFormatter,
 	RowActions,
 } from "src/components";
+import { CaaBadge } from "src/components/CaaBadge";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { PagedTable } from "src/components/Table/TablePagination";
 import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
-import { useCanManage } from "src/hooks";
+import { useAcmeServers, useCanManage, useCertificateCaa } from "src/hooks";
 import { intl, T } from "src/locale";
 import { acmeServerLabel } from "src/modules/AcmeAccount";
+import { defaultCa } from "src/modules/AcmeServers";
+import { caaBadge, caaById } from "src/modules/Caa";
 import { certificateActionKeys } from "src/modules/CertificateActions";
 import { CERTIFICATES } from "src/modules/Permissions";
 import { AddCertificateMenu } from "./AddCertificateMenu";
@@ -119,12 +122,24 @@ export function useColumns() {
 				header: intl.formatMessage({ id: "column.name" }),
 				cell: (info) => {
 					const value = info.row.original;
+					// the cached CAA result of an ACME certificate (meta.caa: certificate id -> entry, loaded after the list)
+					const badge =
+						value.provider === "letsencrypt" ? caaBadge(info.table.options.meta?.caa?.get(value.id)) : null;
 					return (
 						<DomainsFormatter
 							domains={value.domainNames}
 							createdOn={value.createdOn}
 							niceName={value.niceName}
 							provider={value.provider}
+							after={
+								badge ? (
+									<CaaBadge
+										badge={badge}
+										server={value.npmproAcmeServer}
+										instanceServer={info.table.options.meta?.instanceServer}
+									/>
+								) : null
+							}
 						/>
 					);
 				},
@@ -223,6 +238,10 @@ export default function Table({
 	paging,
 }) {
 	const columns = useColumns();
+	// the cached CAA results come after the list (a failed read shows no badge); the instance CA names a certificate's CA
+	const { data: caaEntries } = useCertificateCaa();
+	const { data: servers } = useAcmeServers();
+	const caa = useMemo(() => caaById(caaEntries), [caaEntries]);
 
 	const tableInstance = useAppTable({
 		features: PAGED_FEATURES,
@@ -231,6 +250,8 @@ export default function Table({
 		// the row handlers live here, not in the columns (see useColumns)
 		meta: {
 			isFetching,
+			caa,
+			instanceServer: defaultCa(servers),
 			actions: { onChangeDnsCredential, onDelete, onDownload, onEdit, onReissue, onRenew, onTest },
 		},
 		state: { sorting, pagination: { pageIndex: paging.pageIndex, pageSize: paging.pageSize } },

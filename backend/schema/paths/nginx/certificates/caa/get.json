@@ -1,0 +1,49 @@
+{
+	"operationId": "getCertificateCaa",
+	"summary": "List the CAA results of certificates",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "One entry per Let's Encrypt (ACME) certificate the user can view; custom and mTLS certificates have none",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"certificate_id": 1,
+									"state": "refused",
+									"checked_on": "2026-11-24T09:00:00.000Z",
+									"names": [
+										{
+											"name": "app.example.com",
+											"state": "refused",
+											"reason": "not-listed",
+											"found_at": "example.com",
+											"record": "0 issue \"pki.goog\"",
+											"error_i18n": null
+										}
+									]
+								}
+							]
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/caa-check-list.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "The cached CAA result of each certificate, by id. A result older than 6 hours or missing is checked again before the answer, for at most 25 certificates per call (4 lookups at once); the others answer `not-checked` until a later call. A save, re-issue, renewal or delete of a certificate clears its result.\n\nNeeds: Certificates view"
+}

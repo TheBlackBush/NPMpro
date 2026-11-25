@@ -7,6 +7,7 @@ import {
 	ApiErrorContent,
 	AppModal,
 	Button,
+	CaaNote,
 	ErrorAlert,
 	FormSubmit,
 	HookForm,
@@ -80,6 +81,13 @@ const ReissueCertificateModal = EasyModal.create(({ certificate, visible, remove
 									<T id="certificate.reissue.test-ca" />
 								</NoticeAlert>
 							) : null}
+							<CaaNote
+								names={certificate.domainNames}
+								server={chosen}
+								dnsChallenge={Boolean(certificate.npmproDnsChallenge)}
+								needsServer
+								className="mt-3"
+							/>
 						</>
 					) : (
 						<NoticeAlert variant="info">

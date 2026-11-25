@@ -1,0 +1,63 @@
+{
+	"operationId": "testDnsCredential",
+	"summary": "Test a DNS credential with a read",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "credentialID",
+			"description": "ID of the DNS credential, as the list shows it",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"required": true,
+			"example": 1
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The result of the test; a refused or failed provider call is a state of a 200 answer, not an error",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"supported": true,
+								"state": "works",
+								"zones_seen": 3,
+								"needs": null,
+								"message": null,
+								"checked_on": "2026-11-24T09:00:00.000Z"
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../../components/dns-credential-test-object.json"
+					}
+				}
+			}
+		},
+		"404": {
+			"description": "The credential does not exist or belongs to another user",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/error.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Reads through the saved credential once: the first page of the provider's zone list and, when the credential has a domain and the provider can read records, one A record read at the first domain's apex (a missing record is fine). The write right cannot be tested without a change. Nothing is stored and no audit entry is written. For a provider without a read call (`supported` false) no outside request is made.\n\nNeeds: Certificates manage"
+}

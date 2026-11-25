@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { groupRows, pageGroups } from "./TableGroups.js";
+import { groupRows, pageGroups, pageRows } from "./TableGroups.js";
 
 const rows = [
 	{ id: 1, g: "b" },
@@ -30,4 +30,13 @@ it("cuts the rows of all groups into pages and keeps the groups of each page", (
 		["", [2]],
 	]);
 	assert.deepEqual(pageGroups(groups, 2, 3), []);
+});
+
+it("shows the rows the table gives for a plain list and the cut groups for a grouped one", () => {
+	assert.deepEqual(pageRows({ rows, pageIndex: 3, pageSize: 2 }), rows);
+	const grouped = pageRows({ rows, keyOf: (row) => row.g, pageIndex: 0, pageSize: 3 });
+	assert.deepEqual(
+		grouped.map((row) => row.id),
+		[3, 5, 1],
+	);
 });

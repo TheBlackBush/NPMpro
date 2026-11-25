@@ -214,6 +214,9 @@ const ENABLED_CONTROLS = (root) =>
 				el.type !== "hidden" &&
 				el.getClientRects().length > 0 &&
 				!el.closest("[role=tablist]") &&
+				// the Check of a host window's DNS card only reads and works in a View window (its own flow checks it), and
+				// a card's info icon only opens its tooltip; every other control of the card is checked
+				!el.matches("[data-dns-check-button], [data-card-info]") &&
 				!(el.disabled || el.closest("fieldset:disabled") || el.readOnly) &&
 				el.getAttribute("aria-readonly") !== "true" &&
 				el.getAttribute("aria-disabled") !== "true" &&

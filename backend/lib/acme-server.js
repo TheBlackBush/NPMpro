@@ -14,6 +14,23 @@ const ACME_PRESETS = [
 	{ id: "google", server: GOOGLE_SERVER, eab: true },
 ];
 
+// The CAA identities of the presets, used when the CA's directory does not publish meta.caaIdentities (RFC 8555
+// section 7.1.1). Observed in the four directories on 2026-11-24 and in the CAs' own CAA pages.
+const CAA_FALLBACK = {
+	letsencrypt: ["letsencrypt.org"],
+	"letsencrypt-staging": ["letsencrypt.org"],
+	zerossl: [
+		"sectigo.com",
+		"trust-provider.com",
+		"usertrust.com",
+		"comodoca.com",
+		"comodo.com",
+		"entrust.net",
+		"affirmtrust.com",
+	],
+	google: ["pki.goog"],
+};
+
 // envs.sh: these CAs default to must-staple and OCSP stapling on
 const STAPLING_SERVERS = new Set([GOOGLE_SERVER, ZEROSSL_SERVER]);
 
@@ -131,6 +148,9 @@ const sameServer = (a, b) => serverKey(a) === serverKey(b);
 /** @returns {string|null}  the preset id of a directory URL */
 const presetOf = (server) => ACME_PRESETS.find((preset) => sameServer(preset.server, server))?.id ?? null;
 
+/** @returns {string[]|null}  the fixed CAA identities of a preset CA, null for any other */
+const caaFallbackOf = (server) => CAA_FALLBACK[presetOf(server)] ?? null;
+
 /**
  * What a request to a CA passes (certbot then keeps it in the renewal conf): the instance profile and must-staple on
  * the instance CA, else that CA's defaults (must-staple on the stapling CAs, no required profile)
@@ -148,6 +168,8 @@ const requestOptionsFor = (server, instance, values) =>
 export {
 	ACME_PRESETS,
 	acmeEnvSet,
+	CAA_FALLBACK,
+	caaFallbackOf,
 	GOOGLE_SERVER,
 	isDirectoryUrl,
 	isTrustedServer,

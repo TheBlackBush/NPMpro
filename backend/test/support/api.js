@@ -175,12 +175,28 @@ const startApi = async ({ env = {}, files = {} } = {}) => {
 			NPMPRO_TEST_ARGON2: "fast",
 			// ACME directory reads go through the undici MockAgent (lib/acme-directory.js)
 			NPMPRO_TEST_OUTBOUND: "mock",
+			// the DNS lookups of the host and CAA checks read this map (lib/dns-check/lookup.js)
+			NPMPRO_TEST_DNS: path.join(root, "fake/dns-map.json"),
 			...env,
 		});
 		controlSocket = await startControlSocket(path.join(root, "run/nginx-control.sock"));
+		const dnsMap = {};
+		const writeDnsMap = () => writeFile(process.env.NPMPRO_TEST_DNS, JSON.stringify(dnsMap));
 		const outside = {
 			control: controlSocket.control,
 			dns: fakeDns(),
+			// what the check resolver answers: names.set("a.example", "A", ["203.0.113.7"]) or ("a.example", "A",
+			// { code: "timeout" }); a name and type never set answers nxdomain
+			names: {
+				set: (name, type, answer) => {
+					dnsMap[`${name.toLowerCase()}|${type}`] = answer;
+					return writeDnsMap();
+				},
+				clear: () => {
+					for (const key of Object.keys(dnsMap)) delete dnsMap[key];
+					return writeDnsMap();
+				},
+			},
 			http: fakeHttp(),
 			calls: async () =>
 				(await readFile(path.join(root, "fake/calls.log"), "utf8").catch(() => ""))

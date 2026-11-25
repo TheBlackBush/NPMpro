@@ -205,6 +205,16 @@
 				"$ref": "./paths/nginx/certificates/validate/post.json"
 			}
 		},
+		"/nginx/certificates/caa-check": {
+			"post": {
+				"$ref": "./paths/nginx/certificates/caa-check/post.json"
+			}
+		},
+		"/nginx/certificates/caa": {
+			"get": {
+				"$ref": "./paths/nginx/certificates/caa/get.json"
+			}
+		},
 		"/nginx/certificates/test-http": {
 			"post": {
 				"$ref": "./paths/nginx/certificates/test-http/post.json"
@@ -270,6 +280,29 @@
 		"/nginx/dns-credentials/{credentialID}/provider-domains": {
 			"get": {
 				"$ref": "./paths/nginx/dns-credentials/credentialID/provider-domains/get.json"
+			}
+		},
+		"/nginx/dns-credentials/{credentialID}/test": {
+			"post": {
+				"$ref": "./paths/nginx/dns-credentials/credentialID/test/post.json"
+			}
+		},
+		"/nginx/dns-credentials/{credentialID}/challenges": {
+			"get": {
+				"$ref": "./paths/nginx/dns-credentials/credentialID/challenges/get.json"
+			}
+		},
+		"/nginx/dns-credentials/{credentialID}/challenges/delete": {
+			"post": {
+				"$ref": "./paths/nginx/dns-credentials/credentialID/challenges/delete/post.json"
+			}
+		},
+		"/nginx/dns-check/hosts": {
+			"get": {
+				"$ref": "./paths/nginx/dns-check/hosts/get.json"
+			},
+			"post": {
+				"$ref": "./paths/nginx/dns-check/hosts/post.json"
 			}
 		},
 		"/nginx/ddns-records": {

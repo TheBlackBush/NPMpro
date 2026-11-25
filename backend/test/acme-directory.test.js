@@ -71,8 +71,22 @@ it("reads a LAN CA: profiles with their descriptions, the EAB requirement, an AC
 		reachable: true,
 		directory: true,
 		external_account_required: true,
+		caa_identities: [],
 		profiles: { classic: "The classic profile", tlsserver: "" },
 	});
+});
+
+it("reads meta.caaIdentities: lower case, no duplicate, no blank or non-string entry, at most 10", async () => {
+	const many = Array.from({ length: 12 }, (_, i) => `ca${i}.example`);
+	reply("https://ca.lan", "/caa", 200, {
+		newNonce: "n",
+		meta: { caaIdentities: ["Sectigo.COM", "sectigo.com", " ", 7, ...many] },
+	});
+	const { caa_identities } = await readAcmeDirectory("https://ca.lan/caa");
+	assert.equal(caa_identities.length, 10);
+	assert.deepEqual(caa_identities.slice(0, 2), ["sectigo.com", "ca0.example"]);
+	reply("https://ca.lan", "/caa-bad", 200, { newNonce: "n", meta: { caaIdentities: "letsencrypt.org" } });
+	assert.deepEqual((await readAcmeDirectory("https://ca.lan/caa-bad")).caa_identities, []);
 });
 
 it("reads a trusted (env) URL on this host without the guard", async () => {
@@ -91,6 +105,7 @@ it("tells an unreachable CA (network error, timeout, 5xx) from one that is no AC
 		reachable: true,
 		directory: false,
 		external_account_required: false,
+		caa_identities: [],
 		profiles: {},
 	});
 	reply("https://ca.lan", "/html", 200, "<html>");

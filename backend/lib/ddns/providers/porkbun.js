@@ -1,7 +1,17 @@
 import { DdnsProviderError } from "../errors.js";
+import {
+	assertChallengeItem,
+	changedSet,
+	collectChallenges,
+	fullName,
+	requireId,
+	sameValues,
+	settleDelete,
+} from "./challenge-common.js";
 import { recordGone, refuseMultiple, refuseWildcard, relativeName, zoneNotFound } from "./record-common.js";
-import { collectZones, failAnswer, malformed } from "./zone-common.js";
+import { collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
+const DIGITS = /^\d+$/u;
 const BASE = "https://api.porkbun.com/api/json/v3";
 const HINT = "An API key with DNS access, and API access switched on for the domain";
 // "typically 600": the account setting decides, so a lower value than the account allows shows as the failed answer
@@ -77,13 +87,74 @@ export default {
 	wildcards: false,
 	aliases: false,
 	minTtl: MIN_TTL,
+	// a refused key answers 400 (INVALID_API_KEYS), a missing scope or an IP list 403
+	testRefusal: statusRefusal({ 400: "wrong-key", 403: "missing-right" }),
+	/** Every editable record of the domain in one call (no paging); the records have no time */
+	listChallenges({ zone, fields, fetch }) {
+		const secrets = secretsOf(fields);
+		return collectChallenges({
+			zone,
+			fetchPage: async () => {
+				const answer = await call({ fields, fetch, path: `/dns/retrieve/${zonePart(zone)}` });
+				if (!Array.isArray(answer.records)) throw malformed({ status: 200 }, secrets);
+				return {
+					records: answer.records.map((record) => ({
+						name: fullName(zone, record?.name),
+						type: record?.type,
+						id: record?.id === undefined || record?.id === null ? null : String(record.id),
+						values: [record?.content],
+					})),
+					more: false,
+				};
+			},
+		});
+	},
+	/**
+	 * Reads the TXT records at the item's name first and deletes only the one with the listed id and value; the
+	 * documented "not found" answer is INVALID_RECORD_ID, any other failure is read again
+	 */
+	async removeChallenge({ zone, item, fields, fetch }) {
+		assertChallengeItem(zone, item);
+		requireId(item, (id) => typeof id === "string" && DIGITS.test(id));
+		const secrets = secretsOf(fields);
+		const find = async () => {
+			const answer = await call({
+				fields,
+				fetch,
+				path: `/dns/retrieveByNameType/${zonePart(zone)}/TXT${subPart(zone, item.name)}`,
+			});
+			if (!Array.isArray(answer.records)) throw malformed({ status: 200 }, secrets);
+			return answer.records.find((entry) => String(entry?.id) === item.id) ?? null;
+		};
+		const record = await find();
+		if (record === null) return { gone: true };
+		if (fullName(zone, record.name) !== item.name || !sameValues([String(record.content ?? "")], item.values)) {
+			return changedSet();
+		}
+		const res = await fetch(`${BASE}/dns/delete/${zonePart(zone)}/${item.id}`, {
+			method: "POST",
+			headers: { Accept: "application/json", "Content-Type": "application/json" },
+			body: JSON.stringify({ apikey: fields.dns_porkbun_key, secretapikey: fields.dns_porkbun_secret }),
+		});
+		return settleDelete({
+			res,
+			ok: (answer) => answer.status >= 200 && answer.status < 300 && answer.json?.status === "SUCCESS",
+			gone: (answer) => answer.json?.code === "INVALID_RECORD_ID",
+			recheck: async () => (await find()) === null,
+			fail: (answer) => {
+				const code = typeof answer.json?.code === "string" ? answer.json.code : "";
+				return failAnswer(answer, { hint: HINT, secrets, refused: REFUSED_CODES.test(code) });
+			},
+		});
+	},
 	/**
 	 * The domains of the account: POST with both credentials in the body, paged by the `start` offset (chunks of
 	 * up to 1000). A page shorter than the chunk is the end. Domains with `apiAccess` 0 are left out.
 	 */
-	listZones: ({ fields, fetch }) => {
+	listZones: ({ fields, fetch, maxPages }) => {
 		let start = 0;
 		return collectZones({
+			maxPages,
 			fetchPage: async () => {
 				const secrets = secretsOf(fields);
 				const res = await fetch(`${BASE}/domain/listAll`, {

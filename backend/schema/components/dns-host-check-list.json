@@ -1,0 +1,153 @@
+{
+	"type": "array",
+	"description": "The host checks",
+	"items": {
+		"type": "object",
+		"additionalProperties": false,
+		"required": [
+			"type",
+			"id",
+			"checked_on",
+			"names"
+		],
+		"properties": {
+			"type": {
+				"type": "string",
+				"enum": [
+					"proxy",
+					"redirection",
+					"dead"
+				],
+				"description": "The host type: `proxy`, `redirection` or `dead` (a 404 host)"
+			},
+			"id": {
+				"type": "integer",
+				"minimum": 1,
+				"description": "The host's id"
+			},
+			"checked_on": {
+				"type": "string",
+				"format": "date-time",
+				"description": "When the names were last checked"
+			},
+			"names": {
+				"type": "array",
+				"items": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"name",
+						"state",
+						"via",
+						"proxied",
+						"ipv4",
+						"ipv6",
+						"reason",
+						"message"
+					],
+					"properties": {
+						"name": {
+							"type": "string",
+							"description": "The domain name as the host stores it"
+						},
+						"state": {
+							"type": "string",
+							"enum": [
+								"here",
+								"partly",
+								"elsewhere",
+								"none",
+								"unknown",
+								"skipped"
+							],
+							"description": "`here`: the name reaches this instance. `partly`: one address family does, the other does not. `elsewhere`: it answers other addresses. `none`: no A and no AAAA record. `unknown`: a lookup failed or the public address is unknown (see `reason`). `skipped`: a wildcard or regular expression name"
+						},
+						"via": {
+							"type": [
+								"string",
+								"null"
+							],
+							"enum": [
+								"dns",
+								"record",
+								"alias",
+								"wildcard",
+								null
+							],
+							"description": "How `here` or `partly` was found: the DNS answer, the provider's record, the target of the provider's CNAME record (`alias`, one level), or the provider's wildcard record"
+						},
+						"proxied": {
+							"type": "boolean",
+							"description": "True when the provider record is proxied (Cloudflare)"
+						},
+						"ipv4": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"found",
+								"public"
+							],
+							"properties": {
+								"found": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									},
+									"description": "The addresses of this family that the name answers (or, with no DNS answer, the provider record's values)"
+								},
+								"public": {
+									"type": [
+										"string",
+										"null"
+									],
+									"description": "This instance's public address of the family; null when unknown or not asked"
+								}
+							},
+							"description": "The IPv4 side: the addresses the name answers and this instance's public address"
+						},
+						"ipv6": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"found",
+								"public"
+							],
+							"properties": {
+								"found": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									},
+									"description": "The addresses of this family that the name answers (or, with no DNS answer, the provider record's values)"
+								},
+								"public": {
+									"type": [
+										"string",
+										"null"
+									],
+									"description": "This instance's public address of the family; null when unknown or not asked"
+								}
+							},
+							"description": "The IPv6 side: the addresses the name answers and this instance's public address (asked only when the name has AAAA records)"
+						},
+						"reason": {
+							"type": [
+								"string",
+								"null"
+							],
+							"description": "A code: `skipped-pattern`, `lookup-timeout`, `lookup-servfail`, `lookup-error`, `public-address-unknown`, `public-ipv6-unknown`, `provider-read-failed`, `provider-read-skipped` (the provider was not read: the request's provider reads were used up or the provider limited the rate; the DNS answer counts), `timeout` (the request's deadline of 60 s ended before this name was checked) or `check-failed` (this name could not be checked)"
+						},
+						"message": {
+							"type": [
+								"string",
+								"null"
+							],
+							"description": "The provider's message when `reason` is `provider-read-failed`, with every secret removed"
+						}
+					}
+				},
+				"description": "One result per domain name of the host"
+			}
+		}
+	}
+}

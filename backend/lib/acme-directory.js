@@ -60,8 +60,26 @@ const unreachable = (error) => ({
 	directory: false,
 	external_account_required: false,
 	profiles: {},
+	caa_identities: [],
 	error: String(error),
 });
+
+const MAX_CAA_IDENTITIES = 10;
+const MAX_CAA_IDENTITY_LENGTH = 253;
+
+// meta.caaIdentities (RFC 8555 section 7.1.1): lower case, no duplicate, at most 10
+const caaIdentitiesOf = (meta) => {
+	const listed = Array.isArray(meta?.caaIdentities) ? meta.caaIdentities : [];
+	return [
+		...new Set(
+			listed
+				.filter(
+					(name) => typeof name === "string" && name.trim() !== "" && name.length <= MAX_CAA_IDENTITY_LENGTH,
+				)
+				.map((name) => name.trim().toLowerCase()),
+		),
+	].slice(0, MAX_CAA_IDENTITIES);
+};
 
 const directoryOf = (body) => {
 	const meta = body !== null && typeof body === "object" ? body.meta : undefined;
@@ -70,6 +88,7 @@ const directoryOf = (body) => {
 		reachable: true,
 		directory: typeof body?.newNonce === "string",
 		external_account_required: meta?.externalAccountRequired === true,
+		caa_identities: caaIdentitiesOf(meta),
 		profiles: Object.fromEntries(
 			Object.entries(profiles)
 				.filter(([name]) => PROFILE_NAME.test(name))
@@ -121,7 +140,7 @@ const remember = (key, result) => {
  * @param   {boolean}  [options.guarded]  false only for the operator's ACME_SERVER (isTrustedServer)
  * @param   {boolean}  [options.fresh]    skip the 5 minute cache (a save's check, a registration)
  * @returns {Promise<{reachable: boolean, directory: boolean, external_account_required: boolean,
- *           profiles: Object<string, string>, error?: string}>}
+ *           profiles: Object<string, string>, caa_identities: string[], error?: string}>}
  */
 const readAcmeDirectory = async (url, { verify = true, guarded = true, fresh = false } = {}) => {
 	const key = `${url}|${verify}|${guarded}`;

@@ -1,4 +1,4 @@
-import { collectZones, failAnswer, malformed } from "./zone-common.js";
+import { collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
 const LIMIT = 500;
 const HINT = "An API key with access to the domain API, on an account that GoDaddy allows to use it";
@@ -18,9 +18,11 @@ export default {
 	id: "godaddy",
 	label: "GoDaddy",
 	credentialProvider: "godaddy",
-	listZones: ({ fields, fetch }) => {
+	testRefusal: statusRefusal({ 401: "wrong-key" }),
+	listZones: ({ fields, fetch, maxPages }) => {
 		let marker = "";
 		return collectZones({
+			maxPages,
 			fetchPage: async () => {
 				const secrets = secretsOf(fields);
 				const query = `limit=${LIMIT}${marker === "" ? "" : `&marker=${encodeURIComponent(marker)}`}`;

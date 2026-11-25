@@ -330,6 +330,8 @@ async function certificateAuthority({ admin }) {
 				),
 			});
 		});
+		// the list itself reads the CAs (for the CAA badge), so the answer is waited for from before the page opens
+		const serversLoaded = page.waitForResponse(ACME_SERVERS_URL);
 		await page.goto("/certificates");
 		await page.getByRole("columnheader", { name: "CA", exact: true }).waitFor();
 		// the cell under the CA header, not the Provider column that also says Let's Encrypt
@@ -339,7 +341,6 @@ async function certificateAuthority({ admin }) {
 		await revealRow(page, "flow.example.com");
 		const cell = await rowOf(page, "flow.example.com").locator("td").nth(column).textContent();
 		if (cell.trim() !== "Let's Encrypt") throw new Error(`the CA cell shows "${cell}"`);
-		const serversLoaded = page.waitForResponse(ACME_SERVERS_URL);
 		let servers;
 		for (const menuItem of ["Certbot via HTTP", "Certbot via DNS"]) {
 			// biome-ignore lint/performance/noAwaitInLoops: one window after the other
