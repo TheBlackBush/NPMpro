@@ -113,6 +113,8 @@ const reportHostConfig = (hostType, host, status) => {
 	const text = status.npmpro_nginx_err;
 	return later(() =>
 		guarded("the config state", async () => {
+			// a configure that finished after its host was deleted leaves no state behind
+			if (!(await db()(hostType).where({ id: host.id }).first("id"))) return;
 			if (!online) secrets.push(...(await guardedValue(() => accessListSecrets(hostType, host))));
 			const source = { ...base, error: online ? undefined : safeError(scrubSecrets(text, secrets)), secrets };
 			await notify.reportState(EVENT, `${hostType}:${host.id}`, { state: online ? "ok" : "bad", source });

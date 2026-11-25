@@ -392,6 +392,20 @@ describe("host config state emit points", () => {
 		assert.equal(hostEvents("host.config_error", host.id).length, 1);
 	});
 
+	it("a report that lands after its host was deleted leaves no state", async () => {
+		const host = await makeProxy("late.example.com");
+		await settle();
+		assert.equal((await admin.delete(`/nginx/proxy-hosts/${host.id}`)).status, 200);
+		await settle();
+		const { reportHostConfig } = await import("../internal/host-notify.js");
+		await reportHostConfig("proxy_host", host, {
+			npmpro_nginx_online: false,
+			npmpro_nginx_err: "nginx: [emerg] late",
+		});
+		assert.equal((await hostStates(host.id)).length, 0);
+		assert.equal(hostEvents("host.config_error", host.id).length, 0);
+	});
+
 	it("a layer that throws leaves the host save and delete unchanged", async () => {
 		const names = ["reportState", "clearMatching", "clearState", "emit"];
 		const originals = Object.fromEntries(names.map((name) => [name, notify[name]]));
