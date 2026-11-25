@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import { certificateFile } from "../lib/certificate-files.js";
+import { scrubSecrets } from "../lib/ddns/errors.js";
 import { credentialFields, secretValuesOf } from "../lib/dns-credential-values.js";
 import { expiryState, toDate } from "../lib/expiry.js";
 import { ssl as logger } from "../logger.js";
@@ -7,7 +8,7 @@ import certificateModel from "../models/certificate.js";
 import dnsCredentialModel from "../models/dns_credential.js";
 import certificateInfo from "./certificate-info.js";
 import internalDnsCredential from "./dns-credential.js";
-import { notify } from "./notify.js";
+import { notify, stateStore } from "./notify.js";
 
 // The notification emit points of certificates: the expiry state, the renewal failure state and the renewed action.
 // Nothing here throws into the certificate code: a failure is logged and the certificate action keeps its result.
@@ -16,6 +17,7 @@ const EXPIRING = "certificate.expiring";
 const RENEWAL_FAILED = "certificate.renewal_failed";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ACCOUNT_PATH = /\S*\/accounts\/\S*/gu;
+const GENERIC_ERROR = "The renewal failed, see the certbot log";
 
 const guarded = async (what, work) => {
 	try {
@@ -58,6 +60,10 @@ const checkCertificateExpiry = () =>
 				source: { ...row, days_left: daysLeft },
 			});
 		}
+		// a state written for a certificate deleted meanwhile goes now
+		const ids = (await certificateModel.query().select("id")).map((row) => row.id);
+		await stateStore.removeMissing(EXPIRING, ids);
+		await stateStore.removeMissing(RENEWAL_FAILED, ids);
 	});
 
 /**
@@ -96,29 +102,31 @@ const secretsOf = async (rows) => {
 const reportRenewalRun = ({ rows, due, refreshed, error }) =>
 	guarded("the renewal report", async () => {
 		const now = new Date();
+		// the run's text holds no account path and no credential value of any certificate of the run; when a credential
+		// cannot be opened the text is generic
+		let text = null;
+		if (error !== null) {
+			const secrets = await guarded("the credential values", () => secretsOf(rows));
+			text =
+				secrets === undefined
+					? GENERIC_ERROR
+					: scrubSecrets(String(error).replace(ACCOUNT_PATH, "***"), secrets);
+			logger.warn(`Certbot completed with errors: ${text}`);
+		}
 		const dates = new Map(refreshed.map((one) => [one.id, one]));
-		const bad = [];
 		for (const row of rows) {
 			const current = { ...row, ...dates.get(row.id) };
-			const stillDue = due.has(row.id) && expiryState(current, now) !== "ok";
-			if (stillDue) bad.push(current);
-			else await notify.reportState(RENEWAL_FAILED, String(row.id), { state: "ok", source: current });
+			if (due.has(row.id) && expiryState(current, now) !== "ok") {
+				await notify.reportState(RENEWAL_FAILED, String(row.id), {
+					state: "bad",
+					source: { ...current, error: text ?? "The renewal did not move the expiry date" },
+				});
+			} else {
+				await notify.reportState(RENEWAL_FAILED, String(row.id), { state: "ok", source: current });
+			}
 			if (toDate(current.expires_on).getTime() > toDate(row.expires_on).getTime()) {
 				await notify.emit("certificate.renewed", current);
 			}
-		}
-		if (bad.length === 0) return;
-		const secrets = await guarded("the credential values", () => secretsOf(bad));
-		const text = error === null ? null : String(error).replace(ACCOUNT_PATH, "***");
-		for (const current of bad) {
-			await notify.reportState(RENEWAL_FAILED, String(current.id), {
-				state: "bad",
-				source: {
-					...current,
-					error: text ?? "The renewal did not move the expiry date",
-					secrets: secrets ?? [],
-				},
-			});
 		}
 	});
 
