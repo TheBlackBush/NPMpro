@@ -34,6 +34,7 @@ Les deux s'appliquent après le rechargement de nginx que lance l'enregistrement
 ### Renouvellement
 
 - **Intervalle de vérification du renouvellement** : 1 à 499 heures entre les vérifications. Un certificat n'est renouvelé que lorsqu'il arrive à échéance. Par défaut : 3. Variable : `CERTBOT_RUN_INTERVAL`. S'applique immédiatement.
+- **Avertir avant l'expiration** : 1 à 60 jours. Un certificat apparaît comme bientôt expiré (liste des certificats, tableau de bord) ce nombre de jours avant son expiration, mais au plus un tiers de sa durée de vie, afin qu'un certificat de courte durée ne soit pas signalé dès son premier jour. Les notifications utilisent la même fenêtre. Par défaut : 14. Variable : `CERT_WARNING_DAYS`. S'applique immédiatement.
 
 ### ECH
 

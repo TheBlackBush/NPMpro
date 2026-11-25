@@ -34,6 +34,7 @@ Ambos se aplicam após o reload do nginx que o guardar executa, e ambos desativa
 ### Renovação
 
 - **Intervalo de verificação de renovação**: 1 a 499 horas entre verificações. Um certificado só é renovado quando é devido. Predefinição: 3. Variável: `CERTBOT_RUN_INTERVAL`. Aplica-se logo.
+- **Avisar antes de expirar**: 1 a 60 dias. Um certificado aparece como a expirar em breve (a lista de certificados, o painel) este número de dias antes de expirar, mas no máximo um terço da sua vida útil, para que um certificado de curta duração não seja assinalado desde o primeiro dia. As notificações usam a mesma janela. Predefinição: 14. Variável: `CERT_WARNING_DAYS`. Aplica-se logo.
 
 ### ECH
 

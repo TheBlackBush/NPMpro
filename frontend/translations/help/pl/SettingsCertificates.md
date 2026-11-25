@@ -34,6 +34,7 @@ Oba działają po przeładowaniu nginx, które wykonuje zapis, i oba wyłączaj�
 ### Odnawianie
 
 - **Interwał sprawdzania odnowień**: od 1 do 499 godzin między sprawdzeniami. Certyfikat jest odnawiany tylko wtedy, gdy nadejdzie na to czas. Domyślnie: 3. Zmienna: `CERTBOT_RUN_INTERVAL`. Działa od razu.
+- **Ostrzegaj przed wygaśnięciem**: od 1 do 60 dni. Certyfikat jest oznaczany jako wkrótce wygasający (lista certyfikatów, pulpit) tyle dni przed wygaśnięciem, jednak co najwyżej na jedną trzecią okresu jego ważności, aby krótkotrwały certyfikat nie był oznaczany od pierwszego dnia. Powiadomienia używają tego samego okna. Domyślnie: 14. Zmienna: `CERT_WARNING_DAYS`. Działa od razu.
 
 ### ECH
 
