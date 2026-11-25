@@ -341,6 +341,30 @@ describe("host config state emit points", () => {
 		for (const one of hosts) assert.equal((await hostStates(one.id)).length, 1);
 	});
 
+	it("disabling a failed host clears its state without an event, enabling records it afresh", async () => {
+		const host = await makeProxy("off.example.com");
+		api.outside.control.failNext = LONG_ERROR;
+		await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 81 });
+		await settle();
+		assert.equal(hostEvents("host.config_error", host.id).length, 1);
+		seen = [];
+		assert.equal((await admin.post(`/nginx/proxy-hosts/${host.id}/disable`)).status, 200);
+		await settle();
+		assert.equal((await hostStates(host.id)).length, 0);
+		assert.equal(hostEvents("host.config_error.resolved", host.id).length, 0);
+		// a configure report that lands for the disabled host stores nothing
+		const { reportHostConfig } = await import("../internal/host-notify.js");
+		await reportHostConfig("proxy_host", host, { npmpro_nginx_online: false, npmpro_nginx_err: "late" });
+		assert.equal((await hostStates(host.id)).length, 0);
+		api.outside.control.failNext = LONG_ERROR;
+		assert.equal((await admin.post(`/nginx/proxy-hosts/${host.id}/enable`)).status, 200);
+		await settle();
+		assert.equal(hostEvents("host.config_error", host.id).length, 1);
+		assert.equal((await hostStates(host.id)).length, 1);
+		assert.equal((await admin.delete(`/nginx/proxy-hosts/${host.id}`)).status, 200);
+		await settle();
+	});
+
 	it("an nginx error with a URL password and an access list password reaches neither the event nor a log line", async () => {
 		const restore = keepLogs();
 		try {
@@ -540,6 +564,26 @@ describe("backup schedule state emit points", () => {
 		assert.equal((await rows()).length, 0);
 	});
 
+	it("disabling a failed schedule clears its state without an event, enabling lets the next run record it", async () => {
+		const svc = service();
+		const { id } = await created(svc);
+		behaviour = "fail";
+		await svc.runNow(access, id);
+		const rows = () => api.db(STATE).where({ event: "backup.failed", object_id: String(id) });
+		assert.equal((await rows()).length, 1);
+		seen = [];
+		await svc.update(access, id, { enabled: false });
+		assert.equal((await rows()).length, 0);
+		// a Run now of the disabled schedule records no state
+		await svc.runNow(access, id);
+		assert.equal((await rows()).length, 0);
+		assert.equal(seen.length, 0);
+		await svc.update(access, id, { enabled: true });
+		await svc.runNow(access, id);
+		assert.equal(seen.filter((one) => one.type === "backup.failed").length, 1);
+		assert.equal((await rows()).length, 1);
+	});
+
 	it("a layer that throws keeps the run result and the delete", async () => {
 		const throwing = {
 			reportState: () => {
@@ -619,6 +663,58 @@ describe("DDNS record state emit points", () => {
 		assert.equal(await both(), 2);
 		await managedRows.remove(41);
 		assert.equal(await both(), 0);
+	});
+
+	it("a record paused or set aside clears both states without an event, and its run's report stores none", async () => {
+		await insertRow(41);
+		await report(record, { state: "failed", error: "x", meta: { stopped: true } });
+		assert.equal(await both(), 2);
+		seen = [];
+		await managedRows.patch(41, { enabled: false, state: "disabled" });
+		assert.equal(await both(), 0);
+		await report(record, { enabled: false, state: "disabled", meta: {} });
+		assert.equal(await both(), 0);
+		assert.equal(seen.length, 0);
+		await managedRows.patch(41, { enabled: true, state: "pending" });
+		await report(record, { state: "failed", error: "y", meta: {} });
+		assert.equal(seen.filter((one) => one.type === "ddns.record_failed").length, 1);
+		await managedRows.remove(41);
+	});
+
+	it("a record the user disables clears both states without an event", async () => {
+		const made = await admin.post("/nginx/dns-credentials", {
+			name: "ddns off credential",
+			provider: "cloudflare",
+			fields: [{ key: "dns_cloudflare_api_token", value: TOKEN }],
+		});
+		assert.equal(made.status, 201, made.text);
+		const domain = await admin.post("/nginx/dns-domains", {
+			dns_credential_id: made.body.id,
+			names: ["off.example"],
+		});
+		assert.equal(domain.status, 201, domain.text);
+		const added = await admin.post("/nginx/ddns-records", {
+			name: "home.off.example",
+			dns_credential_id: made.body.id,
+		});
+		assert.equal(added.status, 201, added.text);
+		const id = added.body.id;
+		const states = () =>
+			api
+				.db(STATE)
+				.whereIn("event", ["ddns.record_failed", "ddns.record_stopped"])
+				.where({ object_id: String(id) });
+		await report(
+			{ id, name: "home.off.example", provider: "cloudflare" },
+			{ state: "failed", error: "x", meta: { stopped: true } },
+		);
+		assert.equal((await states()).length, 2);
+		seen = [];
+		const off = await admin.put(`/nginx/ddns-records/${id}`, { enabled: false });
+		assert.equal(off.status, 200, off.text);
+		assert.equal((await states()).length, 0);
+		assert.equal(seen.length, 0);
+		assert.equal((await admin.delete(`/nginx/ddns-records/${id}`)).status, 200);
 	});
 
 	it("a layer that throws keeps the record delete", async () => {
