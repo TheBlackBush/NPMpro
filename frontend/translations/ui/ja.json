@@ -861,6 +861,7 @@
 	"error.dns-zones-forbidden": "プロバイダーがゾーンの一覧表示を拒否しました: {message}",
 	"error.dns-zones-not-https": "プロバイダーのアドレスには https を使用してください。http はローカルネットワークのアドレス上の PowerDNS API にのみ使用できます。",
 	"error.forward-host-variable-admin-only": "転送先ホストにリクエスト変数 ($) を使用できるのは管理者のみです。",
+	"error.host-dns-name-not-host": "名前 {name} はこのホストの名前ではありません",
 	"error.invalid-auth": "無効なemailまたはパスワード",
 	"error.invalid-code": "確認コードが無効です",
 	"error.invalid-domain": "無効なドメイン: {domain}",

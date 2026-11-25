@@ -861,6 +861,7 @@
 	"error.dns-zones-forbidden": "Dostawca odmówił wyświetlenia stref: {message}",
 	"error.dns-zones-not-https": "Adres dostawcy musi używać https; http jest dozwolony tylko dla API PowerDNS pod adresem w sieci lokalnej.",
 	"error.forward-host-variable-admin-only": "Tylko administratorzy mogą używać zmiennej żądania ($) w hoście przekierowania.",
+	"error.host-dns-name-not-host": "Nazwa {name} nie należy do nazw tego hosta",
 	"error.invalid-auth": "Nieprawidłowy email lub hasło",
 	"error.invalid-code": "Nieprawidłowy kod weryfikacyjny",
 	"error.invalid-domain": "Nieprawidłowa domena: {domain}",

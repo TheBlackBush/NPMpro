@@ -628,9 +628,9 @@ const createHostDnsRecords = ({
 	};
 
 	/** The name states of a host: its names in order, then rows of names it no longer has (orphans) */
-	const statesOf = async (access, hostType, host) => {
+	const statesOf = async (access, hostType, host, preloaded) => {
 		const key = hostKey(hostType, host.id);
-		const rows = await managedRows.ofHost(hostType, host.id);
+		const rows = preloaded ?? (await managedRows.ofHost(hostType, host.id));
 		const names = namesOf(host);
 		const busy = working.get(key) ?? new Map();
 		const last = results.get(key) ?? new Map();
@@ -927,6 +927,28 @@ const createHostDnsRecords = ({
 		statesOf: async (access, { hostType, host }) => {
 			hostSection(hostType);
 			return (await hasOption(hostType, host)) ? await statesOf(access, hostType, host) : [];
+		},
+
+		/**
+		 * The name states of many saved hosts of one type, reading their rows in one query (the list's
+		 * expand=dns_records); a host without the option gets []
+		 *
+		 * @returns {Promise<Map<number, Object[]>>}  by host id
+		 */
+		statesOfMany: async (access, { hostType, hosts }) => {
+			hostSection(hostType);
+			const rows = await managedRows.ofHosts(
+				hostType,
+				hosts.map((host) => host.id),
+			);
+			const answers = new Map();
+			for (const host of hosts) {
+				const own = rows.filter((row) => row.host_id === host.id);
+				const key = hostKey(hostType, host.id);
+				const active = (working.get(key)?.size ?? 0) > 0 || (results.get(key)?.size ?? 0) > 0;
+				answers.set(host.id, own.length > 0 || active ? await statesOf(access, hostType, host, own) : []);
+			}
+			return answers;
 		},
 
 		/**

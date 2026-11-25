@@ -861,6 +861,7 @@
 	"error.dns-zones-forbidden": "Le fournisseur a refusé de lister les zones : {message}",
 	"error.dns-zones-not-https": "L'adresse du fournisseur doit utiliser https ; http n'est autorisé que pour une API PowerDNS sur une adresse du réseau local.",
 	"error.forward-host-variable-admin-only": "Seuls les administrateurs peuvent utiliser une variable de requête ($) dans l'hôte de transfert.",
+	"error.host-dns-name-not-host": "Le nom {name} ne fait pas partie des noms de cet hôte",
 	"error.invalid-auth": "Adresse e-mail ou mot de passe invalide",
 	"error.invalid-code": "Code de vérification invalide",
 	"error.invalid-domain": "Domaine invalide : {domain}",

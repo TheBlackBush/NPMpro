@@ -861,6 +861,7 @@
 	"error.dns-zones-forbidden": "Провайдер отказал в выдаче списка зон: {message}",
 	"error.dns-zones-not-https": "Адрес провайдера должен использовать https; http разрешён только для API PowerDNS по адресу в локальной сети.",
 	"error.forward-host-variable-admin-only": "Только администраторы могут использовать переменную запроса ($) в хосте пересылки.",
+	"error.host-dns-name-not-host": "Имя {name} не входит в имена этого хоста",
 	"error.invalid-auth": "Неверный адрес эл. почты или пароль",
 	"error.invalid-code": "Неверный код проверки",
 	"error.invalid-domain": "Неверный домен: {domain}",

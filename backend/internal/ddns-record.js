@@ -902,6 +902,14 @@ const managedRows = {
 	ofHost: async (hostType, hostId) =>
 		(await ddnsRecordModel.query().where({ host_type: hostType, host_id: hostId }).orderBy("id")).map(plain),
 
+	/** @returns {Promise<Object[]>}  the rows of several hosts of one type, in one query */
+	ofHosts: async (hostType, hostIds) =>
+		hostIds.length === 0
+			? []
+			: (
+					await ddnsRecordModel.query().where("host_type", hostType).whereIn("host_id", hostIds).orderBy("id")
+				).map(plain),
+
 	get: async (id) => plain(await ddnsRecordModel.query().findById(id)),
 
 	/** The record that holds a name, whoever it belongs to; null when none */

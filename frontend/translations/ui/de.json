@@ -861,6 +861,7 @@
 	"error.dns-zones-forbidden": "Der Anbieter hat das Auflisten der Zonen verweigert: {message}",
 	"error.dns-zones-not-https": "Die Adresse des Anbieters muss https verwenden; http ist nur für eine PowerDNS-API unter einer Adresse im lokalen Netzwerk erlaubt.",
 	"error.forward-host-variable-admin-only": "Nur Administratoren können eine Anfragevariable ($) im Weiterleitungshost verwenden.",
+	"error.host-dns-name-not-host": "Der Name {name} gehört nicht zu den Namen dieses Hosts",
 	"error.invalid-auth": "Ungültige E-Mail-Adresse oder Passwort",
 	"error.invalid-code": "Ungültiger Verifizierungscode",
 	"error.invalid-domain": "Ungültige Domain: {domain}",

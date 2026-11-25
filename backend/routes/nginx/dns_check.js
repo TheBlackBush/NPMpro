@@ -39,7 +39,11 @@ router
 			});
 			const wanted = payload.name.toLowerCase();
 			if (!(host.domain_names ?? []).some((name) => String(name).toLowerCase() === wanted)) {
-				throw new errs.ValidationError("The name is not one of the host's names");
+				throw new errs.ValidationError(
+					`The name ${payload.name} is not one of the host's names`,
+					"error.host-dns-name-not-host",
+					{ values: { name: payload.name } },
+				);
 			}
 		}
 		res.status(200).send(

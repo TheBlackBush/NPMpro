@@ -861,6 +861,7 @@
 	"error.dns-zones-forbidden": "El proveedor rechazó listar las zonas: {message}",
 	"error.dns-zones-not-https": "La dirección del proveedor debe usar https; http solo se permite para una API de PowerDNS en una dirección de la red local.",
 	"error.forward-host-variable-admin-only": "Solo los administradores pueden usar una variable de solicitud ($) en el host de reenvío.",
+	"error.host-dns-name-not-host": "El nombre {name} no es uno de los nombres de este host",
 	"error.invalid-auth": "Correo electrónico o contraseña no válidos",
 	"error.invalid-code": "Código de verificación no válido",
 	"error.invalid-domain": "Dominio no válido: {domain}",

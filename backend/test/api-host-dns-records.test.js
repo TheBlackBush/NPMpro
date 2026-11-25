@@ -583,3 +583,90 @@ it("no token in any answer, audit entry or history row", async () => {
 	const rows = await api.db("npmpro_ddns_record").select("error", "meta");
 	assert.ok(!JSON.stringify(rows).includes(TOKEN));
 });
+
+it("a stream never reaches the host record service", async () => {
+	const { default: service } = await import("../internal/host-dns-record.js");
+	const methods = ["applyHost", "onDisable", "onEnable", "onDelete", "statesOf", "statesOfMany"];
+	const originals = Object.fromEntries(methods.map((method) => [method, service[method]]));
+	const seen = [];
+	for (const method of methods) {
+		service[method] = (...args) => {
+			seen.push(method);
+			return originals[method](...args);
+		};
+	}
+	try {
+		const made = await admin.post("/nginx/streams", {
+			incoming_port: 9391,
+			forwarding_host: "10.0.0.5",
+			forwarding_port: 22,
+			tcp_forwarding: true,
+			udp_forwarding: false,
+		});
+		assert.equal(made.status, 201, made.text);
+		const url = `/nginx/streams/${made.body.id}`;
+		assert.equal((await admin.put(url, { forwarding_port: 23 })).status, 200);
+		assert.equal((await admin.post(`${url}/disable`)).status, 200);
+		assert.equal((await admin.post(`${url}/enable`)).status, 200);
+		assert.equal((await admin.get(url)).status, 200);
+		assert.equal((await admin.get("/nginx/streams")).status, 200);
+		assert.equal((await admin.delete(url)).status, 200);
+	} finally {
+		Object.assign(service, originals);
+	}
+	assert.deepEqual(seen, []);
+});
+
+it("a tick for a name that is not the host's is a 400 and the host is not saved", async () => {
+	const stranger = { name: "stranger.host-dns.example" };
+	const made = await proxyHost(["real.host-dns.example"], { records: [tick(stranger.name)] });
+	assert.equal(made.status, 400, made.text);
+	assert.equal(made.body.error.message_i18n, "error.host-dns-name-not-host");
+	assert.equal(made.body.error.message_values?.name ?? made.body.error.values?.name, stranger.name);
+	const host = await created(["real2.host-dns.example"]);
+	const edit = await admin.put(hostUrl(host.id), { npmpro_dns_records: [tick(stranger.name)] });
+	assert.equal(edit.status, 400, edit.text);
+	// a rename that drops the ticked name in the same request is refused too
+	const ticked = await created(["keep.host-dns.example"], { records: [tick("keep.host-dns.example")] });
+	await settle("proxy_host", ticked.id);
+	const rename = await admin.put(hostUrl(ticked.id), {
+		domain_names: ["renamed.host-dns.example"],
+		npmpro_dns_records: [tick("keep.host-dns.example")],
+	});
+	assert.equal(rename.status, 400, rename.text);
+	assert.equal((await admin.get(hostUrl(ticked.id))).body.domain_names[0], "keep.host-dns.example");
+	assert.deepEqual(
+		callsOf("POST").map((call) => call.name),
+		["keep.host-dns.example"],
+	);
+});
+
+it("the list's expand=dns_records reads the rows of all hosts in one query", async () => {
+	const { managedRows } = await import("../internal/ddns-record.js");
+	const names = ["list1", "list2", "list3"].map((label) => `${label}.host-dns.example`);
+	const hostsMade = [];
+	for (const name of names) hostsMade.push(await created([name], { records: [tick(name)] }));
+	for (const host of hostsMade) await settle("proxy_host", host.id);
+	const counts = { one: 0, many: 0 };
+	const { ofHost, ofHosts } = managedRows;
+	managedRows.ofHost = (...args) => {
+		counts.one += 1;
+		return ofHost(...args);
+	};
+	managedRows.ofHosts = (...args) => {
+		counts.many += 1;
+		return ofHosts(...args);
+	};
+	let listed;
+	try {
+		listed = await admin.get("/nginx/proxy-hosts?expand=dns_records");
+	} finally {
+		Object.assign(managedRows, { ofHost, ofHosts });
+	}
+	assert.equal(listed.status, 200, listed.text);
+	assert.deepEqual(counts, { one: 0, many: 1 });
+	for (const name of names) {
+		const host = listed.body.find((entry) => entry.domain_names.includes(name));
+		assert.equal(stateOf(host.npmpro_dns_records, name).state, "ok");
+	}
+});
