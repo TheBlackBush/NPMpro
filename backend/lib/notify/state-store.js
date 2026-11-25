@@ -9,6 +9,8 @@ import { resolvedOf, stateEvents } from "./catalogue.js";
 // insert that meets the unique key of another writer reads the row again, so two writers never send one change twice.
 
 const TABLE = "npmpro_notification_state";
+// the watermark of the database move check (internal/notify.js): an ok row the prune never drops
+const MOVED_WATERMARK_KEY = "database.moved:audit";
 const OK = "ok";
 const BAD_STATES = new Set(["bad", "soon", "expired"]);
 const STATE_IDS = new Set(stateEvents().map((entry) => entry.id));
@@ -205,6 +207,7 @@ const createStateStore = ({ knex, clock = { now: () => Date.now() }, reminderHou
 	const prune = async () => {
 		await table()
 			.where({ state: OK })
+			.whereNot({ key: MOVED_WATERMARK_KEY })
 			.where("since", "<", dbTime(clock.now() - PRUNE_OK_DAYS * DAY_MS))
 			.delete();
 	};
@@ -212,4 +215,4 @@ const createStateStore = ({ knex, clock = { now: () => Date.now() }, reminderHou
 	return { clear, clearMatching, dueReminders, prune, removeMissing, report };
 };
 
-export { createStateStore, objectPartOf };
+export { createStateStore, MOVED_WATERMARK_KEY, objectPartOf };

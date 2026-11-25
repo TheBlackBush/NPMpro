@@ -756,6 +756,10 @@ describe("action events from the audit hook", () => {
 
 	it("an add whose notify call throws still resolves the inserted row", async () => {
 		const original = notify.emit;
+		const unhandled = [];
+		const onUnhandled = (reason) => unhandled.push(reason);
+		process.on("unhandledRejection", onUnhandled);
+		const restore = keepLogs();
 		notify.emit = () => {
 			throw new Error("emit broke");
 		};
@@ -770,7 +774,14 @@ describe("action events from the audit hook", () => {
 			assert.equal(row.action, "restored");
 			assert.ok(row.id > 0);
 			await quiet();
+			assert.ok(
+				logged.some((line) => line.includes("the audit event failed: emit broke")),
+				logged.join("\n"),
+			);
+			assert.deepEqual(unhandled, []);
 		} finally {
+			restore();
+			process.off("unhandledRejection", onUnhandled);
 			notify.emit = original;
 		}
 	});
@@ -784,12 +795,14 @@ describe("action events from the audit hook", () => {
 				object_id: 0,
 				meta: { name: to, from },
 			});
+		// audit times have a one second grain
+		const later = () => new Promise((resolve) => setTimeout(resolve, 1100));
 		beforeEach(async () => {
 			await api.db(STATE).where({ key: MOVED }).delete();
 			await api.db("audit_log").where({ object_type: "database", action: "moved" }).delete();
 		});
 
-		it("with no state row it stores the id silently, a newer row sends one event, the same row again none", async () => {
+		it("with no state row it stores the watermark silently, a newer row sends one event, the same row again none", async () => {
 			const first = await movedRow("sqlite", "postgres a");
 			await checkDatabaseMoved();
 			await quiet();
@@ -802,6 +815,7 @@ describe("action events from the audit hook", () => {
 			await quiet();
 			assert.equal(seen.length, 0);
 
+			await later();
 			const second = await movedRow("postgres a", "mysql b");
 			await checkDatabaseMoved();
 			await waitFor(1);
@@ -816,9 +830,40 @@ describe("action events from the audit hook", () => {
 			assert.equal(seen.length, 1);
 		});
 
-		it("with no moved row it stores nothing", async () => {
+		it("with no moved row at the first start the watermark is stored, and the first move sends one event", async () => {
 			await checkDatabaseMoved();
-			assert.equal((await api.db(STATE).where({ key: MOVED })).length, 0);
+			await quiet();
+			assert.equal(JSON.parse((await api.db(STATE).where({ key: MOVED }).first()).data).id, 0);
+			assert.equal(seen.length, 0);
+			await movedRow("sqlite", "postgres first");
+			await checkDatabaseMoved();
+			await waitFor(1);
+			assert.equal(seen.length, 1);
+			assert.equal(seen[0].data.to, "postgres first");
+			await checkDatabaseMoved();
+			await quiet();
+			assert.equal(seen.length, 1);
+		});
+
+		it("a moved row created later with a lower id than the watermark sends one event, then none", async () => {
+			const high = await movedRow("a", "b");
+			await api
+				.db("audit_log")
+				.where({ id: high.id })
+				.update({ id: high.id + 1000 });
+			await checkDatabaseMoved();
+			await quiet();
+			assert.equal(seen.length, 0);
+			await later();
+			const low = await movedRow("b", "c");
+			await api.db("audit_log").where({ id: low.id }).update({ id: -7 });
+			await checkDatabaseMoved();
+			await waitFor(1);
+			assert.equal(seen.length, 1);
+			assert.equal(seen[0].data.to, "c");
+			await checkDatabaseMoved();
+			await quiet();
+			assert.equal(seen.length, 1);
 		});
 	});
 });

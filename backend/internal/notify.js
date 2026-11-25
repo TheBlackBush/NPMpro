@@ -1,6 +1,7 @@
 import db from "../db.js";
 import { engineOf } from "../lib/database/engine.js";
 import { createNotifyService } from "../lib/notify/service.js";
+import { MOVED_WATERMARK_KEY } from "../lib/notify/state-store.js";
 import { global as logger } from "../logger.js";
 
 // The notification layer of the running app, over the real database. Before initNotify() no worker runs, but
@@ -25,7 +26,6 @@ const initNotify = async () => {
 	await checkDatabaseMoved();
 };
 
-const STATE_KEY = "database.moved:audit";
 const HOST_TYPES = {
 	"proxy-host": "proxy_host",
 	"redirection-host": "redirection_host",
@@ -71,9 +71,10 @@ const fromAudit = async (entry) => {
 		} catch {
 			// the event goes without a user name
 		}
+		const hostType = HOST_TYPES[entry.object_type];
 		await notify.emit(type, {
 			...meta,
-			type: HOST_TYPES[entry.object_type],
+			...(hostType ? { type: hostType } : {}),
 			id: entry.object_id,
 			user: { id: entry.user_id, name },
 		});
@@ -82,10 +83,21 @@ const fromAudit = async (entry) => {
 	}
 };
 
+const ZONE = /(?:Z|[+-]\d\d:?\d\d)$/u;
+const msOf = (value) => {
+	if (value === null || value === undefined) return 0;
+	if (value instanceof Date) return value.getTime();
+	const text = String(value);
+	const ms = Date.parse(ZONE.test(text) ? text : `${text.replace(" ", "T")}Z`);
+	return Number.isNaN(ms) ? 0 : ms;
+};
+
 /**
  * The database move writes its "moved" audit row straight into the target database, so no hook sees it: at start the
- * newest row is compared with the last seen id (state row database.moved:audit). A newer row sends database.moved; with
- * no state row the id is only stored (a fresh install, or the first start with notifications).
+ * newest row is compared with the watermark (the state row database.moved:audit, which holds the id and the creation
+ * time of the newest moved row seen, or id 0 when there was none). A row created later than the watermark sends
+ * database.moved, whatever its id (a restore can lower ids). The first start with notifications stores the watermark
+ * silently, with no moved row too, so the first move ever is told at the start after it.
  *
  * @returns {Promise<void>}
  */
@@ -93,23 +105,27 @@ const checkDatabaseMoved = async () => {
 	try {
 		const knex = db();
 		const row = await knex("audit_log")
-			.select("id", "meta")
+			.select("id", "meta", "created_on")
 			.where({ object_type: "database", action: "moved" })
+			.orderBy("created_on", "desc")
 			.orderBy("id", "desc")
 			.first();
-		if (!row) return;
 		const table = () => knex("npmpro_notification_state");
-		const stored = await table().select("data").where({ key: STATE_KEY }).first();
-		const seen = stored ? Number(JSON.parse(stored.data ?? "{}").id ?? 0) : null;
-		if (seen !== null && row.id <= seen) return;
-		// the row is an ok state row: the hourly prune drops old ones, so it is written again with the id of the move
+		const stored = await table().select("data").where({ key: MOVED_WATERMARK_KEY }).first();
+		const seen = stored ? JSON.parse(stored.data ?? "{}") : null;
+		const at = row ? msOf(row.created_on) : 0;
+		const isNew =
+			Boolean(row) &&
+			seen !== null &&
+			(at > (seen.at ?? 0) || (at === (seen.at ?? 0) && row.id > (seen.id ?? 0)));
+		if (seen !== null && !isNew) return;
 		const date = new Date();
 		const since = engineOf(knex) === "sqlite" ? date.toISOString().replace("T", " ").slice(0, -1) : date;
-		const data = JSON.stringify({ id: row.id });
-		if (stored) await table().where({ key: STATE_KEY }).update({ state: "ok", since, data });
+		const data = JSON.stringify({ id: row?.id ?? 0, at });
+		if (stored) await table().where({ key: MOVED_WATERMARK_KEY }).update({ state: "ok", since, data });
 		else {
 			await table().insert({
-				key: STATE_KEY,
+				key: MOVED_WATERMARK_KEY,
 				event: "database.moved",
 				object_id: "audit",
 				state: "ok",
@@ -117,7 +133,7 @@ const checkDatabaseMoved = async () => {
 				data,
 			});
 		}
-		if (seen === null) return;
+		if (!isNew) return;
 		const meta = typeof row.meta === "string" ? JSON.parse(row.meta) : (row.meta ?? {});
 		await notify.emit("database.moved", { from: meta.from, to: meta.to ?? meta.name });
 	} catch (error) {

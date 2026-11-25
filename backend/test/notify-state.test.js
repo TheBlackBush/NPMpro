@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
-import { createStateStore, objectPartOf } from "../lib/notify/state-store.js";
+import { createStateStore, MOVED_WATERMARK_KEY, objectPartOf } from "../lib/notify/state-store.js";
 import { migratedSqlite } from "./support/database.js";
 
 const TABLE = "npmpro_notification_state";
@@ -369,6 +369,22 @@ describe("clearing and pruning", () => {
 		assert.deepEqual(
 			(await rows()).map((row) => row.object_id),
 			["2", "3"],
+		);
+	});
+
+	it("prune never drops the database move watermark, however old", async () => {
+		await db.knex(TABLE).insert({
+			key: MOVED_WATERMARK_KEY,
+			event: "database.moved",
+			object_id: "audit",
+			state: "ok",
+			since: "2000-01-01 00:00:00.000",
+			data: "{}",
+		});
+		await storeOf().prune();
+		assert.deepEqual(
+			(await rows()).map((row) => row.key),
+			[MOVED_WATERMARK_KEY],
 		);
 	});
 });
