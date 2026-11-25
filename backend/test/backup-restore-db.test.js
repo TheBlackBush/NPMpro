@@ -9,6 +9,7 @@ import { up as upOidcLink } from "../migrations/20261112120000_oidc_identity_lin
 import { up as createAcmeAccountTable } from "../migrations/20261119120000_acme_accounts.js";
 import { up as createDnsDomainTable } from "../migrations/20261123120000_dns_domains.js";
 import { up as createDdnsTables } from "../migrations/20261124120000_ddns_records.js";
+import { up as addDdnsHostColumns } from "../migrations/20261125120000_ddns_host_records.js";
 
 process.env.TZ = "UTC";
 
@@ -90,6 +91,7 @@ const sqlite = async () => {
 	});
 	await createDnsDomainTable(knex);
 	await createDdnsTables(knex);
+	await addDdnsHostColumns(knex);
 	await knex.schema.createTable("setting", (t) => {
 		t.string("id").primary();
 		t.string("name").notNull();

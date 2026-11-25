@@ -4,7 +4,13 @@ import { global as logger } from "../../logger.js";
 import { normalizeDomainName } from "../dns-domain-name.js";
 import { withValidPages } from "../landing-pages/backup-rows.js";
 import { BackupError } from "./format.js";
-import { applyReferences, planReferences, splitOrphanDomains, splitOrphanRecords } from "./references.js";
+import {
+	applyReferences,
+	planReferences,
+	splitOrphanDomains,
+	splitOrphanRecords,
+	splitUnhostedRecords,
+} from "./references.js";
 import { coerceRow } from "./rows.js";
 import { ITEM_TYPES } from "./select.js";
 import { RESTORE_ORDER, TYPES } from "./types.js";
@@ -37,6 +43,8 @@ const REFERENCE_COLUMNS = [
 	"npmpro_mtls_certificate_id",
 	"npmpro_dns_credential_id",
 	"dns_credential_id",
+	"host_type",
+	"host_id",
 	"provider",
 	"proxy_host_id",
 	"location_id",
@@ -254,8 +262,15 @@ const previewReplace = async ({ knex, data, types, adminUserId, secrets = true }
 			if (REFERENCE_TABLES.includes(table)) finalRows[table] = rows;
 		}
 	}
+	const droppedRecords = [];
+	if (chosen.includes("ddns")) {
+		const hostRows = restoredHostRows(chosen, (table) => finalRows[table]);
+		const { kept, orphans } = splitUnhostedRecords(finalRows[RECORD_TABLE], hostRows);
+		finalRows[RECORD_TABLE] = kept;
+		droppedRecords.push(...orphans);
+	}
 	return {
-		references: planReferences({ finalRows, adminUserId }),
+		references: [...droppedRecords, ...planReferences({ finalRows, adminUserId })],
 		skippedUsers,
 		missingSecrets: secrets ? [] : chosen.filter((typeId) => SECRET_TYPES.has(typeId)),
 	};
@@ -307,6 +322,17 @@ const keptOfBackup = (typeId, rowsByTable) => ({
 });
 
 const RECORD_TABLE = "npmpro_ddns_record";
+// the host types a host record can follow, with their tables
+const RECORD_HOST_TYPES = { proxy_hosts: "proxy_host", redirection_hosts: "redirection_host", dead_hosts: "dead_host" };
+
+// the host rows the backup brings, by table: a host type that is not restored brings none, so a record that follows one
+// of its hosts is dropped (an instance host with the same id may be another host)
+const restoredHostRows = (chosen, rowsOf) =>
+	Object.fromEntries(
+		Object.entries(RECORD_HOST_TYPES)
+			.filter(([typeId]) => chosen.includes(typeId))
+			.map(([_typeId, table]) => [table, rowsOf(table) ?? []]),
+	);
 
 // A record points to its credential by a foreign key, so the credentials cannot be replaced under it. The records of
 // the instance are either replaced too (deleted now) or taken off their credentials, which are put back afterwards
@@ -468,6 +494,8 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 		// credential does not exist
 		let detachedRecords = [];
 		const droppedRecords = [];
+		const rowsOfTable = (table) =>
+			Object.values(prepared).find((rowsByTable) => Array.isArray(rowsByTable[table]))?.[table];
 		for (const typeId of chosen) {
 			const type = TYPES[typeId];
 			const sealed = type.secrets.seal(remapOwners(prepared[typeId], idMap), box);
@@ -495,7 +523,16 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 			}
 			if (typeId === "ddns") {
 				const credentials = await trx("npmpro_dns_credential").select("id", "provider", "owner_user_id");
-				const { kept: records, orphans } = splitOrphanRecords(rowsByTable[RECORD_TABLE], credentials);
+				const { kept: withCredential, orphans: noCredential } = splitOrphanRecords(
+					rowsByTable[RECORD_TABLE],
+					credentials,
+				);
+				// a host record follows its host: the host must come back with this restore
+				const { kept: records, orphans: noHost } = splitUnhostedRecords(
+					withCredential,
+					restoredHostRows(chosen, (table) => rowsOfTable(table)),
+				);
+				const orphans = [...noCredential, ...noHost];
 				// a record belongs to its credential's owner
 				const ownerOf = new Map(credentials.map((row) => [key(row.id), row.owner_user_id]));
 				rowsByTable[RECORD_TABLE] = records.map((row) =>

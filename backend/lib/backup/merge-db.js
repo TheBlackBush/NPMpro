@@ -14,12 +14,16 @@ import { CATEGORIES, RESTORE_ORDER, TYPES } from "./types.js";
 // a record's secret column without sealed details: a backup without secrets, or a record that never had any
 const noSecret = (value) => value === null || value === undefined || value === "";
 
+const hasHost = (row) => !noSecret(row.host_type);
+
 const HOST_TYPES = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams"];
 const LINK_TYPES = ["dns_credentials", "certificates", "access_lists"];
 // the setting row types; backup schedules are their own rows
 const SETTINGS_TYPES = new Set(
 	CATEGORIES.find(({ id }) => id === "settings").types.filter((typeId) => typeId !== SCHEDULE_TYPE),
 );
+// the host tables a host record (a DDNS row with a host_type) may follow
+const RECORD_HOST_TABLES = new Set(["proxy_host", "redirection_host", "dead_host"]);
 const LINK_TABLE = "npmpro_proxy_host_access_list";
 const LOCATION_TABLE = "npmpro_location";
 const ROW_ACTIONS = {
@@ -404,8 +408,36 @@ const mergeTypes = async ({
 			}
 			const target =
 				item.action === "replace"
-					? await trx(table).where({ id: item.target.id }).first("owner_user_id", "provider", "secret")
+					? await trx(table)
+							.where({ id: item.target.id })
+							.first("owner_user_id", "provider", "secret", "host_type", "host_id")
 					: null;
+			// a host record follows its host: the host must be written by this merge (added or replaced), under its new id
+			// and with the name; an orphan is never taken over. A record may not take the place of another host's record
+			const isManaged = hasHost(source);
+			let hostId = null;
+			if (isManaged) {
+				const hostTable = RECORD_HOST_TABLES.has(source.host_type) ? source.host_type : null;
+				hostId = hostTable === null ? undefined : maps[hostTable].get(key(source.host_id));
+				if (hostId === undefined || parseJson(source.meta)?.orphan === true) {
+					skippedRecords.push({ name: source.name, why: "its host is not here" });
+					return;
+				}
+				const host = await trx(hostTable).where({ id: hostId }).first("domain_names");
+				const names = [parseJson(host?.domain_names)].flat().map(lower);
+				if (!names.includes(lower(source.name))) {
+					skippedRecords.push({ name: source.name, why: "its host does not have the name" });
+					return;
+				}
+			}
+			if (
+				target &&
+				hasHost(target) &&
+				!(isManaged && target.host_type === source.host_type && key(target.host_id) === key(hostId))
+			) {
+				skippedRecords.push({ name: source.name, why: "the record of the same name belongs to a host" });
+				return;
+			}
 			// a record without a credential (the custom provider, a preset): a replaced one stays with its owner
 			const recordOwner = credential
 				? credential.owner_user_id
@@ -419,7 +451,13 @@ const mergeTypes = async ({
 			const sealed = TYPES.ddns.secrets.seal(
 				{
 					[table]: [
-						{ ...source, ...keptSecret, dns_credential_id: credentialId, owner_user_id: recordOwner },
+						{
+							...source,
+							...keptSecret,
+							dns_credential_id: credentialId,
+							owner_user_id: recordOwner,
+							host_id: hostId,
+						},
 					],
 				},
 				box,
@@ -513,7 +551,9 @@ const mergeTypes = async ({
 			logger.info(`Merge: ${skippedDomains.length} DNS domain(s) skipped, their owner keeps the name already`);
 		}
 		if (skippedRecords.length > 0) {
-			logger.info(`Merge: ${skippedRecords.length} DDNS record(s) skipped, their DNS credential does not fit`);
+			logger.info(
+				`Merge: ${skippedRecords.length} DDNS record(s) skipped, their DNS credential or host does not fit`,
+			);
 		}
 		return {
 			counts,

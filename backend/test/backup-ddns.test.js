@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import { mkdtemp, readFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { it } from "node:test";
 import knexFactory from "knex";
+import { exportStage } from "../lib/backup/export.js";
 import { checkPageImport } from "../lib/backup/import-checks.js";
 import { mergeTypes } from "../lib/backup/merge-db.js";
 import { planMerge, readInstanceRows } from "../lib/backup/merge-plan.js";
@@ -737,6 +741,317 @@ it("a merge replace from a backup without secrets onto a record of another provi
 		assert.equal(Number(row.enabled), 0);
 		assert.equal(row.state, "disabled");
 		assert.equal(JSON.parse(row.meta).error_i18n, "error.ddns-secret-missing");
+	} finally {
+		await knex.destroy();
+	}
+});
+
+// host records (managed rows): a DDNS row that follows a host through host_type and host_id
+const hostRow = (id, name, extra = {}) => ({
+	id,
+	owner_user_id: 1,
+	domain_names: [name],
+	enabled: 1,
+	certificate_id: 0,
+	npmpro_mtls_certificate_id: 0,
+	access_list_id: 0,
+	meta: {},
+	...extra,
+});
+const proxyData = (hosts) => ({
+	proxy_hosts: { proxy_host: hosts, npmpro_location: [], npmpro_proxy_host_access_list: [] },
+});
+const managed = (id, name, hostId, extra = {}) =>
+	record(id, 1, name, {
+		host_type: "proxy_host",
+		host_id: hostId,
+		origin: "created",
+		state: "ok",
+		failures: 0,
+		error: null,
+		meta: JSON.stringify({ reach: { result: "reachable", port: 80 } }),
+		...extra,
+	});
+const NOT_RESTORED = /a\.example\.com.*not restored/u;
+const metaOfRow = (row) => (typeof row.meta === "string" ? JSON.parse(row.meta) : row.meta);
+
+it("a full restore keeps the link of a host record, starts it pending and create-only, and keeps meta.reach", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex);
+		const data = {
+			...proxyData([hostRow(7, "a.example.com"), hostRow(8, "b.example.com")]),
+			...bothData(
+				[credential(1, 1, "Cloudflare")],
+				[
+					managed(1, "a.example.com", 7),
+					managed(2, "b.example.com", 8, { enabled: 0, state: "disabled" }),
+					managed(3, "c.example.com", 8, {
+						origin: "adopted",
+						host_type: "proxy_host",
+						host_id: 8,
+					}),
+				],
+			),
+		};
+		const result = await replaceTypes({
+			knex,
+			data,
+			types: ["proxy_hosts", "dns_credentials", "ddns"],
+			adminUserId: 1,
+			box,
+			now: NOW,
+		});
+		const rows = await knex("npmpro_ddns_record").orderBy("id");
+		// c.example.com is not a name of host 8: the row stays, as a plain record without the link
+		assert.deepEqual(
+			rows.map((row) => [row.id, row.host_type, row.host_id, row.origin, row.state]),
+			[
+				[1, "proxy_host", 7, "created", "pending"],
+				[2, "proxy_host", 8, "created", "disabled"],
+				[3, null, null, null, "pending"],
+			],
+		);
+		assert.deepEqual(metaOfRow(rows[0]).reach, { result: "reachable", port: 80 });
+		assert.equal(metaOfRow(rows[0]).create_only, true);
+		assert.equal(metaOfRow(rows[2]).create_only, undefined);
+		assert.ok(result.references.some((change) => change.label.includes("c.example.com")));
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a restore with the ddns type and without the host types drops the host records with a note, and keeps the manual ones", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex);
+		// an instance host with the same id and name is not the backup's host
+		await knex("proxy_host").insert({ id: 7, owner_user_id: 1, domain_names: JSON.stringify(["a.example.com"]) });
+		const data = ddnsData([managed(1, "a.example.com", 7), record(2, 1, "manual.example.com")]);
+		const preview = await previewReplace({ knex, data, types: ["ddns"], adminUserId: 1 });
+		assert.ok(preview.references.some((change) => change.remove && NOT_RESTORED.test(change.label)));
+		const result = await replaceTypes({ knex, data, types: ["ddns"], adminUserId: 1, box, now: NOW });
+		assert.deepEqual(await knex("npmpro_ddns_record").pluck("name"), ["manual.example.com"]);
+		assert.ok(result.references.some((change) => change.remove && NOT_RESTORED.test(change.label)));
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a restore drops a host record whose host is not in the backup's hosts, and one that is an orphan", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex);
+		const data = {
+			...proxyData([hostRow(7, "a.example.com")]),
+			...ddnsData([
+				managed(1, "gone.example.com", 99),
+				managed(2, "a.example.com", 7, { meta: JSON.stringify({ orphan: true }), enabled: 0, state: "failed" }),
+				managed(3, "a.example.com", 7),
+				managed(4, "wild.example.com", 7, { host_type: "stream" }),
+			]),
+		};
+		await replaceTypes({ knex, data, types: ["proxy_hosts", "ddns"], adminUserId: 1, box, now: NOW });
+		assert.deepEqual(await knex("npmpro_ddns_record").pluck("id"), [3]);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a created host record restored as create-only is never written over a record that appeared, by the engine's rule", () => {
+	const [created, adopted, plain] = TYPES.ddns.restoreRows({
+		npmpro_ddns_record: [
+			managed(1, "a.example.com", 7, { meta: { reach: { result: "reachable" } } }),
+			managed(2, "b.example.com", 7, { origin: "adopted" }),
+			record(3, 1, "c.example.com"),
+		],
+	}).npmpro_ddns_record;
+	assert.equal(created.meta.create_only, true);
+	assert.deepEqual(created.meta.reach, { result: "reachable" });
+	// what it wrote stays known, so a record that still holds it is its own
+	assert.equal(created.last_ipv4, "81.2.69.160");
+	assert.equal(adopted.meta.create_only, undefined);
+	assert.equal(plain.meta.create_only, undefined);
+});
+
+it("a hosts restore without the ddns type turns a host record whose host is gone or lost the name into a plain record", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex);
+		await knex("proxy_host").insert([
+			{ id: 7, owner_user_id: 1, domain_names: JSON.stringify(["a.example.com"]) },
+			{ id: 8, owner_user_id: 1, domain_names: JSON.stringify(["b.example.com"]) },
+		]);
+		await knex("npmpro_ddns_record").insert([
+			{ ...managed(1, "a.example.com", 7), meta: JSON.stringify({ create_only: true }) },
+			{ ...managed(2, "b.example.com", 8), meta: JSON.stringify({}) },
+		]);
+		// the backup's host 7 is another host, host 8 is not in it
+		const data = proxyData([hostRow(7, "other.example.com")]);
+		const result = await replaceTypes({ knex, data, types: ["proxy_hosts"], adminUserId: 1, box, now: NOW });
+		const rows = await knex("npmpro_ddns_record").orderBy("id");
+		assert.deepEqual(
+			rows.map((row) => [row.host_type, row.host_id, row.origin]),
+			[
+				[null, null, null],
+				[null, null, null],
+			],
+		);
+		// the create-only rule stays with the row
+		assert.equal(metaOfRow(rows[0]).create_only, true);
+		assert.equal(result.references.filter((change) => change.table === "npmpro_ddns_record").length, 2);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a hosts restore keeps a host record whose host and name are still there", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex);
+		await knex("proxy_host").insert({ id: 7, owner_user_id: 1, domain_names: JSON.stringify(["a.example.com"]) });
+		await knex("npmpro_ddns_record").insert(managed(1, "a.example.com", 7));
+		const data = proxyData([hostRow(7, "a.example.com")]);
+		const result = await replaceTypes({ knex, data, types: ["proxy_hosts"], adminUserId: 1, box, now: NOW });
+		assert.deepEqual(
+			result.references.filter((change) => change.table === "npmpro_ddns_record"),
+			[],
+		);
+		assert.deepEqual(await knex("npmpro_ddns_record").pluck("host_id"), [7]);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a merge maps the host id of a host record to the host the merge added", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex);
+		await knex("proxy_host").insert({ id: 1, owner_user_id: 1, domain_names: JSON.stringify(["x.example.com"]) });
+		const data = {
+			...proxyData([hostRow(7, "a.example.com")]),
+			...bothData([credential(1, 1, "Cloudflare")], [managed(1, "a.example.com", 7)]),
+		};
+		const { result } = await merge(knex, { data, types: ["proxy_hosts", "dns_credentials", "ddns"] });
+		const hostId = result.maps.proxy_host.get("7");
+		assert.notEqual(hostId, 7);
+		const [row] = await knex("npmpro_ddns_record");
+		assert.deepEqual(
+			[row.host_type, row.host_id, row.origin, row.state],
+			["proxy_host", hostId, "created", "pending"],
+		);
+		assert.equal(metaOfRow(row).create_only, true);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a merge skips a host record whose host is not written by the merge, whose host lacks the name or that is an orphan", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex);
+		// host 7 of the backup clashes with an instance host and is skipped
+		await knex("proxy_host").insert({ id: 4, owner_user_id: 1, domain_names: JSON.stringify(["a.example.com"]) });
+		const data = {
+			...proxyData([hostRow(7, "a.example.com"), hostRow(8, "b.example.com")]),
+			...bothData(
+				[credential(1, 1, "Cloudflare")],
+				[
+					managed(1, "a.example.com", 7),
+					managed(2, "other.example.com", 8),
+					managed(3, "b.example.com", 8, { meta: JSON.stringify({ orphan: true }) }),
+					managed(4, "b.example.com", 99),
+					managed(5, "b.example.com", 8),
+				],
+			),
+		};
+		const { result } = await merge(knex, {
+			data,
+			types: ["proxy_hosts", "dns_credentials", "ddns"],
+			choices: { "proxy_hosts:7": "skip" },
+		});
+		assert.deepEqual(await knex("npmpro_ddns_record").pluck("name"), ["b.example.com"]);
+		assert.equal(result.skipped_records.length, 4);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a merge never replaces a host's record by a record of another host or by a manual record", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex);
+		await knex("proxy_host").insert([
+			{ id: 4, owner_user_id: 1, domain_names: JSON.stringify(["a.example.com"]) },
+			{ id: 5, owner_user_id: 1, domain_names: JSON.stringify(["b.example.com"]) },
+		]);
+		await knex("npmpro_ddns_record").insert([
+			{ ...managed(10, "a.example.com", 4), meta: "{}" },
+			{ ...managed(11, "b.example.com", 5), meta: "{}" },
+		]);
+		const data = {
+			...proxyData([hostRow(7, "a.example.com")]),
+			...bothData(
+				[credential(1, 1, "Cloudflare")],
+				[managed(1, "a.example.com", 7), record(2, 1, "b.example.com")],
+			),
+		};
+		const { plan } = await merge(knex, {
+			data,
+			types: ["proxy_hosts", "dns_credentials", "ddns"],
+			choices: { "proxy_hosts:7": "replace", "ddns:1": "replace", "ddns:2": "replace" },
+		});
+		assert.equal(plan.items.find((item) => item.key === "ddns:1").action, "replace");
+		const rows = await knex("npmpro_ddns_record").orderBy("id");
+		// ddns:1 replaces the record of host 4 (the same host after the replace, id 4), ddns:2 may not take host 5's record
+		assert.deepEqual(
+			rows.map((row) => [row.id, row.host_id]),
+			[
+				[10, 4],
+				[11, 5],
+			],
+		);
+		assert.equal(rows[0].state, "pending");
+		assert.equal(rows[1].state, "ok");
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("an export leaves out an orphan host record and keeps the rest with their host link", async () => {
+	const knex = await open();
+	const dataDir = await mkdtemp(path.join(os.tmpdir(), "npmpro-ddns-export-"));
+	const stageDir = await mkdtemp(path.join(os.tmpdir(), "npmpro-ddns-stage-"));
+	try {
+		await seedCredential(knex);
+		await knex("npmpro_ddns_record").insert([
+			managed(1, "a.example.com", 7),
+			managed(2, "b.example.com", 7, { meta: JSON.stringify({ orphan: true }), enabled: 0, state: "failed" }),
+			record(3, 1, "manual.example.com"),
+		]);
+		const { manifest } = await exportStage({
+			knex,
+			box,
+			dataDir,
+			stageDir,
+			types: ["ddns"],
+			secrets: false,
+			meta: {
+				npmproVersion: "1.0.0",
+				dbVersion: "1",
+				createdBy: { name: "A", email: "a@example.com" },
+				createdAt: "2026-11-25T10:00:00.000Z",
+			},
+		});
+		const exported = JSON.parse(await readFile(path.join(stageDir, "data/ddns.json"), "utf8"));
+		assert.deepEqual(
+			exported.npmpro_ddns_record.map((row) => [row.name, row.host_type, row.host_id, row.origin]),
+			[
+				["a.example.com", "proxy_host", 7, "created"],
+				["manual.example.com", null, null, null],
+			],
+		);
+		assert.equal(manifest.counts.ddns, 2);
 	} finally {
 		await knex.destroy();
 	}
