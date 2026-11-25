@@ -85,6 +85,58 @@ export function needsReachConfirm(probe, now) {
 	return now !== undefined && now - (probe.at ?? 0) >= REACH_FRESH_MS;
 }
 
+/**
+ * Whether a ticked name still needs the user's "I checked from outside" before Save: its probe is still running, could
+ * not run, or did not find this server reachable (or the server forgot that answer), and the box is not ticked. A name
+ * ticked without a probe of this window (a name that already has a row) needs nothing.
+ *
+ * @param   {{ reachConfirmed?: boolean, reach?: { status: string, result?: Object, at?: number } }} entry
+ * @param   {number} [now]  ms
+ * @returns {boolean}
+ */
+export function reachPending(entry, now) {
+	if (entry?.reachConfirmed === true || !entry?.reach) return false;
+	if (entry.reach.status !== "done") return true;
+	return needsReachConfirm({ ...entry.reach.result, at: entry.reach.at }, now);
+}
+
+/**
+ * The errors of the host record option for a save: one on the confirmation box of each ticked name that still needs
+ * it (reachPending), so the save is refused and the box shows why
+ *
+ * @param   {{ npmproDnsRecords?: Array<Object>, domainNames?: string[] }} values
+ * @param   {string} message  the box's message
+ * @param   {number} [now]  ms
+ * @returns {Object}  {} or { npmproDnsRecords: [row errors by entry index] }
+ */
+export function dnsRecordErrors(values, message, now = Date.now()) {
+	const entries = values?.npmproDnsRecords;
+	if (!Array.isArray(entries)) return {};
+	const present = new Set((values.domainNames ?? []).map(lower));
+	const rows = entries.map((entry) =>
+		present.has(lower(entry.name)) && reachPending(entry, now) ? { reachConfirmed: message } : undefined,
+	);
+	return rows.some(Boolean) ? { npmproDnsRecords: rows } : {};
+}
+
+/**
+ * A window's validate with the host record option's errors added (dnsRecordErrors); validate may answer a promise
+ *
+ * @param   {Function|undefined} validate  (values) => errors
+ * @param   {() => string} messageOf  the confirmation box's message, read when the form is checked
+ * @returns {Function}  (values) => errors
+ */
+export function withReachChecks(validate, messageOf) {
+	return (values) => {
+		const merge = (found) => {
+			const dns = dnsRecordErrors(values, messageOf());
+			return Object.keys(dns).length > 0 ? { ...found, ...dns } : (found ?? {});
+		};
+		const base = validate ? validate(values) : {};
+		return typeof base?.then === "function" ? base.then(merge) : merge(base);
+	};
+}
+
 /** Whether the probe found no public address: the name cannot be ticked */
 export const reachBlocked = (probe) => probe?.result === "no-public-address";
 
@@ -216,6 +268,39 @@ export function ticksOf(records, names) {
 	return (records ?? [])
 		.filter((record) => MANAGED_STATES.includes(record.state) && present.has(lower(record.name)))
 		.map((record) => ({ name: record.name, ipv6: record.ipv6 === true }));
+}
+
+/**
+ * Whether a save with the option turned off really deletes records at the provider: a record NPMpro created that is
+ * kept now (an orphan is not released by a save)
+ *
+ * @param   {Array<{ state: string, origin?: string|null }>|undefined} records
+ * @returns {boolean}
+ */
+export const deletesOnSave = (records) =>
+	(records ?? []).some((record) => record.origin === "created" && MANAGED_STATES.includes(record.state));
+
+/** Whether the host has a row whose delete at the provider failed: the card opens to show it */
+export const hasOrphans = (records) => (records ?? []).some((record) => record.state === "orphan");
+
+/**
+ * The names a save asked a record for that its answer refused or failed, each with its reason: { name, id, detail }
+ * (id a translation of the reason, else detail the server's text)
+ *
+ * @param   {Array<{ name: string }>|undefined} wanted  the request's npmproDnsRecords
+ * @param   {Array<Object>|undefined} states  the answer's npmproDnsRecords (camelCase)
+ * @returns {Array<{ name: string, id: string|null, detail: string|null }>}
+ */
+export function refusedTicks(wanted, states) {
+	const asked = new Set((wanted ?? []).map((entry) => lower(entry.name)));
+	return (states ?? [])
+		.filter((state) => asked.has(lower(state.name)) && ["unavailable", "failed"].includes(state.state))
+		.map((state) => {
+			const id = REASON_IDS[state.reason];
+			if (id) return { name: state.name, id, detail: null };
+			if (state.message) return { name: state.name, id: null, detail: state.message };
+			return { name: state.name, id: STATE_IDS[state.state], detail: null };
+		});
 }
 
 /** The ticks with a name added (once) */

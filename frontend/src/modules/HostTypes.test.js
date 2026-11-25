@@ -9,22 +9,37 @@ import {
 	toggleInvalidations,
 } from "./HostTypes.js";
 
-it("refreshes the list and the host after an enable or disable", () => {
-	assert.deepEqual(toggleInvalidations("dead", 4), [["dead-hosts"], ["dead-host", 4], ["dns-check-hosts"]]);
+// a host's save, enable, disable and delete change its record rows: the plan, the Dynamic DNS list and its status
+const records = [["dns-plan"], ["ddns-records"], ["ddns-status"]];
+
+it("refreshes the list, the host and its DNS records after an enable or disable", () => {
+	assert.deepEqual(toggleInvalidations("dead", 4), [
+		["dead-hosts"],
+		["dead-host", 4],
+		["dns-check-hosts"],
+		...records,
+	]);
 	assert.deepEqual(toggleInvalidations("redirection", 4), [
 		["redirection-hosts"],
 		["redirection-host", 4],
 		["dns-check-hosts"],
+		...records,
 	]);
 	assert.deepEqual(toggleInvalidations("stream", 4), [["streams"], ["stream", 4]]);
-	assert.deepEqual(toggleInvalidations("proxy", 4), [["proxy-hosts"], ["proxy-host", 4], ["dns-check-hosts"]]);
+	assert.deepEqual(toggleInvalidations("proxy", 4), [
+		["proxy-hosts"],
+		["proxy-host", 4],
+		["dns-check-hosts"],
+		...records,
+	]);
 });
 
-it("refreshes the certificates, the DNS checks and the Keep updated suggestions after a delete, and for a proxy host the access lists", () => {
+it("refreshes the certificates, the DNS checks and records and the Keep updated suggestions after a delete, and for a proxy host the access lists", () => {
 	assert.deepEqual(deleteInvalidations("dead", 4), [
 		["dead-hosts"],
 		["dead-host", 4],
 		["dns-check-hosts"],
+		...records,
 		["certificates"],
 		["ddns-suggestions"],
 	]);
@@ -32,6 +47,7 @@ it("refreshes the certificates, the DNS checks and the Keep updated suggestions 
 		["redirection-hosts"],
 		["redirection-host", 4],
 		["dns-check-hosts"],
+		...records,
 		["certificates"],
 		["ddns-suggestions"],
 	]);
@@ -40,23 +56,32 @@ it("refreshes the certificates, the DNS checks and the Keep updated suggestions 
 		["proxy-hosts"],
 		["proxy-host", 4],
 		["dns-check-hosts"],
+		...records,
 		["certificates"],
 		["access-lists"],
 		["ddns-suggestions"],
 	]);
 });
 
-it("refreshes the host, its list, the audit log, the host report, the certificates and the suggestions after a save", () => {
+it("refreshes the host, its list, the audit log, the host report, the certificates, the suggestions and the DNS records after a save", () => {
 	const common = [["audit-logs"], ["host-report"], ["certificates"]];
 	const suggestions = ["ddns-suggestions"];
 	const checks = ["dns-check-hosts"];
-	assert.deepEqual(saveInvalidations("dead", 4), [["dead-host", 4], ["dead-hosts"], ...common, suggestions, checks]);
+	assert.deepEqual(saveInvalidations("dead", 4), [
+		["dead-host", 4],
+		["dead-hosts"],
+		...common,
+		suggestions,
+		checks,
+		...records,
+	]);
 	assert.deepEqual(saveInvalidations("redirection", 4), [
 		["redirection-host", 4],
 		["redirection-hosts"],
 		...common,
 		suggestions,
 		checks,
+		...records,
 	]);
 	assert.deepEqual(saveInvalidations("stream", 4), [["stream", 4], ["streams"], ...common]);
 	assert.deepEqual(saveInvalidations("proxy", 4), [
@@ -66,6 +91,7 @@ it("refreshes the host, its list, the audit log, the host report, the certificat
 		["access-lists"],
 		suggestions,
 		checks,
+		...records,
 	]);
 });
 

@@ -59,10 +59,15 @@ const ddnsSuggestions = (type) => (type === "stream" ? [] : [["ddns-suggestions"
 // the server drops a host's DNS check when the host changes, is enabled, disabled or deleted (streams have none)
 const dnsChecks = (type) => (type === "stream" ? [] : [["dns-check-hosts"]]);
 
+// a host's save, enable, disable and delete change its record rows (made, paused, released): the plan of its names,
+// the Dynamic DNS list and its status (streams have none)
+const dnsRecords = (type) => (type === "stream" ? [] : [["dns-plan"], ["ddns-records"], ["ddns-status"]]);
+
 export const toggleInvalidations = (type, id) => [
 	[HOST_TYPES[type].listKey],
 	[HOST_TYPES[type].itemKey, id],
 	...dnsChecks(type),
+	...dnsRecords(type),
 ];
 
 export const deleteInvalidations = (type, id) => [
@@ -81,6 +86,7 @@ export const saveInvalidations = (type, id) => [
 	...accessLists(type),
 	...ddnsSuggestions(type),
 	...dnsChecks(type),
+	...dnsRecords(type),
 ];
 
 // Adopt and update, Leave alone and Delete at the provider again change the host's record states, the Dynamic DNS list

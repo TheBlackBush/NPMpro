@@ -322,6 +322,8 @@ export const REDIRECTION_HOST_TABS = Object.freeze([
 			"npmproDirectory",
 			"npmproTags",
 			"preservePath",
+			// the host record option's boxes (its DNS card is under the names; the field has no input of its own)
+			"npmproDnsRecords",
 		],
 	},
 	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
@@ -378,7 +380,16 @@ export const DEAD_HOST_TABS = Object.freeze([
 	{
 		id: "details",
 		labelId: "column.details",
-		fields: ["domainNames", "npmproDescription", "npmproDirectory", "npmproTags", "npmproPage", "npmproPageHtml"],
+		fields: [
+			"domainNames",
+			"npmproDescription",
+			"npmproDirectory",
+			"npmproTags",
+			// the host record option's boxes (its DNS card is under the names; the field has no input of its own)
+			"npmproDnsRecords",
+			"npmproPage",
+			"npmproPageHtml",
+		],
 	},
 	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
 	advancedTab("advancedConfig"),

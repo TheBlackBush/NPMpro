@@ -292,6 +292,8 @@ export const PROXY_HOST_TABS = Object.freeze([
 			"npmproAuthRequestUpstream",
 			"npmproAccessListType",
 			"npmproAccessListIds",
+			// the host record option's boxes (its DNS card is under the names; the field has no input of its own)
+			"npmproDnsRecords",
 		],
 	},
 	{ id: "locations", labelId: "column.custom-locations", fields: ["locations"] },

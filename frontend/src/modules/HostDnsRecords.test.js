@@ -3,18 +3,24 @@ import { describe, it } from "node:test";
 import {
 	badgeLines,
 	createPoller,
+	deletesOnSave,
+	dnsRecordErrors,
+	hasOrphans,
 	nameRow,
 	needsReachConfirm,
 	pollDelay,
 	reachBlocked,
+	reachPending,
 	reachText,
 	recordsBadge,
+	refusedTicks,
 	stateLine,
 	ticksOf,
 	ttlFor,
 	wantedFromForm,
 	withChange,
 	withoutTick,
+	withReachChecks,
 	withTick,
 } from "./HostDnsRecords.js";
 
@@ -366,5 +372,116 @@ describe("polling", () => {
 		assert.equal(next(pending), false);
 		time += 2 * 60 * 1000;
 		assert.equal(next(pending), 3000);
+	});
+});
+
+describe("the save's reach check", () => {
+	const NOW = 1_000_000_000;
+	const MESSAGE = "Confirm that you checked from outside";
+	const tick = (name, reach, extra = {}) => ({
+		name,
+		proxied: false,
+		ipv6: false,
+		reachConfirmed: false,
+		reach,
+		...extra,
+	});
+	const done = (result, at = NOW) => ({ status: "done", result: { result }, at });
+
+	it("needs the confirmation while the probe runs, could not run, or did not find this server", () => {
+		assert.equal(reachPending(tick("a", { status: "checking" }), NOW), true);
+		assert.equal(reachPending(tick("a", { status: "failed", at: NOW }), NOW), true);
+		assert.equal(reachPending(tick("a", done("could-not-confirm")), NOW), true);
+		assert.equal(reachPending(tick("a", done("router-answered")), NOW), true);
+		assert.equal(reachPending(tick("a", done("reachable")), NOW), false);
+		// the server forgets a reachable answer: the confirmation is needed again
+		assert.equal(reachPending(tick("a", done("reachable", NOW - 9 * 60 * 1000)), NOW), true);
+		// confirmed, or a tick without a probe of this window (a name that has a row): nothing needed
+		assert.equal(reachPending(tick("a", done("could-not-confirm"), { reachConfirmed: true }), NOW), false);
+		assert.equal(reachPending({ name: "a", ipv6: false }, NOW), false);
+	});
+
+	it("puts the message on the box of each ticked name of the host that needs it", () => {
+		const values = {
+			domainNames: ["a.example.com", "B.example.com"],
+			npmproDnsRecords: [
+				tick("a.example.com", done("reachable")),
+				tick("b.example.com", done("could-not-confirm")),
+				// a name the host no longer has is not sent, so it refuses nothing
+				tick("gone.example.com", { status: "checking" }),
+			],
+		};
+		assert.deepEqual(dnsRecordErrors(values, MESSAGE, NOW), {
+			npmproDnsRecords: [undefined, { reachConfirmed: MESSAGE }, undefined],
+		});
+		assert.deepEqual(dnsRecordErrors({ domainNames: ["a.example.com"] }, MESSAGE, NOW), {});
+		const confirmed = { ...values, npmproDnsRecords: values.npmproDnsRecords.slice(0, 2) };
+		confirmed.npmproDnsRecords[1] = { ...confirmed.npmproDnsRecords[1], reachConfirmed: true };
+		assert.deepEqual(dnsRecordErrors(confirmed, MESSAGE, NOW), {});
+	});
+
+	it("adds the boxes' errors to a window's validate, also one that answers a promise", async () => {
+		const values = {
+			domainNames: ["a.example.com"],
+			npmproDnsRecords: [tick("a.example.com", { status: "checking" })],
+		};
+		const own = () => ({ forwardHost: "Required" });
+		assert.deepEqual(withReachChecks(own, () => MESSAGE)(values), {
+			forwardHost: "Required",
+			npmproDnsRecords: [{ reachConfirmed: MESSAGE }],
+		});
+		assert.deepEqual(
+			await withReachChecks(
+				() => Promise.resolve({}),
+				() => MESSAGE,
+			)(values),
+			{
+				npmproDnsRecords: [{ reachConfirmed: MESSAGE }],
+			},
+		);
+		assert.deepEqual(withReachChecks(undefined, () => MESSAGE)({ domainNames: [] }), {});
+		assert.deepEqual(
+			withReachChecks(
+				() => undefined,
+				() => MESSAGE,
+			)({ domainNames: [] }),
+			{},
+		);
+	});
+});
+
+describe("after a save", () => {
+	it("names each ticked name the answer refused or failed, with its reason", () => {
+		const wanted = [
+			{ name: "a.example.com" },
+			{ name: "B.example.com" },
+			{ name: "c.example.com" },
+			{ name: "d.example.com" },
+		];
+		const states = [
+			{ name: "a.example.com", state: "unavailable", reason: "error.host-dns-reach-unconfirmed", message: "x" },
+			{ name: "b.example.com", state: "failed", reason: null, message: "HTTP 500 at the provider" },
+			{ name: "c.example.com", state: "pending", reason: null, message: null },
+			{ name: "d.example.com", state: "failed", reason: null, message: null },
+			// not asked by this save
+			{ name: "e.example.com", state: "unavailable", reason: "error.host-dns-no-right", message: null },
+		];
+		assert.deepEqual(refusedTicks(wanted, states), [
+			{ name: "a.example.com", id: "error.host-dns-reach-unconfirmed", detail: null },
+			{ name: "b.example.com", id: null, detail: "HTTP 500 at the provider" },
+			{ name: "d.example.com", id: "host-dns.state.failed", detail: null },
+		]);
+		assert.deepEqual(refusedTicks(undefined, states), []);
+		assert.deepEqual(refusedTicks(wanted, undefined), []);
+	});
+
+	it("says a save with the option off deletes records only for created records that are kept, and finds orphans", () => {
+		assert.equal(deletesOnSave([{ state: "ok", origin: "created" }]), true);
+		assert.equal(deletesOnSave([{ state: "orphan", origin: "created" }]), false);
+		assert.equal(deletesOnSave([{ state: "ok", origin: "adopted" }]), false);
+		assert.equal(deletesOnSave(undefined), false);
+		assert.equal(hasOrphans([{ state: "ok" }, { state: "orphan" }]), true);
+		assert.equal(hasOrphans([{ state: "ok" }]), false);
+		assert.equal(hasOrphans(undefined), false);
 	});
 });

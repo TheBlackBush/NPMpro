@@ -88,7 +88,13 @@ const showDdnsRecordModal = (id, prefill) => {
 	EasyModal.show(DdnsRecordModal, { id, prefill });
 };
 
-const HOST_WINDOWS = { proxy: showProxyHostModal, redirection: showRedirectionHostModal, dead: showDeadHostModal };
+// the host windows, read when one opens: the host windows import this file, so their bindings may not be set yet
+// while the modules load
+const HOST_WINDOWS = {
+	proxy: (id) => showProxyHostModal(id),
+	redirection: (id) => showRedirectionHostModal(id),
+	dead: (id) => showDeadHostModal(id),
+};
 
 /** Opens the window of the host a managed record belongs to (nothing for a record without a visible host) */
 const showHostOfRecord = (record) => {

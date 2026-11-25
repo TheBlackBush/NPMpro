@@ -253,6 +253,9 @@ it("puts every field of the redirection host, 404 host and stream windows on exa
 	// a stream's domain names belong to its requested certificate, a redirection host's to its details
 	assert.equal(tabOfPath(STREAM_TABS, "domainNames"), "tls");
 	assert.equal(tabOfPath(REDIRECTION_HOST_TABS, "domainNames"), "details");
+	// a host record box with a message opens the Details tab, where the DNS card is
+	assert.equal(tabOfPath(REDIRECTION_HOST_TABS, "npmproDnsRecords[0].reachConfirmed"), "details");
+	assert.equal(tabOfPath(DEAD_HOST_TABS, "npmproDnsRecords[1].reachConfirmed"), "details");
 	assert.equal(tabOfPath(STREAM_TABS, "npmproAdvancedConfig"), "advanced");
 	// the group sits on the Details tab of every host window (UX-03)
 	for (const tabs of [REDIRECTION_HOST_TABS, DEAD_HOST_TABS, STREAM_TABS]) {
