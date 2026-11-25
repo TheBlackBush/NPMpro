@@ -53,7 +53,7 @@ const hashFiles = async (base, rel, allow, out) => {
 
 // the merge of a backup's items into the instance: session, plan and apply
 const createMerge = (
-	{ knex, box, dataDir, store, renewals, ddns, dnsCredentials, exclusive, clock },
+	{ knex, box, dataDir, store, renewals, ddns, notify, dnsCredentials, exclusive, clock },
 	{ needsRestart, applyWithRollback },
 ) => {
 	// the restore session of the token and the scope its owner merges in: a Settings session is the admin's, a page
@@ -244,22 +244,28 @@ const createMerge = (
 			try {
 				await ddns.pause();
 				try {
-					return await exclusive(async () => {
-						// planned again inside the queue: what is applied is what the user confirmed, or nothing
-						const { plan, data } = await buildPlan({ entry, scope, types, items, choices });
-						if (plan.hash !== planHash) {
-							throw Object.assign(
-								new BackupError("plan-changed", "The instance changed since the plan was made"),
-								{ status: 409, payload: { plan } },
-							);
-						}
-						store.takeToken(token, { keep: false, owner: userId });
-						try {
-							return await runMerge({ access, userId, entry, scope, plan, data });
-						} finally {
-							await withoutStage(entry.stageDir);
-						}
-					});
+					await notify.pause();
+					try {
+						return await exclusive(async () => {
+							// planned again inside the queue: what is applied is what the user confirmed, or nothing
+							const { plan, data } = await buildPlan({ entry, scope, types, items, choices });
+							if (plan.hash !== planHash) {
+								throw Object.assign(
+									new BackupError("plan-changed", "The instance changed since the plan was made"),
+									{ status: 409, payload: { plan } },
+								);
+							}
+							store.takeToken(token, { keep: false, owner: userId });
+							try {
+								return await runMerge({ access, userId, entry, scope, plan, data });
+							} finally {
+								await withoutStage(entry.stageDir);
+							}
+						});
+					} finally {
+						notify.resume();
+						await notify.cleanup();
+					}
 				} finally {
 					ddns.resume();
 				}

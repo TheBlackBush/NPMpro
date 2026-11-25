@@ -20,6 +20,7 @@ import { pauseDdns, resumeDdns } from "./ddns.js";
 import internalDnsCredential from "./dns-credential.js";
 import { reloadLandingPagesAfterRestore } from "./landing-pages.js";
 import internalNginx from "./nginx.js";
+import { cleanupAfterRestore, pauseNotify, resumeNotify } from "./notify.js";
 import {
 	loadEnabledHosts,
 	rebuildAccessListFiles,
@@ -55,6 +56,7 @@ const internalBackup = createBackupService({
 	nginx: internalNginx,
 	renewals: { pause: internalCertificate.pauseRenewals, resume: internalCertificate.resumeRenewals },
 	ddns: { pause: pauseDdns, resume: resumeDdns },
+	notify: { pause: pauseNotify, resume: resumeNotify, cleanup: cleanupAfterRestore },
 	regenerate: { loadEnabledHosts, rebuildAccessListFiles, regenerateAllHostsNow, regenerateDefaultSite },
 	runtime: { loadRuntimeConfig, applyAllRuntime },
 	reloadSettings: {
