@@ -81,4 +81,17 @@ describe("crowdsec unreachable state", () => {
 		assert.equal(h.service.result().reachable, false);
 		assert.equal(h.service.result().error, "CrowdSec request failed: ECONNREFUSED");
 	});
+
+	it("an ok that was not stored is told again at the next poll", async () => {
+		let fails = 1;
+		const h = harness({
+			onState: () => {
+				if (fails-- > 0) throw new Error("not stored");
+			},
+		});
+		await h.poll();
+		await h.poll();
+		await h.poll();
+		assert.deepEqual(h.calls, [{ state: "ok" }, { state: "ok" }]);
+	});
 });

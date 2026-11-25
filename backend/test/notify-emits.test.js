@@ -274,6 +274,10 @@ const makeProxy = async (name, extra = {}) => {
 	return made.body;
 };
 const ADVANCED_LEAK = /secret-advanced-config-text|advanced_config/u;
+const settle = async () => (await import("../internal/host-notify.js")).settledHostReports();
+const URL_SECRETS = /pw123|abc9876/u;
+const LAPI_KEY = /lapi-key-9/u;
+const NOT_STORED = /not stored/u;
 const LONG_ERROR = `nginx: [emerg] ${"x".repeat(400)}`;
 
 describe("host config state emit points", () => {
@@ -283,6 +287,7 @@ describe("host config state emit points", () => {
 		api.outside.control.failNext = LONG_ERROR;
 		const bad = await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 81 });
 		assert.equal(bad.body.npmpro_nginx_online, false, bad.text);
+		await settle();
 		const failed = hostEvents("host.config_error", host.id);
 		assert.equal(failed.length, 1);
 		assert.equal(failed[0].data.type, "proxy_host");
@@ -293,14 +298,17 @@ describe("host config state emit points", () => {
 		// a second failure of the same host sends nothing more
 		api.outside.control.failNext = LONG_ERROR;
 		await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 82 });
+		await settle();
 		assert.equal(hostEvents("host.config_error", host.id).length, 1);
 
 		const fixed = await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 83 });
 		assert.equal(fixed.body.npmpro_nginx_online, true, fixed.text);
+		await settle();
 		assert.equal(hostEvents("host.config_error.resolved", host.id).length, 1);
 
 		assert.equal((await hostStates(host.id)).length, 1);
 		assert.equal((await admin.delete(`/nginx/proxy-hosts/${host.id}`)).status, 200);
+		await settle();
 		assert.equal((await hostStates(host.id)).length, 0);
 	});
 
@@ -313,17 +321,75 @@ describe("host config state emit points", () => {
 		];
 		api.outside.control.failNext = LONG_ERROR;
 		await admin.put(`/nginx/proxy-hosts/${hosts[1].id}`, { forward_port: 81 });
+		await settle();
 		assert.equal(hostEvents("host.config_error", hosts[1].id).length, 1);
 		seen = [];
 		await regenerateAllHostsNow(await loadEnabledHosts());
+		await settle();
 		assert.equal(hostEvents("host.config_error.resolved", hosts[1].id).length, 1);
 		assert.equal(seen.length, 1);
 
 		// every host healthy: a second regeneration is silent
 		seen = [];
 		await regenerateAllHostsNow(await loadEnabledHosts());
+		await settle();
 		assert.equal(seen.length, 0);
 		for (const one of hosts) assert.equal((await hostStates(one.id)).length, 1);
+	});
+
+	it("an nginx error with a URL password and an access list password reaches neither the event nor a log line", async () => {
+		const restore = keepLogs();
+		try {
+			const list = await admin.post("/nginx/access-lists", {
+				name: "secret list",
+				items: [{ username: "alice", password: "list-pw-4455" }],
+			});
+			assert.equal(list.status, 201, list.text);
+			const host = await makeProxy("leak.example.com", {
+				forward_host: "user:pw123@up.example",
+				npmpro_access_list_type: "custom",
+				npmpro_access_list_ids: [list.body.id],
+			});
+			const [{ password: stored }] = await api.db("access_list_auth").where({ access_list_id: list.body.id });
+			api.outside.control.failNext = `nginx: [emerg] host not found in upstream http://user:pw123@up.example/x?token=abc9876 and ${stored}`;
+			await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 81 });
+			await settle();
+			const [event] = hostEvents("host.config_error", host.id);
+			assert.ok(event, "an event");
+			const everything = JSON.stringify(event) + logged.join("\n");
+			assert.doesNotMatch(everything, URL_SECRETS);
+			assert.equal(everything.includes(stored), false);
+		} finally {
+			restore();
+		}
+	});
+
+	it("a slow state report does not delay the configure result", async () => {
+		const host = await makeProxy("slow.example.com");
+		await settle();
+		const original = notify.reportState;
+		let release;
+		const gate = new Promise((resolve) => {
+			release = resolve;
+		});
+		notify.reportState = async (...args) => {
+			await gate;
+			return original(...args);
+		};
+		try {
+			api.outside.control.failNext = "nginx: [emerg] slow";
+			const saved = await Promise.race([
+				admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 81 }),
+				new Promise((resolve) => setTimeout(resolve, 5000, "timeout")),
+			]);
+			assert.notEqual(saved, "timeout");
+			assert.equal(saved.body.npmpro_nginx_online, false);
+		} finally {
+			release();
+			notify.reportState = original;
+		}
+		await settle();
+		assert.equal(hostEvents("host.config_error", host.id).length, 1);
 	});
 
 	it("a layer that throws leaves the host save and delete unchanged", async () => {
@@ -553,5 +619,42 @@ describe("DDNS record state emit points", () => {
 			notify.clearState = original;
 		}
 		assert.equal((await api.db("npmpro_ddns_record").where({ id: 41 })).length, 0);
+	});
+});
+
+describe("CrowdSec state emit points", () => {
+	let reportCrowdsecState;
+	before(async () => {
+		({ reportCrowdsecState } = await import("../internal/monitoring-services.js"));
+	});
+	const rows = () => api.db(STATE).where({ event: "crowdsec.unreachable" });
+
+	it("bad sends once however often it is told, ok resolves, off clears, no key in the data", async () => {
+		const down = { state: "bad", error: "request failed with key lapi-key-9", secrets: ["lapi-key-9"] };
+		await reportCrowdsecState(down);
+		await reportCrowdsecState(down);
+		await reportCrowdsecState(down);
+		const sent = seen.filter((one) => one.type === "crowdsec.unreachable");
+		assert.equal(sent.length, 1);
+		assert.doesNotMatch(JSON.stringify(sent[0]), LAPI_KEY);
+		await reportCrowdsecState({ state: "ok" });
+		assert.equal(seen.filter((one) => one.type === "crowdsec.unreachable.resolved").length, 1);
+		assert.equal((await rows()).length, 1);
+		await reportCrowdsecState({ state: "off" });
+		assert.equal((await rows()).length, 0);
+	});
+
+	it("a state that could not be stored throws, so the service tries again", async () => {
+		const original = stateStore.report;
+		stateStore.report = () => {
+			throw new Error("store broke");
+		};
+		const restore = keepLogs();
+		try {
+			await assert.rejects(reportCrowdsecState({ state: "ok" }), NOT_STORED);
+		} finally {
+			restore();
+			stateStore.report = original;
+		}
 	});
 });

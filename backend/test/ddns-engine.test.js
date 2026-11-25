@@ -66,6 +66,7 @@ const harness = ({
 	cooldownMs = 5 * MIN,
 	zoneless = false,
 	onState,
+	log,
 } = {}) => {
 	const clock = makeClock();
 	const rows = new Map(records.map((row) => [row.id, structuredClone(row)]));
@@ -131,6 +132,7 @@ const harness = ({
 		clock,
 		makeFetch: () => () => Promise.resolve({}),
 		onState,
+		log,
 	});
 	return {
 		engine,
@@ -996,17 +998,20 @@ describe("ddns engine: state callback", () => {
 		);
 	});
 
-	it("a callback that throws changes nothing in the run", async () => {
+	it("a callback that throws changes nothing in the run and is logged", async () => {
 		const errors = [];
 		const h = harness({
 			zone: { A: [IP4_NEW] },
+			log: { error: (line) => errors.push(line), info: () => {} },
 			onState: () => {
 				throw new Error("layer broke");
 			},
 		});
 		const result = await h.engine.cycle();
 		assert.equal(result.failed, 0);
+		assert.equal(result.changed, 1);
 		assert.equal(h.row().state, "ok");
-		assert.equal(errors.length, 0);
+		assert.equal(errors.length, 1);
+		assert.match(errors[0], /layer broke/u);
 	});
 });
