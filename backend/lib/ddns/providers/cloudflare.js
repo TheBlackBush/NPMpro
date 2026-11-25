@@ -51,7 +51,7 @@ const check = (res, fields, okStatuses = [200]) => {
 
 /** The zone id: cached in meta, else looked up once by name */
 const zoneIdOf = async ({ zone, fields, fetch, meta }) => {
-	if (meta?.zone_id) return meta.zone_id;
+	if (typeof meta?.zone_id === "string" && HEX_ID.test(meta.zone_id)) return meta.zone_id;
 	const res = await fetch(`${API}/zones?name=${encodeURIComponent(zone)}`, { headers: authHeaders(fields) });
 	check(res, fields);
 	if (!Array.isArray(res.json?.result)) throw malformed(res, secretsOf(fields));

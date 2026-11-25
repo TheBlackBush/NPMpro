@@ -104,7 +104,8 @@ const sameAddress = (a, b) => {
 const assertRemovable = ({ zone, name, type, value }) => {
 	const full = typeof name === "string" ? name.toLowerCase() : "";
 	const z = String(zone ?? "").toLowerCase();
-	const family = { A: 4, AAAA: 6 }[type] ?? 0;
+	const families = { A: 4, AAAA: 6 };
+	const family = Object.hasOwn(families, type) ? families[type] : 0;
 	if (
 		family === 0 ||
 		isIP(String(value ?? "").trim()) !== family ||

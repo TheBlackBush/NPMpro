@@ -9,8 +9,8 @@ const OTHER_IP = "81.2.69.100";
 const CHECK = "/nginx/dns-check/hosts";
 const ZONE_LOOKUP = /^\/client\/v4\/zones\?name=/u;
 // a name starting with slow- gets its own, delayed interceptor in the test that needs it
-const RECORD_LOOKUP = /^\/client\/v4\/zones\/zone1\/dns_records\?(?!.*name\.exact=slow-)/u;
-const SLOW_LOOKUP = /^\/client\/v4\/zones\/zone1\/dns_records\?.*name\.exact=slow-/u;
+const RECORD_LOOKUP = /^\/client\/v4\/zones\/0000000000000000000000000000a1d1\/dns_records\?(?!.*name\.exact=slow-)/u;
+const SLOW_LOOKUP = /^\/client\/v4\/zones\/0000000000000000000000000000a1d1\/dns_records\?.*name\.exact=slow-/u;
 const json = { headers: { "content-type": "application/json" } };
 const SECTIONS = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams", "access_lists", "certificates"];
 
@@ -57,7 +57,11 @@ const mockCloudflare = () => {
 	pool.intercept({ path: ZONE_LOOKUP, method: "GET" })
 		.reply(() => {
 			cloudflare.zoneLookups += 1;
-			return { statusCode: 200, data: { success: true, result: [{ id: "zone1" }] }, responseOptions: json };
+			return {
+				statusCode: 200,
+				data: { success: true, result: [{ id: "0000000000000000000000000000a1d1" }] },
+				responseOptions: json,
+			};
 		})
 		.persist();
 	pool.intercept({ path: RECORD_LOOKUP, method: "GET" })

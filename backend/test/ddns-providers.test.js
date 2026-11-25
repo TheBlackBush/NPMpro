@@ -41,7 +41,7 @@ const LIST_PATH = `/1.0/domain/zone/example.com/record?${new URLSearchParams({ f
 const ANSWER_KO = /KO/u;
 const REFRESH_FAILED = /zone refresh failed/u;
 const BETWEEN = /between 300/u;
-const cfRecords = (type, name, zoneId = "zid") =>
+const cfRecords = (type, name, zoneId = "0000000000000000000000000000a1d1") =>
 	`/client/v4/zones/${zoneId}/dns_records?type=${type}&name.exact=${name}`;
 const bearerOf = { authorization: `Bearer ${TOKEN}` };
 
@@ -130,7 +130,7 @@ describe("cloudflare", () => {
 	it("looks the zone id up once, reads with name.exact and returns proxied", async () => {
 		api("api.cloudflare.com")
 			.intercept({ path: "/client/v4/zones?name=example.com", method: "GET", headers: bearerOf })
-			.reply(200, { success: true, result: [{ id: "zid" }] }, json);
+			.reply(200, { success: true, result: [{ id: "0000000000000000000000000000a1d1" }] }, json);
 		api("api.cloudflare.com")
 			.intercept({
 				path: cfRecords("A", "home.example.com"),
@@ -143,7 +143,7 @@ describe("cloudflare", () => {
 			values: ["1.2.3.4"],
 			ttl: 1,
 			proxied: true,
-			meta: { zone_id: "zid", record_id: "r1", proxied: true },
+			meta: { zone_id: "0000000000000000000000000000a1d1", record_id: "r1", proxied: true },
 		});
 		// the cached zone id: no zone lookup now
 		api("api.cloudflare.com")
@@ -164,7 +164,7 @@ describe("cloudflare", () => {
 			...base,
 			name: "*.example.com",
 			type: "CNAME",
-			meta: { zone_id: "zid" },
+			meta: { zone_id: "0000000000000000000000000000a1d1" },
 		});
 		assert.deepEqual(alias.values, ["target.example.net"]);
 		assert.equal(alias.proxied, false);
@@ -181,7 +181,10 @@ describe("cloudflare", () => {
 				},
 				json,
 			);
-		const two = await call("cloudflare", "read", { ...base, meta: { zone_id: "zid" } });
+		const two = await call("cloudflare", "read", {
+			...base,
+			meta: { zone_id: "0000000000000000000000000000a1d1" },
+		});
 		assert.deepEqual(two.values, ["1.1.1.1", "2.2.2.2"]);
 		assert.equal(two.ttl, null);
 	});
@@ -190,7 +193,7 @@ describe("cloudflare", () => {
 		const patch = (expected) =>
 			api("api.cloudflare.com")
 				.intercept({
-					path: "/client/v4/zones/zid/dns_records/r1",
+					path: "/client/v4/zones/0000000000000000000000000000a1d1/dns_records/r1",
 					method: "PATCH",
 					headers: bearerOf,
 					body: bodyIs(expected),
@@ -198,13 +201,22 @@ describe("cloudflare", () => {
 				.reply(200, { success: true, result: { id: "r1" } }, json);
 		patch({ content: "5.6.7.8" });
 		patch({ content: "5.6.7.8", ttl: 120 });
-		const existing = { values: ["1.2.3.4"], ttl: 1, proxied: true, meta: { zone_id: "zid", record_id: "r1" } };
+		const existing = {
+			values: ["1.2.3.4"],
+			ttl: 1,
+			proxied: true,
+			meta: { zone_id: "0000000000000000000000000000a1d1", record_id: "r1" },
+		};
 		const args = { ...base, ip: "5.6.7.8", existing, meta: existing.meta };
 		assert.deepEqual(await call("cloudflare", "write", args), {
-			meta: { zone_id: "zid", record_id: "r1" },
+			meta: { zone_id: "0000000000000000000000000000a1d1", record_id: "r1" },
 			created: false,
 		});
-		const plain = { ...existing, proxied: false, meta: { zone_id: "zid", record_id: "r1" } };
+		const plain = {
+			...existing,
+			proxied: false,
+			meta: { zone_id: "0000000000000000000000000000a1d1", record_id: "r1" },
+		};
 		await call("cloudflare", "write", { ...args, ttl: 120, existing: plain, meta: plain.meta });
 		mock.assertNoPendingInterceptors();
 	});
@@ -215,7 +227,7 @@ describe("cloudflare", () => {
 				...base,
 				ip: "5.6.7.8",
 				existing: { values: ["1.2.3.4"], ttl: 1, meta: {} },
-				meta: { zone_id: "zid" },
+				meta: { zone_id: "0000000000000000000000000000a1d1" },
 			}),
 			(err) => err.code === "failed" && err.retry === true && err.message.includes("record id"),
 		);
@@ -224,12 +236,12 @@ describe("cloudflare", () => {
 	it("does not send ttl for a proxied record", async () => {
 		api("api.cloudflare.com")
 			.intercept({
-				path: "/client/v4/zones/zid/dns_records/r1",
+				path: "/client/v4/zones/0000000000000000000000000000a1d1/dns_records/r1",
 				method: "PATCH",
 				body: bodyIs({ content: "5.6.7.8" }),
 			})
 			.reply(200, { success: true, result: { id: "r1" } }, json);
-		const meta = { zone_id: "zid", record_id: "r1", proxied: true };
+		const meta = { zone_id: "0000000000000000000000000000a1d1", record_id: "r1", proxied: true };
 		const done = await call("cloudflare", "write", {
 			...base,
 			ip: "5.6.7.8",
@@ -243,7 +255,7 @@ describe("cloudflare", () => {
 
 	it("drops a cached zone id that answers 404 and looks the zone up again", async () => {
 		api("api.cloudflare.com")
-			.intercept({ path: cfRecords("A", "home.example.com", "old"), method: "GET" })
+			.intercept({ path: cfRecords("A", "home.example.com", "0000000000000000000000000000000a"), method: "GET" })
 			.reply(404, { success: false, errors: [{ message: "zone gone" }] }, json);
 		api("api.cloudflare.com")
 			.intercept({ path: "/client/v4/zones?name=example.com", method: "GET" })
@@ -251,7 +263,10 @@ describe("cloudflare", () => {
 		api("api.cloudflare.com")
 			.intercept({ path: cfRecords("A", "home.example.com", "fresh"), method: "GET" })
 			.reply(200, { success: true, result: [{ id: "r2", content: "9.9.9.9", ttl: 1 }] }, json);
-		const found = await call("cloudflare", "read", { ...base, meta: { zone_id: "old", record_id: "x" } });
+		const found = await call("cloudflare", "read", {
+			...base,
+			meta: { zone_id: "0000000000000000000000000000000a", record_id: "x" },
+		});
 		assert.equal(found.meta.zone_id, "fresh");
 		assert.equal(found.meta.record_id, "r2");
 		mock.assertNoPendingInterceptors();
@@ -260,7 +275,7 @@ describe("cloudflare", () => {
 	it("a 404 for a freshly looked up zone id is a missing zone, not retried", async () => {
 		api("api.cloudflare.com")
 			.intercept({ path: "/client/v4/zones?name=example.com", method: "GET" })
-			.reply(200, { success: true, result: [{ id: "zid" }] }, json);
+			.reply(200, { success: true, result: [{ id: "0000000000000000000000000000a1d1" }] }, json);
 		api("api.cloudflare.com")
 			.intercept({ path: cfRecords("A", "home.example.com"), method: "GET" })
 			.reply(404, { success: false }, json);
@@ -272,17 +287,20 @@ describe("cloudflare", () => {
 		const headers = { "x-auth-email": "a@b.c", "x-auth-key": TOKEN };
 		api("api.cloudflare.com")
 			.intercept({ path: "/client/v4/zones?name=example.com", method: "GET", headers })
-			.reply(200, { success: true, result: [{ id: "zid" }] }, json);
+			.reply(200, { success: true, result: [{ id: "0000000000000000000000000000a1d1" }] }, json);
 		api("api.cloudflare.com")
 			.intercept({
-				path: "/client/v4/zones/zid/dns_records",
+				path: "/client/v4/zones/0000000000000000000000000000a1d1/dns_records",
 				method: "POST",
 				headers,
 				body: bodyIs({ type: "A", name: "home.example.com", content: "5.6.7.8", ttl: 1, proxied: false }),
 			})
 			.reply(200, { success: true, result: { id: "new" } }, json);
 		const done = await call("cloudflare", "write", { ...base, fields: globalKey, ip: "5.6.7.8", existing: null });
-		assert.deepEqual(done, { meta: { zone_id: "zid", record_id: "new" }, created: true });
+		assert.deepEqual(done, {
+			meta: { zone_id: "0000000000000000000000000000a1d1", record_id: "new" },
+			created: true,
+		});
 	});
 
 	it("refuses to write a record set with two values", async () => {

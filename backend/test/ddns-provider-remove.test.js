@@ -33,6 +33,7 @@ after(() => {
 	dns.lookup = realLookup;
 	syncBuiltinESMExports();
 });
+const BAD_ID = /valid record id/u;
 const DELETED_REFRESH_FAILED = /deleted but the zone refresh failed/u;
 const json = { headers: { "content-type": "application/json" } };
 const ZONE = "example.org";
@@ -47,6 +48,7 @@ const OVH_BASE = "/1.0/domain/zone/example.org";
 const api = (host) => mock.get(`https://${host}`);
 const cfId = (n) => n.toString(16).padStart(32, "0");
 const ID = 5;
+const ZID = cfId(77);
 const SCOPE = { zone: ZONE, name: NAME };
 
 let ovhClock = false;
@@ -62,11 +64,14 @@ const CASES = {
 	cloudflare: {
 		fields: { dns_cloudflare_api_token: TOKEN },
 		secrets: [TOKEN],
-		meta: { zone_id: "zid" },
+		meta: { zone_id: ZID },
 		ids: true,
 		read(type, values) {
 			api("api.cloudflare.com")
-				.intercept({ path: `/client/v4/zones/zid/dns_records?type=${type}&name.exact=${NAME}`, method: "GET" })
+				.intercept({
+					path: `/client/v4/zones/${ZID}/dns_records?type=${type}&name.exact=${NAME}`,
+					method: "GET",
+				})
 				.reply(
 					200,
 					{
@@ -78,7 +83,7 @@ const CASES = {
 		},
 		del(_type, status, body) {
 			api("api.cloudflare.com")
-				.intercept({ path: `/client/v4/zones/zid/dns_records/${cfId(ID)}`, method: "DELETE" })
+				.intercept({ path: `/client/v4/zones/${ZID}/dns_records/${cfId(ID)}`, method: "DELETE" })
 				.reply(status, body, json);
 		},
 		ok: [200, { success: true, result: { id: cfId(ID) } }],
@@ -111,7 +116,16 @@ const CASES = {
 	"hetzner-cloud": {
 		fields: { dns_hetzner_cloud_api_token: TOKEN },
 		secrets: [TOKEN],
-		read(type, values, status = 200) {
+		read(type, values, status = 200, zoneStatus = 200) {
+			if (status === 404) {
+				api("api.hetzner.cloud")
+					.intercept({ path: `/v1/zones/${ZONE}`, method: "GET" })
+					.reply(
+						zoneStatus,
+						zoneStatus === 200 ? { zone: { name: ZONE } } : { error: { code: "not_found" } },
+						json,
+					);
+			}
 			api("api.hetzner.cloud")
 				.intercept({ path: `/v1/zones/${ZONE}/rrsets/home/${type}`, method: "GET" })
 				.reply(
@@ -254,6 +268,42 @@ const CASES = {
 	},
 };
 
+// a read that answers with a status (a refusal, a missing zone) instead of records
+const READ_STATUS = {
+	cloudflare: (status, body) =>
+		api("api.cloudflare.com")
+			.intercept({ path: `/client/v4/zones/${ZID}/dns_records?type=A&name.exact=${NAME}`, method: "GET" })
+			.reply(status, body, json),
+	digitalocean: (status, body) =>
+		api("api.digitalocean.com")
+			.intercept({ path: `/v2/domains/${ZONE}/records?type=A&name=${NAME}`, method: "GET" })
+			.reply(status, body, json),
+	"hetzner-cloud": (status, body) =>
+		api("api.hetzner.cloud")
+			.intercept({ path: `/v1/zones/${ZONE}/rrsets/home/A`, method: "GET" })
+			.reply(status, body, json),
+	gandi: (status, body) =>
+		api("api.gandi.net")
+			.intercept({ path: `/v5/livedns/domains/${ZONE}/records/home/A`, method: "GET" })
+			.reply(status, body, json),
+	ovh: (status, body) => {
+		ovhTime();
+		api("eu.api.ovh.com")
+			.intercept({ path: `${OVH_BASE}/record?fieldType=A&subDomain=home`, method: "GET" })
+			.reply(status, body, json);
+	},
+	desec: (status, body) =>
+		api("desec.io")
+			.intercept({ path: `/api/v1/domains/${ZONE}/rrsets/home/A/`, method: "GET" })
+			.reply(status, body, json),
+	porkbun: (status, body) =>
+		api("api.porkbun.com")
+			.intercept({ path: `/api/json/v3/dns/retrieveByNameType/${ZONE}/A/home`, method: "POST" })
+			.reply(status, body, json),
+};
+const forbiddenError = (err) =>
+	err instanceof DdnsProviderError && err.code === "forbidden" && err.providerStatus === 401;
+
 const removeOf = (id, args = {}) =>
 	providerById(id).remove({
 		...SCOPE,
@@ -321,6 +371,18 @@ for (const [id, c] of Object.entries(CASES)) {
 		});
 
 		// the documented gone answers of DigitalOcean and Porkbun need no second read (own tests below)
+		it("a 401 on the read is forbidden, never gone", async () => {
+			READ_STATUS[id](401, { message: `bad key ${TOKEN}`, status: "ERROR" });
+			await assert.rejects(removeOf(id), forbiddenError);
+		});
+
+		it("a 401 on the delete is forbidden, never gone", async () => {
+			c.read("A", [V4]);
+			c.del("A", 401, { message: `bad key ${TOKEN}`, status: "ERROR" });
+			await assert.rejects(removeOf(id), forbiddenError);
+		});
+
+		// the generic recheck test below
 		it("a failed delete is read again and an absent record is gone", { skip: c.documentedGone }, async () => {
 			c.read("A", [V4]);
 			c.del("A", ...c.gone);
@@ -387,6 +449,7 @@ describe("documented gone answers", () => {
 });
 
 describe("a missing zone is a failure, never gone", () => {
+	const notGone = (err) => err instanceof DdnsProviderError && err.code === "failed";
 	const missing = (err) => err instanceof DdnsProviderError && err.code === "failed" && err.providerStatus === 404;
 	it("digitalocean: the read answers 404", async () => {
 		api("api.digitalocean.com")
@@ -394,7 +457,25 @@ describe("a missing zone is a failure, never gone", () => {
 			.reply(404, { id: "not_found" }, json);
 		await assert.rejects(removeOf("digitalocean"), missing);
 	});
-	for (const id of ["gandi", "desec"]) {
+	it("cloudflare: the zone is not on the credential", async () => {
+		api("api.cloudflare.com")
+			.intercept({ path: `/client/v4/zones?name=${ZONE}`, method: "GET" })
+			.reply(200, { success: true, result: [] }, json);
+		await assert.rejects(removeOf("cloudflare", { meta: undefined }), notGone);
+	});
+	it("cloudflare: the records call answers 404", async () => {
+		READ_STATUS.cloudflare(404, { success: false, errors: [{ code: 7003, message: "no route" }] });
+		await assert.rejects(removeOf("cloudflare"), notGone);
+	});
+	it("ovh: the record list answers 404", async () => {
+		READ_STATUS.ovh(404, { message: "no zone" });
+		await assert.rejects(removeOf("ovh"), missing);
+	});
+	it("porkbun: INVALID_DOMAIN", async () => {
+		READ_STATUS.porkbun(400, { status: "ERROR", code: "INVALID_DOMAIN", message: "Invalid domain." });
+		await assert.rejects(removeOf("porkbun"), notGone);
+	});
+	for (const id of ["gandi", "desec", "hetzner-cloud"]) {
 		it(`${id}: a 404 on the set and on the zone`, async () => {
 			CASES[id].read("A", [], 404, 404);
 			await assert.rejects(removeOf(id), missing);
@@ -407,14 +488,14 @@ describe("cloudflare record delete details", () => {
 		const c = CASES.cloudflare;
 		api("api.cloudflare.com")
 			.intercept({ path: `/client/v4/zones?name=${ZONE}`, method: "GET" })
-			.reply(200, { success: true, result: [{ id: "zid" }] }, json);
+			.reply(200, { success: true, result: [{ id: ZID }] }, json);
 		c.read("A", [V4]);
 		c.del("A", ...c.ok);
 		assert.deepEqual(await removeOf("cloudflare", { meta: undefined }), { gone: false });
 	});
 	it("only the record of the type and name is looked at: another type at the answer is ignored", async () => {
 		api("api.cloudflare.com")
-			.intercept({ path: `/client/v4/zones/zid/dns_records?type=A&name.exact=${NAME}`, method: "GET" })
+			.intercept({ path: `/client/v4/zones/${ZID}/dns_records?type=A&name.exact=${NAME}`, method: "GET" })
 			.reply(200, { success: true, result: [{ id: cfId(9), type: "TXT", name: NAME, content: V4 }] }, json);
 		assert.deepEqual(await removeOf("cloudflare"), { gone: true });
 	});
@@ -454,5 +535,104 @@ describe("ovh record delete details", () => {
 	it("a stored id that is not the found record's is changed", async () => {
 		CASES.ovh.read("A", [V4]);
 		assert.deepEqual(await removeOf("ovh", { meta: { record_id: 99 } }), { gone: false, changed: true });
+	});
+});
+
+describe("an answer with another type or name is ignored", () => {
+	it("digitalocean", async () => {
+		for (const records of [
+			[{ id: ID, type: "TXT", name: "home", data: V4 }],
+			[{ id: ID, type: "A", name: "www", data: V4 }],
+		]) {
+			api("api.digitalocean.com")
+				.intercept({ path: `/v2/domains/${ZONE}/records?type=A&name=${NAME}`, method: "GET" })
+				.reply(200, { domain_records: records }, json);
+			assert.deepEqual(await removeOf("digitalocean"), { gone: true });
+		}
+	});
+	it("cloudflare: another name", async () => {
+		api("api.cloudflare.com")
+			.intercept({ path: `/client/v4/zones/${ZID}/dns_records?type=A&name.exact=${NAME}`, method: "GET" })
+			.reply(
+				200,
+				{ success: true, result: [{ id: cfId(9), type: "A", name: `www.${ZONE}`, content: V4 }] },
+				json,
+			);
+		assert.deepEqual(await removeOf("cloudflare"), { gone: true });
+	});
+	it("ovh", async () => {
+		ovhTime();
+		const pool = api("eu.api.ovh.com");
+		pool.intercept({ path: `${OVH_BASE}/record?fieldType=A&subDomain=home`, method: "GET" }).reply(
+			200,
+			[7, 8],
+			json,
+		);
+		pool.intercept({ path: `${OVH_BASE}/record/7`, method: "GET" }).reply(
+			200,
+			{ id: 7, fieldType: "TXT", subDomain: "home", target: V4 },
+			json,
+		);
+		pool.intercept({ path: `${OVH_BASE}/record/8`, method: "GET" }).reply(
+			200,
+			{ id: 8, fieldType: "A", subDomain: "www", target: V4 },
+			json,
+		);
+		assert.deepEqual(await removeOf("ovh"), { gone: true });
+	});
+	it("porkbun", async () => {
+		for (const record of [
+			{ id: "7", type: "TXT", name: NAME, content: V4 },
+			{ id: "7", type: "A", name: `www.${ZONE}`, content: V4 },
+		]) {
+			api("api.porkbun.com")
+				.intercept({ path: `/api/json/v3/dns/retrieveByNameType/${ZONE}/A/home`, method: "POST" })
+				.reply(200, { status: "SUCCESS", records: [record] }, json);
+			assert.deepEqual(await removeOf("porkbun"), { gone: true });
+		}
+	});
+});
+
+describe("a bad id from the provider's list is refused before any delete", () => {
+	const bad = (err) => err instanceof DdnsProviderError && BAD_ID.test(err.message);
+	it("cloudflare", async () => {
+		api("api.cloudflare.com")
+			.intercept({ path: `/client/v4/zones/${ZID}/dns_records?type=A&name.exact=${NAME}`, method: "GET" })
+			.reply(200, { success: true, result: [{ id: "../x", type: "A", name: NAME, content: V4 }] }, json);
+		await assert.rejects(removeOf("cloudflare"), bad);
+	});
+	it("digitalocean", async () => {
+		api("api.digitalocean.com")
+			.intercept({ path: `/v2/domains/${ZONE}/records?type=A&name=${NAME}`, method: "GET" })
+			.reply(200, { domain_records: [{ id: "7/../x", type: "A", name: "home", data: V4 }] }, json);
+		await assert.rejects(removeOf("digitalocean"), bad);
+	});
+	it("porkbun", async () => {
+		api("api.porkbun.com")
+			.intercept({ path: `/api/json/v3/dns/retrieveByNameType/${ZONE}/A/home`, method: "POST" })
+			.reply(200, { status: "SUCCESS", records: [{ id: "../x", type: "A", name: NAME, content: V4 }] }, json);
+		await assert.rejects(removeOf("porkbun"), bad);
+	});
+	it("ovh: an id that is not a number in the list is an unexpected answer", async () => {
+		ovhTime();
+		api("eu.api.ovh.com")
+			.intercept({ path: `${OVH_BASE}/record?fieldType=A&subDomain=home`, method: "GET" })
+			.reply(200, ["../x"], json);
+		await assert.rejects(
+			removeOf("ovh"),
+			(err) => err instanceof DdnsProviderError && err.message === "Unexpected answer shape",
+		);
+	});
+});
+
+describe("a cached cloudflare zone id", () => {
+	it("that is not 32 hex characters is looked up again, never put into a path", async () => {
+		const c = CASES.cloudflare;
+		api("api.cloudflare.com")
+			.intercept({ path: `/client/v4/zones?name=${ZONE}`, method: "GET" })
+			.reply(200, { success: true, result: [{ id: ZID }] }, json);
+		c.read("A", [V4]);
+		c.del("A", ...c.ok);
+		assert.deepEqual(await removeOf("cloudflare", { meta: { zone_id: "../x" } }), { gone: false });
 	});
 });
