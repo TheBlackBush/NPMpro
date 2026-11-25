@@ -9,7 +9,17 @@ import {
 	sameValues,
 	settleDelete,
 } from "./challenge-common.js";
-import { dotted, jsonHeaders, plainTarget, refuseMultiple, relativeName, zoneNotFound } from "./record-common.js";
+import {
+	assertRemovable,
+	dotted,
+	jsonHeaders,
+	judgeSet,
+	plainTarget,
+	refuseMultiple,
+	relativeName,
+	sameAddress,
+	zoneNotFound,
+} from "./record-common.js";
 import { bearer, collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
 const HINT = "domain:read and domain:update";
@@ -147,6 +157,39 @@ export default {
 			res,
 			ok: (answer) => answer.status === 204 || answer.status === 200,
 			recheck: async () => (await find()) === null,
+			fail: (answer) => failAnswer(answer, { hint: HINT, secrets: secretsOf(fields) }),
+		});
+	},
+	/**
+	 * Deletes the A or AAAA record NPMpro wrote by its id: the records of the name and type are read first, and only
+	 * one record that holds exactly `value` is deleted (a missing zone is a failure, never "gone")
+	 */
+	async remove({ zone, name, type, value, fields, fetch, meta }) {
+		const wanted = assertRemovable({ zone, name, type, value });
+		const headers = bearer(fields.dns_digitalocean_token);
+		const find = async () => {
+			const res = await fetch(`${recordsUrl(zone)}?type=${type}&name=${encodeURIComponent(wanted)}`, { headers });
+			check(res, fields);
+			if (!Array.isArray(res.json?.domain_records)) throw malformed(res, secretsOf(fields));
+			return res.json.domain_records.filter(
+				(entry) => entry?.type === type && fullName(zone, entry?.name, true) === wanted,
+			);
+		};
+		const records = await find();
+		const verdict = judgeSet(
+			records.map((entry) => entry.data),
+			value,
+		);
+		if (verdict === "gone") return { gone: true };
+		const [record] = records;
+		if (verdict === "changed" || (meta?.record_id && meta.record_id !== record.id)) return changedSet();
+		requireId(record, (id) => Number.isInteger(id) && id > 0);
+		const res = await fetch(`${recordsUrl(zone)}/${record.id}`, { method: "DELETE", headers });
+		return settleDelete({
+			res,
+			ok: (answer) => answer.status === 204 || answer.status === 200,
+			gone: (answer) => answer.status === 404 && answer.json?.id === "not_found",
+			recheck: async () => !(await find()).some((entry) => sameAddress(entry.data, value)),
 			fail: (answer) => failAnswer(answer, { hint: HINT, secrets: secretsOf(fields) }),
 		});
 	},

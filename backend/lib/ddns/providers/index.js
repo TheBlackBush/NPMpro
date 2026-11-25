@@ -69,6 +69,9 @@ const cleansChallenges = (credentialProvider) => {
 	return typeof provider?.listChallenges === "function" && typeof provider?.removeChallenge === "function";
 };
 
+/** A provider that can delete an A or AAAA record it wrote (the host record option is offered only for it) */
+const removes = (credentialProvider) => typeof providerForCredential(credentialProvider)?.remove === "function";
+
 /**
  * How a refused call of the credential Test reads: "wrong-key", "missing-right" or "refused" (the provider cannot
  * tell the two apart, or the status is not mapped)
@@ -153,6 +156,7 @@ export {
 	providerById,
 	providerForCredential,
 	refusalOf,
+	removes,
 	updaterFor,
 	ZONE_LIST_DEADLINE_MS,
 	zoneLister,

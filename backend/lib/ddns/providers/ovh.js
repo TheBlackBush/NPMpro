@@ -12,11 +12,14 @@ import {
 	unquote,
 } from "./challenge-common.js";
 import {
+	assertRemovable,
+	judgeSet,
 	plainTarget,
 	recordGone,
 	refuseMultiple,
 	refuseWildcard,
 	relativeName,
+	sameAddress,
 	zoneNotFound,
 } from "./record-common.js";
 import { collectZones, failAnswer, malformed } from "./zone-common.js";
@@ -297,6 +300,60 @@ export default {
 			res,
 			ok: (answer) => answer.status >= 200 && answer.status < 300,
 			recheck: async () => (await ovhRequest({ fields, fetch, path })).status === 404,
+			fail: (answer) => failAnswer(answer, { hint: HINT, secrets }),
+		});
+		if (!done.gone) await refreshZone({ zone, fields, fetch, did: "deleted" });
+		return done;
+	},
+	/**
+	 * Deletes the A or AAAA record NPMpro wrote: the records of the name and type are read first and only one record
+	 * that holds exactly `value` is deleted, then the zone is refreshed (a failed refresh is a failure)
+	 */
+	async remove({ zone, name, type, value, fields, fetch, meta }) {
+		const wanted = assertRemovable({ zone, name, type, value });
+		refusals(zone, wanted);
+		const secrets = secretsOf(fields);
+		if (meta?.refresh_pending === true) await refreshZone({ zone, fields, fetch });
+		const sub = relativeName(zone, wanted);
+		const find = async () => {
+			const list = await ovhRequest({
+				fields,
+				fetch,
+				path: `${zonePath(zone)}/record?fieldType=${encodeURIComponent(type)}&subDomain=${encodeURIComponent(sub)}`,
+			});
+			if (list.status === 404) throw zoneNotFound(list, secrets);
+			if (list.status !== 200) failAnswer(list, { hint: HINT, secrets });
+			if (!Array.isArray(list.json) || !list.json.every(Number.isInteger)) throw malformed(list, secrets);
+			if (list.json.length > MAX_RECORDS) {
+				throw new DdnsProviderError({ code: "failed", message: "The name has too many records", retry: false });
+			}
+			const records = [];
+			for (const id of list.json) {
+				const res = await ovhRequest({ fields, fetch, path: `${zonePath(zone)}/record/${id}` });
+				if (res.status === 404) continue;
+				if (res.status !== 200) failAnswer(res, { hint: HINT, secrets });
+				if (typeof res.json?.target !== "string") throw malformed(res, secrets);
+				if (res.json.fieldType === type && String(res.json.subDomain ?? "").toLowerCase() === sub) {
+					records.push({ id, target: res.json.target });
+				}
+			}
+			return records;
+		};
+		const records = await find();
+		const verdict = judgeSet(
+			records.map((entry) => entry.target),
+			value,
+		);
+		if (verdict === "gone") return { gone: true };
+		const [record] = records;
+		if (verdict === "changed" || (meta?.record_id && meta.record_id !== record.id)) return changedSet();
+		requireId(record, (id) => Number.isInteger(id) && id > 0);
+		const path = `${zonePath(zone)}/record/${record.id}`;
+		const res = await ovhRequest({ fields, fetch, method: "DELETE", path });
+		const done = await settleDelete({
+			res,
+			ok: (answer) => answer.status >= 200 && answer.status < 300,
+			recheck: async () => !(await find()).some((entry) => sameAddress(entry.target, value)),
 			fail: (answer) => failAnswer(answer, { hint: HINT, secrets }),
 		});
 		if (!done.gone) await refreshZone({ zone, fields, fetch, did: "deleted" });

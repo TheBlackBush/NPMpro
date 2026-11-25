@@ -8,7 +8,16 @@ import {
 	sameValues,
 	settleDelete,
 } from "./challenge-common.js";
-import { recordGone, refuseMultiple, refuseWildcard, relativeName, zoneNotFound } from "./record-common.js";
+import {
+	assertRemovable,
+	judgeSet,
+	recordGone,
+	refuseMultiple,
+	refuseWildcard,
+	relativeName,
+	sameAddress,
+	zoneNotFound,
+} from "./record-common.js";
 import { collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
 const DIGITS = /^\d+$/u;
@@ -141,6 +150,52 @@ export default {
 			ok: (answer) => answer.status >= 200 && answer.status < 300 && answer.json?.status === "SUCCESS",
 			gone: (answer) => answer.json?.code === "INVALID_RECORD_ID",
 			recheck: async () => (await find()) === null,
+			fail: (answer) => {
+				const code = typeof answer.json?.code === "string" ? answer.json.code : "";
+				return failAnswer(answer, { hint: HINT, secrets, refused: REFUSED_CODES.test(code) });
+			},
+		});
+	},
+	/**
+	 * Deletes the A or AAAA record NPMpro wrote by its id: the records of the name and type are read first, and only
+	 * one record that holds exactly `value` is deleted. The documented gone answer of a delete by id is
+	 * INVALID_RECORD_ID; any other failure is read again.
+	 */
+	async remove({ zone, name, type, value, fields, fetch, meta }) {
+		const wanted = assertRemovable({ zone, name, type, value });
+		refuseWildcard(wanted);
+		const secrets = secretsOf(fields);
+		const find = async () => {
+			const answer = await call({
+				fields,
+				fetch,
+				path: `/dns/retrieveByNameType/${zonePart(zone)}/${type}${subPart(zone, wanted)}`,
+			});
+			if (!Array.isArray(answer.records)) throw malformed({ status: 200 }, secrets);
+			return answer.records.filter(
+				(entry) => entry?.type === type && String(entry?.name ?? "").toLowerCase() === wanted,
+			);
+		};
+		const records = await find();
+		const verdict = judgeSet(
+			records.map((entry) => String(entry.content ?? "")),
+			value,
+		);
+		if (verdict === "gone") return { gone: true };
+		const [record] = records;
+		const id = record.id === undefined || record.id === null ? null : String(record.id);
+		if (verdict === "changed" || (meta?.record_id && String(meta.record_id) !== id)) return changedSet();
+		requireId({ id }, (candidate) => typeof candidate === "string" && DIGITS.test(candidate));
+		const res = await fetch(`${BASE}/dns/delete/${zonePart(zone)}/${id}`, {
+			method: "POST",
+			headers: { Accept: "application/json", "Content-Type": "application/json" },
+			body: JSON.stringify({ apikey: fields.dns_porkbun_key, secretapikey: fields.dns_porkbun_secret }),
+		});
+		return settleDelete({
+			res,
+			ok: (answer) => answer.status >= 200 && answer.status < 300 && answer.json?.status === "SUCCESS",
+			gone: (answer) => answer.json?.code === "INVALID_RECORD_ID",
+			recheck: async () => !(await find()).some((entry) => sameAddress(entry.content, value)),
 			fail: (answer) => {
 				const code = typeof answer.json?.code === "string" ? answer.json.code : "";
 				return failAnswer(answer, { hint: HINT, secrets, refused: REFUSED_CODES.test(code) });

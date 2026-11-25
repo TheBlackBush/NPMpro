@@ -10,7 +10,15 @@ import {
 	settleDelete,
 	unquote,
 } from "./challenge-common.js";
-import { jsonHeaders, plainTarget, refuseMultiple, zoneNotFound } from "./record-common.js";
+import {
+	assertRemovable,
+	jsonHeaders,
+	judgeSet,
+	plainTarget,
+	refuseMultiple,
+	sameAddress,
+	zoneNotFound,
+} from "./record-common.js";
 import { bearer, collectZones, failAnswer, malformed } from "./zone-common.js";
 
 const HINT = "Zone Read";
@@ -152,6 +160,45 @@ export default {
 			if (res.status === 404) return STALE_ZONE;
 			check(res, fields, [200, 201]);
 			return { meta: { ...next, record_id: res.json?.result?.id ?? null }, created: true };
+		});
+	},
+	/**
+	 * Deletes the A or AAAA record NPMpro wrote: the records of the name and type are read first, and only one record
+	 * that holds exactly `value` (and the stored id, when there is one) is deleted; another value, a second record or
+	 * another id is another client's and is kept (`changed`). An answer that is not a success is read again.
+	 */
+	async remove({ zone, name, type, value, fields, fetch, meta }) {
+		const wanted = assertRemovable({ zone, name, type, value });
+		const zoneId = await zoneIdOf({ zone, fields, fetch, meta });
+		const find = async () => {
+			const res = await fetch(
+				`${API}/zones/${zoneId}/dns_records?type=${type}&name.exact=${encodeURIComponent(wanted)}`,
+				{ headers: authHeaders(fields) },
+			);
+			check(res, fields);
+			if (!Array.isArray(res.json?.result)) throw malformed(res, secretsOf(fields));
+			return res.json.result.filter(
+				(entry) => entry?.type === type && String(entry?.name).toLowerCase() === wanted,
+			);
+		};
+		const records = await find();
+		const verdict = judgeSet(
+			records.map((entry) => entry.content),
+			value,
+		);
+		if (verdict === "gone") return { gone: true };
+		const [record] = records;
+		if (verdict === "changed" || (meta?.record_id && meta.record_id !== record.id)) return changedSet();
+		requireId(record, (id) => typeof id === "string" && HEX_ID.test(id));
+		const res = await fetch(`${API}/zones/${zoneId}/dns_records/${record.id}`, {
+			method: "DELETE",
+			headers: authHeaders(fields),
+		});
+		return settleDelete({
+			res,
+			ok: (answer) => answer.status === 200 && answer.json?.success !== false,
+			recheck: async () => !(await find()).some((entry) => sameAddress(entry.content, value)),
+			fail: (answer) => check(answer, fields),
 		});
 	},
 	/**

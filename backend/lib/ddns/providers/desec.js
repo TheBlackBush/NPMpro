@@ -9,7 +9,17 @@ import {
 	settleDelete,
 	unquote,
 } from "./challenge-common.js";
-import { pathName, recordGone, refuseMultiple, refuseWildcard, relativeName, zoneNotFound } from "./record-common.js";
+import {
+	assertRemovable,
+	judgeSet,
+	pathName,
+	recordGone,
+	refuseMultiple,
+	refuseWildcard,
+	relativeName,
+	sameAddress,
+	zoneNotFound,
+} from "./record-common.js";
 import { collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
 
 const DEFAULT_ENDPOINT = "https://desec.io/api/v1/";
@@ -231,6 +241,42 @@ export default {
 			res,
 			ok: (answer) => answer.status === 204,
 			recheck: async () => (await read()) === null,
+			fail: (answer) => failAnswer(answer, { hint: HINT, secrets }),
+		});
+	},
+	/**
+	 * Deletes the A or AAAA RRset NPMpro wrote, but only when it holds nothing but `value`; deSEC answers 204 for a
+	 * delete of a set that is gone too
+	 */
+	async remove({ zone, name, type, value, fields, fetch }) {
+		const wanted = assertRemovable({ zone, name, type, value });
+		refuseWildcard(wanted);
+		const secrets = secretsOf(fields);
+		const url = `${rrsetsUrl(fields, zone)}${pathName(zone, wanted)}/${type}/`;
+		// a 404 on the RRset may also be a missing domain, which the domain's own list tells (a failure)
+		const read = async () => {
+			const res = await fetch(url, { headers: headersOf(fields) });
+			if (res.status === 404) {
+				const zoneRes = await fetch(
+					`${rrsetsUrl(fields, zone)}?type=TXT&subname=${encodeURIComponent(PREFIX)}`,
+					{ headers: headersOf(fields) },
+				);
+				if (zoneRes.status === 404) throw zoneNotFound(zoneRes, secrets);
+				if (zoneRes.status !== 200) failAnswer(zoneRes, { hint: HINT, secrets });
+				return [];
+			}
+			if (res.status !== 200) failAnswer(res, { hint: HINT, secrets });
+			if (!Array.isArray(res.json?.records)) throw malformed(res, secrets);
+			return res.json.records;
+		};
+		const verdict = judgeSet(await read(), value);
+		if (verdict === "gone") return { gone: true };
+		if (verdict === "changed") return changedSet();
+		const res = await fetch(url, { method: "DELETE", headers: headersOf(fields) });
+		return settleDelete({
+			res,
+			ok: (answer) => answer.status === 204,
+			recheck: async () => !(await read()).some((entry) => sameAddress(entry, value)),
 			fail: (answer) => failAnswer(answer, { hint: HINT, secrets }),
 		});
 	},
