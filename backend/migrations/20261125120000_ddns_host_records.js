@@ -6,10 +6,10 @@ const migrateName = "ddns_host_records";
 const hasIndex = async (knex, tableName, indexName) => {
 	const client = knex.client.config.client;
 	if (client === "pg" || client === "postgresql") {
-		const { rows } = await knex.raw("select 1 from pg_indexes where tablename = ? and indexname = ?", [
-			tableName,
-			indexName,
-		]);
+		const { rows } = await knex.raw(
+			"select 1 from pg_indexes where schemaname = current_schema() and tablename = ? and indexname = ?",
+			[tableName, indexName],
+		);
 		return rows.length > 0;
 	}
 	if (client === "mysql" || client === "mysql2" || client === "mariadb") {
