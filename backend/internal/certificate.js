@@ -116,7 +116,8 @@ const renewDue = () =>
 			if (result) logger.info(`Renew Result: ${result}`);
 			return { error: null };
 		} catch (err) {
-			// logged by the renewal report, once credential values are scrubbed from the text
+			// the text is logged by the renewal report, once credential values are scrubbed from it
+			logger.warn("Certbot completed with errors");
 			return { error: cleanCertbotMessage(err?.message ?? String(err)) };
 		}
 	});
