@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
-import { deleteDdnsRecord } from "src/api/backend";
+import { deleteDdnsRecord, removeHostDnsRecordAtProvider } from "src/api/backend";
 import { Button, ErrorAlert, HasPermission, ListPage, ListToolbar, LoadingPage } from "src/components";
 import {
 	DDNS_KEYS,
@@ -11,7 +11,7 @@ import {
 	useUpdateDdnsRecordNow,
 } from "src/hooks";
 import { intl, T } from "src/locale";
-import { showDdnsHistoryModal, showDdnsRecordModal, showDeleteConfirmModal } from "src/modals";
+import { showDdnsHistoryModal, showDdnsRecordModal, showDeleteConfirmModal, showHostOfRecord } from "src/modals";
 import { DDNS_RECORD_LIST_EXPAND } from "src/modules/CertificateTabs";
 import { recordStateOf } from "src/modules/DdnsForms";
 import { activeFilterCount } from "src/modules/ListFilters";
@@ -147,6 +147,41 @@ export default function TableWrapper() {
 							},
 						);
 					}}
+					onOpenHost={showHostOfRecord}
+					onRemoveAtProvider={(record) =>
+						showDeleteConfirmModal({
+							title: <T id="host-dns.remove" />,
+							children: <T id="host-dns.remove.confirm" />,
+							subject: record.name,
+							confirmLabel: <T id="host-dns.remove" />,
+							invalidations: [...DDNS_KEYS, ["dns-credentials"], ["dns-credential"]],
+							onConfirm: async () => {
+								const answer = await removeHostDnsRecordAtProvider(record.id);
+								// a provider that still refuses keeps the row: say so, the row shows the new error
+								if (answer?.state === "orphan") {
+									showError(
+										answer.message ??
+											intl.formatMessage({ id: "ddns.orphan.still" }, { name: record.name }),
+									);
+									return;
+								}
+								showSuccess(intl.formatMessage({ id: "host-dns.remove.done" }, { name: record.name }));
+							},
+						})
+					}
+					onForget={(record) =>
+						showDeleteConfirmModal({
+							title: <T id="ddns.action.forget" />,
+							children: <T id="ddns.forget.confirm" />,
+							subject: record.name,
+							confirmLabel: <T id="ddns.action.forget" />,
+							invalidations: [...DDNS_KEYS, ["dns-credentials"], ["dns-credential"]],
+							onConfirm: async () => {
+								await deleteDdnsRecord(record.id);
+								showSuccess(intl.formatMessage({ id: "ddns.forget.done" }, { name: record.name }));
+							},
+						})
+					}
 					onDelete={(id) => {
 						const record = data?.find((item) => item.id === id);
 						showDeleteConfirmModal({
