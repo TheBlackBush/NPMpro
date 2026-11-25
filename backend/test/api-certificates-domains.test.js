@@ -23,6 +23,7 @@ const WILDCARD_DOMAINS = /--domains \*\.dns\.example\.com,dns\.example\.com /u;
 const DNS_AUTHENTICATOR = /--authenticator \S*cloudflare/u;
 const DNS_CREDENTIALS = /-credentials \/tmp\/certbot-credentials\/credentials-\d+/u;
 const FAILED = /^The CA did not issue the certificate: Challenge failed/u;
+const LOCAL_TIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/u;
 
 let api;
 let admin;
@@ -315,6 +316,16 @@ it("takes the expiry of the new certificate", async () => {
 	assert.ok(new Date((await row(created.id)).expires_on).getTime() - issuedAt > 50 * 86400000);
 	assert.notEqual(done.body.expires_on, created.expires_on);
 	assert.equal(validFromProblem(await row(created.id), 90), null);
+});
+
+it("answers npmpro_valid_from as an ISO date, the same instant as the stored local time, like expires_on", async () => {
+	const created = await issued();
+	const stored = await row(created.id);
+	assert.match(stored.npmpro_valid_from, LOCAL_TIME);
+	const got = await admin.get(`${CERTS}/${created.id}`);
+	assert.equal(got.status, 200, got.text);
+	assert.equal(got.body.npmpro_valid_from, new Date(stored.npmpro_valid_from.replace(" ", "T")).toISOString());
+	assert.equal(got.body.expires_on, new Date(stored.expires_on.replace(" ", "T")).toISOString());
 });
 
 it("a failure after certbot succeeded keeps the row on the new files, reloads nginx, writes the audit entry and answers the error", async () => {
