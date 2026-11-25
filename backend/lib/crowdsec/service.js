@@ -46,6 +46,7 @@ const defaultTimers = {
  * @param   {Object}    [deps.timers]
  * @param   {Function}  [deps.onState]    ({ state: "bad" | "ok" | "off", error?, secrets? }) after a poll: bad once CrowdSec has
  *                                        been unreachable for 5 minutes in a row, ok when reachable, off when not configured
+ *                                        (false: not written now, told again at the next poll)
  * @returns {Object}
  */
 const createCrowdsecService = ({
@@ -94,8 +95,8 @@ const createCrowdsecService = ({
 		const quiet = change.state !== "bad";
 		if (quiet && told === change.state) return;
 		try {
-			await onState(change);
-			// told only after the write worked: a failed ok or off is tried again at the next poll
+			// told only after the write worked: a failed or skipped ok or off is tried again at the next poll
+			if ((await onState(change)) === false) return;
 			told = quiet ? change.state : null;
 		} catch (err) {
 			log.warn(`CrowdSec state: ${err?.message ?? err}`);
