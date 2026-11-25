@@ -4,8 +4,9 @@ import { createNotifyService } from "../lib/notify/service.js";
 import { MOVED_WATERMARK_KEY } from "../lib/notify/state-store.js";
 import { global as logger } from "../logger.js";
 
-// The notification layer of the running app, over the real database. Before initNotify() no worker runs, but
-// emit() still queues (a pending row waits for the worker).
+// The notification layer of the running app, over the real database. Before initNotify() the worker runs no pass and
+// arms no timer, but emit() still queues: initNotify() resets the rows a stopped process left sending, then the worker's
+// start sends what is pending.
 
 const service = createNotifyService({ knex: db(), log: logger });
 const {

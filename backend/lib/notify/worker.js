@@ -39,7 +39,9 @@ const unitsOf = (rows) => {
 const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_MS }) => {
 	const channelList = typeof channels === "function" ? channels : () => channels;
 	let interval = null;
-	let stopped = false;
+	// no pass before start(): the start (after the reset of the rows a stopped process left sending) runs the first one
+	let stopped = true;
+	let waiting = false;
 	let kickTimer = null;
 	let current = null;
 	let again = false;
@@ -119,12 +121,14 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 	};
 
 	return {
-		/** Starts the poll once; false when it already runs */
+		/** Starts the poll and runs one pass (the rows queued before the start go out now); false when it already runs */
 		start: () => {
 			stopped = false;
 			if (interval !== null) return false;
 			interval = clock.setInterval(() => void run(), pollMs);
 			interval.unref?.();
+			waiting = false;
+			void run();
 			return true;
 		},
 
@@ -137,9 +141,13 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 			kickTimer = null;
 		},
 
-		/** A pass soon (after an emit); many kicks make one pass */
+		/** A pass soon (after an emit); many kicks make one pass. Before start() it only notes that work is waiting */
 		kick: () => {
-			if (stopped || kickTimer !== null || pauses > 0) return;
+			if (stopped) {
+				waiting = true;
+				return;
+			}
+			if (kickTimer !== null || pauses > 0) return;
 			kickTimer = clock.setTimeout(() => {
 				kickTimer = null;
 				void run();
@@ -147,8 +155,11 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 			kickTimer.unref?.();
 		},
 
-		/** One pass now; resolves when it ended (the pass that is going on, when there is one) */
-		runOnce: run,
+		/** One pass now; resolves when it ended (the pass that is going on, when there is one). None before start() */
+		runOnce: () => (stopped ? Promise.resolve() : run()),
+
+		/** @returns {boolean} whether a kick came while the worker was not started (the next start sends it) */
+		waiting: () => waiting,
 
 		/** Skips the passes until resume() */
 		pause: () => {
