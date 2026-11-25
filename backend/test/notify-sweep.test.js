@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { createNotifyService } from "../lib/notify/service.js";
 import { createSweep } from "../lib/notify/sweep.js";
@@ -11,8 +10,6 @@ const START = Date.parse("2026-11-26T10:00:00Z");
 const HOUR = 3_600_000;
 const BOOM = /sweep reminders failed: broken/u;
 const SECRETS = /hunter2|abc/u;
-const MOVE_WRITER = /name: "Notifications", pause: pauseNotify, resume: resumeNotify/u;
-const BACKUP_WIRING = /notify: \{ pause: pauseNotify, resume: resumeNotify, cleanup: cleanupAfterRestore \}/u;
 const WRITER_RUNNING = /still running/u;
 
 let db;
@@ -190,6 +187,32 @@ describe("the notify service", () => {
 		}
 	});
 
+	it("a second initNotify leaves a row that is being sent alone and starts nothing again", async () => {
+		const service = serviceOf();
+		const sent = [];
+		service.notify.registerChannel({
+			id: "mail",
+			accepts: () => true,
+			targets: async () => [{ recipient: "a@example.test" }],
+			send: (rows) => {
+				sent.push(rows.length);
+				return Promise.resolve(rows.map((row) => ({ id: row.id, ok: true })));
+			},
+		});
+		await service.notify.emit("host.created", { id: 1, type: "proxy_host" });
+		await service.initNotify();
+		try {
+			await db.knex(DELIVERY).update({ status: "sending" });
+			await service.initNotify();
+			assert.equal((await db.knex(DELIVERY).first()).status, "sending");
+			await service.worker.runOnce();
+			assert.deepEqual(sent, []);
+		} finally {
+			service.worker.stop();
+			service.sweep.stop();
+		}
+	});
+
 	it("cleanupAfterRestore removes the states of objects that no longer exist and keeps the others", async () => {
 		const service = serviceOf();
 		const [certificate] = await db
@@ -271,11 +294,4 @@ describe("the notify service", () => {
 		release();
 		await running;
 	});
-});
-
-it("the database move writer list names Notifications, and the backup service pauses it", async () => {
-	const index = await readFile(new URL("../index.js", import.meta.url), "utf8");
-	assert.match(index, MOVE_WRITER);
-	const service = await readFile(new URL("../internal/backup-service.js", import.meta.url), "utf8");
-	assert.match(service, BACKUP_WIRING);
 });

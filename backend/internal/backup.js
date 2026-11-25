@@ -12,13 +12,11 @@ import { createMerge } from "./backup-merge.js";
 import { createOfflineChecks } from "./backup-offline.js";
 import { createBackupPages } from "./backup-pages.js";
 import { createRestore } from "./backup-restore.js";
-import { ALL_TYPES, chosenTypes, exists, withoutStage } from "./backup-shared.js";
+import { ALL_TYPES, chosenTypes, exists, withNotifyPaused, withoutStage } from "./backup-shared.js";
 
 // Creating, storing and restoring backups. Everything the service touches is injected (createBackupService), so it
 // runs against a test database and folders; internal/backup-service.js wires the default instance.
 
-// the notification worker pause of a restore; the app passes the real one
-const NO_NOTIFY = { pause: async () => {}, resume: () => {}, cleanup: async () => {} };
 const MIN_PASSPHRASE = 12;
 const MAX_UPLOAD = 2 * 1024 ** 3;
 const CERTIFICATE_KINDS = ["letsencrypt", "other", "mtls"];
@@ -61,7 +59,7 @@ const manifestView = ({ files: _files, ...rest }) => rest;
 /**
  * Everything it touches is in deps: knex, box (secret box), dataDir, store (createBackupStore), dbVersion,
  * dbMigrations, npmproVersion, instanceKey, audit, nginx { test, reload }, renewals { pause, resume },
- * ddns { pause, resume }, notify { pause, resume, cleanup } (optional), regenerate, runtime, hostname, and the optional reloadSettings,
+ * ddns { pause, resume }, notify { pause, resume, cleanup }, regenerate, runtime, hostname, and the optional reloadSettings,
  * dnsCredentials { write, remove }, exclusive (the runtime settings queue), maxUpload, maxImport, clock { now } and log.
  */
 const createBackupService = ({
@@ -77,7 +75,7 @@ const createBackupService = ({
 	nginx,
 	renewals,
 	ddns,
-	notify = NO_NOTIFY,
+	notify,
 	regenerate,
 	runtime,
 	reloadSettings = {},
@@ -441,13 +439,9 @@ const createBackupService = ({
 					// the dynamic DNS cycle is awaited too; resumed first, in reverse order of the pauses
 					await ddns.pause();
 					try {
-						await notify.pause();
-						try {
-							return await exclusive(() => runRestore({ access, adminUserId, entry, types: chosen }));
-						} finally {
-							notify.resume();
-							await notify.cleanup();
-						}
+						return await withNotifyPaused(notify, log, () =>
+							exclusive(() => runRestore({ access, adminUserId, entry, types: chosen })),
+						);
 					} finally {
 						ddns.resume();
 					}

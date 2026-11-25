@@ -31,6 +31,8 @@ const silent = { info: () => {}, warn: () => {}, error: () => {} };
  * @param {number}   [options.maxImport]    bytes, the page import limit
  * @param {Buffer}   [options.instanceKey]
  * @param {string}   [options.hostname]
+ * @param {Function} [options.notifyPause]    runs in the recording notify pause
+ * @param {Function} [options.notifyCleanup]  runs in the recording notify cleanup
  * @param {Function} [options.audited]      (entry) => Promise, runs in the fake audit log write
  */
 const setup = async ({
@@ -46,6 +48,8 @@ const setup = async ({
 	maxUpload,
 	maxImport,
 	audited = async () => {},
+	notifyPause = async () => {},
+	notifyCleanup = async () => {},
 } = {}) => {
 	const base = root ?? (await mkdtemp(path.join(os.tmpdir(), "backup-orchestrator-")));
 	const dataDir = path.join(base, "data");
@@ -66,6 +70,7 @@ const setup = async ({
 		resume: 0,
 		ddnsPause: 0,
 		ddnsResume: 0,
+		notify: [],
 		regenerate: 0,
 		applyAll: 0,
 		reloaded: [],
@@ -108,6 +113,19 @@ const setup = async ({
 			resume: () => {
 				calls.resume++;
 				paused = false;
+			},
+		},
+		notify: {
+			pause: async () => {
+				calls.notify.push("pause");
+				await notifyPause();
+			},
+			cleanup: async () => {
+				calls.notify.push("cleanup");
+				await notifyCleanup();
+			},
+			resume: () => {
+				calls.notify.push("resume");
 			},
 		},
 		ddns: {

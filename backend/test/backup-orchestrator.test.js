@@ -940,3 +940,65 @@ it("a merge restore of the schedules leaves the stored files with their schedule
 		await ctx.cleanup();
 	}
 });
+
+it("a restore pauses the notifications, cleans up, then resumes", TIMEOUT, async () => {
+	const ctx = await setup();
+	try {
+		const entry = await backupThenChange(ctx);
+		const { token } = await ctx.service.inspect(access, entry.name, { passphrase: PASSPHRASE });
+		await ctx.service.restore(access, token, { types: ["proxy_hosts"] });
+		assert.deepEqual(ctx.calls.notify, ["pause", "cleanup", "resume"]);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("a failed restore still cleans up and resumes, and its error is the one thrown", TIMEOUT, async () => {
+	const ctx = await setup({
+		test: (call) => {
+			if (call === 1) throw new Error("nginx: [emerg] unknown directive");
+		},
+		notifyCleanup: () => Promise.reject(new Error("cleanup broke")),
+	});
+	try {
+		const entry = await backupThenChange(ctx);
+		const { token } = await ctx.service.inspect(access, entry.name, { passphrase: PASSPHRASE });
+		await assert.rejects(ctx.service.restore(access, token, { types: ["proxy_hosts"] }), hasCode("nginx-failed"));
+		assert.deepEqual(ctx.calls.notify, ["pause", "cleanup", "resume"]);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("a cleanup that throws does not change the result of a restore", TIMEOUT, async () => {
+	const ctx = await setup({ notifyCleanup: () => Promise.reject(new Error("cleanup broke")) });
+	try {
+		const entry = await backupThenChange(ctx);
+		const { token } = await ctx.service.inspect(access, entry.name, { passphrase: PASSPHRASE });
+		const result = await ctx.service.restore(access, token, { types: ["proxy_hosts"] });
+		assert.deepEqual(result.counts, { proxy_hosts: 1 });
+		assert.deepEqual(ctx.calls.notify, ["pause", "cleanup", "resume"]);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("a restore waits for the notification pause before it changes anything", TIMEOUT, async () => {
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const ctx = await setup({ notifyPause: () => gate });
+	try {
+		const entry = await backupThenChange(ctx);
+		const { token } = await ctx.service.inspect(access, entry.name, { passphrase: PASSPHRASE });
+		const running = ctx.service.restore(access, token, { types: ["proxy_hosts"] });
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		assert.deepEqual(await hostIds(ctx.knex), [2]);
+		release();
+		await running;
+		assert.deepEqual(await hostIds(ctx.knex), [1]);
+	} finally {
+		await ctx.cleanup();
+	}
+});

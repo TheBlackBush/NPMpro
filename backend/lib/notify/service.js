@@ -28,6 +28,7 @@ const createNotifyService = ({ knex, log, clock }) => {
 	const worker = createWorker({ queue, channels: () => notify.channels(), log });
 	const notify = createNotify({ stateStore, queue, worker, log, clock });
 	const sweepChecks = [];
+	let initialised = false;
 	const sweep = createSweep({ stateStore, queue, notify, checks: () => sweepChecks, log });
 
 	return {
@@ -44,13 +45,21 @@ const createNotifyService = ({ knex, log, clock }) => {
 
 		/** At start: rows a stopped process left in sending go back to pending, then the worker and the sweep start */
 		initNotify: async () => {
+			// prepareApp is retried when a later step fails: only the first call resets rows, a second reset would
+			// put a row that is being sent back to pending under the running worker
+			if (initialised) return;
+			initialised = true;
 			try {
 				await queue.resetSending();
 			} catch (error) {
 				log.warn(`notify: could not reset the sending rows: ${safeText(error)}`);
 			}
-			worker.start();
-			sweep.start();
+			try {
+				worker.start();
+				sweep.start();
+			} catch (error) {
+				log.warn(`notify: could not start: ${safeText(error)}`);
+			}
 		},
 
 		/** A restore or a database move: the worker and the sweep wait for what they are doing; { timeoutMs } */
