@@ -1,4 +1,5 @@
 import { waitWithin } from "../database/pause.js";
+import { clean } from "./catalogue.js";
 
 // The delivery worker: one pass at a time. A pass asks the queue for the due rows of every channel, sends them (one
 // target at a time, at most maxConcurrent units at once per channel) and settles the results. A failure of one send
@@ -38,6 +39,7 @@ const unitsOf = (rows) => {
 const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_MS }) => {
 	const channelList = typeof channels === "function" ? channels : () => channels;
 	let interval = null;
+	let stopped = false;
 	let kickTimer = null;
 	let current = null;
 	let again = false;
@@ -46,21 +48,30 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 
 	const sendJob = async (channel, job) => {
 		let results;
+		let reason;
 		try {
 			results = await channel.send(job.rows);
 		} catch (error) {
-			log?.warn?.(`notify: ${channel.id} send failed: ${error?.message}`);
+			reason = clean(error?.message ?? String(error));
+			log?.warn?.(`notify: ${channel.id} send failed: ${reason}`);
 			results = [];
 		}
 		const byId = new Map((results ?? []).map((result) => [result.id, result]));
 		// a row the channel did not answer for is retried like a failed send
-		return job.rows.map((row) => byId.get(row.id) ?? { id: row.id, ok: false, retry: true, error: "no result" });
+		return job.rows.map(
+			(row) => byId.get(row.id) ?? { id: row.id, ok: false, retry: true, error: reason ?? "no result" },
+		);
 	};
 
 	const runUnit = async (channel, unit) => {
 		for (const job of unit) {
-			const results = await sendJob(channel, job);
-			await queue.settle(results, { retryDelays: channel.retryDelays ?? [] });
+			try {
+				const results = await sendJob(channel, job);
+				await queue.settle(results, { retryDelays: channel.retryDelays ?? [] });
+			} catch (error) {
+				// the rows stay sending until the next start puts them back; the rest of the lane goes on
+				log?.warn?.(`notify: ${channel.id} settle failed: ${clean(error?.message ?? String(error))}`);
+			}
 		}
 	};
 
@@ -72,7 +83,7 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 		const lanes = Array.from({ length: Math.min(width, units.length) }, async () => {
 			while (units.length > 0) await runUnit(channel, units.shift());
 		});
-		await Promise.all(lanes);
+		await Promise.allSettled(lanes);
 		return rows.length >= CLAIM_LIMIT;
 	};
 
@@ -82,7 +93,7 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 			try {
 				more = (await runChannel(channel)) || more;
 			} catch (error) {
-				log?.warn?.(`notify: ${channel.id} pass failed: ${error?.message}`);
+				log?.warn?.(`notify: ${channel.id} pass failed: ${clean(error?.message ?? String(error))}`);
 			}
 		}
 		return more;
@@ -110,6 +121,7 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 	return {
 		/** Starts the poll once; false when it already runs */
 		start: () => {
+			stopped = false;
 			if (interval !== null) return false;
 			interval = clock.setInterval(() => void run(), pollMs);
 			interval.unref?.();
@@ -118,6 +130,7 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 
 		/** Stops the poll (the app is closing; tests) */
 		stop: () => {
+			stopped = true;
 			if (interval !== null) clock.clearInterval(interval);
 			interval = null;
 			if (kickTimer !== null) clock.clearTimeout(kickTimer);
@@ -126,7 +139,7 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 
 		/** A pass soon (after an emit); many kicks make one pass */
 		kick: () => {
-			if (kickTimer !== null || pauses > 0) return;
+			if (stopped || kickTimer !== null || pauses > 0) return;
 			kickTimer = clock.setTimeout(() => {
 				kickTimer = null;
 				void run();

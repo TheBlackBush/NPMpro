@@ -9,7 +9,6 @@ const TABLE = "npmpro_notification_delivery";
 const DAY_MS = 24 * 3_600_000;
 const FINAL = ["sent", "failed", "dropped"];
 const MAX_RESPONSE = 2048;
-const IN_CHUNK = 500;
 
 const textOrNull = (value) => (value === undefined || value === null ? null : String(value));
 
@@ -60,7 +59,9 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 			attempts: 0,
 			next_try_on: row.delay_ms > 0 ? dbTime(nowMs + row.delay_ms) : null,
 		}));
-		for (const record of records) await table().insert(record);
+		await knex.transaction(async (trx) => {
+			for (const record of records) await trx(TABLE).insert(record);
+		});
 		return records.length;
 	};
 
@@ -86,14 +87,15 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 			const grouped = await due().whereIn("group_key", keys).orderBy("id");
 			for (const row of grouped) taken.set(row.id, row);
 		}
-		const rows = [...taken.values()].sort((left, right) => left.id - right.id);
-		if (rows.length === 0) return [];
-		const ids = rows.map((row) => row.id);
-		for (let at = 0; at < ids.length; at += IN_CHUNK) {
-			await table()
-				.whereIn("id", ids.slice(at, at + IN_CHUNK))
-				.where({ status: "pending" })
+		const candidates = [...taken.values()].sort((left, right) => left.id - right.id);
+		// each row is taken by its own conditional update: one that left pending meanwhile is never returned
+		const rows = [];
+		for (const row of candidates) {
+			const count = await table()
+				.where({ id: row.id, status: "pending" })
+				.where((query) => query.whereNull("next_try_on").orWhere("next_try_on", "<=", now))
 				.update({ status: "sending", modified_on: now });
+			if (Number(count) === 1) rows.push(row);
 		}
 		return rows.map((row) => ({ ...row, status: "sending", payload: parsePayload(row.payload) }));
 	};
@@ -111,7 +113,7 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 		const nowMs = clock.now();
 		const now = dbTime(nowMs);
 		for (const result of results) {
-			const row = await table().select("attempts").where({ id: result.id }).first();
+			const row = await table().select("attempts").where({ id: result.id, status: "sending" }).first();
 			if (!row) continue;
 			const attempts = Number(row.attempts) + 1;
 			const changes = {
@@ -130,7 +132,7 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 			} else {
 				Object.assign(changes, { status: "failed", next_try_on: null });
 			}
-			await table().where({ id: result.id }).update(changes);
+			await table().where({ id: result.id, status: "sending" }).update(changes);
 		}
 	};
 
@@ -163,6 +165,10 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 		await where()
 			.where("modified_on", "<", dbTime(clock.now() - days * DAY_MS))
 			.delete();
+		if (!(keep > 0)) {
+			await where().delete();
+			return;
+		}
 		const kept = await where().select("id").orderBy("id", "desc").limit(keep);
 		if (kept.length < keep) return;
 		await where().where("id", "<", kept.at(-1).id).delete();

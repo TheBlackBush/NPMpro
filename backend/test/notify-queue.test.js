@@ -28,6 +28,7 @@ const row = (extra = {}) => ({
 	payload: { hello: "world" },
 	...extra,
 });
+const taking = () => db.knex(TABLE).update({ status: "sending" });
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const logOf = () => {
 	const lines = [];
@@ -137,6 +138,7 @@ describe("queue", () => {
 		const queue = queueOf();
 		await queue.add([row()]);
 		await queue.claimDue({ channel: "webhook" });
+		await taking();
 		await queue.settle([{ id: 1, ok: true, http_status: 200, duration_ms: 12.4, response: "ok" }], {
 			retryDelays: DELAYS,
 		});
@@ -153,17 +155,20 @@ describe("queue", () => {
 		const queue = queueOf();
 		await queue.add([row()]);
 		const fail = { id: 1, ok: false, retry: true, error: "boom" };
+		await taking();
 		await queue.settle([fail], { retryDelays: DELAYS });
 		let [current] = await rows();
 		assert.equal(current.status, "pending");
 		assert.equal(current.attempts, 1);
 		assert.equal(current.next_try_on, sql(START + 60_000));
 		assert.equal(current.error, "boom");
+		await taking();
 		await queue.settle([fail], { retryDelays: DELAYS });
 		[current] = await rows();
 		assert.equal(current.status, "pending");
 		assert.equal(current.attempts, 2);
 		assert.equal(current.next_try_on, sql(START + 300_000));
+		await taking();
 		await queue.settle([fail], { retryDelays: DELAYS });
 		[current] = await rows();
 		assert.equal(current.status, "failed");
@@ -175,6 +180,7 @@ describe("queue", () => {
 	it("settle: a later retry_after_ms wins over the schedule, an earlier one does not", async () => {
 		const queue = queueOf();
 		await queue.add([row(), row()]);
+		await taking();
 		await queue.settle(
 			[
 				{ id: 1, ok: false, retry: true, retry_after_ms: 600_000 },
@@ -190,6 +196,7 @@ describe("queue", () => {
 	it("settle: a failure without retry is failed at once, the error cleaned and cut", async () => {
 		const queue = queueOf();
 		await queue.add([row()]);
+		await taking();
 		await queue.settle([{ id: 1, ok: false, error: `bad\nline ${"x".repeat(400)}`, response: "r".repeat(3000) }], {
 			retryDelays: DELAYS,
 		});
@@ -233,6 +240,7 @@ describe("queue", () => {
 	it("prunes mail rows after their days, never a pending one", async () => {
 		const queue = queueOf();
 		await queue.add([row({ channel: "mail" }), row({ channel: "mail" }), row({ channel: "mail" }), row()]);
+		await taking();
 		await queue.settle(
 			[
 				{ id: 1, ok: true },
@@ -258,6 +266,7 @@ describe("queue", () => {
 	it("prunes a webhook to its newest rows and its days", async () => {
 		const queue = queueOf();
 		await queue.add([1, 2, 3, 4, 5].map(() => row({ target_id: 7 })).concat([row({ target_id: 8 })]));
+		await taking();
 		await queue.settle(
 			[1, 2, 3, 4, 5, 6].map((id) => ({ id, ok: true })),
 			{ retryDelays: DELAYS },
@@ -276,6 +285,7 @@ describe("queue", () => {
 	it("clears the payload of a failed row 7 days after", async () => {
 		const queue = queueOf();
 		await queue.add([row(), row()]);
+		await taking();
 		await queue.settle(
 			[
 				{ id: 1, ok: false },
@@ -289,6 +299,64 @@ describe("queue", () => {
 		clock.at += 2 * DAY;
 		await queue.clearOldPayloads(7);
 		assert.ok((await rows()).every((one) => one.payload === null));
+	});
+	it("settle never overwrites a row that left sending", async () => {
+		const queue = queueOf();
+		await queue.add([row({ target_id: 1 })]);
+		await queue.settle([{ id: 1, ok: true }], { retryDelays: DELAYS });
+		assert.equal((await rows())[0].status, "pending");
+		await db.knex(TABLE).update({ status: "dropped" });
+		await queue.settle([{ id: 1, ok: true }], { retryDelays: DELAYS });
+		assert.equal((await rows())[0].status, "dropped");
+	});
+
+	it("claims a row once when two claimers meet, and never one dropped in between", async () => {
+		const queue = queueOf();
+		await queue.add([row({ target_id: 1 }), row({ target_id: 2 })]);
+		const both = await Promise.all([
+			queue.claimDue({ channel: "webhook" }),
+			queue.claimDue({ channel: "webhook" }),
+		]);
+		assert.equal(both[0].length + both[1].length, 2);
+		await db.knex(TABLE).update({ status: "pending" });
+		// the first row is dropped right after the select answered: the update finds it no longer pending
+		let dropped;
+		const onResponse = () => {
+			db.knex.removeListener("query-response", onResponse);
+			dropped = queue.dropTarget("webhook", 1);
+		};
+		db.knex.on("query-response", onResponse);
+		const got = await queue.claimDue({ channel: "webhook" });
+		await dropped;
+		assert.deepEqual(
+			got.map((one) => one.target_id),
+			[2],
+		);
+		assert.equal((await rows())[0].status, "dropped");
+	});
+
+	it("add inserts every row or none", async () => {
+		const queue = queueOf();
+		await assert.rejects(queue.add([row(), row({ event: null })]));
+		assert.deepEqual(await rows(), []);
+	});
+
+	it("pruneTarget with keep 0 removes every final row of the target", async () => {
+		const queue = queueOf();
+		await queue.add([row({ target_id: 7 }), row({ target_id: 7 }), row({ target_id: 7 })]);
+		await taking();
+		await queue.settle(
+			[
+				{ id: 1, ok: true },
+				{ id: 2, ok: true },
+			],
+			{ retryDelays: DELAYS },
+		);
+		await queue.pruneTarget(7, 0, 30);
+		assert.deepEqual(
+			(await rows()).map((one) => one.id),
+			[3],
+		);
 	});
 });
 
@@ -558,6 +626,85 @@ describe("worker", () => {
 		await queue.add(Array.from({ length: 55 }, (_, index) => row({ target_id: index })));
 		await worker.runOnce();
 		assert.ok((await rows()).every((one) => one.status === "sent"));
+	});
+	it("a settle that throws on one row still sends the next, and logs it cleaned", async () => {
+		const channel = channelOf("webhook");
+		const { queue, worker, log } = setup([channel]);
+		const settle = queue.settle;
+		let calls = 0;
+		queue.settle = (...args) => {
+			calls += 1;
+			if (calls === 1) return Promise.reject(new Error("db down https://u:pw@h.example/p?token=abc"));
+			return settle(...args);
+		};
+		await queue.add([row({ target_id: 1 }), row({ target_id: 1 })]);
+		await worker.runOnce();
+		assert.equal(channel.sent.length, 2);
+		const [first, second] = await rows();
+		assert.equal(first.status, "sending");
+		assert.equal(second.status, "sent");
+		assert.ok(log.lines.some((line) => line.includes("settle failed")));
+	});
+
+	it("a thrown send keeps its cleaned reason in the row and the log", async () => {
+		const secret = "tok3n-secret-value";
+		const channel = channelOf("webhook", {
+			send: () => Promise.reject(new Error(`POST failed ${"x".repeat(400)} ${secret}`)),
+		});
+		const { queue, worker, log } = setup([channel]);
+		await queue.add([row({ target_id: 1 })]);
+		await worker.runOnce();
+		const [only] = await rows();
+		assert.equal(only.status, "pending");
+		assert.equal(only.error.length, 300);
+		assert.ok(only.error.startsWith("POST failed"));
+		assert.ok(log.lines.every((line) => line.length < 400));
+	});
+
+	it("pauseAndWait waits for the other lanes too", async () => {
+		let release;
+		const gate = new Promise((resolve) => {
+			release = resolve;
+		});
+		const channel = channelOf("webhook", {
+			maxConcurrent: 2,
+			send: async (list) => {
+				if (list[0].target_id === 2) await gate;
+				return list.map((one) => ({ id: one.id, ok: true }));
+			},
+		});
+		const { queue, worker } = setup([channel]);
+		const settle = queue.settle;
+		queue.settle = (results, options) =>
+			results[0].id === 1 ? Promise.reject(new Error("db down")) : settle(results, options);
+		await queue.add([row({ target_id: 1 }), row({ target_id: 2 })]);
+		const pass = worker.runOnce();
+		await delay(30);
+		let done = false;
+		const waiting = worker.pauseAndWait({ timeoutMs: 5000 }).then(() => {
+			done = true;
+		});
+		await delay(30);
+		assert.equal(done, false);
+		release();
+		await waiting;
+		await pass;
+		assert.equal((await rows())[1].status, "sent");
+	});
+
+	it("a kick after stop arms nothing until start again", async () => {
+		const channel = channelOf("webhook");
+		const { queue, worker } = setup([channel], { pollMs: 10_000 });
+		await queue.add([row({ target_id: 1 })]);
+		worker.stop();
+		worker.kick();
+		await delay(120);
+		assert.equal(channel.sent.length, 0);
+		worker.start();
+		worker.kick();
+		await delay(200);
+		worker.stop();
+		assert.equal(channel.sent.length, 1);
 	});
 });
 
