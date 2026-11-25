@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import knexFactory from "knex";
 import { runMigrations } from "../lib/database/schema.js";
+import { createStateStore } from "../lib/notify/state-store.js";
 import { ENGINES, resetEngine } from "./support/servers.js";
 
 const NOW = "2026-11-26 10:00:00";
@@ -127,6 +128,42 @@ for (const [name, label] of [
 				meta: JSON.stringify({}),
 			});
 			assert.equal((await knex("certificate").first()).npmpro_valid_from, null);
+		});
+
+		it("runs the state store: transitions, a racing insert, reminders, clearMatching and prune", async () => {
+			const { knex } = ctx;
+			await knex("npmpro_notification_state").delete();
+			const clock = { at: Date.parse("2026-11-26T10:00:00Z"), now: () => clock.at };
+			const [a, b] = [createStateStore({ knex, clock }), createStateStore({ knex, clock })];
+			const event = "host.config_error";
+			const raced = await Promise.all([
+				a.report({ event, objectId: "proxy_host:12", state: "bad", data: { id: 12 } }),
+				b.report({ event, objectId: "proxy_host:12", state: "bad", data: { id: 12 } }),
+			]);
+			assert.equal(raced.filter(Boolean).length, 1);
+			assert.equal(await b.report({ event, objectId: "proxy_host:12", state: "bad", data: { id: 12 } }), null);
+			await a.report({ event, objectId: "proxy_host:120", state: "bad", data: {} });
+			await a.report({ event, objectId: "proxyxhost:12", state: "ok", data: {} });
+			await a.report({ event, objectId: "x".repeat(300), state: "bad", data: {} });
+
+			clock.at += 24 * 3_600_000;
+			assert.equal((await a.dueReminders()).length, 3);
+			assert.deepEqual(await b.dueReminders(), []);
+			assert.equal(
+				(await a.report({ event, objectId: "proxy_host:120", state: "ok", data: {} })).type,
+				`${event}.resolved`,
+			);
+
+			await a.clearMatching(event, "proxy_host:12");
+			const keys = (await knex("npmpro_notification_state").orderBy("id")).map((row) => row.key);
+			assert.equal(keys.includes(`${event}:proxy_host:12`), false);
+			assert.equal(keys.includes(`${event}:proxy_host:120`), true);
+			assert.equal(keys.length, 3);
+
+			clock.at += 31 * 24 * 3_600_000;
+			await a.prune();
+			assert.equal(Number((await knex("npmpro_notification_state").count({ count: "*" }))[0].count), 1);
+			await knex("npmpro_notification_state").delete();
 		});
 	});
 }
