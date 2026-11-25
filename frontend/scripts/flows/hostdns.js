@@ -1,6 +1,6 @@
-// The host record option (PR 8b): the DNS card's switch and boxes in a host window, a confirmed tick that is refused on
-// Save, the buttons of a name that already holds a record, the View window and the managed and orphan rows of the
-// Dynamic DNS list. CI has no public address and calls no provider: the plan, the reach probe, the host's record
+// The host record option (PR 8b): the DNS card's switch and boxes in a host window, a Save refused in the window until
+// the reach is confirmed and a refused name named after the save, the buttons of a name that already holds a record, an
+// orphan in the card, the View window and the managed and orphan rows of the Dynamic DNS list. CI has no public address and calls no provider: the plan, the reach probe, the host's record
 // states and the list are routed answers where the flow needs a state the instance cannot make. The flow creates its
 // data as flow-... and removes it, also when a step fails.
 import {
@@ -8,11 +8,11 @@ import {
 	cleanUp,
 	rowAction,
 	rowOf,
-	saveWindowSent,
 	signIn,
 	VIEWER_EMAIL,
 	windowClosed,
 	windowTitled,
+	withToast,
 } from "./lib.js";
 
 const CREDENTIAL = "flow-hr";
@@ -32,6 +32,8 @@ const OPEN_HOST = /^Open host/u;
 const NO_CREDENTIAL = "No saved credential covers this name";
 const NO_ADDRESS = "No public address found";
 const CONFIRM_BOX = "I checked from outside that ports 80 and 443 reach this server";
+const CONFIRM_NEEDED = "Confirm that you checked from outside that ports 80 and 443 reach this server";
+const NO_RIGHT = "Creating a DNS record needs the right to manage certificates";
 const FAKE_MANAGED = 900_001;
 const FAKE_ORPHAN = 900_002;
 
@@ -188,7 +190,8 @@ async function newHost({ admin }) {
 	await closeWindow(page, dialog);
 }
 
-// 2: routed plan and reach answers: the confirmation box, a refused Save for the name only, the no-address untick
+// 2: routed plan and reach answers: the no-address untick, the confirmation box, a Save refused until it is ticked,
+// and the warning that names a name the save's answer refused
 async function tickAndSave({ admin }, hostId) {
 	const { page, api } = admin;
 	let reach = { result: "could-not-confirm", port: 80, detail: null, address: PUBLIC_ADDRESS };
@@ -233,26 +236,61 @@ async function tickAndSave({ admin }, hostId) {
 		await confirm.click();
 		if (await confirm.isChecked()) throw new Error("the confirmation box did not untick");
 
-		// Save without the confirmation: the host saves, the name is refused (never a record), the other name is not asked
-		const answer = page.waitForResponse(
-			(response) =>
-				response.request().method() === "PUT" && response.url().includes(`/api/nginx/proxy-hosts/${hostId}`),
-		);
-		const body = await saveWindowSent(page, "Proxy Host", `/nginx/proxy-hosts/${hostId}`);
-		const wanted = body.npmpro_dns_records;
+		// Save without the confirmation: refused in the window, nothing is sent, the box says why and has the focus
+		const sent = [];
+		const watch = (request) => {
+			if (request.method() === "PUT" && request.url().includes(`/api/nginx/proxy-hosts/${hostId}`))
+				sent.push(request.url());
+		};
+		page.on("request", watch);
+		const save = dialog.getByRole("button", { name: "Save", exact: true });
+		try {
+			await save.click();
+			await lineA.locator("[data-dns-reach-error]").filter({ hasText: CONFIRM_NEEDED }).waitFor();
+			await page.waitForFunction(() => document.activeElement?.id?.startsWith("dns-reach-"));
+			if (sent.length > 0) throw new Error("a save without the confirmation was sent");
+		} finally {
+			page.off("request", watch);
+		}
+		await confirm.click();
+		await lineA.locator("[data-dns-reach-error]").waitFor({ state: "detached" });
+
+		// the confirmed tick is sent; a name the answer refuses is named in a warning as the window closes. The save is
+		// answered here (the instance has no public address and the flow's credential no real provider)
+		const saved = await api("GET", `/nginx/proxy-hosts/${hostId}`);
+		let body = null;
+		const refusedState = {
+			name: NAME_A,
+			state: "unavailable",
+			origin: null,
+			record_id: null,
+			ipv6: null,
+			message: NO_RIGHT,
+			reason: "error.host-dns-no-right",
+			covered_by: null,
+			found: null,
+			adopt_allowed: null,
+		};
+		const putHandler = (route) => {
+			if (route.request().method() !== "PUT") return route.fallback();
+			body = route.request().postDataJSON();
+			return route.fulfill(json({ ...saved, npmpro_dns_records: [refusedState] }));
+		};
+		const putRoute = new RegExp(`/api/nginx/proxy-hosts/${hostId}(\\?.*)?$`, "u");
+		await page.route(putRoute, putHandler);
+		try {
+			await withToast(page, `No DNS record for ${NAME_A}: ${NO_RIGHT}`, () => save.click());
+			await windowClosed(page);
+		} finally {
+			await page.unroute(putRoute, putHandler);
+		}
+		const wanted = body?.npmpro_dns_records;
 		if (JSON.stringify(wanted?.map((one) => one.name)) !== JSON.stringify([NAME_A]))
 			throw new Error(`the save asked for ${JSON.stringify(wanted)}`);
-		if (wanted[0].reach_confirmed === true) throw new Error("the save carried a confirmation nobody gave");
-		const states = (await (await answer).json()).npmpro_dns_records ?? [];
-		const state = states.find((one) => one.name === NAME_A);
-		if (!state || state.state === "ok") throw new Error(`the refused name answered ${JSON.stringify(state)}`);
-		console.log(`host dns record: the refused save answered ${state.state} (${state.reason})`);
-		if (states.some((one) => one.name === NAME_B && one.state !== "off"))
-			throw new Error("the uncovered name was answered");
+		if (wanted[0].reach_confirmed !== true) throw new Error("the save did not carry the confirmation");
+		console.log("host dns record: a save without the confirmation was refused in the window");
 		if ((await api("GET", "/nginx/ddns-records")).some((row) => row.name === NAME_A))
 			throw new Error("a record was made for a refused name");
-		const host = await api("GET", `/nginx/proxy-hosts/${hostId}`);
-		if (!host.domain_names.includes(NAME_A)) throw new Error("the host was not saved");
 	} finally {
 		await page.unroute(PLAN_ROUTE, planHandler);
 		await page.unroute(REACH_ROUTE, reachHandler);
@@ -287,6 +325,56 @@ async function existingRecord({ admin }, hostId) {
 		await restore();
 		await page.unroute(PLAN_ROUTE, planHandler);
 		page.off("request", watch);
+	}
+}
+
+// 3b: a host whose only row is an orphan of a name it no longer has: the card opens with it shown, and a delete at the
+// provider that is refused again is a warning, never "deleted"
+async function orphanInCard({ admin }, hostId) {
+	const { page } = admin;
+	const orphan = {
+		name: ORPHAN,
+		state: "orphan",
+		origin: "created",
+		record_id: FAKE_ORPHAN,
+		ipv6: false,
+		message: "HTTP 401 at the provider",
+		reason: null,
+		covered_by: null,
+		found: null,
+		adopt_allowed: null,
+	};
+	const planHandler = (route) => route.fulfill(json(planAnswer(route.request().postDataJSON().names)));
+	const removeRoute = new RegExp(`/api/nginx/ddns-records/${FAKE_ORPHAN}/remove-at-provider$`, "u");
+	const removeHandler = (route) => route.fulfill(json(orphan));
+	await page.route(PLAN_ROUTE, planHandler);
+	await page.route(removeRoute, removeHandler);
+	const restore = await routeHostStates(page, hostId, [orphan]);
+	try {
+		const dialog = await openHost(page, NAME_A);
+		if (!(await switchOf(dialog).isChecked())) throw new Error("a host with an orphan opens with the switch off");
+		if ((await dialog.locator("[data-dns-off-note]").count()) !== 0)
+			throw new Error("the off note shows for a host whose save deletes nothing");
+		const line = recordLine(page, ORPHAN);
+		await line.getByText("HTTP 401 at the provider", { exact: true }).waitFor();
+		await line.locator("[data-dns-record-action=remove]").click();
+		const ask = page.getByRole("alertdialog");
+		await ask.getByRole("heading", { name: "Delete at the provider again", exact: true }).waitFor();
+		await withToast(page, "HTTP 401 at the provider", () =>
+			ask.getByRole("button", { name: "Delete at the provider again", exact: true }).click(),
+		);
+		if (
+			(await page
+				.locator("[data-sonner-toast]")
+				.filter({ hasText: `Record of ${ORPHAN} deleted` })
+				.count()) > 0
+		)
+			throw new Error("a refused delete at the provider said deleted");
+		await closeWindow(page, dialog);
+	} finally {
+		await restore();
+		await page.unroute(PLAN_ROUTE, planHandler);
+		await page.unroute(removeRoute, removeHandler);
 	}
 }
 
@@ -358,10 +446,10 @@ async function ddnsList({ admin }, hostId) {
 	const handler = async (route) => {
 		if (route.request().method() !== "GET") return route.fallback();
 		const answer = await route.fetch();
-		const rows = await answer.json();
+		// the two fake rows only: the instance's own records could page them away
 		return route.fulfill({
 			response: answer,
-			json: [...rows, fakeRow(FAKE_MANAGED, NAME_A, hostId, false), fakeRow(FAKE_ORPHAN, ORPHAN, hostId, true)],
+			json: [fakeRow(FAKE_MANAGED, NAME_A, hostId, false), fakeRow(FAKE_ORPHAN, ORPHAN, hostId, true)],
 		});
 	};
 	await page.route(DDNS_LIST, handler);
@@ -432,6 +520,7 @@ async function hostDnsRecord(env) {
 		});
 		await tickAndSave(env, host.id);
 		await existingRecord(env, host.id);
+		await orphanInCard(env, host.id);
 		await viewOnly(env, host.id);
 		await ddnsList(env, host.id);
 	} finally {
