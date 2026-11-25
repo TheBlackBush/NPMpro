@@ -883,6 +883,13 @@ it("a hosts restore without the ddns type turns a host record whose host is gone
 		await knex("npmpro_ddns_record").insert([
 			{ ...managed(1, "a.example.com", 7), meta: JSON.stringify({ create_only: true }) },
 			{ ...managed(2, "b.example.com", 8), meta: JSON.stringify({}) },
+			// paused by its disabled host: as a plain record it must be able to run once it is enabled
+			{
+				...managed(3, "c.example.com", 8),
+				enabled: 0,
+				state: "disabled",
+				meta: JSON.stringify({ paused_by_host: true, reach: { result: "reachable" } }),
+			},
 		]);
 		// the backup's host 7 is another host, host 8 is not in it
 		const data = proxyData([hostRow(7, "other.example.com")]);
@@ -893,11 +900,13 @@ it("a hosts restore without the ddns type turns a host record whose host is gone
 			[
 				[null, null, null],
 				[null, null, null],
+				[null, null, null],
 			],
 		);
-		// the create-only rule stays with the row
+		// the create-only rule stays with the row, the host's pause goes with the link
 		assert.equal(metaOfRow(rows[0]).create_only, true);
-		assert.equal(result.references.filter((change) => change.table === "npmpro_ddns_record").length, 2);
+		assert.deepEqual(metaOfRow(rows[2]), { reach: { result: "reachable" } });
+		assert.equal(result.references.filter((change) => change.table === "npmpro_ddns_record").length, 3);
 	} finally {
 		await knex.destroy();
 	}

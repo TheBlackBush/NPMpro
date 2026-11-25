@@ -164,13 +164,20 @@ const unlinkedRecords = (finalRows) => {
 		const host = hosts[row.host_type]?.get(key(row.host_id));
 		const names = Array.isArray(host?.domain_names) ? host.domain_names.map(nameKey) : [];
 		if (host && names.includes(nameKey(row.name))) continue;
+		// a row paused by its host would never run again as a plain record: the pause goes with the link
+		const { paused_by_host: paused, ...meta } = metaOf(row.meta);
 		changes.push({
 			table: RECORD_TABLE,
 			id: row.id,
 			column: "host_id",
 			from: row.host_id,
 			to: null,
-			values: { host_type: null, host_id: null, origin: null },
+			values: {
+				host_type: null,
+				host_id: null,
+				origin: null,
+				...(paused === undefined ? {} : { meta: JSON.stringify(meta) }),
+			},
 			label: `DDNS record ${row.name}: ${row.host_type} #${row.host_id} is gone or no longer has the name, the record is kept without a host`,
 		});
 	}

@@ -170,6 +170,8 @@ const readReferenceRows = async (knex, table) => {
 	const present = Object.keys(await knex(table).columnInfo());
 	const columns = REFERENCE_COLUMNS.filter((column) => present.includes(column));
 	if (columns.length === 0) return [];
+	// a DDNS record's meta tells whether its host paused it (an unlinked row drops that pause)
+	if (table === RECORD_TABLE && present.includes("meta")) columns.push("meta");
 	return (await knex(table).select(columns)).map((row) => {
 		if (typeof row.domain_names !== "string") return row;
 		try {

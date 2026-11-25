@@ -12,7 +12,7 @@ import errs from "../lib/error.js";
 import { global as logger } from "../logger.js";
 import dnsCredentialModel from "../models/dns_credential.js";
 import internalAuditLog from "./audit-log.js";
-import { publicAddressOf, writeRecordNow } from "./ddns.js";
+import { ddnsPaused, knownPublicAddress, publicAddressOf, writeRecordNow } from "./ddns.js";
 import internalDdnsRecord, { auditMeta, HOST_MODELS, isManaged, managedRows, recordLock } from "./ddns-record.js";
 import { createCoverage, loadZones } from "./dns-check.js";
 import internalDnsCredential from "./dns-credential.js";
@@ -52,6 +52,11 @@ const NEW_TTL = 300;
 const REACH_FRESH_MS = 10 * 60_000;
 const MAX_REACH_ENTRIES = 500;
 const CONCURRENCY = 4;
+// the plan and reach routes reuse an answer for this long (spec rule 6)
+const REUSE_MS = 30_000;
+const MAX_PLAN_ENTRIES = 200;
+// how often a host job looks whether a restore's pause has ended
+const PAUSE_POLL_MS = 1000;
 
 const LABEL = "[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?";
 const PLAIN_NAME = new RegExp(`^${LABEL}(?:\\.${LABEL})+$`, "u");
@@ -83,8 +88,13 @@ const REASONS = {
 	coveredByOther: ["host-dns.covered-by-other", "Covered by another record"],
 };
 
+// a name whose job step threw (a database error, say): the detail goes to the log only
+const JOB_FAILED = "The record could not be made: save again later";
+
 const OTHER_OWNER = ["host-dns.other-owner", "Managed by another user"];
 const CHANGED_AT_PROVIDER = "The record at the provider holds another value now; NPMpro left it there";
+const HOST_GONE = "The host was deleted before its record was deleted at the provider";
+const RELEASE_FAILED = "The record could not be deleted at the provider";
 
 const FAMILIES = [
 	["A", "last_ipv4"],
@@ -126,6 +136,16 @@ const answer = (name, state, extra = {}) => ({
 });
 
 const refused = (name, state, [reason, message], extra = {}) => answer(name, state, { reason, message, ...extra });
+
+/** The plain text of a reason key, for an answer shown without its own message */
+const reasonText = (key) => Object.values(REASONS).find(([one]) => one === key)?.[1] ?? null;
+
+/** Whether a row read again is still the host-linked row read before (a restore may have put another one there) */
+const sameLink = (current, row) =>
+	Boolean(current) &&
+	current.host_type === row.host_type &&
+	current.host_id === row.host_id &&
+	current.name === row.name;
 
 /** What a row's name state is: an orphan, a name that holds another record, a paused host, else the engine's state */
 const stateOfRow = (row) => {
@@ -211,25 +231,40 @@ const defaultFetchFor = (secrets, deadline) => (url, options) => providerFetch(u
 /**
  * @param   {Object}    [deps]
  * @param   {Function}  [deps.providerFor]    (credential provider) -> the provider with read, write and remove, or null
- * @param   {Function}  [deps.publicAddress]  (family) -> the detector's confirmed public address, or null
+ * @param   {Function}  [deps.publicAddress]  (family) -> the detector's confirmed public address (detected when
+ *                                            unknown), or null
+ * @param   {Function}  [deps.knownAddress]   (family) -> the detector's confirmed public address without a detection
  * @param   {Function}  [deps.probe]          probeReach
  * @param   {Function}  [deps.writeRecord]    (id) -> the engine's run of one record now (updateRecord)
  * @param   {Function}  [deps.fetchFor]       (secrets, deadline) -> the guarded fetch handed to a provider
  * @param   {Function}  [deps.hostExists]     (hostType, id) -> whether the host row still exists
+ * @param   {Function}  [deps.hostEnabled]    (hostType, id) -> whether the host row exists and is enabled
+ * @param   {Function}  [deps.paused]         () -> whether a restore or a database move paused Dynamic DNS
+ * @param   {number}    [deps.pollMs]         how often a host job looks whether that pause has ended
  * @param   {Object}    [deps.clock]          { now() } in ms
  * @param   {Object}    [deps.log]            { warn() }
  */
 const createHostDnsRecords = ({
 	providerFor = updaterFor,
 	publicAddress = publicAddressOf,
+	knownAddress = knownPublicAddress,
 	probe = probeReach,
 	writeRecord = writeRecordNow,
 	fetchFor = defaultFetchFor,
 	hostExists = async (hostType, id) => Boolean(await HOST_MODELS[hostType].query().findById(id).select("id")),
+	hostEnabled = async (hostType, id) =>
+		Boolean((await HOST_MODELS[hostType].query().findById(id).select("enabled"))?.enabled),
+	paused = ddnsPaused,
+	pollMs = PAUSE_POLL_MS,
 	clock = { now: () => Date.now() },
 	log = logger,
 } = {}) => {
 	const reachCache = new Map();
+	// the plan route's answers of the last 30 s, by user and names; any change of a host's rows forgets them all
+	const planCache = new Map();
+	// the provider reads of the plan route and the reach probes: at most 4 at once, over every request (spec rule 6)
+	const planLimit = limitConcurrency(CONCURRENCY);
+	const probeLimit = limitConcurrency(CONCURRENCY);
 	// the host jobs: the tail of each host's chain, the names a job works on (counted), and the last job's results
 	// for names that got no row (covered, unavailable, failed)
 	const chains = new Map();
@@ -264,12 +299,35 @@ const createHostDnsRecords = ({
 		return { ipv4: () => of(4), ipv6: () => of(6) };
 	};
 
-	/** The provider reads of one job or plan: the host check's reader with its read cap, 429 stop and deadline */
-	const readerFor = (access) => {
+	/** The detector's confirmed addresses as they are now, never a detection (for the save's own checks) */
+	const knownAddresses = () => {
+		const of = async (family) => {
+			try {
+				const address = await knownAddress(family);
+				return isPublicAddress(address) ? address : null;
+			} catch {
+				return null;
+			}
+		};
+		return { ipv4: () => of(4), ipv6: () => of(6), knownOnly: true };
+	};
+
+	/** Waits while a restore or a database move pauses Dynamic DNS: a host job never changes a row meanwhile */
+	const untilResumed = async () => {
+		while (paused()) await new Promise((resolve) => setTimeout(resolve, pollMs));
+	};
+
+	/**
+	 * The provider reads of one job or plan: the host check's reader with its read cap, 429 stop and deadline
+	 *
+	 * @param   {Access}    access
+	 * @param   {Function}  [limit]  the concurrency limit (the plan route shares one over its requests)
+	 */
+	const readerFor = (access, limit = limitConcurrency(CONCURRENCY)) => {
 		const deadline = requestDeadline();
 		let zones = null;
 		return {
-			coverage: createCoverage(access, limitConcurrency(CONCURRENCY), deadline.signal, { providerFor, fetchFor }),
+			coverage: createCoverage(access, limit, deadline.signal, { providerFor, fetchFor }),
 			zones: () => {
 				zones ??= loadZones(access);
 				return zones;
@@ -384,9 +442,10 @@ const createHostDnsRecords = ({
 		return entry && clock.now() - entry.at < REACH_FRESH_MS ? entry.outcome : null;
 	};
 
-	const remember = (name, address, outcome) => {
+	const remember = (name, address, outcome, overridesChallenge) => {
+		reachCache.delete(`${name}|${address}`);
 		if (reachCache.size >= MAX_REACH_ENTRIES) reachCache.delete(reachCache.keys().next().value);
-		reachCache.set(`${name}|${address}`, { at: clock.now(), outcome });
+		reachCache.set(`${name}|${address}`, { at: clock.now(), outcome, overridesChallenge });
 	};
 
 	/** The row of a host the user may see, with the host's manage right; 404 otherwise */
@@ -426,7 +485,11 @@ const createHostDnsRecords = ({
 	 *          failed; error the scrubbed message of the first failure (the other families are not tried after it)
 	 */
 	const deleteWritten = async (row) => {
-		const units = FAMILIES.filter(([, key]) => typeof row[key] === "string" && row[key] !== "");
+		// only a record NPMpro created is ever deleted at the provider
+		const units =
+			row.origin === "created"
+				? FAMILIES.filter(([, key]) => typeof row[key] === "string" && row[key] !== "")
+				: [];
 		const done = [];
 		if (units.length === 0) return { results: done, error: null };
 		const credentialRow = await dnsCredentialModel.query().findById(row.dns_credential_id);
@@ -434,7 +497,15 @@ const createHostDnsRecords = ({
 		if (!isSupported(provider)) {
 			return { results: done, error: "The DNS credential of this record cannot delete it" };
 		}
-		const { fields, secrets } = openCredentialRow(credentialRow);
+		// a credential that cannot be opened (another key, a damaged value) is a failed delete: the row is an orphan
+		let opened;
+		try {
+			opened = openCredentialRow(credentialRow);
+		} catch (error) {
+			log?.warn?.(`Host DNS records: the credential of record ${row.id} could not be opened: ${error?.message}`);
+			return { results: done, error: "The DNS credential of this record could not be opened" };
+		}
+		const { fields, secrets } = opened;
 		const fetch = fetchFor(secrets);
 		const { record_id: _recordId, ...meta } = row.meta ?? {};
 		for (const [type, key] of units) {
@@ -483,44 +554,85 @@ const createHostDnsRecords = ({
 			return false;
 		}
 		await managedRows.remove(row.id);
-		await audit(access, action, row, { at_provider: true, results: done });
+		await audit(access, action, row, { at_provider: done.length > 0, results: done });
 		return true;
+	};
+
+	/** Makes a row an orphan after a step that threw, if it is still the row read before; never throws */
+	const orphanAfterFailure = async (row, error) => {
+		log?.warn?.(`Host DNS records: record ${row.id} of ${row.name} was not released: ${error?.message}`);
+		try {
+			const current = await managedRows.get(row.id);
+			if (sameLink(current, row) && current.meta?.orphan !== true) {
+				await managedRows.patch(row.id, orphanPatch(current, RELEASE_FAILED, null));
+			}
+		} catch (failed) {
+			log?.warn?.(`Host DNS records: record ${row.id} could not be kept as an orphan: ${failed?.message}`);
+		}
 	};
 
 	/**
 	 * Releases a row (an unticked or removed name, a deleted host): a created row's records are deleted at the
 	 * provider first (only the addresses it wrote); an adopted one, and a name that held another record, is left
-	 * there. A failed or refused delete keeps the row as an orphan, never stopping the host's change. Runs under the
-	 * row's lock, the provider work as the system (the credential, whoever owns it), audited with the user.
+	 * there. A failed or refused delete keeps the row as an orphan, never stopping the host's change, and so does a
+	 * step that throws. Runs under the row's lock, the provider work as the system (the credential, whoever owns it),
+	 * audited with the user. A row that is no longer the one read before (a restore put another there) is left alone.
+	 *
+	 * @param   {Access}  access
+	 * @param   {Object}  read  the row as the job read it
 	 */
-	const release = (access, id) =>
-		recordLock(id, async () => {
-			const row = await managedRows.get(id);
-			if (!row) return;
-			if (row.origin === "created") {
-				await settleDelete(access, row, "removed");
-				return;
+	const release = async (access, read) => {
+		await untilResumed();
+		await recordLock(read.id, async () => {
+			const row = await managedRows.get(read.id);
+			if (!sameLink(row, read) || row.meta?.orphan === true) return;
+			try {
+				if (row.origin === "created") {
+					await settleDelete(access, row, "removed");
+					return;
+				}
+				await managedRows.remove(row.id);
+				await audit(access, "removed", row, { at_provider: false });
+			} catch (error) {
+				await orphanAfterFailure(row, error);
 			}
-			await managedRows.remove(id);
-			await audit(access, "removed", row, { at_provider: false });
 		});
+	};
 
-	/** An orphan of this host whose name is ticked again: its record is NPMpro's, so the row is simply resumed */
-	const resume = (access, row) =>
-		recordLock(row.id, async () => {
-			const current = await managedRows.get(row.id);
-			if (current?.meta?.orphan !== true) return;
-			const { orphan: _orphan, orphan_note: _note, ...meta } = current.meta;
-			await managedRows.patch(row.id, {
-				enabled: true,
-				state: "pending",
-				error: null,
-				failures: 0,
-				next_try_on: null,
-				meta,
-			});
-			await audit(access, "resumed", row);
+	/** The paused form of a row whose host is disabled: kept, never run until the host is enabled */
+	const pausedPatch = (meta) => ({ enabled: false, state: "disabled", meta: { ...meta, paused_by_host: true } });
+
+	/**
+	 * An orphan of this host whose name is ticked again: resumed create-only (keeping the addresses it last wrote), so
+	 * the engine accepts NPMpro's own value and turns anything else at the name into "exists" (Adopt and update or
+	 * Leave alone), never writing over it. A paused host resumes it paused; a name that held another record stays so.
+	 *
+	 * @returns {Promise<boolean>}  whether the row was resumed (and is to be written now)
+	 */
+	const resume = async (access, read, hostType) => {
+		await untilResumed();
+		const enabled = await hostEnabled(hostType, read.host_id);
+		return await recordLock(read.id, async () => {
+			const current = await managedRows.get(read.id);
+			if (!sameLink(current, read) || current.meta?.orphan !== true) return false;
+			const { orphan: _orphan, orphan_note: _note, paused_by_host: _paused, ...meta } = current.meta;
+			const base = { error: null, failures: 0, next_try_on: null };
+			if (meta.exists) {
+				await managedRows.patch(read.id, { ...base, enabled: false, state: "disabled", meta });
+			} else if (!enabled) {
+				await managedRows.patch(read.id, { ...base, ...pausedPatch({ ...meta, create_only: true }) });
+			} else {
+				await managedRows.patch(read.id, {
+					...base,
+					enabled: true,
+					state: "pending",
+					meta: { ...meta, create_only: true },
+				});
+			}
+			await audit(access, "resumed", current);
+			return enabled && !meta.exists;
 		});
+	};
 
 	/**
 	 * The job's part of a tick: the checks that read, the coverage read, then the row (and the engine's write)
@@ -583,28 +695,39 @@ const createHostDnsRecords = ({
 		}
 		values.meta = meta;
 
-		// a host deleted while this job ran gets nothing (its delete job comes after this one)
+		// a host deleted while this job ran gets nothing (its delete job comes after this one); a host disabled
+		// meanwhile gets its row paused, as its disable would have left it
+		await untilResumed();
 		if (!(await hostExists(hostType, host.id))) return null;
+		const hostPaused = verdict.kind !== "exists" && !(await hostEnabled(hostType, host.id));
+		if (hostPaused) Object.assign(values, pausedPatch(meta));
 		let row;
 		try {
 			row = await managedRows.insert(values);
 		} catch (error) {
-			if (error instanceof errs.ValidationError || error instanceof errs.ItemNotFoundError) {
-				return refused(name, "unavailable", REASONS.nameTaken);
-			}
+			if (error instanceof errs.ItemNotFoundError) return refused(name, "unavailable", REASONS.noCredential);
+			if (error instanceof errs.ValidationError) return refused(name, "unavailable", REASONS.nameTaken);
 			throw error;
 		}
-		if (verdict.kind === "create") {
-			await audit(access, "created", row);
-			if (await hostExists(hostType, host.id)) await writeNow(row.id);
-		} else if (verdict.kind === "adopt") {
-			await audit(access, "adopted", row);
+		if (verdict.kind === "exists") return null;
+		await audit(access, verdict.kind === "create" ? "created" : "adopted", row);
+		// a disable that ran between the check and the insert found no row to pause
+		if (!hostPaused && !(await hostEnabled(hostType, host.id))) {
+			await recordLock(row.id, async () => {
+				const current = await managedRows.get(row.id);
+				if (sameLink(current, row) && current.meta?.paused_by_host !== true) {
+					await managedRows.patch(row.id, pausedPatch(current.meta));
+				}
+			});
+			return null;
 		}
+		if (verdict.kind === "create" && !hostPaused) await writeNow(row.id);
 		return null;
 	};
 
 	/** Runs job after the host's earlier jobs; the names it works on show pending until it ends */
 	const schedule = (key, names, job) => {
+		planCache.clear();
 		const counts = working.get(key) ?? new Map();
 		working.set(key, counts);
 		for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
@@ -612,6 +735,7 @@ const createHostDnsRecords = ({
 			.then(job)
 			.catch((error) => log?.warn?.(`Host DNS records: the job of ${key} failed: ${error?.message}`))
 			.finally(() => {
+				planCache.clear();
 				for (const name of names) {
 					const left = (counts.get(name) ?? 1) - 1;
 					if (left > 0) counts.set(name, left);
@@ -622,9 +746,25 @@ const createHostDnsRecords = ({
 		chains.set(key, tail);
 	};
 
+	/** A host's last job results by name: { by: the user whose save made it, answer } */
 	const resultsOf = (key) => {
 		if (!results.has(key)) results.set(key, new Map());
 		return results.get(key);
+	};
+
+	const resultOf = (access, result) => ({ by: userIdOf(access), answer: result });
+
+	/**
+	 * A job result as a user sees it: another user with own visibility (who may not see the credential the result
+	 * came from) gets the state and the reason only, without a provider message or the name of a covering record
+	 */
+	const shownResult = ({ by, answer: result }, access) => {
+		if (!ownOnly(access) || by === userIdOf(access)) return result;
+		if (result.state === "covered") return refused(result.name, "covered", REASONS.coveredByOther);
+		return answer(result.name, result.state, {
+			reason: result.reason,
+			message: reasonText(result.reason) ?? (result.state === "failed" ? JOB_FAILED : null),
+		});
 	};
 
 	/** The name states of a host: its names in order, then rows of names it no longer has (orphans) */
@@ -637,7 +777,7 @@ const createHostDnsRecords = ({
 		const list = names.map((name) => {
 			const row = rows.find((one) => one.name === name);
 			if (busy.has(name)) return answer(name, "pending", row ? rowBase(row) : {});
-			if (last.has(name)) return last.get(name);
+			if (last.has(name)) return shownResult(last.get(name), access);
 			return row ? answerOfRow(row, access) : answer(name, "off");
 		});
 		for (const row of rows) if (!names.includes(row.name)) list.push(answerOfRow(row, access));
@@ -659,19 +799,20 @@ const createHostDnsRecords = ({
 		return byName;
 	};
 
-	/** The exists row of a host the user may manage; for Adopt and update and Leave alone */
+	/** The exists row of a host the user may manage, with the host; for Adopt and update and Leave alone */
 	const existsRowOf = async (access, id) => {
 		const row = await managedRows.get(id);
 		if (!row || !isManaged(row)) throw new errs.ItemNotFoundError(id);
-		await hostOf(access, row.host_type, row.host_id);
-		return row;
+		const host = await hostOf(access, row.host_type, row.host_id);
+		return { row, host };
 	};
 
 	/**
 	 * The part of a tick a save decides at once, without the provider: the name, the rights, the host, the public
-	 * address and the reach (a probe of the last 10 minutes or the user's confirmation). Never probes.
+	 * address and the reach (a probe of the last 10 minutes or the user's confirmation). Never probes. With the
+	 * known addresses only (the save), an address not confirmed yet defers the name to the job, which detects.
 	 *
-	 * @returns {Promise<{ refusal: Object|null, reach: Object|null }>}
+	 * @returns {Promise<{ refusal: Object|null, reach?: Object, deferred?: boolean }>}
 	 */
 	const precheck = async (access, { host, entry, addresses }) => {
 		const { name } = entry;
@@ -682,6 +823,7 @@ const createHostDnsRecords = ({
 		}
 		if (host.enabled === false) return { refusal: refused(name, "unavailable", REASONS.hostDisabled) };
 		const address = await addresses.ipv4();
+		if (address === null && addresses.knownOnly === true) return { refusal: null, deferred: true };
 		if (address === null) return { refusal: refused(name, "unavailable", REASONS.noAddress) };
 		const probed = remembered(name, address);
 		const confirmed = entry.reach_confirmed === true;
@@ -698,6 +840,48 @@ const createHostDnsRecords = ({
 			},
 		};
 	};
+
+	/** One name of a save's job: an orphan resumed, or a new tick read and made; its result is kept for statesOf */
+	const jobTick = async (access, { key, hostType, host, entry, row, checked, job }) => {
+		if (row) {
+			// an orphan of this host ticked again: needs the right of a tick and its credential visible, as a new one
+			if (access.level("certificates") !== "manage") {
+				resultsOf(key).set(entry.name, resultOf(access, refused(entry.name, "unavailable", REASONS.noRight)));
+				return;
+			}
+			try {
+				await internalDdnsRecord.rowOf(access, row.id);
+			} catch (error) {
+				if (!(error instanceof errs.ItemNotFoundError)) throw error;
+				const refusal = refused(entry.name, "unavailable", REASONS.noCredential);
+				resultsOf(key).set(entry.name, resultOf(access, refusal));
+				return;
+			}
+			resultsOf(key).delete(entry.name);
+			if (await resume(access, row, hostType)) await writeNow(row.id);
+			return;
+		}
+		job.addresses ??= addressesOnce();
+		const check = checked ?? (await precheck(access, { host, entry, addresses: job.addresses }));
+		if (check.refusal !== null) {
+			resultsOf(key).set(entry.name, resultOf(access, check.refusal));
+			return;
+		}
+		if (!(await hostExists(hostType, host.id))) return;
+		job.reader ??= readerFor(access);
+		const result = await tick(access, { hostType, host, entry, reach: check.reach, reader: job.reader });
+		if (result === null) resultsOf(key).delete(entry.name);
+		else resultsOf(key).set(entry.name, resultOf(access, result));
+	};
+
+	/** A row of a host whose host row is gone, as an orphan the user can delete at the provider again or forget */
+	const orphanHostless = async (read) =>
+		recordLock(read.id, async () => {
+			const current = await managedRows.get(read.id);
+			if (!sameLink(current, read) || current.meta?.orphan === true) return false;
+			await managedRows.patch(read.id, orphanPatch(current, HOST_GONE, "host-gone"));
+			return true;
+		});
 
 	return {
 		/**
@@ -723,8 +907,10 @@ const createHostDnsRecords = ({
 
 		/**
 		 * The plan of a host's names for the DNS card (POST /nginx/dns-check/plan): read only. One entry per name as
-		 * planNames, plus the public addresses as this server knows them (detected when unknown) and whether the saved
-		 * host is disabled. A host that is not saved yet is planned by its type alone.
+		 * planNames, plus, for a user with certificates:manage only, the public addresses as this server knows them
+		 * (detected when unknown), and whether the saved host is disabled. A host that is not saved yet is planned by
+		 * its type alone. The provider reads of every plan share one limit of 4 at once, and an answer is reused for
+		 * 30 s for the same user and names (a change of a host's records forgets them).
 		 *
 		 * @param   {Access}  access
 		 * @param   {{ hostType: String, hostId?: Number, names: String[] }}  options
@@ -739,17 +925,34 @@ const createHostDnsRecords = ({
 					throw new errs.ItemNotFoundError(hostId);
 				}
 			}
-			const reader = readerFor(access);
+			const list = [...new Set((names ?? []).map((one) => String(one).toLowerCase()))];
+			const manages = access.level("certificates") === "manage";
+			const cacheKey = JSON.stringify([
+				userIdOf(access),
+				access.visibility,
+				manages,
+				hostType,
+				host?.id ?? null,
+				host?.enabled ?? null,
+				list,
+			]);
+			const cached = planCache.get(cacheKey);
+			if (cached && clock.now() - cached.at < REUSE_MS) return cached.answer;
+			const reader = readerFor(access, planLimit);
 			const plans = [];
-			for (const name of [...new Set((names ?? []).map((one) => String(one).toLowerCase()))]) {
+			for (const name of list) {
 				plans.push(publicPlan(await inspect(access, { hostType, hostId: host?.id, name, ipv6: true, reader })));
 			}
-			return {
-				address: await reader.addresses.ipv4(),
-				ipv6_address: await reader.addresses.ipv6(),
+			const planned = {
+				address: manages ? await reader.addresses.ipv4() : null,
+				ipv6_address: manages ? await reader.addresses.ipv6() : null,
 				host_disabled: host !== null && host.enabled === false,
 				names: plans,
 			};
+			planCache.delete(cacheKey);
+			planCache.set(cacheKey, { at: clock.now(), answer: planned });
+			while (planCache.size > MAX_PLAN_ENTRIES) planCache.delete(planCache.keys().next().value);
+			return planned;
 		},
 
 		/**
@@ -765,7 +968,8 @@ const createHostDnsRecords = ({
 
 		/**
 		 * The reach probe of one name (POST /nginx/dns-check/reach): to the confirmed public IPv4 only; the result is
-		 * kept for 10 minutes, for the save that follows
+		 * kept for 10 minutes, for the save that follows. At most 4 probes run at once, and a probe of the same name
+		 * and address of the last 30 s is answered again without probing.
 		 *
 		 * @returns {Promise<{ result, port, detail, address }>}
 		 */
@@ -774,17 +978,23 @@ const createHostDnsRecords = ({
 			const plain = String(name ?? "").toLowerCase();
 			if (nameRefusal(plain) !== null) throw new errs.ValidationError(REASONS.pattern[1], REASONS.pattern[0]);
 			const address = await addressesOnce().ipv4();
-			const outcome = await probe({ name: plain, address, overridesChallenge: overrides(host) });
+			const overridesChallenge = overrides(host);
+			const recent = address === null ? undefined : reachCache.get(`${plain}|${address}`);
+			if (recent && recent.overridesChallenge === overridesChallenge && clock.now() - recent.at < REUSE_MS) {
+				return { ...recent.outcome, address };
+			}
+			const outcome = await probeLimit(() => probe({ name: plain, address, overridesChallenge }));
 			const done = { result: outcome.result, port: outcome.port ?? null, detail: outcome.detail ?? null };
-			if (address !== null) remember(plain, address, done);
+			if (address !== null) remember(plain, address, done, overridesChallenge);
 			return { ...done, address };
 		},
 
 		/**
-		 * After a host's create or update. Answers at once: it never probes and never calls a provider. The ticks
-		 * refused without the provider answer now; the provider work (the releases of unticked or lost names, the
-		 * reads and rows of new ticks, the engine's write) runs afterwards as the host's job (idle() waits for it),
-		 * and its names show pending until it ends. A host with no rows and no ticks is not looked at further.
+		 * After a host's create or update. Answers at once: it never probes, never calls a provider and never waits
+		 * for a public IP detection. The ticks refused without the provider answer now; the provider work (the
+		 * releases of unticked or lost names, the reads and rows of new ticks, the engine's write) runs afterwards as
+		 * the host's job (idle() waits for it), and its names show pending until it ends. A host with no rows and no
+		 * ticks is not looked at further.
 		 *
 		 * @param   {Access}  access  the user (rights of a tick; the audit)
 		 * @param   {Object}  options
@@ -810,39 +1020,45 @@ const createHostDnsRecords = ({
 			const last = resultsOf(key);
 			// a save that sets the option forgets the results of names it does not tick
 			if (ticks !== null) for (const name of [...last.keys()]) if (!ticks.has(name)) last.delete(name);
-			// the ticks of names without a row are checked now, without the provider; a refusal answers at once
+			// the ticks of names without a row are checked now, without the provider and without a detection; a
+			// refusal answers at once, a name whose public address is not known yet is checked again by the job
 			const checked = new Map();
-			const addresses = addressesOnce();
+			const addresses = knownAddresses();
 			for (const entry of ticks?.values() ?? []) {
 				if (!names.includes(entry.name)) continue;
 				const row = rows.find((one) => one.name === entry.name);
 				if (row) continue;
 				const check = await precheck(access, { host: hostAfter, entry, addresses });
-				checked.set(entry.name, check);
+				if (check.deferred !== true) checked.set(entry.name, check);
 				if (check.refusal === null) last.delete(entry.name);
-				else last.set(entry.name, check.refusal);
+				else last.set(entry.name, resultOf(access, check.refusal));
 			}
 			const releasing = rows
 				.filter((row) => !names.includes(row.name) || (ticks !== null && !ticks.has(row.name)))
 				.filter((row) => row.meta?.orphan !== true)
 				.map((row) => row.name);
-			const ticking = [...checked].filter(([, check]) => check.refusal === null).map(([name]) => name);
+			const ticking = [...(ticks?.values() ?? [])]
+				.filter((entry) => names.includes(entry.name) && !rows.some((row) => row.name === entry.name))
+				.filter((entry) => (checked.get(entry.name)?.refusal ?? null) === null)
+				.map((entry) => entry.name);
 			const resuming = rows
 				.filter((row) => row.meta?.orphan === true && ticks?.has(row.name) && names.includes(row.name))
 				.map((row) => row.name);
 			const touched = [...new Set([...releasing, ...ticking, ...resuming])];
 			if (touched.length === 0 && !busy) return await statesOf(access, hostType, hostAfter);
 
-			// the provider work, after the host's earlier jobs: decided again on the rows as they are then
+			// the provider work, after the host's earlier jobs: decided again on the rows as they are then; one name's
+			// failure never stops the others
 			schedule(key, touched, async () => {
+				await untilResumed();
 				const now = await managedRows.ofHost(hostType, hostAfter.id);
 				for (const row of now) {
 					if (row.meta?.orphan === true) continue;
 					if (names.includes(row.name) && (ticks === null || ticks.has(row.name))) continue;
-					await release(access, row.id);
+					await release(access, row);
 				}
 				if (ticks === null) return;
-				let reader = null;
+				const job = { reader: null, addresses: null };
 				for (const entry of ticks.values()) {
 					if (!names.includes(entry.name)) continue;
 					const row = now.find((one) => one.name === entry.name);
@@ -850,26 +1066,21 @@ const createHostDnsRecords = ({
 						resultsOf(key).delete(entry.name);
 						continue;
 					}
-					if (row) {
-						// an orphan of this host ticked again: needs the right of a tick, as a new one
-						if (access.level("certificates") === "manage") {
-							resultsOf(key).delete(entry.name);
-							await resume(access, row);
-							await writeNow(row.id);
-						} else resultsOf(key).set(entry.name, refused(entry.name, "unavailable", REASONS.noRight));
-						continue;
+					try {
+						await jobTick(access, {
+							key,
+							hostType,
+							host: hostAfter,
+							entry,
+							row,
+							checked: checked.get(entry.name),
+							job,
+						});
+					} catch (error) {
+						log?.warn?.(`Host DNS records: the tick of ${entry.name} failed: ${error?.message}`);
+						const failed = answer(entry.name, "failed", { message: JOB_FAILED });
+						resultsOf(key).set(entry.name, resultOf(access, failed));
 					}
-					const check =
-						checked.get(entry.name) ?? (await precheck(access, { host: hostAfter, entry, addresses }));
-					if (check.refusal !== null) {
-						resultsOf(key).set(entry.name, check.refusal);
-						continue;
-					}
-					if (!(await hostExists(hostType, hostAfter.id))) return;
-					reader ??= readerFor(access);
-					const result = await tick(access, { hostType, host: hostAfter, entry, reach: check.reach, reader });
-					if (result === null) resultsOf(key).delete(entry.name);
-					else resultsOf(key).set(entry.name, result);
 				}
 			});
 			return await statesOf(access, hostType, hostAfter);
@@ -889,16 +1100,13 @@ const createHostDnsRecords = ({
 			hostSection(hostType);
 			const rows = await managedRows.ofHost(hostType, host.id);
 			if (rows.length === 0) return [];
+			planCache.clear();
 			for (const row of rows) {
 				if (row.origin === null || row.meta?.orphan === true || row.meta?.exists) continue;
 				await recordLock(row.id, async () => {
 					const current = await managedRows.get(row.id);
-					if (!current) return;
-					await managedRows.patch(row.id, {
-						enabled: false,
-						state: "disabled",
-						meta: { ...current.meta, paused_by_host: true },
-					});
+					if (!sameLink(current, row)) return;
+					await managedRows.patch(row.id, pausedPatch(current.meta));
 				});
 			}
 			return await statesOf(access, hostType, host);
@@ -909,11 +1117,12 @@ const createHostDnsRecords = ({
 			hostSection(hostType);
 			const rows = await managedRows.ofHost(hostType, host.id);
 			if (rows.length === 0) return [];
+			planCache.clear();
 			for (const row of rows) {
 				if (row.meta?.paused_by_host !== true) continue;
 				await recordLock(row.id, async () => {
 					const current = await managedRows.get(row.id);
-					if (current?.meta?.paused_by_host !== true) return;
+					if (!sameLink(current, row) || current.meta?.paused_by_host !== true) return;
 					const { paused_by_host: _paused, ...meta } = current.meta;
 					await managedRows.patch(row.id, {
 						enabled: true,
@@ -931,8 +1140,9 @@ const createHostDnsRecords = ({
 		/**
 		 * A deleted host: as unticking every name (created records deleted at the provider, adopted ones released),
 		 * as the host's job after the delete's answer and after any save job of the host still running or queued (which
-		 * finds the host gone and makes nothing more); it releases the rows as they are when it runs. Answers the rows
-		 * as they are now; the orphans it leaves are in the Dynamic DNS list.
+		 * finds the host gone and makes nothing more); it releases the rows as they are when it runs, each on its own
+		 * (a failure leaves that row an orphan). Answers the rows as they are now; the orphans it leaves are in the
+		 * Dynamic DNS list.
 		 */
 		onDelete: async (access, { hostType, host }) => {
 			hostSection(hostType);
@@ -945,13 +1155,39 @@ const createHostDnsRecords = ({
 				key,
 				rows.map((row) => row.name),
 				async () => {
+					await untilResumed();
 					for (const row of await managedRows.ofHost(hostType, host.id)) {
-						if (row.meta?.orphan !== true) await release(access, row.id);
+						if (row.meta?.orphan !== true) await release(access, row);
 					}
 					results.delete(key);
 				},
 			);
 			return rows.map((row) => answer(row.name, "pending", rowBase(row)));
+		},
+
+		/**
+		 * At start: every host's row whose host row is gone (a restart while a host delete's job waited or ran) becomes
+		 * an orphan the user can delete at the provider again or forget. Nothing is deleted at the provider here.
+		 *
+		 * @returns {Promise<number>}  the number of rows made orphans
+		 */
+		orphanHostless: async () => {
+			let count = 0;
+			for (const hostType of Object.keys(SECTIONS)) {
+				const rows = await managedRows.ofType(hostType);
+				for (const row of rows) {
+					if (row.meta?.orphan === true || (await hostExists(hostType, row.host_id))) continue;
+					try {
+						if (await orphanHostless(row)) count += 1;
+					} catch (error) {
+						log?.warn?.(
+							`Host DNS records: record ${row.id} could not be kept as an orphan: ${error?.message}`,
+						);
+					}
+				}
+			}
+			if (count > 0) log?.warn?.(`Host DNS records: ${count} record(s) of deleted hosts are kept as orphans`);
+			return count;
 		},
 
 		/** The name states of a saved host (expand=dns_records); [] for a host without the option */
@@ -984,15 +1220,17 @@ const createHostDnsRecords = ({
 
 		/**
 		 * Adopt and update: a name that held another single address is taken over; the engine writes the wanted
-		 * address now (the old value goes into the history). Needs the host's manage right and certificates:manage
-		 * with the record's credential visible.
+		 * address now (the old value goes into the history). A disabled host's row is adopted paused (written when the
+		 * host is enabled). Needs the host's manage right and certificates:manage with the record's credential visible.
 		 */
 		adopt: async (access, { id }) => {
 			access.can("certificates:manage");
 			await internalDdnsRecord.rowOf(access, id);
-			const row = await existsRowOf(access, id);
+			const { row, host } = await existsRowOf(access, id);
+			const enabled = host.enabled !== false;
 			await recordLock(id, async () => {
 				const current = await managedRows.get(id);
+				if (!sameLink(current, row)) throw new errs.ItemNotFoundError(id);
 				if (current.meta.exists?.adopt_allowed !== true) {
 					throw new errs.ValidationError(
 						"Only a name that holds one other address can be adopted",
@@ -1000,28 +1238,25 @@ const createHostDnsRecords = ({
 					);
 				}
 				const { exists: _exists, create_only: _once, ...meta } = current.meta;
-				await managedRows.patch(id, {
-					origin: "adopted",
-					enabled: true,
-					state: "pending",
-					ttl: null,
-					failures: 0,
-					next_try_on: null,
-					error: null,
-					meta,
-				});
+				const base = { origin: "adopted", ttl: null, failures: 0, next_try_on: null, error: null };
+				await managedRows.patch(
+					id,
+					enabled ? { ...base, enabled: true, state: "pending", meta } : { ...base, ...pausedPatch(meta) },
+				);
 			});
+			planCache.clear();
 			await audit(access, "adopted", { ...row, origin: "adopted" });
-			await writeNow(id);
+			if (enabled) await writeNow(id);
 			return answerOfRow(await managedRows.get(id), access);
 		},
 
 		/** Leave alone: a name that held another record keeps it; the row goes, nothing is written. Host manage only. */
 		leave: async (access, { id }) => {
-			const row = await existsRowOf(access, id);
+			const { row } = await existsRowOf(access, id);
 			await recordLock(id, async () => {
 				const current = await managedRows.get(id);
-				if (!current?.meta?.exists) {
+				if (!sameLink(current, row)) throw new errs.ItemNotFoundError(id);
+				if (!current.meta?.exists) {
 					throw new errs.ValidationError(
 						"Only a name that already holds another record can be left alone",
 						"error.host-dns-leave-refused",
@@ -1029,6 +1264,7 @@ const createHostDnsRecords = ({
 				}
 				await managedRows.remove(id);
 			});
+			planCache.clear();
 			await audit(access, "left", row);
 			return answer(row.name, "off");
 		},
@@ -1047,6 +1283,7 @@ const createHostDnsRecords = ({
 				const row = await managedRows.get(id);
 				if (row?.meta?.orphan === true) await settleDelete(access, row, "removed");
 			});
+			planCache.clear();
 			const left = await managedRows.get(id);
 			return left ? answerOfRow(left, access) : answer(visible.name, "off");
 		},

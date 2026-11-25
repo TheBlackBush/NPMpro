@@ -164,6 +164,20 @@ const publicAddressOf = async (family) => {
 	return confirmed(state) ? state.address : null;
 };
 
+/**
+ * The detector's confirmed public address of one family, without a detection (a host save never waits for one)
+ *
+ * @param   {number}  family  4 or 6
+ * @returns {String|null}
+ */
+const knownPublicAddress = (family) => {
+	const known = service().publicIp.state(family);
+	return confirmed(known) ? known.address : null;
+};
+
+/** @returns {boolean}  whether a restore or a database move paused Dynamic DNS */
+const ddnsPaused = () => service().timer.paused();
+
 const providers = (access) => {
 	access.can("certificates:view");
 	return PROVIDER_LIST;
@@ -171,8 +185,10 @@ const providers = (access) => {
 
 export {
 	checkNow,
+	ddnsPaused,
 	ddnsStatus,
 	initDdnsTimer,
+	knownPublicAddress,
 	pauseDdns,
 	providers,
 	publicAddressOf,

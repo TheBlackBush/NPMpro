@@ -613,7 +613,9 @@ it("the plan route answers per name, for an unsaved host too, and never names an
 	assert.equal(noRight.status, 200, noRight.text);
 	assert.equal(noRight.body.names[0].reason, "error.host-dns-no-right");
 	assert.equal(noRight.body.names[0].credential, null);
-	assert.equal(noRight.body.address, PUBLIC_IP);
+	// the server's public addresses only for a user who may manage certificates
+	assert.equal(noRight.body.address, null);
+	assert.equal(noRight.body.ipv6_address, null);
 	// another owner's credential is not named to a user who cannot see it
 	const user = await api.limited({
 		visibility: "user",
@@ -729,5 +731,57 @@ it("the list's expand=dns_records reads the rows of all hosts in one query", asy
 	for (const name of names) {
 		const host = listed.body.find((entry) => entry.domain_names.includes(name));
 		assert.equal(stateOf(host.npmpro_dns_records, name).state, "ok");
+	}
+});
+
+it("101 names: the request field and the plan route both refuse them, and nothing is saved", async () => {
+	const names = Array.from({ length: 101 }, (_, index) => `many${index}.host-dns.example`);
+	const hostsBefore = await api.db("proxy_host").count({ count: "*" });
+	const made = await proxyHost(names.slice(0, 1), { records: names.map((name) => tick(name)) });
+	assert.equal(made.status, 400, made.text);
+	assert.deepEqual(await api.db("proxy_host").count({ count: "*" }), hostsBefore);
+	const plan = await admin.post("/nginx/dns-check/plan", { host_type: "proxy_host", names });
+	assert.equal(plan.status, 400, plan.text);
+	assert.deepEqual(cf.calls, []);
+});
+
+it("the plan route writes nothing: no row, no audit entry, no history and no provider write", async () => {
+	const name = "plan-only.host-dns.example";
+	const audits = async () => Number((await api.db("audit_log").count({ count: "*" }))[0].count);
+	const auditsBefore = await audits();
+	const answered = await admin.post("/nginx/dns-check/plan", { host_type: "proxy_host", names: [name] });
+	assert.equal(answered.status, 200, answered.text);
+	assert.equal(answered.body.names[0].available, true);
+	assert.equal(await api.db("npmpro_ddns_record").first(), undefined);
+	assert.equal(await api.db("npmpro_ddns_history").first(), undefined);
+	assert.equal(await audits(), auditsBefore);
+	assert.deepEqual(
+		cf.calls.filter((call) => call.method !== "GET"),
+		[],
+	);
+});
+
+it("a host delete with a credential that cannot be opened leaves an orphan the user can forget", async () => {
+	const name = "sealed.host-dns.example";
+	const host = await created([name], { records: [tick(name)] });
+	await settle("proxy_host", host.id);
+	assert.equal((await rowOf(name)).state, "ok");
+	const row = await rowOf(name);
+	const credential = await api.db("npmpro_dns_credential").where({ id: row.dns_credential_id }).first();
+	// the stored values are sealed under another key now: they cannot be opened
+	await api.db("npmpro_dns_credential").where({ id: credential.id }).update({ values: "not-a-sealed-value" });
+	try {
+		assert.equal((await admin.delete(hostUrl(host.id))).status, 200);
+		await settle("proxy_host", host.id);
+		const left = await rowOf(name);
+		assert.equal(meta(left).orphan, true);
+		assert.equal(left.enabled, 0);
+		assert.deepEqual(callsOf("DELETE", name), []);
+		// Forget: the row goes, the provider is not called
+		const forgot = await admin.delete(`/nginx/ddns-records/${left.id}`);
+		assert.equal(forgot.status, 200, forgot.text);
+		assert.equal(await rowOf(name), undefined);
+	} finally {
+		await api.db("npmpro_dns_credential").where({ id: credential.id }).update({ values: credential.values });
 	}
 });

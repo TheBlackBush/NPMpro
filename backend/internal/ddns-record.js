@@ -910,6 +910,9 @@ const managedRows = {
 					await ddnsRecordModel.query().where("host_type", hostType).whereIn("host_id", hostIds).orderBy("id")
 				).map(plain),
 
+	/** @returns {Promise<Object[]>}  every row of one host type (the start's check for rows of deleted hosts) */
+	ofType: async (hostType) => (await ddnsRecordModel.query().where("host_type", hostType).orderBy("id")).map(plain),
+
 	get: async (id) => plain(await ddnsRecordModel.query().findById(id)),
 
 	/** The record that holds a name, whoever it belongs to; null when none */

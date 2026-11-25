@@ -11,12 +11,15 @@ const IP6 = "2001:db8:1::5";
 const OTHER = "192.0.2.5";
 const ZONE = "example.com";
 const HEX_ZONE = "c".repeat(32);
+const ZONE_DETAIL = /zone 42/u;
 
 let api;
 let admin;
 let errs;
 let DdnsProviderError;
 let internalDdnsRecord;
+let managedRows;
+let recordLock;
 let service;
 let engine;
 let createHostDnsRecords;
@@ -24,10 +27,22 @@ let credentialId;
 let hostCount = 0;
 
 const clock = { at: Date.parse("2026-11-25T10:00:00Z"), now: () => clock.at };
-const net = { ipv4: IP4, ipv6: null, asked: 0 };
+const net = {
+	ipv4: IP4,
+	ipv6: null,
+	asked: 0,
+	// the detector's confirmed IPv4 as it is known without a detection: the detected one unless a test says otherwise
+	get known4() {
+		return this.unknown ? null : this.ipv4;
+	},
+	unknown: false,
+};
 const probe = { result: "reachable", calls: 0 };
 // the ids of the hosts a test deleted (the hosts of these tests are not rows: the service is told this way)
 const gone = new Set();
+// the hosts a test disabled while a job ran, and the pause a restore takes
+const disabledHosts = new Set();
+const ddnsPause = { on: false };
 
 /** A provider at a fake DNS host: its records by name and type, every call counted */
 const fake = {
@@ -135,8 +150,13 @@ const makeService = (extra = {}) =>
 				detail: "",
 			});
 		},
+		// the detector's confirmed address as the save reads it (never a detection, not counted)
+		knownAddress: (family) => (family === 4 ? net.known4 : null),
 		writeRecord: (id) => engine.updateRecord(id),
 		hostExists: (_type, id) => Promise.resolve(!gone.has(id)),
+		hostEnabled: (_type, id) => Promise.resolve(!gone.has(id) && !disabledHosts.has(id)),
+		paused: () => ddnsPause.on,
+		pollMs: 5,
 		clock,
 		log: { warn: () => undefined },
 		...extra,
@@ -195,6 +215,35 @@ const historyOf = async (name) => {
 	return api.db("npmpro_ddns_history").where({ ddns_record_id: row.id }).orderBy("id");
 };
 
+/** A provider call held until the test opens it; started resolves when the job reached it */
+const hold = (method, match = () => true) => {
+	const original = provider[method];
+	let open;
+	let reached;
+	const gate = new Promise((resolve) => {
+		open = resolve;
+	});
+	const started = new Promise((resolve) => {
+		reached = resolve;
+	});
+	let held = false;
+	provider[method] = async (args) => {
+		if (!held && match(args)) {
+			held = true;
+			reached();
+			await gate;
+		}
+		return await original(args);
+	};
+	return {
+		started,
+		open: () => {
+			provider[method] = original;
+			open();
+		},
+	};
+};
+
 before(async () => {
 	api = await startApi();
 	admin = await api.admin();
@@ -211,6 +260,7 @@ before(async () => {
 	({ DdnsProviderError } = await import("../lib/ddns/errors.js"));
 	const records = await import("../internal/ddns-record.js");
 	internalDdnsRecord = records.default;
+	({ managedRows, recordLock } = records);
 	({ createHostDnsRecords } = await import("../internal/host-dns-record.js"));
 	const { createDdnsEngine } = await import("../lib/ddns/engine.js");
 	engine = createDdnsEngine({
@@ -231,6 +281,8 @@ beforeEach(() => {
 	net.ipv4 = IP4;
 	net.ipv6 = null;
 	net.asked = 0;
+	net.unknown = false;
+	ddnsPause.on = false;
 	probe.result = "reachable";
 	probe.calls = 0;
 });
@@ -1255,34 +1307,6 @@ describe("never over or under another client's record", () => {
 });
 
 describe("a host delete and the host's job", () => {
-	/** A provider call held until the test opens it; started resolves when the job reached it */
-	const hold = (method, match = () => true) => {
-		const original = provider[method];
-		let open;
-		let reached;
-		const gate = new Promise((resolve) => {
-			open = resolve;
-		});
-		const started = new Promise((resolve) => {
-			reached = resolve;
-		});
-		let held = false;
-		provider[method] = async (args) => {
-			if (!held && match(args)) {
-				held = true;
-				reached();
-				await gate;
-			}
-			return await original(args);
-		};
-		return {
-			started,
-			open: () => {
-				provider[method] = original;
-				open();
-			},
-		};
-	};
 	const save = (host, wanted) =>
 		service.applyHost(manager, { hostType: "proxy_host", hostAfter: host, wanted: confirmedTicks(wanted) });
 	const remove = (host) => {
@@ -1376,5 +1400,307 @@ describe("a host delete and the host's job", () => {
 		assert.equal(fake.get(name, "A"), null);
 		assert.equal(fake.get(name, "AAAA"), null);
 		assert.equal(await rowOf(name), undefined);
+	});
+});
+
+describe("record safety: deletes, re-ticks, disables, restores and the routes' limits", () => {
+	const save = (host, wanted, access = manager) =>
+		service.applyHost(access, { hostType: "proxy_host", hostAfter: host, wanted: confirmedTicks(wanted) });
+	const tickOnce = () => new Promise((resolve) => setTimeout(resolve, 30));
+
+	it("a row whose host is gone at start becomes an orphan; nothing is deleted at the provider until asked", async () => {
+		const made = freshName("sweep");
+		const taken = freshName("sweepa");
+		fake.set(taken, "A", [IP4]);
+		const host = hostOf([made, taken]);
+		await apply(host, [{ name: made }, { name: taken }]);
+		assert.equal((await rowOf(taken)).origin, "adopted");
+		fake.reset();
+		// a restart while the delete's job waited: the host row is gone, the job never ran
+		gone.add(host.id);
+		assert.ok((await service.orphanHostless()) >= 2);
+		for (const name of [made, taken]) {
+			const row = await rowOf(name);
+			assert.equal(row.enabled, 0);
+			assert.equal((await metaOf(name)).orphan, true);
+			assert.equal((await metaOf(name)).orphan_note, "host-gone");
+		}
+		assert.equal(fake.total(), 0);
+		assert.equal(await service.orphanHostless(), 0, "an orphan is not counted again");
+		// Delete at the provider again: the created record goes; the adopted one's row goes, its record stays
+		await service.removeAtProvider(manager, { id: (await rowOf(made)).id });
+		assert.deepEqual(fake.removes, [{ name: made, type: "A", value: IP4 }]);
+		await service.removeAtProvider(manager, { id: (await rowOf(taken)).id });
+		assert.equal(fake.calls.remove, 1);
+		assert.deepEqual(fake.get(taken, "A").values, [IP4]);
+		assert.equal(await rowOf(made), undefined);
+		assert.equal(await rowOf(taken), undefined);
+	});
+
+	it("a host delete: a row whose release throws becomes an orphan and the other rows are still released", async () => {
+		const first = freshName("thr");
+		const second = freshName("thr");
+		const host = hostOf([first, second]);
+		await apply(host, [{ name: first }, { name: second }]);
+		fake.reset();
+		const firstId = (await rowOf(first)).id;
+		const remove = managedRows.remove;
+		managedRows.remove = (id) => (id === firstId ? Promise.reject(new Error("database is locked")) : remove(id));
+		try {
+			await deleteHost(host);
+		} finally {
+			managedRows.remove = remove;
+		}
+		assert.equal((await metaOf(first)).orphan, true);
+		assert.equal((await rowOf(first)).enabled, 0);
+		assert.equal(await rowOf(second), undefined);
+		assert.equal(fake.calls.remove, 2);
+	});
+
+	it("a save with a new tick and no known address makes no detection in the request; the job detects", async () => {
+		net.unknown = true;
+		const name = freshName("det");
+		const host = hostOf([name]);
+		const answered = await save(host, [{ name }]);
+		assert.equal(stateOf(answered, name).state, "pending");
+		assert.equal(net.asked, 0, "no detection inside the save");
+		await settle(host);
+		assert.ok(net.asked > 0, "the job detected");
+		assert.equal(stateOf(await hostStates(host), name).state, "ok");
+		// no address at all: the job refuses the name
+		net.ipv4 = null;
+		const none = freshName("det");
+		const noneHost = hostOf([none]);
+		assert.equal(stateOf(await save(noneHost, [{ name: none }]), none).state, "pending");
+		await settle(noneHost);
+		assert.equal(stateOf(await hostStates(noneHost), none).reason, "error.host-dns-no-public-address");
+		assert.equal(fake.calls.write, 1);
+	});
+
+	it("a changed orphan ticked again resumes create-only: the other value ends as exists and is never written over", async () => {
+		const name = freshName("chg");
+		const host = hostOf([name]);
+		await apply(host, [{ name }]);
+		// someone else replaced the record at the provider
+		fake.set(name, "A", [OTHER]);
+		fake.reset();
+		assert.equal(stateOf(await apply(host, []), name).state, "orphan");
+		assert.equal((await metaOf(name)).orphan_note, "changed");
+		fake.reset();
+		const again = stateOf(await apply(host, [{ name }]), name);
+		assert.equal(again.state, "exists");
+		assert.equal(again.adopt_allowed, true);
+		assert.equal(fake.calls.write, 0);
+		assert.deepEqual(fake.get(name, "A").values, [OTHER]);
+
+		// an orphan whose record is still NPMpro's resumes as its own: nothing is written, it is ok
+		const own = freshName("res");
+		const ownHost = hostOf([own]);
+		await apply(ownHost, [{ name: own }]);
+		fake.fail.remove = true;
+		assert.equal(stateOf(await apply(ownHost, []), own).state, "orphan");
+		fake.reset();
+		assert.equal(stateOf(await apply(ownHost, [{ name: own }]), own).state, "ok");
+		assert.equal(fake.calls.write, 0);
+		assert.equal((await metaOf(own)).create_only, undefined, "its first run ended create-only");
+	});
+
+	it("an orphan of another owner's credential is not resumed by a user who cannot see it", async () => {
+		const name = freshName("oth");
+		const host = hostOf([name]);
+		await apply(host, [{ name }]);
+		fake.fail.remove = true;
+		await apply(host, []);
+		fake.reset();
+		const stranger = accessOf({ userId: 55, visibility: "user" });
+		const states = await apply(host, [{ name }], stranger);
+		assert.equal(stateOf(states, name).state, "unavailable");
+		assert.equal(stateOf(states, name).reason, "error.host-dns-no-credential");
+		assert.equal((await metaOf(name)).orphan, true);
+		assert.equal(fake.total(), 0);
+	});
+
+	it("a host disabled while its save job runs gets its row paused; enabling it writes the record", async () => {
+		const name = freshName("dj");
+		const host = hostOf([name]);
+		const held = hold("read");
+		await save(host, [{ name }]);
+		await held.started;
+		disabledHosts.add(host.id);
+		assert.deepEqual(await service.onDisable(manager, { hostType: "proxy_host", host }), []);
+		held.open();
+		await settle(host);
+		const row = await rowOf(name);
+		assert.equal(row.enabled, 0);
+		assert.equal(row.state, "disabled");
+		assert.equal((await metaOf(name)).paused_by_host, true);
+		assert.equal(fake.calls.write, 0);
+		disabledHosts.delete(host.id);
+		await service.onEnable(manager, { hostType: "proxy_host", host });
+		await runEngine(row.id);
+		assert.deepEqual(fake.get(name, "A").values, [IP4]);
+	});
+
+	it("Adopt and update on a disabled host adopts the row paused and writes nothing", async () => {
+		const name = freshName("ad");
+		fake.set(name, "A", [OTHER]);
+		const host = await realHost([name]);
+		const line = stateOf(await apply(host, [{ name }]), name);
+		assert.equal(line.state, "exists");
+		await api.db("proxy_host").where({ id: host.id }).update({ enabled: false });
+		fake.reset();
+		const adopted = await service.adopt(manager, { id: line.record_id });
+		assert.equal(adopted.state, "paused");
+		assert.equal(adopted.origin, "adopted");
+		assert.equal((await metaOf(name)).paused_by_host, true);
+		assert.equal(fake.calls.write, 0);
+		assert.deepEqual(fake.get(name, "A").values, [OTHER]);
+	});
+
+	it("Adopt and Leave on a row removed while they waited for its lock answer 404", async () => {
+		for (const action of ["adopt", "leave"]) {
+			const name = freshName(action);
+			fake.set(name, "A", [OTHER]);
+			const host = await realHost([name]);
+			const line = stateOf(await apply(host, [{ name }]), name);
+			let release;
+			const gate = new Promise((resolve) => {
+				release = resolve;
+			});
+			const holding = recordLock(line.record_id, () => gate);
+			const pending = service[action](manager, { id: line.record_id });
+			await tickOnce();
+			await api.db("npmpro_ddns_record").where({ id: line.record_id }).delete();
+			release();
+			await holding;
+			await assert.rejects(pending, errs.ItemNotFoundError);
+		}
+	});
+
+	it("a job result is shown to another user with own visibility without its provider message or covering name", async () => {
+		const parent = `mask.${ZONE}`;
+		fake.set(`*.${parent}`, "A", [OTHER]);
+		const covered = `x.${parent}`;
+		const failing = freshName("mskf");
+		const host = hostOf([covered, failing]);
+		const read = provider.read;
+		provider.read = (args) =>
+			args.name === failing
+				? Promise.reject(new DdnsProviderError({ code: "failed", message: "HTTP 500 zone 42 detail" }))
+				: read(args);
+		let own;
+		try {
+			own = await apply(host, [{ name: covered }, { name: failing }]);
+		} finally {
+			provider.read = read;
+		}
+		assert.equal(stateOf(own, covered).covered_by, `*.${parent}`);
+		assert.match(stateOf(own, failing).message, ZONE_DETAIL);
+		const owner = accessOf({ userId: 55, visibility: "user" });
+		const seen = await service.statesOf(owner, { hostType: "proxy_host", host });
+		assert.deepEqual(
+			[stateOf(seen, covered).state, stateOf(seen, covered).reason, stateOf(seen, covered).covered_by],
+			["covered", "host-dns.covered-by-other", null],
+		);
+		assert.equal(stateOf(seen, failing).state, "failed");
+		assert.equal(stateOf(seen, failing).reason, "error.host-dns-read-failed");
+		assert.equal(stateOf(seen, failing).message, "The record could not be read at the provider");
+	});
+
+	it("a host job waits while a restore pauses Dynamic DNS, and leaves a row a restore put at the same id", async () => {
+		const name = freshName("pz");
+		const host = hostOf([name]);
+		ddnsPause.on = true;
+		await save(host, [{ name }]);
+		await tickOnce();
+		assert.equal(fake.total(), 0);
+		assert.equal(await rowOf(name), undefined);
+		ddnsPause.on = false;
+		await settle(host);
+		assert.equal(stateOf(await hostStates(host), name).state, "ok");
+
+		// the first release waits at the provider; meanwhile the second row's id holds another host's row
+		const other = freshName("pz");
+		const both = hostOf([name, other]);
+		const twoHost = { ...host, domain_names: [name, other] };
+		await apply(twoHost, [{ name }, { name: other }]);
+		fake.reset();
+		const otherId = (await rowOf(other)).id;
+		const held = hold("remove");
+		await save(twoHost, []);
+		await held.started;
+		await api.db("npmpro_ddns_record").where({ id: otherId }).update({ host_id: both.id });
+		held.open();
+		await settle(twoHost);
+		assert.deepEqual(fake.removes, [{ name, type: "A", value: IP4 }]);
+		assert.equal((await rowOf(other)).host_id, both.id, "the row at that id is left alone");
+		assert.deepEqual(fake.get(other, "A").values, [IP4]);
+	});
+
+	it("a credential deleted between the plan and the insert: no credential, not name taken", async () => {
+		const name = freshName("nocred");
+		const insert = managedRows.insert;
+		managedRows.insert = () => Promise.reject(new errs.ItemNotFoundError(credentialId));
+		let states;
+		try {
+			states = await apply(hostOf([name]), [{ name }]);
+		} finally {
+			managedRows.insert = insert;
+		}
+		assert.equal(stateOf(states, name).reason, "error.host-dns-no-credential");
+	});
+
+	it("the reach probe: at most 4 at once, and a repeat of the last 30 s is answered without probing", async () => {
+		let active = 0;
+		let most = 0;
+		const gates = [];
+		const limited = makeService({
+			probe: async () => {
+				active += 1;
+				most = Math.max(most, active);
+				await new Promise((resolve) => gates.push(resolve));
+				active -= 1;
+				return { result: "reachable", port: 80, detail: "" };
+			},
+		});
+		const names = Array.from({ length: 6 }, () => freshName("lim"));
+		const all = names.map((one) => limited.reach(manager, { hostType: "proxy_host", host: null, name: one }));
+		while (gates.length < 4) await tickOnce();
+		await tickOnce();
+		assert.equal(gates.length, 4, "the fifth waits");
+		while (gates.length > 0 || active > 0) {
+			for (const open of gates.splice(0)) open();
+			await tickOnce();
+		}
+		await Promise.all(all);
+		assert.equal(most, 4);
+
+		const name = freshName("rep");
+		await service.reach(manager, { hostType: "proxy_host", host: null, name });
+		await service.reach(manager, { hostType: "proxy_host", host: null, name });
+		assert.equal(probe.calls, 1);
+		clock.at += 31_000;
+		await service.reach(manager, { hostType: "proxy_host", host: null, name });
+		assert.equal(probe.calls, 2);
+	});
+
+	it("the plan route reuses its answer for 30 s for the same user and names; a host change forgets it", async () => {
+		const name = freshName("pc");
+		const plan = () => service.planHost(manager, { hostType: "proxy_host", names: [name] });
+		const first = await plan();
+		const reads = fake.calls.read;
+		assert.ok(reads > 0);
+		assert.deepEqual(await plan(), first);
+		assert.equal(fake.calls.read, reads, "answered again from the last 30 s");
+		await service.planHost(accessOf({ userId: 2 }), { hostType: "proxy_host", names: [name] });
+		assert.ok(fake.calls.read > reads, "another user is planned on its own");
+		const afterOther = fake.calls.read;
+		clock.at += 31_000;
+		await plan();
+		assert.ok(fake.calls.read > afterOther, "an answer older than 30 s is planned again");
+		assert.equal((await plan()).names[0].available, true);
+		// another host takes the name: the plan is made again at once
+		await apply(hostOf([name]), [{ name }]);
+		assert.equal((await plan()).names[0].reason, "error.host-dns-name-taken");
 	});
 });

@@ -115,7 +115,7 @@
 									"string",
 									"null"
 								],
-								"description": "This server's confirmed public IPv4, detected when unknown; null when none was found",
+								"description": "This server's confirmed public IPv4, detected when unknown; null when none was found, and always null for a user without Certificates manage",
 								"example": "203.0.113.7"
 							},
 							"ipv6_address": {
@@ -123,7 +123,7 @@
 									"string",
 									"null"
 								],
-								"description": "This server's confirmed public IPv6, null when none was found",
+								"description": "This server's confirmed public IPv6; null when none was found, and always null for a user without Certificates manage",
 								"example": null
 							},
 							"host_disabled": {
@@ -324,5 +324,5 @@
 			}
 		}
 	},
-	"description": "Read only. For each name: whether a host record can be made, why not, the covering credential the user may see, the zone, the TTL, an existing record at the provider, and this server's public addresses (detected when unknown). Provider reads happen only for a user with Certificates manage. It writes nothing; the save repeats every check.\n\nNeeds: the view right of the host type"
+	"description": "Read only. For each name: whether a host record can be made, why not, the covering credential the user may see, the zone, the TTL, an existing record at the provider, and, for a user with Certificates manage, this server's public addresses (detected when unknown). Provider reads happen only for a user with Certificates manage, at most 4 at once over every request, and the same user's answer for the same names is reused for 30 s. It writes nothing; the save repeats every check.\n\nNeeds: the view right of the host type"
 }
