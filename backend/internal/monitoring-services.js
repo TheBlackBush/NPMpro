@@ -25,6 +25,7 @@ import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
 import { createMonitoring } from "./monitoring.js";
 import internalMonitoringSetting from "./monitoring-setting.js";
+import { notify } from "./notify.js";
 
 const STATE_ID = "traffic-state";
 const HOST_TABLES = [
@@ -106,7 +107,16 @@ const traffic = createTrafficService({
 		loadVisitorKey({ readMeta: stateMeta.readMeta, writeMeta: stateMeta.writeMeta, box: defaultSecretBox }),
 });
 
-const crowdsec = createCrowdsecService({ geoLookup: (ip) => geoip.lookup(ip)?.country ?? null });
+// the unreachable state of CrowdSec: off (not configured) removes it, no event
+const reportCrowdsecState = ({ state, error, secrets }) =>
+	state === "off"
+		? notify.clearState("crowdsec.unreachable", "crowdsec")
+		: notify.reportState("crowdsec.unreachable", "crowdsec", { state, source: { error, secrets } });
+
+const crowdsec = createCrowdsecService({
+	geoLookup: (ip) => geoip.lookup(ip)?.country ?? null,
+	onState: reportCrowdsecState,
+});
 
 const geoipService = createGeoipService({ geoip, runUpdate: runGeoipUpdate, getConfig: getGeoipConfig });
 

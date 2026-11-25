@@ -65,6 +65,7 @@ const harness = ({
 	ip = {},
 	cooldownMs = 5 * MIN,
 	zoneless = false,
+	onState,
 } = {}) => {
 	const clock = makeClock();
 	const rows = new Map(records.map((row) => [row.id, structuredClone(row)]));
@@ -129,6 +130,7 @@ const harness = ({
 		settings: () => ({ periodMs: 5 * MIN, cooldownMs, resolvers: ["9.9.9.9"] }),
 		clock,
 		makeFetch: () => () => Promise.resolve({}),
+		onState,
 	});
 	return {
 		engine,
@@ -969,5 +971,42 @@ describe("ddns engine: a provider that says to stop", () => {
 		await h.engine.cycle();
 		assert.equal(h.row().meta.stopped, undefined);
 		assert.equal(h.row().next_try_on.getTime(), START + 6 * HOUR);
+	});
+});
+
+describe("ddns engine: state callback", () => {
+	it("is called after each save with the record and the patch", async () => {
+		const seen = [];
+		const h = harness({
+			zone: { readError: new DdnsProviderError({ code: "failed", message: "down" }) },
+			onState: (record, patch) => {
+				seen.push({ id: record.id, name: record.name, state: patch.state, saved: h.row().state });
+			},
+		});
+		await h.engine.cycle();
+		h.dns.readError = null;
+		h.clock.advance(5 * MIN);
+		await h.engine.cycle();
+		assert.deepEqual(
+			seen.map((one) => [one.id, one.name, one.state, one.saved]),
+			[
+				[1, "home.example.com", "failed", "failed"],
+				[1, "home.example.com", "ok", "ok"],
+			],
+		);
+	});
+
+	it("a callback that throws changes nothing in the run", async () => {
+		const errors = [];
+		const h = harness({
+			zone: { A: [IP4_NEW] },
+			onState: () => {
+				throw new Error("layer broke");
+			},
+		});
+		const result = await h.engine.cycle();
+		assert.equal(result.failed, 0);
+		assert.equal(h.row().state, "ok");
+		assert.equal(errors.length, 0);
 	});
 });

@@ -11,6 +11,7 @@ import { normalizeDomainName } from "../lib/dns-domain-name.js";
 import errs from "../lib/error.js";
 import { createKeyedLock } from "../lib/keyed-lock.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
+import { global as logger } from "../logger.js";
 import ddnsHistoryModel from "../models/ddns_history.js";
 import ddnsRecordModel from "../models/ddns_record.js";
 import deadHostModel from "../models/dead_host.js";
@@ -20,6 +21,7 @@ import proxyHostModel from "../models/proxy_host.js";
 import redirectionHostModel from "../models/redirection_host.js";
 import internalAuditLog from "./audit-log.js";
 import internalDnsCredential from "./dns-credential.js";
+import { notify } from "./notify.js";
 
 // The DDNS records: the API side (list, create, change, delete, history) and the store the engine reads and writes.
 // One run at a time per record (recordLock, shared with the engine) and one name check at a time (nameLock).
@@ -884,13 +886,27 @@ const internalDdnsRecord = {
 // loaded on use: the host record service imports this file
 const hostRecords = async () => (await import("./host-dns-record.js")).default;
 
+// a deleted record has no notification state left; the layer never fails the delete
+const clearRecordStates = async (id) => {
+	try {
+		await notify.clearState("ddns.record_failed", String(id));
+		await notify.clearState("ddns.record_stopped", String(id));
+	} catch (error) {
+		logger.warn(
+			`Dynamic DNS record ${id}: could not clear its notification states: ${String(error?.message ?? error).slice(0, 200)}`,
+		);
+	}
+};
+
 /** Deletes a row and its history (SQLite does not run the foreign key's cascade: the history goes in code) */
-const deleteRow = (id) =>
-	ddnsRecordModel.transaction(async (trx) => {
+const deleteRow = async (id) => {
+	await ddnsRecordModel.transaction(async (trx) => {
 		await ddnsHistoryModel.query(trx).where("ddns_record_id", id).delete();
 		const gone = await ddnsRecordModel.query(trx).deleteById(id);
 		if (gone === 0) throw new errs.ItemNotFoundError(id);
 	});
+	await clearRecordStates(id);
+};
 
 /**
  * The rows of the host record option (host-dns-record.js); no access checks. A row is inserted under its credential

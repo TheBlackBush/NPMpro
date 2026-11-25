@@ -9,6 +9,7 @@ import internalAuditLog from "./audit-log.js";
 import internalCertificate from "./certificate.js";
 import internalHost from "./host.js";
 import internalHostDnsRecord from "./host-dns-record.js";
+import { clearHostConfig } from "./host-notify.js";
 import internalNginx from "./nginx.js";
 
 const DNS_RECORDS = "dns_records";
@@ -230,6 +231,7 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 
 			await flow.deleteRow(row);
 			hostCheckCache.clearHost(hostType, row.id);
+			await clearHostConfig(hostType, row.id);
 
 			let states = null;
 			try {

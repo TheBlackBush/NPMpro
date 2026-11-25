@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { cp } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, describe, it } from "node:test";
-import { ssl as logger } from "../logger.js";
+import { global as globalLogger, ssl as logger } from "../logger.js";
 import { startApi } from "./support/api.js";
 import {
 	acmeDirectory,
@@ -43,13 +43,16 @@ const stale = (id, on = "2000-01-01 00:00:00") => api.db("certificate").where({ 
 const eventsOf = (type, id) => seen.filter((one) => one.type === type && (id === undefined || one.data.id === id));
 const rowsOf = () => api.db("certificate").orderBy("id");
 const keepLogs = () => {
-	const originals = { ...logger };
+	const loggers = [logger, globalLogger];
+	const originals = loggers.map((one) => ({ ...one }));
 	const capture =
 		() =>
 		(...parts) =>
 			logged.push(parts.map(String).join(" "));
-	for (const level of ["debug", "info", "warn", "error"]) logger[level] = capture();
-	return () => Object.assign(logger, originals);
+	for (const one of loggers) for (const level of ["debug", "info", "warn", "error"]) one[level] = capture();
+	return () => {
+		for (const [at, one] of loggers.entries()) Object.assign(one, originals[at]);
+	};
 };
 const dnsCertificate = async (name) => {
 	const made = await admin.post("/nginx/dns-credentials", {
@@ -260,5 +263,294 @@ describe("certificate emit points", () => {
 			stateStore.report = original;
 			notify.registerChannel({ id: "fake", accepts: () => true, targets });
 		}
+	});
+});
+
+const hostEvents = (type, id) => seen.filter((one) => one.type === type && one.data.id === id);
+const hostStates = (id) => api.db(STATE).where({ event: "host.config_error" }).whereLike("object_id", `%:${id}`);
+const makeProxy = async (name, extra = {}) => {
+	const made = await admin.post("/nginx/proxy-hosts", { domain_names: [name], forward_host: "10.0.0.1", ...extra });
+	if (made.status !== 201) throw new Error(made.text);
+	return made.body;
+};
+const LONG_ERROR = `nginx: [emerg] ${"x".repeat(400)}`;
+
+describe("host config state emit points", () => {
+	it("a config error sends one event with 300 characters and no advanced config, the fix resolves it", async () => {
+		const host = await makeProxy("cfg.example.com", { advanced_config: "# secret-advanced-config-text" });
+		assert.equal(seen.length, 0);
+		api.outside.control.failNext = LONG_ERROR;
+		const bad = await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 81 });
+		assert.equal(bad.body.npmpro_nginx_online, false, bad.text);
+		const failed = hostEvents("host.config_error", host.id);
+		assert.equal(failed.length, 1);
+		assert.equal(failed[0].data.type, "proxy_host");
+		assert.deepEqual(failed[0].data.domain_names, ["cfg.example.com"]);
+		assert.equal(failed[0].data.error.length, 300);
+		assert.doesNotMatch(JSON.stringify(failed[0]), /secret-advanced-config-text|advanced_config/u);
+
+		// a second failure of the same host sends nothing more
+		api.outside.control.failNext = LONG_ERROR;
+		await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 82 });
+		assert.equal(hostEvents("host.config_error", host.id).length, 1);
+
+		const fixed = await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 83 });
+		assert.equal(fixed.body.npmpro_nginx_online, true, fixed.text);
+		assert.equal(hostEvents("host.config_error.resolved", host.id).length, 1);
+
+		assert.equal((await hostStates(host.id)).length, 1);
+		assert.equal((await admin.delete(`/nginx/proxy-hosts/${host.id}`)).status, 200);
+		assert.equal((await hostStates(host.id)).length, 0);
+	});
+
+	it("a batch success resolves a failed host and sends nothing for healthy ones", async () => {
+		const { loadEnabledHosts, regenerateAllHostsNow } = await import("../internal/regenerate.js");
+		const hosts = [
+			await makeProxy("b1.example.com"),
+			await makeProxy("b2.example.com"),
+			await makeProxy("b3.example.com"),
+		];
+		api.outside.control.failNext = LONG_ERROR;
+		await admin.put(`/nginx/proxy-hosts/${hosts[1].id}`, { forward_port: 81 });
+		assert.equal(hostEvents("host.config_error", hosts[1].id).length, 1);
+		seen = [];
+		await regenerateAllHostsNow(await loadEnabledHosts());
+		assert.equal(hostEvents("host.config_error.resolved", hosts[1].id).length, 1);
+		assert.equal(seen.length, 1);
+
+		// every host healthy: a second regeneration is silent
+		seen = [];
+		await regenerateAllHostsNow(await loadEnabledHosts());
+		assert.equal(seen.length, 0);
+		for (const one of hosts) assert.equal((await hostStates(one.id)).length, 1);
+	});
+
+	it("a layer that throws leaves the host save and delete unchanged", async () => {
+		const names = ["reportState", "clearMatching", "clearState", "emit"];
+		const originals = Object.fromEntries(names.map((name) => [name, notify[name]]));
+		for (const name of names) {
+			notify[name] = () => {
+				throw new Error("layer broke");
+			};
+		}
+		const restore = keepLogs();
+		try {
+			const host = await makeProxy("throw.example.com");
+			api.outside.control.failNext = "nginx: [emerg] boom";
+			const bad = await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 81 });
+			assert.equal(bad.status, 200, bad.text);
+			assert.equal(bad.body.npmpro_nginx_online, false);
+			assert.equal((await admin.delete(`/nginx/proxy-hosts/${host.id}`)).status, 200);
+			assert.ok(logged.some((line) => line.includes("Host notifications")));
+		} finally {
+			restore();
+			Object.assign(notify, originals);
+		}
+	});
+});
+
+describe("GeoIP state emit points", () => {
+	it("the first failure sends, the second does not, a success resolves", async () => {
+		const { default: setting } = await import("../internal/monitoring-setting.js");
+		await setting.recordGeoipResult({ ok: false, error: "download failed" });
+		await setting.recordGeoipResult({ ok: false, error: "download failed again" });
+		assert.equal(seen.filter((one) => one.type === "geoip.failed").length, 1);
+		assert.equal(seen[0].data.error, "download failed");
+		await setting.recordGeoipResult({ ok: true, updated: ["city"] });
+		assert.equal(seen.filter((one) => one.type === "geoip.failed.resolved").length, 1);
+	});
+
+	it("a layer that throws keeps the stored result", async () => {
+		const { default: setting } = await import("../internal/monitoring-setting.js");
+		const original = notify.reportState;
+		notify.reportState = () => {
+			throw new Error("layer broke");
+		};
+		const restore = keepLogs();
+		try {
+			await setting.recordGeoipResult({ ok: false, error: "kept" });
+			assert.equal(
+				logged.some((line) => line.includes("GeoIP notification failed")),
+				true,
+			);
+		} finally {
+			restore();
+			notify.reportState = original;
+		}
+		const stored = await (await import("../lib/monitoring-config.js")).readStoredGeoip();
+		assert.equal(stored.last_error, "kept");
+	});
+});
+
+describe("backup schedule state emit points", () => {
+	const access = { canAdmin: () => true, token: { getUserId: () => 1 } };
+	const box = { encrypt: (value) => JSON.stringify(value), decrypt: (value) => JSON.parse(value) };
+	const quiet = { info: () => {}, warn: () => {}, error: () => {} };
+	let behaviour;
+	let service;
+
+	before(async () => {
+		const { createScheduleService } = await import("../internal/backup-schedules.js");
+		service = (extra = {}) =>
+			createScheduleService({
+				knex: api.db,
+				box,
+				log: quiet,
+				audit: async () => {},
+				notify,
+				backup: {
+					scheduledBackup: async () => {
+						if (behaviour === "fail") throw new Error("disk full");
+						return { name: "npmpro-backup-1-s1.npmpro", size: 100 };
+					},
+				},
+				store: {
+					pruneSchedule: async () => [],
+					detachSchedule: async () => [],
+					scheduleCounts: async () => new Map(),
+				},
+				...extra,
+			});
+	});
+	beforeEach(async () => {
+		await api.db("npmpro_backup_schedule").delete();
+	});
+
+	const created = (svc, name = "Nightly") =>
+		svc.create(access, {
+			name,
+			frequency: "daily",
+			time: "03:00",
+			types: ["proxy_hosts"],
+			protection: "none",
+			keep: 2,
+		});
+
+	it("a failing then succeeding schedule sends failed, then resolved and succeeded", async () => {
+		const svc = service();
+		const { id } = await created(svc);
+		behaviour = "fail";
+		await svc.runNow(access, id);
+		await svc.runNow(access, id);
+		assert.equal(seen.filter((one) => one.type === "backup.failed").length, 1);
+		assert.equal(seen[0].data.schedule.id, id);
+		assert.equal(seen[0].data.error, "disk full");
+		behaviour = "ok";
+		await svc.runNow(access, id);
+		assert.equal(seen.filter((one) => one.type === "backup.failed.resolved").length, 1);
+		const succeeded = seen.filter((one) => one.type === "backup.succeeded");
+		assert.equal(succeeded.length, 1);
+		assert.equal(succeeded[0].data.file, "npmpro-backup-1-s1.npmpro");
+		assert.equal(succeeded[0].data.size, 100);
+	});
+
+	it("a schedule delete clears its state", async () => {
+		const svc = service();
+		const { id } = await created(svc);
+		behaviour = "fail";
+		await svc.runNow(access, id);
+		const rows = () => api.db(STATE).where({ event: "backup.failed", object_id: String(id) });
+		assert.equal((await rows()).length, 1);
+		await svc.remove(access, id);
+		assert.equal((await rows()).length, 0);
+	});
+
+	it("a layer that throws keeps the run result and the delete", async () => {
+		const throwing = {
+			reportState: () => {
+				throw new Error("layer broke");
+			},
+			emit: () => {
+				throw new Error("layer broke");
+			},
+			clearState: () => {
+				throw new Error("layer broke");
+			},
+		};
+		const svc = service({ notify: throwing });
+		const { id } = await created(svc);
+		behaviour = "fail";
+		const view = await svc.runNow(access, id);
+		assert.equal(view.last_status, "failed");
+		assert.equal(view.last_error, "disk full");
+		behaviour = "ok";
+		assert.equal((await svc.runNow(access, id)).last_status, "success");
+		await svc.remove(access, id);
+		assert.equal((await api.db("npmpro_backup_schedule").where({ id })).length, 0);
+	});
+});
+
+describe("DDNS record state emit points", () => {
+	const record = { id: 41, name: "home.example.com", provider: "cloudflare" };
+	const rows = (event) => api.db(STATE).where({ event, object_id: "41" });
+	let report;
+	let managedRows;
+
+	before(async () => {
+		({ reportRecordState: report } = await import("../internal/ddns.js"));
+		({ managedRows } = await import("../internal/ddns-record.js"));
+	});
+
+	it("a failure, a second failure, a success and a stop", async () => {
+		await report(record, { state: "failed", error: "provider said no", meta: {} });
+		await report(record, { state: "failed", error: "provider said no again", meta: {} });
+		assert.equal(seen.filter((one) => one.type === "ddns.record_failed").length, 1);
+		assert.equal(seen[0].data.record.name, "home.example.com");
+		assert.equal(seen[0].data.error, "provider said no");
+		assert.equal(seen.filter((one) => one.type === "ddns.record_stopped").length, 0);
+		await report(record, { state: "ok", error: null, meta: {} });
+		assert.equal(seen.filter((one) => one.type === "ddns.record_failed.resolved").length, 1);
+
+		seen = [];
+		await report(record, { state: "failed", error: "badauth", meta: { stopped: true } });
+		assert.equal(seen.filter((one) => one.type === "ddns.record_stopped").length, 1);
+		await report(record, { state: "ok", error: null, meta: {} });
+		assert.equal(seen.filter((one) => one.type === "ddns.record_stopped.resolved").length, 1);
+	});
+
+	it("a patch without the state or the meta leaves the states alone", async () => {
+		await report(record, { state: "failed", error: "x", meta: {} });
+		seen = [];
+		await report(record, { last_checked_on: new Date() });
+		assert.equal(seen.length, 0);
+		assert.equal((await rows("ddns.record_failed")).length, 1);
+	});
+
+	const insertRow = (id) =>
+		api.db("npmpro_ddns_record").insert({
+			id,
+			owner_user_id: 1,
+			name: `r${id}.example.com`,
+			provider: "cloudflare",
+			zone: "example.com",
+			created_on: "2026-01-01 00:00:00",
+			modified_on: "2026-01-01 00:00:00",
+		});
+	const both = async () => (await rows("ddns.record_failed")).length + (await rows("ddns.record_stopped")).length;
+
+	it("a record delete clears both states", async () => {
+		await insertRow(41);
+		await report(record, { state: "failed", error: "x", meta: { stopped: true } });
+		assert.equal(await both(), 2);
+		await managedRows.remove(41);
+		assert.equal(await both(), 0);
+	});
+
+	it("a layer that throws keeps the record delete", async () => {
+		await insertRow(41);
+		await report(record, { state: "failed", error: "x", meta: {} });
+		const original = notify.clearState;
+		notify.clearState = () => {
+			throw new Error("layer broke");
+		};
+		const restore = keepLogs();
+		try {
+			await managedRows.remove(41);
+			assert.ok(logged.some((line) => line.includes("could not clear its notification states")));
+		} finally {
+			restore();
+			notify.clearState = original;
+		}
+		assert.equal((await api.db("npmpro_ddns_record").where({ id: 41 })).length, 0);
 	});
 });

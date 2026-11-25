@@ -20,7 +20,7 @@ import { pauseDdns, resumeDdns } from "./ddns.js";
 import internalDnsCredential from "./dns-credential.js";
 import { reloadLandingPagesAfterRestore } from "./landing-pages.js";
 import internalNginx from "./nginx.js";
-import { cleanupAfterRestore, pauseNotify, resumeNotify } from "./notify.js";
+import { cleanupAfterRestore, notify, pauseNotify, resumeNotify } from "./notify.js";
 import {
 	loadEnabledHosts,
 	rebuildAccessListFiles,
@@ -82,6 +82,7 @@ const internalBackupSchedules = createScheduleService({
 	backup: internalBackup,
 	store: backupStore,
 	audit: (access, data) => internalAuditLog.add(access, data),
+	notify,
 	log: logger,
 });
 
