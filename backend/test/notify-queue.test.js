@@ -11,6 +11,8 @@ const STATE = "npmpro_notification_state";
 const MINUTE = 60_000;
 const DAY = 24 * 3_600_000;
 const START = Date.parse("2026-11-26T10:00:00Z");
+const PASSWORD = "hunter2";
+const TOKEN = "abc123";
 const DELAYS = [60_000, 300_000];
 const WRITER_RUNNING = /writer-running|still running/u;
 const NOT_EVENT = /not a notification event/u;
@@ -659,6 +661,31 @@ describe("worker", () => {
 		assert.equal(only.error.length, 300);
 		assert.ok(only.error.startsWith("POST failed"));
 		assert.ok(log.lines.every((line) => line.length < 400));
+	});
+
+	it("a thrown send error with a URL keeps no password or token in the row or the log", async () => {
+		const message = `connect failed https://user:${PASSWORD}@hook.example/x?token=${TOKEN}`;
+		const channel = channelOf("webhook", { send: () => Promise.reject(new Error(message)) });
+		const { queue, worker, log } = setup([channel]);
+		await queue.add([row({ target_id: 1 })]);
+		await worker.runOnce();
+		const [only] = await rows();
+		assert.equal(only.error, "connect failed https://***@hook.example/x?***");
+		for (const text of [only.error, ...log.lines]) {
+			assert.ok(!text.includes(PASSWORD) && !text.includes(TOKEN), text);
+		}
+		assert.ok(log.lines.some((line) => line.includes("send failed")));
+	});
+
+	it("the settle failure line keeps no password or token either", async () => {
+		const channel = channelOf("webhook");
+		const { queue, worker, log } = setup([channel]);
+		queue.settle = () => Promise.reject(new Error(`db https://user:${PASSWORD}@db.example/x?token=${TOKEN} down`));
+		await queue.add([row({ target_id: 1 })]);
+		await worker.runOnce();
+		const line = log.lines.find((one) => one.includes("settle failed"));
+		assert.ok(line);
+		assert.ok(!line.includes(PASSWORD) && !line.includes(TOKEN), line);
 	});
 
 	it("pauseAndWait waits for the other lanes too", async () => {

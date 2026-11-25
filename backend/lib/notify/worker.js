@@ -1,5 +1,5 @@
 import { waitWithin } from "../database/pause.js";
-import { clean } from "./catalogue.js";
+import { safeError } from "./queue.js";
 
 // The delivery worker: one pass at a time. A pass asks the queue for the due rows of every channel, sends them (one
 // target at a time, at most maxConcurrent units at once per channel) and settles the results. A failure of one send
@@ -52,7 +52,7 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 		try {
 			results = await channel.send(job.rows);
 		} catch (error) {
-			reason = clean(error?.message ?? String(error));
+			reason = safeError(error?.message ?? String(error));
 			log?.warn?.(`notify: ${channel.id} send failed: ${reason}`);
 			results = [];
 		}
@@ -70,7 +70,7 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 				await queue.settle(results, { retryDelays: channel.retryDelays ?? [] });
 			} catch (error) {
 				// the rows stay sending until the next start puts them back; the rest of the lane goes on
-				log?.warn?.(`notify: ${channel.id} settle failed: ${clean(error?.message ?? String(error))}`);
+				log?.warn?.(`notify: ${channel.id} settle failed: ${safeError(error?.message ?? String(error))}`);
 			}
 		}
 	};
@@ -93,7 +93,7 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 			try {
 				more = (await runChannel(channel)) || more;
 			} catch (error) {
-				log?.warn?.(`notify: ${channel.id} pass failed: ${clean(error?.message ?? String(error))}`);
+				log?.warn?.(`notify: ${channel.id} pass failed: ${safeError(error?.message ?? String(error))}`);
 			}
 		}
 		return more;

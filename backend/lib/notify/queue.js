@@ -10,6 +10,17 @@ const DAY_MS = 24 * 3_600_000;
 const FINAL = ["sent", "failed", "dropped"];
 const MAX_RESPONSE = 2048;
 
+const URL_USERINFO = /(?<scheme>\b[a-z][a-z0-9+.-]*:\/\/)[^\s/?#@]*@/giu;
+const URL_QUERY = /(?<url>\b[a-z][a-z0-9+.-]*:\/\/[^\s?#]*)[?#]\S*/giu;
+
+/**
+ * Error text that is safe to store and log: clean(), and a URL in it loses its credentials and its query
+ *
+ * @param   {*}  text
+ * @returns {String}
+ */
+const safeError = (text) => clean(text).replace(URL_USERINFO, "$<scheme>***@").replace(URL_QUERY, "$<url>?***");
+
 const textOrNull = (value) => (value === undefined || value === null ? null : String(value));
 
 const parsePayload = (text) => {
@@ -121,7 +132,7 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 				modified_on: now,
 				http_status: result.http_status ?? null,
 				duration_ms: result.duration_ms === undefined ? null : Math.round(result.duration_ms),
-				error: result.error ? clean(result.error) : null,
+				error: result.error ? safeError(result.error) : null,
 				response: textOrNull(result.response)?.slice(0, MAX_RESPONSE) ?? null,
 			};
 			if (result.ok) {
@@ -186,4 +197,4 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 	return { add, claimDue, clearOldPayloads, dropTarget, pruneMail, pruneTarget, resetSending, settle };
 };
 
-export { createQueue };
+export { createQueue, safeError };
