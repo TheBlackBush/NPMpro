@@ -19,6 +19,7 @@ const daily = {
 	keep: 2,
 };
 
+const TWELVE = /twelve chars/u;
 const quietNotify = { reportState: async () => true, emit: async () => {}, clearState: async () => true };
 const opened = [];
 after(() => Promise.all(opened.map((knex) => knex.destroy())));
@@ -911,17 +912,22 @@ it("the report's failed schedules are none, with a warning, when they cannot be 
 
 it("the failed backup event never holds the passphrase, even when the error text does", async () => {
 	const calls = [];
-	const recorder = { ...quietNotify, reportState: async (event, id, options) => calls.push({ event, id, options }) };
+	const recorder = {
+		...quietNotify,
+		reportState: (event, id, options) => Promise.resolve(calls.push({ event, id, options })),
+	};
 	const { service } = await make({
 		notify: recorder,
-		run: async () => {
-			throw new Error("cannot encrypt with twelve chars!");
-		},
+		run: () => Promise.reject(new Error("cannot encrypt with twelve chars!")),
 	});
-	const { id } = await service.create(admin(), { ...daily, protection: "passphrase", passphrase: "twelve chars!" });
-	await service.runNow(admin(), id);
+	const { id: scheduleId } = await service.create(admin(), {
+		...daily,
+		protection: "passphrase",
+		passphrase: "twelve chars!",
+	});
+	await service.runNow(admin(), scheduleId);
 	const [bad] = calls.filter((call) => call.options.state === "bad");
 	assert.deepEqual(bad.options.source.secrets, ["twelve chars!"]);
 	const { buildData } = await import("../lib/notify/catalogue.js");
-	assert.doesNotMatch(buildData("backup.failed", bad.options.source).error, /twelve chars/u);
+	assert.doesNotMatch(buildData("backup.failed", bad.options.source).error, TWELVE);
 });

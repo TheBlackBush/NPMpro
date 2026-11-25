@@ -936,7 +936,7 @@ describe("notify", () => {
 				report: () => Promise.reject(new Error("store down")),
 			},
 		});
-		assert.equal(await notify.reportState("host.config_error", "x", { state: "bad" }), undefined);
+		assert.equal(await notify.reportState("host.config_error", "x", { state: "bad" }), false);
 		assert.ok(log.lines.some((line) => line.includes("store down")));
 	});
 
@@ -945,10 +945,10 @@ describe("notify", () => {
 		await notify.reportState("host.config_error", "proxy_host:3", { state: "bad", source: { id: 3 } });
 		await notify.reportState("host.config_error", "proxy_host:3:x", { state: "bad", source: { id: 3 } });
 		await notify.reportState("host.config_error", "proxy_host:4", { state: "bad", source: { id: 4 } });
-		assert.equal(await notify.clearState("host.config_error", "proxy_host:4"), undefined);
+		assert.equal(await notify.clearState("host.config_error", "proxy_host:4"), true);
 		assert.equal(await notify.clearMatching("host.config_error", "proxy_host:3"), undefined);
 		assert.deepEqual(await db.knex(STATE), []);
-		assert.equal(await notify.clearState("not.an.event", "1"), undefined);
+		assert.equal(await notify.clearState("not.an.event", "1"), false);
 		assert.equal(await notify.clearMatching("not.an.event", "1"), undefined);
 		assert.equal(log.lines.filter((line) => line.startsWith("warn")).length, 2);
 	});

@@ -16,6 +16,7 @@ const CNAME_AT_NAME = /CNAME record/u;
 const SUFFIX = /suffix/u;
 const STARS = /\*\*\*/u;
 const TOKEN_FOUND = /tok-secret/u;
+const LAYER_BROKE = /layer broke/u;
 const BADAUTH = /badauth/u;
 
 const makeClock = () => {
@@ -1012,6 +1013,6 @@ describe("ddns engine: state callback", () => {
 		assert.equal(result.changed, 1);
 		assert.equal(h.row().state, "ok");
 		assert.equal(errors.length, 1);
-		assert.match(errors[0], /layer broke/u);
+		assert.match(errors[0], LAYER_BROKE);
 	});
 });
