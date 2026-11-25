@@ -47,12 +47,12 @@ export function filterHosts(rows, filters, { searchText, getGroup, getTags = () 
 	});
 }
 
-export function filterCertificates(rows, filters, { searchText, now = new Date() }) {
+export function filterCertificates(rows, filters, { searchText, now = new Date(), days }) {
 	return rows.filter((row) => {
 		if (!matchesSearch(row, filters.q, searchText)) return false;
 		if (filters.expiry === "soon") {
 			if (row.provider === "mtls" || !row.expiresOn) return false;
-			if (expiryInfo(row.expiresOn, now).state === "ok") return false;
+			if (expiryInfo(row.expiresOn, { validFrom: row.npmproValidFrom, days }, now).state === "ok") return false;
 		}
 		return true;
 	});

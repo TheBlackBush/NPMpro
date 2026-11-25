@@ -34,6 +34,7 @@ Both apply after the nginx reload that saving runs, and both turn TLS certificat
 ### Renewal
 
 - **Renewal check interval**: 1 to 499 hours between checks. A certificate is renewed only when due. Default: 3. Variable: `CERTBOT_RUN_INTERVAL`. Applies at once.
+- **Warn before expiry**: 1 to 60 days. A certificate shows as expiring soon (the Certificates list, the dashboard) this many days before it expires, but at most a third of its lifetime, so a short lived certificate is not flagged from its first day. Notifications use the same window. Default: 14. Variable: `CERT_WARNING_DAYS`. Applies at once.
 
 ### ECH
 
