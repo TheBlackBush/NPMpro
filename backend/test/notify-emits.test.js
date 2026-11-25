@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { cp } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, describe, it } from "node:test";
+import { isoToLocal } from "../lib/backup/rows.js";
 import { global as globalLogger, ssl as logger } from "../logger.js";
 import { startApi } from "./support/api.js";
 import {
@@ -21,7 +22,8 @@ const MASKED = /Challenge failed with token \*\*\* for the zone/u;
 const GENERIC = /^The renewal failed/u;
 const WENT_WRONG = /Renewal went wrong/u;
 const KEY_PATH = /private_key|\/accounts\//u;
-const sql = (ms) => new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+// a certificate date as the database stores it: naive local text (internal/certificate.js)
+const sql = (ms) => isoToLocal(new Date(ms).toISOString());
 
 let api;
 let admin;

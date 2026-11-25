@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
+import { isoToLocal } from "../lib/backup/rows.js";
 import { createNotify } from "../lib/notify/index.js";
 import { createQueue } from "../lib/notify/queue.js";
 import { createStateStore } from "../lib/notify/state-store.js";
@@ -22,7 +23,8 @@ let db;
 const clock = { at: START, now: () => clock.at };
 const rows = () => db.knex(TABLE).orderBy("id");
 const queueOf = () => createQueue({ knex: db.knex, clock });
-const sql = (ms) => new Date(ms).toISOString().replace("T", " ").slice(0, -1);
+// the stored form of a time on SQLite: naive local text, whole seconds (lib/notify/db-time.js)
+const sql = (ms) => isoToLocal(new Date(ms).toISOString());
 const row = (extra = {}) => ({
 	message_id: "msg_a",
 	event: "host.created",

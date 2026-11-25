@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
+import { isoToLocal } from "../lib/backup/rows.js";
 import { createStateStore, MOVED_WATERMARK_KEY, objectPartOf } from "../lib/notify/state-store.js";
 import { migratedSqlite } from "./support/database.js";
 
@@ -19,6 +20,8 @@ let db;
 const clock = { at: START, now: () => clock.at };
 const storeOf = (options = {}) => createStateStore({ knex: db.knex, clock, reminderHours: () => 24, ...options });
 const rows = () => db.knex(TABLE).orderBy("id");
+// the stored form of a UTC time on SQLite: naive local text, whole seconds
+const sql = (utc) => isoToLocal(`${utc}Z`);
 
 before(async () => {
 	db = await migratedSqlite();
@@ -38,7 +41,7 @@ describe("report", () => {
 		assert.equal(row.event, EXPIRING);
 		assert.equal(row.object_id, "1");
 		assert.equal(row.state, "ok");
-		assert.equal(row.since, "2026-11-26 10:00:00.000");
+		assert.equal(row.since, sql("2026-11-26T10:00:00"));
 		assert.equal(row.last_sent_on, null);
 		assert.deepEqual(JSON.parse(row.data), { id: 1 });
 	});
@@ -52,7 +55,7 @@ describe("report", () => {
 		});
 		const [row] = await rows();
 		assert.equal(row.state, "soon");
-		assert.equal(row.last_sent_on, "2026-11-26 10:00:00.000");
+		assert.equal(row.last_sent_on, sql("2026-11-26T10:00:00"));
 	});
 
 	it("writes nothing for ok after ok", async () => {
@@ -61,7 +64,7 @@ describe("report", () => {
 		clock.at += HOUR;
 		assert.equal(await store.report({ event: EXPIRING, objectId: 1, state: "ok", data: { id: 1, x: 2 } }), null);
 		const [row] = await rows();
-		assert.equal(row.since, "2026-11-26 10:00:00.000");
+		assert.equal(row.since, sql("2026-11-26T10:00:00"));
 		assert.deepEqual(JSON.parse(row.data), { id: 1 });
 	});
 
@@ -76,8 +79,8 @@ describe("report", () => {
 		});
 		const [row] = await rows();
 		assert.equal(row.state, "soon");
-		assert.equal(row.since, "2026-11-26 11:00:00.000");
-		assert.equal(row.last_sent_on, "2026-11-26 11:00:00.000");
+		assert.equal(row.since, sql("2026-11-26T11:00:00"));
+		assert.equal(row.last_sent_on, sql("2026-11-26T11:00:00"));
 		assert.deepEqual(JSON.parse(row.data), data);
 	});
 
@@ -88,8 +91,8 @@ describe("report", () => {
 		assert.equal(await store.report({ event: EXPIRING, objectId: 1, state: "soon", data: { days_left: 4 } }), null);
 		const [row] = await rows();
 		assert.deepEqual(JSON.parse(row.data), { days_left: 4 });
-		assert.equal(row.since, "2026-11-26 10:00:00.000");
-		assert.equal(row.last_sent_on, "2026-11-26 10:00:00.000");
+		assert.equal(row.since, sql("2026-11-26T10:00:00"));
+		assert.equal(row.last_sent_on, sql("2026-11-26T10:00:00"));
 	});
 
 	it("sends soon and then expired", async () => {
@@ -106,7 +109,7 @@ describe("report", () => {
 		assert.deepEqual(second, { type: EXPIRING, data: { state: "expired" } });
 		const [row] = await rows();
 		assert.equal(row.state, "expired");
-		assert.equal(row.since, "2026-12-01 10:00:00.000");
+		assert.equal(row.since, sql("2026-12-01T10:00:00"));
 	});
 
 	it("sends .resolved with the new data when bad turns ok", async () => {
@@ -122,7 +125,7 @@ describe("report", () => {
 		);
 		const [row] = await rows();
 		assert.equal(row.state, "ok");
-		assert.equal(row.since, "2026-11-26 11:00:00.000");
+		assert.equal(row.since, sql("2026-11-26T11:00:00"));
 		assert.equal(await store.report({ event: CONFIG, objectId: "proxy_host:12", state: "ok", data: {} }), null);
 	});
 
@@ -249,7 +252,7 @@ describe("reminders", () => {
 		clock.at += HOUR;
 		assert.equal((await store.dueReminders()).length, 1);
 		const [row] = await rows();
-		assert.equal(row.last_sent_on, "2026-11-28 10:00:00.000");
+		assert.equal(row.last_sent_on, sql("2026-11-28T10:00:00"));
 	});
 
 	it("counts from the last change, not from the first bad", async () => {
@@ -348,7 +351,7 @@ describe("clearing and pruning", () => {
 			event: EXPIRING,
 			object_id: String(index),
 			state: "ok",
-			since: "2026-11-26 10:00:00.000",
+			since: sql("2026-11-26T10:00:00"),
 		}));
 		for (let at = 0; at < many.length; at += 100) await db.knex(TABLE).insert(many.slice(at, at + 100));
 		await store.removeMissing(EXPIRING, [5]);
@@ -378,7 +381,7 @@ describe("clearing and pruning", () => {
 			event: "database.moved",
 			object_id: "audit",
 			state: "ok",
-			since: "2000-01-01 00:00:00.000",
+			since: sql("2000-01-01T00:00:00"),
 			data: "{}",
 		});
 		await storeOf().prune();

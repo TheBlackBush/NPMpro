@@ -136,18 +136,32 @@ describe("event data builders", () => {
 		assert.equal(buildData("backup.succeeded", { size: Number.NaN, file: ["f"] }).size, undefined);
 	});
 
-	it("reads a datetime without a zone as UTC whatever the server time zone", () => {
+	it("reads a datetime without a zone as the server's local time, so the ISO date is the real instant", () => {
 		const before = process.env.TZ;
 		process.env.TZ = "Pacific/Auckland";
 		try {
+			// +13:00 in January
 			assert.equal(
 				buildData("certificate.issued", { expires_on: "2027-01-01 00:00:00" }).expires_on,
-				"2027-01-01T00:00:00.000Z",
+				"2026-12-31T11:00:00.000Z",
 			);
 			assert.equal(
 				buildData("certificate.issued", { expires_on: "2027-01-01T05:06:07" }).expires_on,
-				"2027-01-01T05:06:07.000Z",
+				"2026-12-31T16:06:07.000Z",
 			);
+			assert.equal(
+				buildData("certificate.issued", { expires_on: "2027-01-01T00:00:00Z" }).expires_on,
+				"2027-01-01T00:00:00.000Z",
+			);
+			process.env.TZ = "Europe/Berlin";
+			// a notAfter of 2027-01-01T00:00:00Z is stored as 01:00:00 under Berlin time (internal/certificate.js)
+			for (const id of ["certificate.issued", "certificate.renewed", "certificate.expiring"]) {
+				assert.equal(
+					buildData(id, { expires_on: "2027-01-01 01:00:00" }).expires_on,
+					"2027-01-01T00:00:00.000Z",
+					id,
+				);
+			}
 		} finally {
 			if (before === undefined) delete process.env.TZ;
 			else process.env.TZ = before;
