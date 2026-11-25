@@ -165,6 +165,9 @@
 						},
 						"npmpro_page_html": {
 							"$ref": "../../../components/dead-host-object.json#/properties/npmpro_page_html"
+						},
+						"npmpro_dns_records": {
+							"$ref": "../../../common.json#/properties/npmpro_dns_records"
 						}
 					}
 				},

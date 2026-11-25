@@ -6,6 +6,9 @@ import validator from "../validator/index.js";
 import jwtdecode from "./jwt-decode.js";
 import pathId from "./path-id.js";
 
+// the _id at the end of a path parameter name (host_id), written ID in the OpenAPI path
+const ID_SUFFIX = /_id$/u;
+
 /**
  * @param   {Object}    options
  * @param   {Object}    options.internal    the host service
@@ -15,7 +18,7 @@ import pathId from "./path-id.js";
  * @returns {express.Router}
  */
 const hostRouter = ({ internal, path, expandEnum, idParam }) => {
-	const itemPath = `${path}/{${idParam.replace(/_id$/u, "ID")}}`;
+	const itemPath = `${path}/{${idParam.replace(ID_SUFFIX, "ID")}}`;
 
 	const listSchema = {
 		type: "object",
@@ -79,6 +82,7 @@ const hostRouter = ({ internal, path, expandEnum, idParam }) => {
 			const row = await internal.get(res.locals.access, {
 				id: Number.parseInt(data[idParam], 10),
 			});
+			if (internal.addDnsRecords) await internal.addDnsRecords(res.locals.access, row);
 			res.status(200).send(withoutRelatedPageHtml(row));
 		})
 		.put(async (req, res) => {

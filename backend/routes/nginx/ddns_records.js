@@ -1,6 +1,7 @@
 import express from "express";
 import { updateNow } from "../../internal/ddns.js";
 import internalDdnsRecord from "../../internal/ddns-record.js";
+import internalHostDnsRecord from "../../internal/host-dns-record.js";
 import jwtdecode from "../../lib/express/jwt-decode.js";
 import pathId from "../../lib/express/path-id.js";
 import apiValidator from "../../lib/validator/api.js";
@@ -76,6 +77,22 @@ router
 	.post(async (req, res) => {
 		res.status(200).send(await updateNow(res.locals.access, idOf(req)));
 	});
+
+/**
+ * /api/nginx/ddns-records/123/adopt, leave and remove-at-provider: the host record option's choices
+ */
+for (const [segment, method] of [
+	["adopt", "adopt"],
+	["leave", "leave"],
+	["remove-at-provider", "removeAtProvider"],
+]) {
+	router
+		.route(`/:record_id/${segment}`)
+		.all(jwtdecode())
+		.post(async (req, res) => {
+			res.status(200).send(await internalHostDnsRecord[method](res.locals.access, { id: idOf(req) }));
+		});
+}
 
 /**
  * /api/nginx/ddns-records/123/history

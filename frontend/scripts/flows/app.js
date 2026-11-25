@@ -1148,6 +1148,8 @@ async function tagFilter({ admin }) {
 const API_REFERENCE_URL = /\/api-reference#proxy-hosts\/get-nginx-proxy-hosts$/u;
 const GET_PROXY_HOSTS = "proxy-hosts/get-nginx-proxy-hosts";
 const FAKE_TOKEN = `npmpro_0000000000000000_${"A".repeat(43)}`;
+// an operation that starts with its method badge (a text search for DELETE also finds a POST whose text says delete)
+const DELETE_OPERATION = /^DELETE/u;
 const apiOperation = (page, anchor) => page.locator(`[data-api-op][id="${anchor}"]`);
 // every request the page sends to the API from now on
 const apiRequests = (page) => {
@@ -1219,7 +1221,7 @@ async function apiReference({ admin, base }) {
 
 	// on a DELETE, opening Try it and the first Send click send nothing: the first click asks for a confirmation
 	const seen = apiRequests(page);
-	const del = page.locator("[data-api-op]").filter({ hasText: "DELETE" }).first();
+	const del = page.locator("[data-api-op]").filter({ hasText: DELETE_OPERATION }).first();
 	await del.scrollIntoViewIfNeeded();
 	await del.locator("[data-try-open]").click();
 	await del.locator("[data-try-panel]").waitFor();

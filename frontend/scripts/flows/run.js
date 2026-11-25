@@ -11,6 +11,7 @@ import { chromium, webkit } from "playwright";
 import { appFlows } from "./app.js";
 import { ddnsFlows } from "./ddns.js";
 import { dnsFlows } from "./dns.js";
+import { hostDnsFlows } from "./hostdns.js";
 import { hostFlows } from "./hosts.js";
 import { ADMIN_EMAIL, removeFlowData, signIn, VIEWER_EMAIL } from "./lib.js";
 import { windowFlows } from "./windows.js";
@@ -31,7 +32,7 @@ const VIEWER_PERMISSIONS = {
 	certificates: "view",
 };
 
-const flows = [...hostFlows, ...windowFlows, ...appFlows, ...dnsFlows, ...ddnsFlows].filter(
+const flows = [...hostFlows, ...windowFlows, ...appFlows, ...dnsFlows, ...hostDnsFlows, ...ddnsFlows].filter(
 	(flow) => only.length === 0 || only.includes(flow.name),
 );
 // FLOWS_CDP (a remote Chromium's DevTools WebSocket URL, for machines that cannot launch one) is for local runs only;

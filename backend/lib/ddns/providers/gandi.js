@@ -10,12 +10,15 @@ import {
 	unquote,
 } from "./challenge-common.js";
 import {
+	assertRemovable,
 	dotted,
 	jsonHeaders,
+	judgeSet,
 	pathName,
 	plainTarget,
 	refuseMultiple,
 	refuseWildcard,
+	sameAddress,
 	zoneNotFound,
 } from "./record-common.js";
 import { bearer, collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
@@ -130,6 +133,39 @@ export default {
 			res,
 			ok: (answer) => answer.status === 204 || answer.status === 200,
 			recheck: async () => (await read()) === null,
+			fail: (answer) => failAnswer(answer, { hint: HINT, secrets: secretsOf(fields) }),
+		});
+	},
+	/**
+	 * Deletes the A or AAAA RRset NPMpro wrote, but only when it holds nothing but `value`. Gandi's gone answer for a
+	 * delete is not documented: a failed delete is read again and an absent set is done.
+	 */
+	async remove({ zone, name, type, value, fields, fetch }) {
+		const wanted = assertRemovable({ zone, name, type, value });
+		refuseWildcard(wanted);
+		const headers = bearer(fields.dns_gandi_token);
+		const url = rrsetUrl(zone, wanted, type);
+		// a 404 on the set may also be a missing zone: the zone's own list tells, and a missing zone is a failure
+		const read = async () => {
+			const res = await fetch(url, { headers });
+			if (res.status === 404) {
+				const zoneRes = await fetch(`${recordsUrl(zone)}?rrset_type=TXT&per_page=1`, { headers });
+				if (zoneRes.status === 404) throw zoneNotFound(zoneRes, secretsOf(fields));
+				if (zoneRes.status !== 200) failAnswer(zoneRes, { hint: HINT, secrets: secretsOf(fields) });
+				return [];
+			}
+			if (res.status !== 200) failAnswer(res, { hint: HINT, secrets: secretsOf(fields) });
+			if (!Array.isArray(res.json?.rrset_values)) throw malformed(res, secretsOf(fields));
+			return res.json.rrset_values;
+		};
+		const verdict = judgeSet(await read(), value);
+		if (verdict === "gone") return { gone: true };
+		if (verdict === "changed") return changedSet();
+		const res = await fetch(url, { method: "DELETE", headers });
+		return settleDelete({
+			res,
+			ok: (answer) => answer.status === 204 || answer.status === 200,
+			recheck: async () => !(await read()).some((entry) => sameAddress(entry, value)),
 			fail: (answer) => failAnswer(answer, { hint: HINT, secrets: secretsOf(fields) }),
 		});
 	},

@@ -53,6 +53,8 @@ const INSTANCE_COLUMNS = [
 	"tcp_forwarding",
 	"udp_forwarding",
 	"provider",
+	"host_type",
+	"host_id",
 ];
 
 const lower = (value) => String(value ?? "").toLowerCase();
@@ -197,15 +199,48 @@ const limitByScope = ({ item, targetRow }, scope) => {
 	return item;
 };
 
-// a DDNS record is written through its credential: one whose credential is neither added nor matched here is skipped
-const settleRecords = (items, data) => {
+const HOST_ITEM_TYPES = { proxy_host: "proxy_hosts", redirection_host: "redirection_hosts", dead_host: "dead_hosts" };
+
+const skipped = (item, reason) => ({ ...item, action: "skip", reason, choices: ["skip"], default: "skip" });
+
+// a host record (a DDNS row with a host_type) follows its host: the host item must be added or replaced by this merge
+// and have the name, the record may not be an orphan, and it may not take the place of another host's record or of a
+// managed record as a manual one. Returns the reason to skip it, or null
+const hostSkipReason = (item, record, { byKey, data, instance }) => {
+	const hosted = record.host_type !== null && record.host_type !== undefined && record.host_type !== "";
+	const target =
+		item.action === "replace" ? instanceRows(instance, "ddns").find((row) => same(row.id, item.target.id)) : null;
+	const targetHosted =
+		target && target.host_type !== null && target.host_type !== undefined && target.host_type !== "";
+	if (!hosted) return targetHosted ? "host-record" : null;
+	const typeId = HOST_ITEM_TYPES[record.host_type];
+	const hostItem = typeId ? byKey.get(`${typeId}:${record.host_id}`) : undefined;
+	if (parseJson(record.meta)?.orphan === true) return "host-orphan";
+	if (!(hostItem && ACTIVE.has(hostItem.action))) return "host-missing";
+	const hostRow = rowOf(data, hostItem);
+	if (!domainsOf(hostRow ?? {}).some((name) => lower(name) === lower(record.name))) return "host-name";
+	// a replaced host keeps its id; an added one has a new id, so no record of the instance follows it
+	const sameHost =
+		hostItem.action === "replace" &&
+		target?.host_type === record.host_type &&
+		same(target.host_id, hostItem.target.id);
+	return targetHosted && !sameHost ? "host-record" : null;
+};
+
+// a DDNS record is written through its credential and follows its host: one whose credential is neither added nor
+// matched here, or whose host does not fit, is skipped with its reason
+const settleRecords = (items, data, instance) => {
 	const byKey = new Map(items.map((item) => [item.key, item]));
 	return items.map((item) => {
 		if (!(item.type === "ddns" && ACTIVE.has(item.action))) return item;
-		const credentialId = rowOf(data, item)?.dns_credential_id;
-		if (credentialId === null || credentialId === undefined) return item;
-		if (KEPT_TARGETS.has(byKey.get(`dns_credentials:${credentialId}`)?.action)) return item;
-		return { ...item, action: "skip", reason: "credential-missing", choices: ["skip"], default: "skip" };
+		const record = rowOf(data, item);
+		const credentialId = record?.dns_credential_id;
+		const hasCredential = credentialId !== null && credentialId !== undefined;
+		if (hasCredential && !KEPT_TARGETS.has(byKey.get(`dns_credentials:${credentialId}`)?.action)) {
+			return skipped(item, "credential-missing");
+		}
+		const reason = record ? hostSkipReason(item, record, { byKey, data, instance }) : null;
+		return reason === null ? item : skipped(item, reason);
 	});
 };
 
@@ -481,7 +516,7 @@ const planMerge = ({ data, instance, stageFiles, types, items, choices, scope, s
 	planned.push(...planLinked("certificates", hostLinks.certificates, ctx));
 	planned.push(...planLinked("access_lists", hostLinks.access_lists, ctx));
 	planned.push(...planLinked("dns_credentials", linkedOf(activeData(planned, ctx.data)).dns_credentials, ctx));
-	planned.splice(0, planned.length, ...settleRecords(planned, ctx.data));
+	planned.splice(0, planned.length, ...settleRecords(planned, ctx.data, ctx.instance));
 	planned.push(...planRows("users", selectedRows("users", ctx), ctx));
 	planned.push(
 		...[...settingDiffs(ctx), ...scheduleDiffs(ctx), ...fileDiffs(ctx)].map((item) =>

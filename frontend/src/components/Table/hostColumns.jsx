@@ -1,5 +1,6 @@
 import { Copy, Eye, Power, SquarePen, Trash2 } from "lucide-react";
 import { DnsCheckBadge } from "src/components/DnsCheckBadge";
+import { HostRecordsBadge } from "src/components/HostRecordsBadge";
 import { RowActions } from "src/components/RowActions";
 import { useCanManage } from "src/hooks/useUser";
 import { intl, T } from "src/locale";
@@ -96,7 +97,12 @@ export const domainsColumn = () =>
 				<DomainsFormatter
 					domains={value.domainNames}
 					createdOn={value.createdOn}
-					after={check ? <DnsCheckBadge names={check.names} /> : null}
+					after={
+						<>
+							{check ? <DnsCheckBadge names={check.names} /> : null}
+							<HostRecordsBadge records={value.npmproDnsRecords} />
+						</>
+					}
 					below={
 						<HostLabels
 							description={value.npmproDescription}

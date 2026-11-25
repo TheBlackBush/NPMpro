@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
+import { createPoller } from "src/modules/HostDnsRecords";
 import { HOST_TYPES, saveErrorInvalidations, saveInvalidations } from "src/modules/HostTypes";
 
 const STALE_MS = 60 * 1000;
@@ -23,12 +25,20 @@ export function createHostHooks(type, { get, getAll, create, update, empty }) {
 			queryFn: () => (id === "new" ? Promise.resolve(empty()) : get(id)),
 			staleTime: STALE_MS,
 		});
-	const readList = (expand) =>
-		useQuery({
+	// a list with the DNS record states reads again while a name is pending (the job runs after a save), at most 10 times
+	const readList = (expand) => {
+		const poller = useRef(null);
+		poller.current ??= createPoller();
+		return useQuery({
 			queryKey: [listKey, { expand }],
 			queryFn: () => getAll(expand),
 			staleTime: STALE_MS,
+			refetchInterval: (query) => {
+				if (!expand?.includes("dns_records")) return false;
+				return poller.current((query.state.data ?? []).flatMap((host) => host.npmproDnsRecords ?? []));
+			},
 		});
+	};
 	const save = () => {
 		const queryClient = useQueryClient();
 		return useMutation({

@@ -53,6 +53,7 @@ import {
 	suggestedZone,
 	zoneFor,
 } from "src/modules/DdnsForms";
+import { hostOfRecord, hostOpener, isManagedRecord, isOrphanRecord } from "src/modules/DdnsManaged";
 import {
 	CREDENTIAL,
 	credentiallessChoices,
@@ -72,6 +73,9 @@ import { sectionAccent } from "src/modules/SectionAccents";
 import { showObjectSuccess } from "src/notifications";
 import { ddnsErrorText } from "src/pages/Certificates/DynamicDns/errorText";
 import { sectionIcon } from "src/shell/useNavItems";
+import { showDeadHostModal } from "./DeadHostModal";
+import { showProxyHostModal } from "./ProxyHostModal";
+import { showRedirectionHostModal } from "./RedirectionHostModal";
 
 const accent = sectionAccent("dnsCredentials");
 const Icon = sectionIcon("certificates");
@@ -82,6 +86,19 @@ const Icon = sectionIcon("certificates");
  */
 const showDdnsRecordModal = (id, prefill) => {
 	EasyModal.show(DdnsRecordModal, { id, prefill });
+};
+
+// the host windows, read when one opens: the host windows import this file, so their bindings may not be set yet
+// while the modules load
+const HOST_WINDOWS = {
+	proxy: (id) => showProxyHostModal(id),
+	redirection: (id) => showRedirectionHostModal(id),
+	dead: (id) => showDeadHostModal(id),
+};
+
+/** Opens the window of the host a managed record belongs to (nothing for a record without a visible host) */
+const showHostOfRecord = (record) => {
+	hostOpener(record, HOST_WINDOWS)?.();
 };
 
 const emptyRecord = {
@@ -594,7 +611,10 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 	const ready = providers && isAdmin !== undefined && (isNew || stored);
 	// a custom record belongs to the administrators: anyone else sees its row and no details
 	const customHidden = !isNew && stored?.provider === "custom" && isAdmin === false;
-	const viewOnly = readOnly || customHidden;
+	// a host's record changes only in the host's DNS card
+	const managed = !isNew && isManagedRecord(stored);
+	const host = managed ? hostOfRecord(stored) : null;
+	const viewOnly = readOnly || customHidden || managed;
 	const stoppedError = !customHidden && isStoppedRecord(stored) ? ddnsErrorText(stored) : null;
 	const methods = useAppForm({
 		defaultValues: emptyRecord,
@@ -644,6 +664,18 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 					</AppModal.Header>
 					<AppModal.Body>
 						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
+						{managed ? (
+							<NoticeAlert variant="info" className="mb-3" data-ddns-managed-note>
+								<span className="block">
+									<T id={host ? "ddns.managed.note" : "ddns.managed.note-plain"} />
+								</span>
+								{isOrphanRecord(stored) ? (
+									<span className="block">
+										<T id="ddns.orphan.note" />
+									</span>
+								) : null}
+							</NoticeAlert>
+						) : null}
 						{/* a restore without secrets: the record asks for its URL or password again */}
 						{!customHidden && missingDetailsOf(stored) ? (
 							<NoticeAlert variant="warning" className="mb-3">
@@ -686,7 +718,21 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 						<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 							<T id={viewOnly ? "action.close" : "cancel"} />
 						</Button>
-						{customHidden ? null : (
+						{host ? (
+							<Button
+								variant="outline"
+								aria-label={intl.formatMessage(
+									{ id: "ddns.action.open-host-of" },
+									{ host: host.label },
+								)}
+								// this window stays under the host's: the host's window gives the focus back to this button,
+								// and closing this one gives it to the row
+								onClick={() => showHostOfRecord(stored)}
+							>
+								<T id="ddns.action.open-host" />
+							</Button>
+						) : null}
+						{customHidden || managed ? null : (
 							<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
 								<FormSubmit edit={!isNew} isLoading={isSubmitting} disabled={isSubmitting}>
 									<T id="save" />
@@ -700,4 +746,4 @@ const DdnsRecordModal = EasyModal.create(({ id, prefill, visible, remove }) => {
 	);
 });
 
-export { showDdnsRecordModal };
+export { showDdnsRecordModal, showHostOfRecord };

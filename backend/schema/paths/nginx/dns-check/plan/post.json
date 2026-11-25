@@ -1,0 +1,328 @@
+{
+	"operationId": "planHostDnsRecords",
+	"summary": "Plan the DNS records of a host's names",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "The names to plan",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"host_type",
+						"names"
+					],
+					"properties": {
+						"host_type": {
+							"type": "string",
+							"enum": [
+								"proxy_host",
+								"redirection_host",
+								"dead_host"
+							],
+							"description": "The host type of the names",
+							"example": "proxy_host"
+						},
+						"host_id": {
+							"type": "integer",
+							"minimum": 1,
+							"description": "The saved host the names belong to; leave it out for a host not saved yet",
+							"example": 1
+						},
+						"names": {
+							"type": "array",
+							"minItems": 1,
+							"maxItems": 100,
+							"items": {
+								"type": "string",
+								"maxLength": 255
+							},
+							"description": "The host names to plan",
+							"example": [
+								"app.example.com"
+							]
+						}
+					}
+				},
+				"example": {
+					"host_type": "proxy_host",
+					"host_id": 1,
+					"names": [
+						"app.example.com"
+					]
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "The plan: the public addresses and one entry per name",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"address": "203.0.113.7",
+								"ipv6_address": null,
+								"host_disabled": false,
+								"names": [
+									{
+										"name": "app.example.com",
+										"available": true,
+										"reason": null,
+										"message": null,
+										"covered_by": null,
+										"credential": {
+											"id": 1,
+											"name": "Cloudflare"
+										},
+										"zone": "example.com",
+										"provider_label": "Cloudflare",
+										"address": "203.0.113.7",
+										"ipv6_address": null,
+										"ttl": 300,
+										"proxied_allowed": true,
+										"existing": null
+									}
+								]
+							}
+						}
+					},
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"address",
+							"ipv6_address",
+							"host_disabled",
+							"names"
+						],
+						"properties": {
+							"address": {
+								"type": [
+									"string",
+									"null"
+								],
+								"description": "This server's confirmed public IPv4, detected when unknown; null when none was found, and always null for a user without Certificates manage",
+								"example": "203.0.113.7"
+							},
+							"ipv6_address": {
+								"type": [
+									"string",
+									"null"
+								],
+								"description": "This server's confirmed public IPv6; null when none was found, and always null for a user without Certificates manage",
+								"example": null
+							},
+							"host_disabled": {
+								"type": "boolean",
+								"description": "Whether the saved host is disabled (a disabled host gets no new record)",
+								"example": false
+							},
+							"names": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"additionalProperties": false,
+									"required": [
+										"name",
+										"available",
+										"reason",
+										"message",
+										"covered_by",
+										"credential",
+										"zone",
+										"provider_label",
+										"address",
+										"ipv6_address",
+										"ttl",
+										"proxied_allowed",
+										"existing"
+									],
+									"properties": {
+										"name": {
+											"type": "string",
+											"description": "The name, in lower case",
+											"example": "app.example.com"
+										},
+										"available": {
+											"type": "boolean",
+											"description": "Whether a record can be made for the name (a free name or one that holds a record to adopt); false with a `reason` otherwise",
+											"example": true
+										},
+										"reason": {
+											"type": [
+												"string",
+												"null"
+											],
+											"description": "The translation key of why the name has no record (wildcard, no right, no or two credentials, unsupported provider, no address, covered, taken, the provider could not be read)",
+											"example": null
+										},
+										"message": {
+											"type": [
+												"string",
+												"null"
+											],
+											"description": "The English text of the reason",
+											"example": null
+										},
+										"covered_by": {
+											"type": [
+												"string",
+												"null"
+											],
+											"description": "What covers the name (a wildcard such as `*.example.com` or a Dynamic DNS record); null when none, or when the covering record is not the user's",
+											"example": null
+										},
+										"credential": {
+											"type": [
+												"object",
+												"null"
+											],
+											"description": "The one covering credential the user may see; never another owner's",
+											"additionalProperties": false,
+											"properties": {
+												"id": {
+													"type": "integer",
+													"example": 1,
+													"description": "The credential's id"
+												},
+												"name": {
+													"type": "string",
+													"example": "Cloudflare",
+													"description": "The credential's name"
+												}
+											}
+										},
+										"zone": {
+											"type": [
+												"string",
+												"null"
+											],
+											"description": "The zone that covers the name",
+											"example": "example.com"
+										},
+										"provider_label": {
+											"type": [
+												"string",
+												"null"
+											],
+											"description": "The provider's name",
+											"example": "Cloudflare"
+										},
+										"address": {
+											"type": [
+												"string",
+												"null"
+											],
+											"description": "The public IPv4 an A record would hold",
+											"example": "203.0.113.7"
+										},
+										"ipv6_address": {
+											"type": [
+												"string",
+												"null"
+											],
+											"description": "The public IPv6 an AAAA record would hold",
+											"example": null
+										},
+										"ttl": {
+											"type": [
+												"integer",
+												"null"
+											],
+											"description": "The TTL a new record gets: 300, raised to the provider's lowest TTL",
+											"example": 300
+										},
+										"proxied_allowed": {
+											"type": "boolean",
+											"description": "Whether the provider has a proxied flag (Cloudflare)",
+											"example": true
+										},
+										"existing": {
+											"type": [
+												"array",
+												"null"
+											],
+											"description": "The records found at the name at the provider",
+											"items": {
+												"type": "object",
+												"additionalProperties": false,
+												"required": [
+													"type",
+													"values"
+												],
+												"properties": {
+													"type": {
+														"type": "string",
+														"example": "A",
+														"description": "The record type: A, AAAA or CNAME"
+													},
+													"values": {
+														"type": "array",
+														"items": {
+															"type": "string"
+														},
+														"example": [
+															"192.0.2.5"
+														],
+														"description": "The values of the record set"
+													}
+												}
+											},
+											"example": null
+										}
+									}
+								},
+								"description": "One entry per asked name, in lower case, without duplicates"
+							}
+						}
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "The request is not valid",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"403": {
+			"description": "The user may not view this host type",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/error.json"
+					}
+				}
+			}
+		},
+		"404": {
+			"description": "The host does not exist or the user may not see it",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/error.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Read only. For each name: whether a host record can be made, why not, the covering credential the user may see, the zone, the TTL, an existing record at the provider, and, for a user with Certificates manage, this server's public addresses (detected when unknown). Provider reads happen only for a user with Certificates manage, at most 4 at once over every request, and the same user's answer for the same names is reused for 30 s. It writes nothing; the save repeats every check.\n\nNeeds: the view right of the host type"
+}

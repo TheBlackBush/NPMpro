@@ -96,6 +96,94 @@ const splitOrphanRecords = (records, credentials) => {
 	return { kept, orphans };
 };
 
+// the host tables a host record (a managed DDNS row) may point to, by its host_type
+const RECORD_HOST_TABLES = new Set(["proxy_host", "redirection_host", "dead_host"]);
+
+const isManagedRecord = (row) => row.host_type !== null && row.host_type !== undefined && row.host_type !== "";
+
+const metaOf = (value) => {
+	if (typeof value !== "string") return value !== null && typeof value === "object" ? value : {};
+	try {
+		return metaOf(JSON.parse(value));
+	} catch {
+		return {};
+	}
+};
+
+const hostRecordChange = (row, why) => ({
+	table: RECORD_TABLE,
+	id: row.id,
+	column: "*",
+	remove: true,
+	from: row.host_id,
+	to: null,
+	label: `DDNS record ${row.name}: ${why}`,
+});
+
+/**
+ * The host records (DDNS rows with a host_type) of a restore that has no host to follow: a record whose host is not
+ * among the given host rows, whose host type is unknown, or that is an orphan (a failed delete at the provider, never
+ * exported) is dropped with a note, never kept as a record of a host that is missing. A manual record has nothing to
+ * resolve. The restore itself never creates a record at a provider, and never leaves a row that claims a host it
+ * does not have.
+ *
+ * @param   {Array<Object>}                   records
+ * @param   {Object<string, Array<Object>>}   hostRows  the host rows after the restore, by table (a table whose type is
+ *                                                      not restored is missing)
+ * @returns {{ kept: Array<Object>, orphans: Array<Object> }}
+ */
+const splitUnhostedRecords = (records, hostRows) => {
+	const hostIds = Object.fromEntries(Object.entries(hostRows).map(([table, rows]) => [table, idSet(rows)]));
+	const kept = [];
+	const orphans = [];
+	for (const row of records ?? []) {
+		if (!isManagedRecord(row)) kept.push(row);
+		else if (metaOf(row.meta).orphan === true)
+			orphans.push(hostRecordChange(row, "a record that was left at the provider"));
+		else if (!RECORD_HOST_TABLES.has(row.host_type))
+			orphans.push(hostRecordChange(row, `host type ${row.host_type} is unknown`));
+		else if (!hostIds[row.host_type]?.has(key(row.host_id)))
+			orphans.push(hostRecordChange(row, `${row.host_type} #${row.host_id} is not restored`));
+		else kept.push(row);
+	}
+	return { kept, orphans };
+};
+
+// a record that kept its host link must still have the host, and the host must still have the name; otherwise the
+// row becomes a plain record (the engine keeps it current, nothing manages it for a host)
+const unlinkedRecords = (finalRows) => {
+	const hosts = Object.fromEntries(
+		[...RECORD_HOST_TABLES].map((table) => [
+			table,
+			new Map((finalRows[table] ?? []).map((row) => [key(row.id), row])),
+		]),
+	);
+	const changes = [];
+	for (const row of finalRows[RECORD_TABLE] ?? []) {
+		if (!isManagedRecord(row)) continue;
+		const host = hosts[row.host_type]?.get(key(row.host_id));
+		const names = Array.isArray(host?.domain_names) ? host.domain_names.map(nameKey) : [];
+		if (host && names.includes(nameKey(row.name))) continue;
+		// a row paused by its host would never run again as a plain record: the pause goes with the link
+		const { paused_by_host: paused, ...meta } = metaOf(row.meta);
+		changes.push({
+			table: RECORD_TABLE,
+			id: row.id,
+			column: "host_id",
+			from: row.host_id,
+			to: null,
+			values: {
+				host_type: null,
+				host_id: null,
+				origin: null,
+				...(paused === undefined ? {} : { meta: JSON.stringify(meta) }),
+			},
+			label: `DDNS record ${row.name}: ${row.host_type} #${row.host_id} is gone or no longer has the name, the record is kept without a host`,
+		});
+	}
+	return changes;
+};
+
 /**
  * @param   {{ finalRows: Object<string, Array<Object>>, adminUserId: number }} args
  *          finalRows holds every referenced and referencing table as it is after the restore
@@ -196,6 +284,7 @@ const planReferences = ({ finalRows, adminUserId }) => {
 
 	// the DDNS records: one whose credential is gone is removed (the engine has nothing to write it with)
 	changes.push(...splitOrphanRecords(rows(RECORD_TABLE), rows(CREDENTIAL_TABLE)).orphans);
+	changes.push(...unlinkedRecords(finalRows));
 
 	// the domains: a name is kept once per owner, on the credential with the lowest id (a credential handed to the admin
 	// may now share an owner with one that has the name)
@@ -250,9 +339,9 @@ const applyReferences = async (trx, changes) => {
 		}
 		const rowKey = `${change.table}#${key(change.id)}`;
 		if (!updates.has(rowKey)) updates.set(rowKey, { table: change.table, id: change.id, values: {} });
-		updates.get(rowKey).values[change.column] = change.to;
+		Object.assign(updates.get(rowKey).values, change.values ?? { [change.column]: change.to });
 	}
 	for (const { table, id, values } of updates.values()) await trx(table).where({ id }).update(values);
 };
 
-export { applyReferences, freeName, planReferences, splitOrphanDomains, splitOrphanRecords };
+export { applyReferences, freeName, planReferences, splitOrphanDomains, splitOrphanRecords, splitUnhostedRecords };

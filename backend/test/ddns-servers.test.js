@@ -31,6 +31,10 @@ for (const [name, label] of [
 			const { up } = await import("../migrations/20261124120000_ddns_records.js");
 			await up(ctx.knex);
 			await up(ctx.knex);
+			// the host columns on top of existing rows, and a rerun
+			const { up: addHostColumns } = await import("../migrations/20261125120000_ddns_host_records.js");
+			await addHostColumns(ctx.knex);
+			await addHostColumns(ctx.knex);
 		});
 		after(() => ctx.knex?.destroy());
 
@@ -72,6 +76,13 @@ for (const [name, label] of [
 			assert.equal(stored.state, "pending");
 			assert.equal(stored.kind, "address");
 			assert.equal(stored.target, null);
+			assert.deepEqual([stored.host_type, stored.host_id, stored.origin], [null, null, null]);
+			await ctx
+				.knex("npmpro_ddns_record")
+				.insert({ ...row, name: "managed.example", host_type: "dead_host", host_id: 3, origin: "adopted" });
+			const managed = await ctx.knex("npmpro_ddns_record").where({ host_type: "dead_host", host_id: 3 }).first();
+			assert.deepEqual([managed.name, managed.origin], ["managed.example", "adopted"]);
+			await ctx.knex("npmpro_ddns_record").where({ id: managed.id }).del();
 			await ctx
 				.knex("npmpro_ddns_record")
 				.insert({ ...row, name: `*.${"b".repeat(63)}.example`, kind: "alias", target: domain });

@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { DdnsProviderError } from "../errors.js";
 
 const TRAILING_DOT = /\.$/u;
@@ -75,14 +76,75 @@ const recordGone = (res, secrets) =>
 		secrets,
 	});
 
+/** The same address however it is spelled (an IPv6 address is compared in its canonical form) */
+const sameAddress = (a, b) => {
+	const left = String(a ?? "").trim();
+	const right = String(b ?? "").trim();
+	const family = isIP(left);
+	if (family === 0 || family !== isIP(right)) return false;
+	if (family === 4) return left === right;
+	try {
+		return new URL(`http://[${left}]`).hostname === new URL(`http://[${right}]`).hostname;
+	} catch {
+		return false;
+	}
+};
+
+/**
+ * What a record delete may touch: an A or AAAA record at a name inside the zone, with the address NPMpro wrote.
+ * Anything else is refused before a call. Returns the lower case name.
+ *
+ * @param   {Object} options
+ * @param   {String} options.zone
+ * @param   {String} options.name
+ * @param   {String} options.type   A or AAAA
+ * @param   {String} options.value  the address that was written
+ * @returns {String}
+ */
+const assertRemovable = ({ zone, name, type, value }) => {
+	const full = typeof name === "string" ? name.toLowerCase() : "";
+	const z = String(zone ?? "").toLowerCase();
+	const families = { A: 4, AAAA: 6 };
+	const family = Object.hasOwn(families, type) ? families[type] : 0;
+	if (
+		family === 0 ||
+		isIP(String(value ?? "").trim()) !== family ||
+		z === "" ||
+		!(full === z || full.endsWith(`.${z}`))
+	) {
+		throw new DdnsProviderError({
+			code: "failed",
+			message: "Not an A or AAAA record of this zone with an address",
+			retry: false,
+		});
+	}
+	return full;
+};
+
+/**
+ * Looks at the values found at the name: none is gone, one that is exactly the written address is the record to
+ * delete, anything else (another address, more than one value) is another client's and is kept.
+ *
+ * @param   {String[]} found  the values at the name and type
+ * @param   {String}   value  the address that was written
+ * @returns {"gone"|"changed"|"one"}
+ */
+const judgeSet = (found, value) => {
+	if (found.length === 0) return "gone";
+	return found.length === 1 && sameAddress(found[0], value) ? "one" : "changed";
+};
+
 export {
+	assertRemovable,
 	dotted,
 	jsonHeaders,
+	judgeSet,
 	pathName,
 	plainTarget,
 	recordGone,
 	refuseMultiple,
 	refuseWildcard,
 	relativeName,
+	sameAddress,
 	zoneNotFound,
 };

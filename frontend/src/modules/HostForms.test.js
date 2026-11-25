@@ -253,6 +253,9 @@ it("puts every field of the redirection host, 404 host and stream windows on exa
 	// a stream's domain names belong to its requested certificate, a redirection host's to its details
 	assert.equal(tabOfPath(STREAM_TABS, "domainNames"), "tls");
 	assert.equal(tabOfPath(REDIRECTION_HOST_TABS, "domainNames"), "details");
+	// a host record box with a message opens the Details tab, where the DNS card is
+	assert.equal(tabOfPath(REDIRECTION_HOST_TABS, "npmproDnsRecords[0].reachConfirmed"), "details");
+	assert.equal(tabOfPath(DEAD_HOST_TABS, "npmproDnsRecords[1].reachConfirmed"), "details");
 	assert.equal(tabOfPath(STREAM_TABS, "npmproAdvancedConfig"), "advanced");
 	// the group sits on the Details tab of every host window (UX-03)
 	for (const tabs of [REDIRECTION_HOST_TABS, DEAD_HOST_TABS, STREAM_TABS]) {
@@ -389,6 +392,21 @@ it("sends the request fields only for a requested certificate, the DNS box only 
 		npmproDnsCredentialId: 3,
 	};
 	assert.deepEqual(requestValues(dns), dns);
+});
+
+it("sends the host record option only after the DNS card was touched, as the ticked names the host still has", () => {
+	const values = { domainNames: ["a.com", "b.com"], certificateId: 5, ...CERTIFICATE_REQUEST_DEFAULTS };
+	assert.deepEqual(requestValues(values), { domainNames: ["a.com", "b.com"], certificateId: 5 });
+	assert.deepEqual(requestValues({ ...values, npmproDnsRecords: undefined }), {
+		domainNames: ["a.com", "b.com"],
+		certificateId: 5,
+	});
+	assert.deepEqual(requestValues({ ...values, npmproDnsRecords: [] }).npmproDnsRecords, []);
+	assert.deepEqual(
+		requestValues({ ...values, npmproDnsRecords: [{ name: "b.com", ipv6: true }, { name: "gone.com" }] })
+			.npmproDnsRecords,
+		[{ name: "b.com", ipv6: true }],
+	);
 });
 
 it("stream: keeps TCP or UDP on and drops TLS and the certificate with UDP", () => {

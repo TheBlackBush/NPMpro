@@ -228,6 +228,7 @@ const createMerge = (
 			counts: result.counts,
 			cleared: plan.cleared_links,
 			skippedDomains: result.skipped_domains,
+			skippedRecords: result.skipped_records,
 			needsSecrets: plan.needs_secrets,
 			restartNeeded: needsRestart(types, { settings_runtime: { setting: takenRuntime } }),
 			runtimeFailed,

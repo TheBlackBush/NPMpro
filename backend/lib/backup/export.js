@@ -78,6 +78,7 @@ const writeData = async ({ knex, box, stageDir, types, secrets, items, customUrl
 			if (type.tables.length === 0) continue;
 			let rowsByTable = {};
 			for (const { table, where } of type.tables) rowsByTable[table] = await exportRows(trx, table, where);
+			if (type.exportFilter) rowsByTable = type.exportFilter(rowsByTable);
 			rowsByTable = selectRows(typeId, rowsByTable, items?.[typeId]);
 			if (customUrls === false) rowsByTable = withoutForeignSecrets(rowsByTable, ownerId);
 			rowsByTable = secrets ? type.secrets.export(rowsByTable, box) : type.secrets.strip(rowsByTable);

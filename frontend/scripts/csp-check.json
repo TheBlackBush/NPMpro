@@ -397,6 +397,19 @@
 			]
 		},
 		{
+			"name": "host DNS record option",
+			"route": "/nginx/proxy",
+			"steps": [
+				{ "seedProxyHost": true },
+				{ "reload": true },
+				{ "click": "role=button[name='Edit flow-csp.example'] >> visible=true" },
+				{ "click": "[role=dialog] [role=tab][data-tab=details]" },
+				{ "click": "[role=dialog] >> role=switch[name='Create DNS records for this host']" },
+				{ "waitFor": "[data-dns-records] [data-dns-record='flow-csp.example']" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "access list window",
 			"route": "/access",
 			"steps": [

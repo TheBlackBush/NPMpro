@@ -439,6 +439,51 @@
 			"type": "string",
 			"maxLength": 1048576,
 			"example": ""
+		},
+		"npmpro_dns_records": {
+			"writeOnly": true,
+			"type": "array",
+			"maxItems": 100,
+			"description": "The host record option: one entry per host name that gets its own DNS record (an A record, and an AAAA with `ipv6`) at the provider of the one DNS credential that covers it, kept current by the Dynamic DNS updater. Names left out are released: a record NPMpro created is deleted at the provider, an adopted one is only released. Leave the field out to keep the option as it is; an empty array turns it off. Ticking a name needs Certificates manage and a visible covering credential; without it that name answers `unavailable` and the host still saves. The answer lists the states in `npmpro_dns_records`.",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"name"
+				],
+				"properties": {
+					"name": {
+						"type": "string",
+						"maxLength": 255,
+						"description": "A plain host name of the host",
+						"example": "app.example.com"
+					},
+					"proxied": {
+						"type": "boolean",
+						"default": false,
+						"description": "Cloudflare only: create the record proxied. Used when the record is created, never changed later",
+						"example": false
+					},
+					"ipv6": {
+						"type": "boolean",
+						"default": false,
+						"description": "Also an AAAA record, when a public IPv6 address was found",
+						"example": false
+					},
+					"reach_confirmed": {
+						"type": "boolean",
+						"default": false,
+						"description": "The user checked from outside that ports 80 and 443 reach this server; needed when the reach probe did not prove it",
+						"example": false
+					}
+				}
+			},
+			"example": [
+				{
+					"name": "app.example.com",
+					"ipv6": false
+				}
+			]
 		}
 	}
 }

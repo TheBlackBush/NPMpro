@@ -14,11 +14,13 @@ import {
 	useReadOnly,
 	useResetToSaved,
 } from "src/components";
+import { showRefusedTicks } from "src/components/Form/HostDnsRecords";
 import { DirtyTracker, useCanManage, useIsAdmin, useTlsQueriesSettled, useUnsavedChangesGuard } from "src/hooks";
 import { cn } from "src/lib/utils";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 import { savedOf } from "src/modules/ApiError";
 import EasyModal from "src/modules/easyModal";
+import { withReachChecks } from "src/modules/HostDnsRecords";
 import { windowTitleId } from "src/modules/HostForms";
 import { MANAGE } from "src/modules/Permissions";
 import { sectionAccent } from "src/modules/SectionAccents";
@@ -76,7 +78,12 @@ function HostEditorForm({ config, data, isClone, isAdmin, savedId, errorMsg, onC
 // complete defaultValues from the first render, no reset on a refetch
 function HostEditor({ config, id, isClone, isAdmin, data, save, remove, dirtyRef, readOnly, close }) {
 	const [defaultValues] = useState(() => config.defaults(data, { isClone, isAdmin }));
-	const [validate] = useState(() => config.validateFor?.(data, { isClone }) ?? config.validate);
+	// a ticked host record name that still needs "I checked from outside" refuses the save on its box
+	const [validate] = useState(() =>
+		withReachChecks(config.validateFor?.(data, { isClone }) ?? config.validate, () =>
+			intl.formatMessage({ id: "error.host-dns-reach-unconfirmed" }),
+		),
+	);
 	const methods = useAppForm({ defaultValues, validate });
 	const resetToSaved = useResetToSaved(methods);
 	const [errorMsg, setErrorMsg] = useState(null);
@@ -86,10 +93,10 @@ function HostEditor({ config, id, isClone, isAdmin, data, save, remove, dirtyRef
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
 		try {
-			const row = await save({
-				id: savedId ?? (id === "new" || isClone ? undefined : id),
-				...config.payload(values),
-			});
+			const request = config.payload(values);
+			const row = await save({ id: savedId ?? (id === "new" || isClone ? undefined : id), ...request });
+			// a ticked name the server refused or failed is named, as the window may close now
+			showRefusedTicks(request.npmproDnsRecords, row?.npmproDnsRecords);
 			const nginxErr = getNginxConfigError(row);
 			if (nginxErr === null) {
 				showObjectSuccess(config.object, "saved");

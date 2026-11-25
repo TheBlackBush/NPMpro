@@ -9,13 +9,16 @@ import {
 	unquote,
 } from "./challenge-common.js";
 import {
+	assertRemovable,
 	dotted,
 	jsonHeaders,
+	judgeSet,
 	pathName,
 	plainTarget,
 	refuseMultiple,
 	refuseWildcard,
 	relativeName,
+	sameAddress,
 	zoneNotFound,
 } from "./record-common.js";
 import { bearer, collectZones, failAnswer, malformed, statusRefusal } from "./zone-common.js";
@@ -147,6 +150,42 @@ export default {
 			res,
 			ok: (answer) => answer.status >= 200 && answer.status < 300,
 			recheck: async () => (await getRrset({ zone, name: item.name, type: "TXT", fields, fetch })) === null,
+			fail: (answer) => failAnswer(answer, { hint: HINT, secrets: secretsOf(fields) }),
+		});
+	},
+	/**
+	 * Deletes the A or AAAA RRSet NPMpro wrote, but only when it holds nothing but `value` (a set with another value
+	 * is another client's and is kept: changed)
+	 */
+	async remove({ zone, name, type, value, fields, fetch }) {
+		const wanted = assertRemovable({ zone, name, type, value });
+		refuseWildcard(wanted);
+		// a 404 on the RRSet may also be a missing zone: the zone's own read tells, and a missing zone is a failure
+		const read = async () => {
+			const found = await getRrset({ zone, name: wanted, type, fields, fetch });
+			if (found) return found;
+			const zoneRes = await fetch(`${API}/${encodeURIComponent(zone)}`, {
+				headers: bearer(fields.dns_hetzner_cloud_api_token),
+			});
+			if (zoneRes.status === 404) throw zoneNotFound(zoneRes, secretsOf(fields));
+			check(zoneRes, fields);
+			return null;
+		};
+		const current = await read();
+		const verdict = judgeSet(current?.records ?? [], value);
+		if (verdict === "gone") return { gone: true };
+		if (verdict === "changed") return changedSet();
+		const res = await fetch(rrsetUrl(zone, wanted, type), {
+			method: "DELETE",
+			headers: bearer(fields.dns_hetzner_cloud_api_token),
+		});
+		return settleDelete({
+			res,
+			ok: (answer) => answer.status >= 200 && answer.status < 300,
+			recheck: async () => {
+				const after = await read();
+				return !after?.records.some((entry) => sameAddress(entry, value));
+			},
 			fail: (answer) => failAnswer(answer, { hint: HINT, secrets: secretsOf(fields) }),
 		});
 	},

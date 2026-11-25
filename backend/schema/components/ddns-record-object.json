@@ -163,6 +163,55 @@
 			"example": null,
 			"description": "When the record is tried again after a failure or a cooldown, as an ISO time; null when it is due at the next cycle"
 		},
+		"host_type": {
+			"type": [
+				"string",
+				"null"
+			],
+			"enum": [
+				"proxy_host",
+				"redirection_host",
+				"dead_host",
+				null
+			],
+			"example": null,
+			"description": "The type of the host this record belongs to when it was made through a host's DNS option; null for a manual record"
+		},
+		"host_id": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 1,
+			"example": null,
+			"description": "The ID of the host this record belongs to, with `host_type`; null for a manual record"
+		},
+		"origin": {
+			"type": [
+				"string",
+				"null"
+			],
+			"enum": [
+				"created",
+				"adopted",
+				null
+			],
+			"example": null,
+			"description": "`created`: NPMpro made the record for the host; `adopted`: it existed and was taken over by the user's choice (never deleted at the provider); null for a manual record"
+		},
+		"host_label": {
+			"type": [
+				"string",
+				"null"
+			],
+			"example": null,
+			"description": "The first name of the host a host's record belongs to (\"Managed by\" in the list); null for a manual record or a host that is gone"
+		},
+		"orphan": {
+			"type": "boolean",
+			"example": false,
+			"description": "A host's record whose delete at the provider failed: it stays until it is deleted at the provider again or forgotten"
+		},
 		"failures": {
 			"type": "integer",
 			"minimum": 0,

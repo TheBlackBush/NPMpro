@@ -16,13 +16,14 @@
 		{
 			"in": "query",
 			"name": "expand",
-			"description": "Relations to add to each proxy host of the answer: one or several of `owner` (the user who created the host), `certificate` (its certificate) and `access_lists` (proxy hosts always carry their access lists already), separated by commas.",
+			"description": "Relations to add to each proxy host of the answer: one or several of `owner` (the user who created the host), `certificate` (its certificate), `access_lists` (proxy hosts always carry their access lists already) and `dns_records` (the states of the host record option as `npmpro_dns_records`, only for hosts that have it), separated by commas.",
 			"schema": {
 				"type": "string",
 				"enum": [
 					"access_lists",
 					"owner",
-					"certificate"
+					"certificate",
+					"dns_records"
 				]
 			}
 		}

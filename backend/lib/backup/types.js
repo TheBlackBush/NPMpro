@@ -33,13 +33,14 @@ const CATEGORIES = [
 const RESTORE_ORDER = [
 	"users",
 	"dns_credentials",
-	"ddns",
 	"certificates",
 	"access_lists",
 	"proxy_hosts",
 	"redirection_hosts",
 	"dead_hosts",
 	"streams",
+	// after the hosts: a host record follows its host, which a merge writes under a new id
+	"ddns",
 	"settings_runtime",
 	"settings_default_site",
 	"settings_landing_pages",
@@ -185,12 +186,34 @@ const restartedMeta = (meta) => {
 	return typeof meta === "string" ? JSON.stringify(rest) : rest;
 };
 
+const isOrphan = (row) => {
+	let meta = row.meta;
+	if (typeof meta === "string") {
+		try {
+			meta = JSON.parse(meta);
+		} catch {
+			return false;
+		}
+	}
+	return meta !== null && typeof meta === "object" && meta.orphan === true;
+};
+
+// a record NPMpro made for a host is only ever created by the engine, until its first run succeeds (meta.create_only);
+// after a restore that first run may meet a record the backup knows nothing about, so a restored created record starts
+// as create-only again: it is accepted only when nothing is there or the record holds the value it wrote (last_ipv4,
+// last_ipv6), and anything else becomes "exists" for the user to decide
+const markedCreateOnly = (row, meta) => {
+	if (row.origin !== "created") return meta;
+	if (typeof meta === "string") return JSON.stringify({ ...JSON.parse(meta), create_only: true });
+	return { ...(meta ?? {}), create_only: true };
+};
+
 // a restored DDNS record is checked again by the next cycle (a disabled one stays disabled); a custom or preset record
 // whose sealed details did not come along (a backup without secrets) is disabled and says so
 const restartedRecord = (row) => {
 	const urlMissing = (row.provider === "custom" || isPreset(row.provider)) && !hasText(row.secret);
 	const enabled = Number(row.enabled) && !urlMissing;
-	const meta = restartedMeta(row.meta);
+	const meta = markedCreateOnly(row, restartedMeta(row.meta));
 	const marked = urlMissing
 		? {
 				...(typeof meta === "string" ? JSON.parse(meta) : meta),
@@ -316,6 +339,11 @@ const TYPES = {
 		tables: [{ table: "npmpro_ddns_record" }],
 		files: NO_FILES,
 		secrets: ddnsSecrets,
+		// a host record whose delete at the provider failed (an orphan) is a note for this instance only
+		exportFilter: (rowsByTable) =>
+			Array.isArray(rowsByTable.npmpro_ddns_record)
+				? { ...rowsByTable, npmpro_ddns_record: rowsByTable.npmpro_ddns_record.filter((row) => !isOrphan(row)) }
+				: rowsByTable,
 		restoreRows: (rowsByTable) => mapRows(rowsByTable, "npmpro_ddns_record", restartedRecord),
 	},
 	users: {

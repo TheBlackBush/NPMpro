@@ -5,6 +5,7 @@
  */
 import { dnsChallengeRules } from "./CertificateForms.js";
 import { fieldsValidate } from "./HookForm.js";
+import { wantedFromForm } from "./HostDnsRecords.js";
 import { tagsError } from "./HostTags.js";
 import { placeDefaults, placeErrors, placePayload } from "./LandingPageForms.js";
 import { ACCESS_LISTS, CERTIFICATES, hasPermission, VIEW } from "./Permissions.js";
@@ -194,14 +195,26 @@ export function hiddenTlsFields(values, { forHttp = true } = {}) {
 
 /**
  * The values without the request fields a save does not send: all of them without a requested certificate, the DNS
- * challenge box without the DNS challenge
+ * challenge box without the DNS challenge, the host record option until the DNS card was touched
  *
  * @param   {Object} values
  * @returns {Object}
  */
 export function requestValues(values) {
+	return withDnsRecords(values, tlsRequestValues(values));
+}
+
+function tlsRequestValues(values) {
 	if (values.certificateId !== "new") return without(values, Object.keys(CERTIFICATE_REQUEST_DEFAULTS));
 	return values.npmproDnsChallenge ? values : without(values, DNS_FIELDS);
+}
+
+// the host record option: left out until the DNS card was touched, else the ticked names (wantedFromForm)
+function withDnsRecords(values, request) {
+	if (!("npmproDnsRecords" in request)) return request;
+	const rest = without(request, ["npmproDnsRecords"]);
+	const wanted = wantedFromForm(values);
+	return wanted === undefined ? rest : { ...rest, npmproDnsRecords: wanted };
 }
 
 /**
@@ -309,6 +322,8 @@ export const REDIRECTION_HOST_TABS = Object.freeze([
 			"npmproDirectory",
 			"npmproTags",
 			"preservePath",
+			// the host record option's boxes (its DNS card is under the names; the field has no input of its own)
+			"npmproDnsRecords",
 		],
 	},
 	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
@@ -365,7 +380,16 @@ export const DEAD_HOST_TABS = Object.freeze([
 	{
 		id: "details",
 		labelId: "column.details",
-		fields: ["domainNames", "npmproDescription", "npmproDirectory", "npmproTags", "npmproPage", "npmproPageHtml"],
+		fields: [
+			"domainNames",
+			"npmproDescription",
+			"npmproDirectory",
+			"npmproTags",
+			// the host record option's boxes (its DNS card is under the names; the field has no input of its own)
+			"npmproDnsRecords",
+			"npmproPage",
+			"npmproPageHtml",
+		],
 	},
 	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
 	advancedTab("advancedConfig"),

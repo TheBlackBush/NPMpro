@@ -11,6 +11,7 @@ import { backupStore } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
 import { logCrowdsecBlock, setCrowdsecHooks, startCrowdsec } from "./internal/crowdsec-setting.js";
 import { initDdnsTimer, restartDdnsTimer } from "./internal/ddns.js";
+import internalHostDnsRecord from "./internal/host-dns-record.js";
 import internalIpRanges from "./internal/ip_ranges.js";
 import { startLandingPages } from "./internal/landing-pages.js";
 import {
@@ -123,6 +124,14 @@ const prepareApp = async ({ background = true } = {}) => {
 	await getCompiledSchema();
 
 	if (background) internalCertificate.initTimer();
+	// a host's records whose host is gone (a restart during the host delete's job) are kept as orphans to clear
+	if (background) {
+		try {
+			await internalHostDnsRecord.orphanHostless();
+		} catch (err) {
+			logger.error(`Could not check the host DNS records: ${err.message}`);
+		}
+	}
 	// the first cycle runs a minute later; with no enabled record a cycle does nothing
 	if (background) initDdnsTimer();
 	if (background) startExpirySweep();

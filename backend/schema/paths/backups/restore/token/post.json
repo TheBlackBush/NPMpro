@@ -297,6 +297,28 @@
 									"type": "string"
 								}
 							},
+							"skippedRecords": {
+								"type": "array",
+								"description": "Merge only: Dynamic DNS records that were not written, with the reason: credential-missing, credential-provider, host-missing, host-name, host-orphan or host-record",
+								"items": {
+									"type": "object",
+									"additionalProperties": false,
+									"required": [
+										"name",
+										"reason"
+									],
+									"properties": {
+										"name": {
+											"type": "string",
+											"description": "The record name as the backup holds it."
+										},
+										"reason": {
+											"type": "string",
+											"description": "Why it was left out: credential-missing, credential-provider, host-missing, host-name, host-orphan or host-record."
+										}
+									}
+								}
+							},
 							"skippedDomains": {
 								"type": "array",
 								"description": "Merge only: DNS domains of an added DNS credential that were not added because their owner already keeps the name on another credential",
@@ -351,6 +373,7 @@
 								"cleared": [],
 								"needsSecrets": [],
 								"skippedDomains": [],
+								"skippedRecords": [],
 								"restartNeeded": false,
 								"runtimeFailed": [],
 								"offlineHosts": []

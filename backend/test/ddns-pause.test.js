@@ -5,7 +5,7 @@ import { startApi } from "./support/api.js";
 const CF = "https://api.cloudflare.com";
 const PUBLIC_IP = "81.2.69.160";
 const ZONE_LOOKUP = /^\/client\/v4\/zones\?name=/u;
-const RECORD_LOOKUP = /^\/client\/v4\/zones\/zone1\/dns_records\?/u;
+const RECORD_LOOKUP = /^\/client\/v4\/zones\/0000000000000000000000000000a1d1\/dns_records\?/u;
 const json = { headers: { "content-type": "application/json" } };
 // every echo answer takes this long, so a cycle is running for a while
 const SLOW_MS = 150;
@@ -44,7 +44,11 @@ before(async () => {
 	}
 	const pool = api.outside.http.get(CF);
 	pool.intercept({ path: ZONE_LOOKUP, method: "GET" })
-		.reply(() => ({ statusCode: 200, data: { success: true, result: [{ id: "zone1" }] }, responseOptions: json }))
+		.reply(() => ({
+			statusCode: 200,
+			data: { success: true, result: [{ id: "0000000000000000000000000000a1d1" }] },
+			responseOptions: json,
+		}))
 		.persist();
 	pool.intercept({ path: RECORD_LOOKUP, method: "GET" })
 		.reply(() => ({

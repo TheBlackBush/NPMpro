@@ -166,6 +166,64 @@ Checks are paused while a backup is restored or merged or the database is moved,
 
 Dynamic DNS uses the Certificates permission: view to see records and their history, manage to add, change, Update now, Check now and delete. A user limited to their own items sees only the records of their own credentials.
 
+## DNS records for a host
+
+NPMpro can create the DNS record of a host's name for you and keep it current. The option is off by default and works per name: nothing is written at your DNS provider for a name you did not tick. It is offered for proxy, redirection and 404 hosts; streams have no names and are not covered.
+
+Open the host window, go to the **DNS** card on the Details tab and turn on **Create DNS records for this host**. The names of the host are listed, each with a box. Tick a name and **Save**. The record is made as an A record with the public IPv4 address of this instance. A record created this way is a record of [Dynamic DNS](#dynamic-dns): the updater keeps it current when your address changes.
+
+### What NPMpro checks first
+
+A name can be ticked only when all of this holds, and the line of the name says what does not:
+
+- It is a plain name. A wildcard name and a regular expression name get no record. For a wildcard use a record under Certificates & DNS, Dynamic DNS.
+- Exactly one saved DNS credential that you can see covers the name (see [Domains](#domains)), and the provider of that credential can both create and delete address records: Cloudflare, DigitalOcean, Hetzner Cloud, Gandi, OVH, deSEC and Porkbun. **No saved credential covers this name** and **More than one credential covers it** end the check.
+- The host is enabled.
+- A public IPv4 address of this instance is known (see [How the address is found](#how-the-address-is-found)). Otherwise the line says **No public address found**.
+- No other Dynamic DNS record already keeps the name. A record you made under Dynamic DNS, or a wildcard record of the zone (in Dynamic DNS or, on Cloudflare and DigitalOcean, at the provider), shows the name as covered, and no second record is made. A record of another host refuses the tick: **Another dynamic DNS record already keeps this name**.
+- The provider can be read. If not, the line says **The record could not be read at the provider** or, after too many reads in one go, that the provider was not read now (save again later). A save that failed to read ends as **Failed, will try again**.
+- This server can be reached from outside (next section).
+
+### Does the name reach this server
+
+When you tick a name, NPMpro puts a one-time file in the folder nginx serves for certificate challenges and asks for it on the public address of this instance, on port 80 with the name as the host name. Port 443 is tried only when port 80 gets no answer or redirects to https on the same name. Any other answer on port 80 counts as something else answering. If the file comes back, the line says **This server answers at** the address and port. If something else answers, it says so (probably your router).
+
+This test runs from inside your network, so it shows only that the public address leads to this server from inside the network, not that the world can reach the name: a block by your provider or at the edge of your network stays unseen, and it can never prove that the name is unreachable. A router that does not send the request back to a server inside the network (the missing hairpin NAT) makes a working setup look unreachable. Unless the test reached this server, the box **I checked from outside that ports 80 and 443 reach this server** appears: after something else answered, when nothing answered, for a host that overrides the challenge path, and when a reachable result is older than 10 minutes. Check from outside (a phone on mobile data, for example), tick the box, and Save. Until the box is ticked (or while the test still runs), Save is refused and the box says why. A host that overrides the challenge path cannot be tested. The result of a test counts for 10 minutes.
+
+### Save never waits for DNS
+
+A save always keeps the host. The checks that need no provider run at once and a refusal is shown on the name; after the save a warning names each ticked name that was refused, with the reason, as the window may close. The save never looks up the public address: when NPMpro does not know it yet, the name waits and the job looks it up. The work at the provider (reading the name, creating the record) runs after the answer, one job per host at a time, so the name shows **Waiting for the provider** until it ends and then **Kept updated** or **Failed, will try again**. The host list shows a **Records** badge with the state.
+
+### Options of a new record
+
+- **Also an AAAA record (IPv6):** shown only when NPMpro found a public IPv6 address of this instance. It counts when the name is ticked the first time and does not change a record that already exists. To change it, untick the name, save, tick it again and save.
+- **Proxied through Cloudflare:** shown only for a Cloudflare credential. It is used once, when the record is created. Without it the record is not proxied. Changing it later at Cloudflare is not undone by NPMpro.
+- **TTL:** a new record gets 300 seconds, raised to the provider's minimum when that is higher (600 at Porkbun, 3600 at deSEC). A record that already exists keeps its own TTL.
+
+The window shows what will be made before you save, for example **Will create A 203.0.113.7 (TTL 300) at Cloudflare, zone example.com after Save**.
+
+### A record that already exists
+
+NPMpro never overwrites a record it did not create. When the name already has a record:
+
+- It already holds the address NPMpro would write (in every family you ticked): it is adopted at once, nothing is written, and it is kept current from then on.
+- It holds something else: the name shows what is there, for example **A 198.51.100.4 already exists here**, and nothing is written. Choose **Adopt and update** to change the record to this server's address and keep it updated (the old value stays in the history), or **Leave alone** to keep the record untouched and untick the name. A name that holds a CNAME or more than one address can only be left alone (remove the record at the provider first to adopt).
+- A record that appears at the name after you saved, before NPMpro wrote its own, is treated the same way: it shows as a record that already exists.
+
+### Disable, untick and delete
+
+- **Disabled host:** its records are paused. They stay at the provider, NPMpro stops updating them and shows **Paused while the host is disabled**; enabling the host resumes them. A disabled host cannot get new records; a host disabled while its record is being made, and a record adopted on a disabled host, are paused the same way.
+- **Untick a name, remove it from the host or delete the host:** a record NPMpro created is deleted at the provider, and only the exact address it wrote; a record that holds another value now is left there, and its row stays as an orphan too (see below). An adopted record, and a name that held another record, is never deleted at the provider: NPMpro only stops managing it.
+- **A failed delete** keeps the row as an orphan, **Could not be deleted at the provider**, so the host change itself still goes through. In Certificates & DNS, Dynamic DNS the row offers **Delete at the provider again** and **Forget**. Forget removes only the row and leaves the record at the provider. The host's DNS card shows its orphans too, with **Delete at the provider again**. The same orphan appears when a delete finds another value at the provider: that value stays there, **Delete at the provider again** will not remove it, and **Forget** is the way out. Ticking the name again on the same host resumes the orphan as a record to create: if the name holds another value by then, it shows as a record that already exists, and you choose **Adopt and update** or **Leave alone**; resuming needs a credential you can see. If NPMpro stops before the records of a deleted host were deleted at the provider, they become orphans at the next start; nothing is deleted at the provider then.
+
+### In the Dynamic DNS list
+
+A record made for a host shows **Managed by** the host's name in the Dynamic DNS list. It has a **View** button and **Open host** instead of Edit, Disable and Delete: change it in the host's DNS card.
+
+### Rights for host records
+
+Ticking a name needs the manage permission of the host's type, the Certificates manage permission and a saved credential that you can see. Unticking a name and **Leave alone** need only the manage permission of the host's type. **Adopt and update** needs the manage permission of the host's type, the Certificates manage permission and a credential you can see. **Delete at the provider again** and **Forget** need the Certificates manage permission and a credential you can see, not the host's permission. A user limited to their own items uses only their own credentials and hosts, and a record of a credential they cannot see shows as **Managed by another user**, without the provider's message. The public address of this instance shows in the DNS card only with the Certificates manage permission.
+
 ## DNS resolver
 
 The resolver is the DNS server nginx uses for upstream names (a proxy host's forward host, for example). Set it in Settings, nginx, DNS resolver, or with the `NGINX_RESOLVER`, `NGINX_RESOLVER_HOSTS`, `NGINX_RESOLVER_IPV6` and `NGINX_RESOLVER_VALID` variables (see [Configuration](Configuration)). Empty servers mean the container's own `/etc/resolv.conf`. `NGINX_RESOLVER_VALID` takes a time in seconds or longer: seconds, or parts with units such as `30s`, `5m` or `1h30m` (never `ms`, not a bare `0`); empty uses each record's TTL, and `0s` or another zero such as `0m` means the same as empty.

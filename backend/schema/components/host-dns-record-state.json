@@ -1,0 +1,143 @@
+{
+	"type": "object",
+	"additionalProperties": false,
+	"description": "The state of one host name's DNS record",
+	"required": [
+		"name",
+		"state",
+		"origin",
+		"record_id",
+		"ipv6",
+		"message",
+		"reason",
+		"covered_by",
+		"found",
+		"adopt_allowed"
+	],
+	"properties": {
+		"name": {
+			"type": "string",
+			"description": "The host name",
+			"example": "app.example.com"
+		},
+		"state": {
+			"type": "string",
+			"enum": [
+				"off",
+				"unavailable",
+				"covered",
+				"pending",
+				"ok",
+				"exists",
+				"failed",
+				"paused",
+				"orphan"
+			],
+			"description": "`off`: no record asked for; `unavailable`: the name cannot get one (see `reason`); `covered`: a wildcard or a Dynamic DNS record already serves it, nothing is created; `pending`: waiting for the provider work; `ok`: the record is kept current; `exists`: the name already holds another record and nothing was written; `failed`: the last provider call failed and is tried again; `paused`: the host is disabled; `orphan`: the delete at the provider failed or found another value, the row stays",
+			"example": "ok"
+		},
+		"origin": {
+			"type": [
+				"string",
+				"null"
+			],
+			"enum": [
+				"created",
+				"adopted",
+				null
+			],
+			"description": "`created`: NPMpro made the record (deleted with the name); `adopted`: it existed and was taken over (never deleted at the provider); null: no record row",
+			"example": "created"
+		},
+		"record_id": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"description": "The id of the dynamic DNS record row, null without one",
+			"example": 12
+		},
+		"ipv6": {
+			"type": [
+				"boolean",
+				"null"
+			],
+			"description": "Whether an AAAA record is kept too (the row's IPv6 box); null without a row",
+			"example": false
+		},
+		"message": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "A short text for the state: the reason it is unavailable, what exists, or the error",
+			"example": null
+		},
+		"reason": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "The translation key of the message, as `error.host-dns-no-right`, null when there is no reason",
+			"example": null
+		},
+		"covered_by": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "For `covered`: what covers the name, as `*.example.com`; null when it is not shown to the user",
+			"example": null
+		},
+		"found": {
+			"type": [
+				"array",
+				"null"
+			],
+			"description": "For `exists`: the records found at the name",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"type",
+					"values"
+				],
+				"properties": {
+					"type": {
+						"type": "string",
+						"description": "The record type: A, AAAA or CNAME",
+						"example": "A"
+					},
+					"values": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "The values of the record set",
+						"example": [
+							"192.0.2.5"
+						]
+					}
+				}
+			},
+			"example": null
+		},
+		"adopt_allowed": {
+			"type": [
+				"boolean",
+				"null"
+			],
+			"description": "For `exists`: whether Adopt and update is allowed (not for a set with more than one value or a CNAME)",
+			"example": null
+		},
+		"reach": {
+			"type": [
+				"object",
+				"null"
+			],
+			"description": "For a tick refused because the reach was not confirmed: the last probe result",
+			"additionalProperties": true,
+			"example": null
+		}
+	}
+}

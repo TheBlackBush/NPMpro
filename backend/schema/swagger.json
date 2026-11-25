@@ -297,6 +297,16 @@
 				"$ref": "./paths/nginx/dns-credentials/credentialID/challenges/delete/post.json"
 			}
 		},
+		"/nginx/dns-check/plan": {
+			"post": {
+				"$ref": "./paths/nginx/dns-check/plan/post.json"
+			}
+		},
+		"/nginx/dns-check/reach": {
+			"post": {
+				"$ref": "./paths/nginx/dns-check/reach/post.json"
+			}
+		},
 		"/nginx/dns-check/hosts": {
 			"get": {
 				"$ref": "./paths/nginx/dns-check/hosts/get.json"
@@ -327,6 +337,21 @@
 		"/nginx/ddns-records/{recordID}/update": {
 			"post": {
 				"$ref": "./paths/nginx/ddns-records/recordID/update/post.json"
+			}
+		},
+		"/nginx/ddns-records/{recordID}/adopt": {
+			"post": {
+				"$ref": "./paths/nginx/ddns-records/recordID/adopt/post.json"
+			}
+		},
+		"/nginx/ddns-records/{recordID}/leave": {
+			"post": {
+				"$ref": "./paths/nginx/ddns-records/recordID/leave/post.json"
+			}
+		},
+		"/nginx/ddns-records/{recordID}/remove-at-provider": {
+			"post": {
+				"$ref": "./paths/nginx/ddns-records/recordID/remove-at-provider/post.json"
 			}
 		},
 		"/nginx/ddns-records/{recordID}/history": {

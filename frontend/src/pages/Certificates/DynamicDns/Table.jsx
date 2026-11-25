@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Eye, History, Power, RefreshCw, SquarePen, Trash2 } from "lucide-react";
+import { ExternalLink, Eye, History, Power, RefreshCw, SquarePen, Trash2, Unlink } from "lucide-react";
 import { useMemo } from "react";
 import { Button, EmptyData, HasPermission, RowActions, StatusBadge, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
@@ -9,14 +9,29 @@ import { useCanManage, useDdnsProviders, useIsAdmin } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDdnsRecordModal } from "src/modals";
 import { IP_VERSIONS, isStoppedRecord, missingDetailsOf, recordStateOf } from "src/modules/DdnsForms";
+import { hostOfRecord, isManagedRecord, isOrphanRecord, rowActionKeys } from "src/modules/DdnsManaged";
 import { ageOf, recordAddressOf } from "src/modules/DdnsStatus";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { ddnsErrorText } from "./errorText";
 
-function RecordActions({ record, updating, onEdit, onUpdateNow, onHistory, onToggle, onDelete }) {
+function RecordActions({
+	record,
+	updating,
+	onEdit,
+	onUpdateNow,
+	onHistory,
+	onToggle,
+	onDelete,
+	onOpenHost,
+	onRemoveAtProvider,
+	onForget,
+}) {
 	// a custom HTTP record belongs to the administrators: anyone else may only view it
 	const isAdmin = useIsAdmin();
 	const canManage = useCanManage(CERTIFICATES) && !(record.provider === "custom" && isAdmin === false);
+	const keys = rowActionKeys(record, { canManage });
+	// a managed row opens read-only (its host changes it), like a View window
+	const canEdit = canManage && !isManagedRecord(record);
 	return (
 		<RowActions
 			// names the row, so the buttons of a list are told apart
@@ -27,10 +42,10 @@ function RecordActions({ record, updating, onEdit, onUpdateNow, onHistory, onTog
 				{
 					key: "edit",
 					// a user who may only view gets the View window
-					label: <T id={canManage ? "action.edit" : "action.view"} />,
-					icon: canManage ? SquarePen : Eye,
+					label: <T id={canEdit ? "action.edit" : "action.view"} />,
+					icon: canEdit ? SquarePen : Eye,
 					primary: true,
-					ariaLabel: canManage
+					ariaLabel: canEdit
 						? intl.formatMessage({ id: "list.row-edit" }, { name: record.name })
 						: intl.formatMessage({ id: "list.row-view" }, { name: record.name }),
 					onSelect: () => onEdit?.(record.id),
@@ -40,8 +55,16 @@ function RecordActions({ record, updating, onEdit, onUpdateNow, onHistory, onTog
 					label: <T id="ddns.action.update-now" />,
 					icon: RefreshCw,
 					onSelect: () => onUpdateNow?.(record.id),
-					hidden: !canManage || !record.enabled,
+					hidden: !keys.includes("update-now"),
 					disabled: updating,
+				},
+				{
+					key: "open-host",
+					label: <T id="ddns.action.open-host" />,
+					icon: ExternalLink,
+					ariaLabel: intl.formatMessage({ id: "ddns.action.open-host-of" }, { host: record.hostLabel ?? "" }),
+					onSelect: () => onOpenHost?.(record),
+					hidden: !keys.includes("open-host"),
 				},
 				{
 					key: "history",
@@ -54,7 +77,23 @@ function RecordActions({ record, updating, onEdit, onUpdateNow, onHistory, onTog
 					label: <T id={record.enabled ? "action.disable" : "action.enable"} />,
 					icon: Power,
 					onSelect: () => onToggle?.(record.id),
-					hidden: !canManage,
+					hidden: !keys.includes("toggle"),
+				},
+				{
+					key: "remove-at-provider",
+					label: <T id="host-dns.remove" />,
+					icon: Trash2,
+					onSelect: () => onRemoveAtProvider?.(record),
+					destructive: true,
+					separatorBefore: true,
+					hidden: !keys.includes("remove-at-provider"),
+				},
+				{
+					key: "forget",
+					label: <T id="ddns.action.forget" />,
+					icon: Unlink,
+					onSelect: () => onForget?.(record),
+					hidden: !keys.includes("forget"),
 				},
 				{
 					key: "delete",
@@ -63,7 +102,7 @@ function RecordActions({ record, updating, onEdit, onUpdateNow, onHistory, onTog
 					onSelect: () => onDelete?.(record.id),
 					destructive: true,
 					separatorBefore: true,
-					hidden: !canManage,
+					hidden: !keys.includes("delete"),
 				},
 			]}
 		/>
@@ -132,6 +171,46 @@ function RecordState({ record, updating }) {
 	);
 }
 
+// a host's record: who manages it, with the link to the host when the user may see it, and the orphan's problem
+function ManagedNote({ record, onOpenHost }) {
+	if (!isManagedRecord(record)) return null;
+	const host = hostOfRecord(record);
+	return (
+		<div className="mt-1 flex flex-col items-start gap-1 text-xs text-muted-foreground" data-ddns-managed>
+			<span>
+				{host ? (
+					<T
+						id="ddns.managed.by"
+						data={{
+							name: host.label,
+							host: (chunks) => (
+								<button
+									type="button"
+									className="rounded-sm text-foreground underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									aria-label={intl.formatMessage(
+										{ id: "ddns.action.open-host-of" },
+										{ host: host.label },
+									)}
+									onClick={() => onOpenHost?.(record)}
+								>
+									{chunks}
+								</button>
+							),
+						}}
+					/>
+				) : (
+					<T id="ddns.managed.by-plain" />
+				)}
+			</span>
+			{isOrphanRecord(record) ? (
+				<span data-ddns-orphan>
+					<T id="ddns.orphan.note" />
+				</span>
+			) : null}
+		</div>
+	);
+}
+
 const columnHelper = createColumnHelper();
 
 // the Address cell on a phone's summary line: the alias target or the written addresses
@@ -153,7 +232,13 @@ export function useColumns() {
 				meta: { mobile: "title" },
 				header: intl.formatMessage({ id: "ddns.column.name" }),
 				cell: (info) => (
-					<ValueWithDateFormatter value={info.getValue()} createdOn={info.row.original.createdOn} />
+					<>
+						<ValueWithDateFormatter value={info.getValue()} createdOn={info.row.original.createdOn} />
+						<ManagedNote
+							record={info.row.original}
+							onOpenHost={info.table.options.meta?.actions?.onOpenHost}
+						/>
+					</>
 				),
 			}),
 			columnHelper.accessor((row) => providerLabel(row.provider), {
@@ -247,6 +332,9 @@ export default function Table({
 	onHistory,
 	onToggle,
 	onDelete,
+	onOpenHost,
+	onRemoveAtProvider,
+	onForget,
 	sorting,
 	onSortingChange,
 }) {
@@ -257,7 +345,11 @@ export default function Table({
 		columns: columnHelper.columns(columns),
 		data,
 		// the row handlers live here, not in the columns (see useColumns)
-		meta: { isFetching, updatingId, actions: { onEdit, onUpdateNow, onHistory, onToggle, onDelete } },
+		meta: {
+			isFetching,
+			updatingId,
+			actions: { onEdit, onUpdateNow, onHistory, onToggle, onDelete, onOpenHost, onRemoveAtProvider, onForget },
+		},
 		state: { sorting, pagination: { pageIndex: paging.pageIndex, pageSize: paging.pageSize } },
 		onSortingChange,
 	});

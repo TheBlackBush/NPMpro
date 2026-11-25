@@ -76,10 +76,17 @@ const makeLookup =
  * @param   {boolean}  [options.rejectUnauthorized]  false: the server's TLS certificate is not verified
  * @param   {number}   [options.family]              4 or 6: the lookup asks only for that family
  * @param   {boolean}  [options.privateOnly]         only private LAN addresses may be connected to
+ * @param   {string}   [options.servername]          the TLS server name (SNI), for a connection to an IP address
  * @returns {Agent}
  */
-const createGuardedAgent = ({ rejectUnauthorized = true, family, privateOnly = false } = {}) =>
-	new Agent({ connect: { lookup: makeLookup({ family, privateOnly }), rejectUnauthorized } });
+const createGuardedAgent = ({ rejectUnauthorized = true, family, privateOnly = false, servername } = {}) =>
+	new Agent({
+		connect: {
+			lookup: makeLookup({ family, privateOnly }),
+			rejectUnauthorized,
+			...(servername ? { servername } : {}),
+		},
+	});
 
 // for undici fetch: every connection, also after a redirect, goes through the guarded lookup
 const guardedAgent = createGuardedAgent();
