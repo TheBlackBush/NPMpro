@@ -140,17 +140,21 @@ const internalNginx = {
 			status = { npmpro_nginx_online: true, npmpro_nginx_err: "" };
 
 			await model.query().where("id", host.id).patch(status);
-			await reportHostConfig(host_type, host, status);
+			reportHostConfig(host_type, host, status);
 		} catch (err) {
 			logger.error(err.message);
 
 			status = { npmpro_nginx_online: false, npmpro_nginx_err: err.message };
 
 			await model.query().where("id", host.id).patch(status);
-			await reportHostConfig(host_type, host, status);
 
-			await internalNginx.renameConfigAsError(host_type, host);
-			if (!skipReload) await internalNginx.reloadOrRaise(host, { change });
+			try {
+				await internalNginx.renameConfigAsError(host_type, host);
+				if (!skipReload) await internalNginx.reloadOrRaise(host, { change });
+			} finally {
+				// after the reload, in the background
+				reportHostConfig(host_type, host, status);
+			}
 		}
 
 		return status;
@@ -204,7 +208,7 @@ const internalNginx = {
 			const ids = entries.filter((entry) => entry.model === model).map(({ host }) => host.id);
 			await model.query().whereIn("id", ids).patch(ok);
 		}
-		for (const { hostType, host } of entries) await reportHostConfig(hostType, host, ok);
+		for (const { hostType, host } of entries) reportHostConfig(hostType, host, ok);
 	},
 
 	/** configureManyNow in the runtime settings queue, enabled hosts only; none, no nginx -t */

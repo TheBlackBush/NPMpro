@@ -231,7 +231,7 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 
 			await flow.deleteRow(row);
 			hostCheckCache.clearHost(hostType, row.id);
-			await clearHostConfig(hostType, row.id);
+			clearHostConfig(hostType, row.id);
 
 			let states = null;
 			try {
