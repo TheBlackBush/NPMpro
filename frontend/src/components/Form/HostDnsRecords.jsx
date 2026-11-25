@@ -207,7 +207,7 @@ function PlanState({ loading, failed, retry }) {
 export function HostDnsRecords({ type, hostId: savedId }) {
 	// a new host's window holds the id 0: no saved host
 	const hostId = savedId || undefined;
-	const { setValue, getValues } = useFormContext();
+	const { setValue, getValues, unregister } = useFormContext();
 	const { errors, isSubmitted, submitCount } = useFormState();
 	const readOnly = useReadOnly();
 	const canManage = useCanManage(CERTIFICATES);
@@ -283,10 +283,10 @@ export function HostDnsRecords({ type, hostId: savedId }) {
 			store([]);
 			return;
 		}
-		// back on: an untouched card is untouched again, else the names start ticked as the host has them
-		if (beforeOff.current === undefined) {
-			setValue("npmproDnsRecords", undefined, { shouldDirty: true, shouldValidate: isSubmitted });
-		} else store(ticksOf(records, getValues("domainNames") ?? NONE));
+		// back on: an untouched card is untouched again (the field leaves the form, as before the first touch), else the
+		// names start ticked as the host has them
+		if (beforeOff.current === undefined) unregister("npmproDnsRecords");
+		else store(ticksOf(records, getValues("domainNames") ?? NONE));
 	};
 
 	// the probe's state goes into the tick too (validate reads it), except for an orphan's name: its row resumes

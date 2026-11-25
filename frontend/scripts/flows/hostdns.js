@@ -328,6 +328,33 @@ async function existingRecord({ admin }, hostId) {
 	}
 }
 
+// 3a: a kept record: the switch off says a save deletes it, and on again ticks the name as before, so the untouched
+// window closes without asking
+async function switchOffAndOn({ admin }, hostId) {
+	const { page } = admin;
+	const kept = { ...existsState(NAME_A), state: "ok", origin: "created", message: null, reason: null, found: null };
+	const planHandler = (route) => route.fulfill(json(planAnswer(route.request().postDataJSON().names)));
+	await page.route(PLAN_ROUTE, planHandler);
+	const restore = await routeHostStates(page, hostId, [kept]);
+	try {
+		const dialog = await openHost(page, NAME_A);
+		const toggle = switchOf(dialog);
+		const boxA = boxOf(recordLine(page, NAME_A), NAME_A);
+		await boxA.waitFor();
+		if (!(await toggle.isChecked()) || !(await boxA.isChecked())) throw new Error("a kept record is not ticked");
+		await toggle.click();
+		await dialog.locator("[data-dns-off-note]").waitFor();
+		await toggle.click();
+		await boxA.waitFor();
+		if (!(await boxA.isChecked())) throw new Error("the switch off and on again unticked the kept record");
+		await dialog.getByRole("button", { name: "Close", exact: true }).first().click();
+		await windowClosed(page);
+	} finally {
+		await restore();
+		await page.unroute(PLAN_ROUTE, planHandler);
+	}
+}
+
 // 3b: a host whose only row is an orphan of a name it no longer has: the card opens with it shown, and a delete at the
 // provider that is refused again is a warning, never "deleted"
 async function orphanInCard({ admin }, hostId) {
@@ -520,6 +547,7 @@ async function hostDnsRecord(env) {
 		});
 		await tickAndSave(env, host.id);
 		await existingRecord(env, host.id);
+		await switchOffAndOn(env, host.id);
 		await orphanInCard(env, host.id);
 		await viewOnly(env, host.id);
 		await ddnsList(env, host.id);
