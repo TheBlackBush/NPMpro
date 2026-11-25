@@ -34,12 +34,31 @@ for (const [name, label] of [
 			await resetEngine(name);
 			ctx.knex = knexFactory({ client: engine.client, connection: engine.connection() });
 			await runMigrations(ctx.knex);
+			// the chain ran both migrations once: the explicit calls are the reruns
 			const { up } = await import("../migrations/20261126120000_notification_tables.js");
-			await up(ctx.knex);
 			const { up: addValidFrom } = await import("../migrations/20261126110000_certificate_valid_from.js");
+			const table = "npmpro_notification_delivery";
+			await ctx.knex("npmpro_notification_state").insert({
+				key: "rerun:1",
+				event: "cert_expiry",
+				object_id: "1",
+				state: "ok",
+				since: NOW,
+			});
+			ctx.targetIndex = await indexColumns(ctx.knex, name, table, `${table}_target`);
+			await up(ctx.knex);
 			await addValidFrom(ctx.knex);
 		});
 		after(() => ctx.knex?.destroy());
+
+		it("keeps its rows, indexes and column after the reruns", async () => {
+			const { knex } = ctx;
+			const table = "npmpro_notification_delivery";
+			assert.equal(Number((await knex("npmpro_notification_state").count({ count: "*" }))[0].count), 1);
+			assert.deepEqual(await indexColumns(knex, name, table, `${table}_target`), ctx.targetIndex);
+			assert.equal(await knex.schema.hasColumn("certificate", "npmpro_valid_from"), true);
+			await knex("npmpro_notification_state").where({ key: "rerun:1" }).del();
+		});
 
 		it("keeps a 191 character key unique and fills the delivery defaults", async () => {
 			const { knex } = ctx;
@@ -64,6 +83,26 @@ for (const [name, label] of [
 			assert.equal(Number(queued.attempts), 0);
 			assert.equal(queued.target_id, null);
 			assert.equal(queued.response.length, 2048);
+		});
+
+		it("stores a 254 character recipient whole and refuses a longer one", async () => {
+			const { knex } = ctx;
+			const recipient = `${"a".repeat(64)}@${"b".repeat(63)}.${"c".repeat(63)}.${"d".repeat(61)}`;
+			assert.equal(recipient.length, 254);
+			const base = {
+				created_on: NOW,
+				modified_on: NOW,
+				message_id: "msg_r",
+				event: "cert_expiry",
+				channel: "mail",
+				status: "pending",
+			};
+			await knex("npmpro_notification_delivery").insert({ ...base, recipient });
+			assert.equal(
+				(await knex("npmpro_notification_delivery").where({ message_id: "msg_r" }).first()).recipient,
+				recipient,
+			);
+			await assert.rejects(knex("npmpro_notification_delivery").insert({ ...base, recipient: `${recipient}x` }));
 		});
 
 		it("has the three delivery indexes in order", async () => {

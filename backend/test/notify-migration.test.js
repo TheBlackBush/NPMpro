@@ -123,6 +123,7 @@ it("adds certificate.npmpro_valid_from, keeps old rows null and survives a rerun
 		const { up } = await import(VALID_FROM_FILE);
 		await up(knex);
 		assert.equal((await knex("certificate").first()).npmpro_valid_from, "2026-10-01 00:00:00");
+		assert.equal((await knex("certificate").count({ count: "*" }))[0].count, 1);
 	} finally {
 		await db.cleanup();
 	}
