@@ -212,6 +212,7 @@ function Result({ result, types, plan, onOpen }) {
 					cleared={result.cleared}
 					needsSecrets={result.needsSecrets}
 					skippedDomains={result.skippedDomains}
+					skippedRecords={result.skippedRecords}
 				/>
 			) : null}
 		</>

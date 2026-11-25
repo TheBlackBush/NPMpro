@@ -394,7 +394,7 @@ const mergeTypes = async ({
 			const hasCredential = isLink(source.dns_credential_id);
 			const credentialId = hasCredential ? maps.npmpro_dns_credential.get(key(source.dns_credential_id)) : null;
 			if (credentialId === undefined) {
-				skippedRecords.push({ name: source.name, why: "its DNS credential is not here" });
+				skippedRecords.push({ name: source.name, reason: "credential-missing" });
 				return;
 			}
 			// a record only joins a credential of its own provider, and belongs to the credential's owner
@@ -403,7 +403,7 @@ const mergeTypes = async ({
 					? null
 					: await trx("npmpro_dns_credential").where({ id: credentialId }).first("provider", "owner_user_id");
 			if (credential && credential.provider !== source.provider) {
-				skippedRecords.push({ name: source.name, why: "its DNS credential is of another provider" });
+				skippedRecords.push({ name: source.name, reason: "credential-provider" });
 				return;
 			}
 			const target =
@@ -419,14 +419,18 @@ const mergeTypes = async ({
 			if (isManaged) {
 				const hostTable = RECORD_HOST_TABLES.has(source.host_type) ? source.host_type : null;
 				hostId = hostTable === null ? undefined : maps[hostTable].get(key(source.host_id));
-				if (hostId === undefined || parseJson(source.meta)?.orphan === true) {
-					skippedRecords.push({ name: source.name, why: "its host is not here" });
+				if (parseJson(source.meta)?.orphan === true) {
+					skippedRecords.push({ name: source.name, reason: "host-orphan" });
+					return;
+				}
+				if (hostId === undefined) {
+					skippedRecords.push({ name: source.name, reason: "host-missing" });
 					return;
 				}
 				const host = await trx(hostTable).where({ id: hostId }).first("domain_names");
 				const names = [parseJson(host?.domain_names)].flat().map(lower);
 				if (!names.includes(lower(source.name))) {
-					skippedRecords.push({ name: source.name, why: "its host does not have the name" });
+					skippedRecords.push({ name: source.name, reason: "host-name" });
 					return;
 				}
 			}
@@ -435,7 +439,7 @@ const mergeTypes = async ({
 				hasHost(target) &&
 				!(isManaged && target.host_type === source.host_type && key(target.host_id) === key(hostId))
 			) {
-				skippedRecords.push({ name: source.name, why: "the record of the same name belongs to a host" });
+				skippedRecords.push({ name: source.name, reason: "host-record" });
 				return;
 			}
 			// a record without a credential (the custom provider, a preset): a replaced one stays with its owner

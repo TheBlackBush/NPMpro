@@ -517,9 +517,7 @@ it("a merge skips a record whose matched credential is of another provider, and 
 			types: ["dns_credentials", "ddns"],
 			choices: { "dns_credentials:3": "existing", "dns_credentials:4": "existing" },
 		});
-		assert.deepEqual(result.skipped_records, [
-			{ name: "a.example.com", why: "its DNS credential is of another provider" },
-		]);
+		assert.deepEqual(result.skipped_records, [{ name: "a.example.com", reason: "credential-provider" }]);
 		assert.deepEqual(
 			(await knex("npmpro_ddns_record")).map((row) => [row.name, row.dns_credential_id, row.owner_user_id]),
 			[["b.example.com", 2, 7]],
@@ -946,7 +944,7 @@ it("a merge maps the host id of a host record to the host the merge added", asyn
 	}
 });
 
-it("a merge skips a host record whose host is not written by the merge, whose host lacks the name or that is an orphan", async () => {
+it("a merge plan skips a host record whose host is not written by the merge, whose host lacks the name or that is an orphan, each with its reason", async () => {
 	const knex = await open();
 	try {
 		await seedCredential(knex);
@@ -965,13 +963,107 @@ it("a merge skips a host record whose host is not written by the merge, whose ho
 				],
 			),
 		};
-		const { result } = await merge(knex, {
+		const { plan } = await merge(knex, {
 			data,
 			types: ["proxy_hosts", "dns_credentials", "ddns"],
 			choices: { "proxy_hosts:7": "skip" },
 		});
+		const byKey = Object.fromEntries(plan.items.map((item) => [item.key, item]));
+		assert.deepEqual(
+			[1, 2, 3, 4, 5].map((id) => [byKey[`ddns:${id}`].action, byKey[`ddns:${id}`].reason]),
+			[
+				["skip", "host-missing"],
+				["skip", "host-name"],
+				["skip", "host-orphan"],
+				["skip", "host-missing"],
+				["add", null],
+			],
+		);
 		assert.deepEqual(await knex("npmpro_ddns_record").pluck("name"), ["b.example.com"]);
-		assert.equal(result.skipped_records.length, 4);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("the merge apply keeps its own checks when a plan lets a host record through, and reports the skip with its reason", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex);
+		const data = {
+			...proxyData([hostRow(8, "b.example.com")]),
+			...bothData(
+				[credential(1, 1, "Cloudflare")],
+				[
+					managed(2, "other.example.com", 8),
+					managed(3, "b.example.com", 8, { meta: JSON.stringify({ orphan: true }) }),
+					managed(4, "b.example.com", 99),
+				],
+			),
+		};
+		const { plan } = await merge(knex, { data, types: ["proxy_hosts", "dns_credentials", "ddns"] });
+		// the same plan with the three records forced to "add"
+		const forced = {
+			...plan,
+			items: plan.items.map((item) =>
+				item.type === "ddns" ? { ...item, action: "add", reason: null, choices: ["add"] } : item,
+			),
+		};
+		const result = await mergeTypes({
+			knex,
+			data,
+			plan: forced,
+			adminUserId: 1,
+			importerId: 1,
+			box,
+			secrets: true,
+			now: NOW,
+		});
+		assert.deepEqual(result.skipped_records.map((entry) => [entry.name, entry.reason]).sort(), [
+			["b.example.com", "host-missing"],
+			["b.example.com", "host-orphan"],
+			["other.example.com", "host-name"],
+		]);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a page import of Dynamic DNS rows alone shows its host records as skipped in the plan, the others are added", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex);
+		await knex("proxy_host").insert({ id: 7, owner_user_id: 1, domain_names: JSON.stringify(["a.example.com"]) });
+		const data = bothData(
+			[credential(1, 1, "Cloudflare")],
+			[managed(1, "a.example.com", 7), record(2, 1, "manual.example.com")],
+		);
+		const scope = { ...SCOPE, page: true };
+		const { plan, result } = await merge(knex, { data, scope, types: ["dns_credentials", "ddns"] });
+		const byKey = Object.fromEntries(plan.items.map((item) => [item.key, item]));
+		assert.deepEqual([byKey["ddns:1"].action, byKey["ddns:1"].reason], ["skip", "host-missing"]);
+		assert.equal(byKey["ddns:2"].action, "add");
+		assert.deepEqual(result.skipped_records, []);
+		assert.deepEqual(await knex("npmpro_ddns_record").pluck("name"), ["manual.example.com"]);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("a restore of another type still unlinks an instance host record whose host lost the name", async () => {
+	const knex = await open();
+	try {
+		await seedCredential(knex);
+		await knex("proxy_host").insert({
+			id: 7,
+			owner_user_id: 1,
+			domain_names: JSON.stringify(["renamed.example.com"]),
+		});
+		await knex("npmpro_ddns_record").insert(managed(1, "a.example.com", 7));
+		const data = { access_lists: { access_list: [], access_list_auth: [], access_list_client: [] } };
+		const result = await replaceTypes({ knex, data, types: ["access_lists"], adminUserId: 1, box, now: NOW });
+		const [row] = await knex("npmpro_ddns_record");
+		assert.deepEqual([row.host_type, row.host_id, row.origin], [null, null, null]);
+		assert.equal(result.references.filter((change) => change.table === "npmpro_ddns_record").length, 1);
 	} finally {
 		await knex.destroy();
 	}

@@ -42,9 +42,9 @@ const labelsOf = (plan, full = false) => {
 
 /**
  * The notes of a merge plan or result: links that are cleared because their target is not restored, and items that
- * are restored without their secrets, and DNS domains left out because their owner keeps the name already.
+ * are restored without their secrets, DNS domains left out because their owner keeps the name already, and Dynamic DNS records that were not written.
  */
-export function MergeNotes({ plan, cleared = [], needsSecrets = [], skippedDomains = [] }) {
+export function MergeNotes({ plan, cleared = [], needsSecrets = [], skippedDomains = [], skippedRecords = [] }) {
 	const labelOf = labelsOf(plan, true);
 	return (
 		<>
@@ -69,6 +69,22 @@ export function MergeNotes({ plan, cleared = [], needsSecrets = [], skippedDomai
 					text: intl.formatMessage(
 						{ id: "settings.backup.merge.skipped-domain" },
 						{ name: domain.name, credential: domain.credential },
+					),
+				}))}
+			/>
+			<ItemList
+				titleId="settings.backup.merge.skipped-records"
+				items={skippedRecords.map((record, index) => ({
+					key: `${record.name}-${record.reason}-${index}`,
+					text: intl.formatMessage(
+						{ id: "settings.backup.merge.skipped-record" },
+						{
+							name: record.name,
+							reason: intl.formatMessage(
+								{ id: `settings.backup.merge.reason.${record.reason}` },
+								{ target: "", id: "" },
+							),
+						},
 					),
 				}))}
 			/>
