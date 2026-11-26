@@ -2,7 +2,7 @@ import { hostname } from "node:os";
 import { eventById } from "../notify/catalogue.js";
 import { safeError } from "../notify/queue.js";
 import { alertRecipients } from "./recipients.js";
-import { ehloNameOf, isConfigured, publicHostOf, validateEmailValues } from "./settings-rules.js";
+import { ehloNameOf, isConfigured, normalizePublicUrl, publicHostOf, validateEmailValues } from "./settings-rules.js";
 import { MailError } from "./transport.js";
 
 // The mail channel of the notification worker. A row holds { to, template, language, data } as its payload; one row is
@@ -134,13 +134,17 @@ const createMailChannel = ({ settings, admins, send, render, audit, log, clock =
 			}
 			// an admin disabled or an address removed since the row was queued gets nothing
 			const current = alertRecipients({ admins: users, settings: values.notifications });
-			if (!current.some((one) => one.address.toLowerCase() === to.toLowerCase())) {
+			const recipient = current.find((one) => one.address.toLowerCase() === to.toLowerCase());
+			if (!recipient) {
 				const duration_ms = clock.now() - started;
 				return rows.map((row) => ({ id: row.id, ok: false, retry: false, error: NO_LONGER, duration_ms }));
 			}
 			const instance = publicHostOf(values.notifications) ?? hostname();
 			const events = rows.map((row) => row.payload.envelope);
-			const mail = render(ALERT_TEMPLATE, { language: last.payload.language, data: { events }, instance });
+			// the footer says why the address gets the mail (as the settings are now); the button needs a public URL
+			const url = normalizePublicUrl(values.notifications?.public_url) ?? undefined;
+			const data = { events, reason: recipient.reason, url };
+			const mail = render(ALERT_TEMPLATE, { language: last.payload.language, data, instance });
 			await send(values.email, { to, ...mail }, { ehloName: ehloNameOf(values.notifications) });
 			const duration_ms = clock.now() - started;
 			return rows.map((row) => ({ id: row.id, ok: true, duration_ms }));

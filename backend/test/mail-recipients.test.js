@@ -15,8 +15,8 @@ describe("alertRecipients", () => {
 			settings: settings({ default_language: "fr" }),
 		});
 		assert.deepEqual(found, [
-			{ address: "a@example.com", language: "de" },
-			{ address: "b@example.com", language: "fr" },
+			{ address: "a@example.com", language: "de", reason: "admin" },
+			{ address: "b@example.com", language: "fr", reason: "admin" },
 		]);
 	});
 
@@ -31,7 +31,7 @@ describe("alertRecipients", () => {
 			],
 			settings: settings(),
 		});
-		assert.deepEqual(found, [{ address: "ok@example.com", language: "en" }]);
+		assert.deepEqual(found, [{ address: "ok@example.com", language: "en", reason: "admin" }]);
 	});
 
 	it("keeps one entry for a listed address that equals an administrator's in another case, the administrator's language", () => {
@@ -40,8 +40,8 @@ describe("alertRecipients", () => {
 			settings: settings({ alerts_addresses: ["boss@example.COM", "Other@example.com", "other@EXAMPLE.com"] }),
 		});
 		assert.deepEqual(found, [
-			{ address: "Boss@Example.com", language: "de" },
-			{ address: "Other@example.com", language: "en" },
+			{ address: "Boss@Example.com", language: "de", reason: "admin" },
+			{ address: "Other@example.com", language: "en", reason: "listed" },
 		]);
 	});
 
@@ -54,7 +54,7 @@ describe("alertRecipients", () => {
 				default_language: "it",
 			}),
 		});
-		assert.deepEqual(found, [{ address: "list@example.com", language: "it" }]);
+		assert.deepEqual(found, [{ address: "list@example.com", language: "it", reason: "listed" }]);
 	});
 
 	it("answers nobody for missing input", () => {

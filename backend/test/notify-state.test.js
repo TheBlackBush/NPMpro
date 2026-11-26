@@ -245,7 +245,9 @@ describe("reminders", () => {
 		clock.at += 23 * HOUR;
 		assert.deepEqual(await store.dueReminders(), []);
 		clock.at += HOUR;
-		assert.deepEqual(await store.dueReminders(), [{ type: EXPIRING, data: { id: 1, reminder: true } }]);
+		assert.deepEqual(await store.dueReminders(), [
+			{ type: EXPIRING, data: { id: 1, reminder: true, since: "2026-11-26T10:00:00.000Z" } },
+		]);
 		assert.deepEqual(await store.dueReminders(), []);
 		clock.at += 23 * HOUR;
 		assert.deepEqual(await store.dueReminders(), []);
@@ -283,7 +285,10 @@ describe("reminders", () => {
 		clock.at += 24 * HOUR;
 		assert.deepEqual(
 			(await store.dueReminders()).map((reminder) => reminder.data),
-			[{ reminder: true }, { reminder: true }],
+			[
+				{ reminder: true, since: "2026-11-26T10:00:00.000Z" },
+				{ reminder: true, since: "2026-11-26T10:00:00.000Z" },
+			],
 		);
 	});
 

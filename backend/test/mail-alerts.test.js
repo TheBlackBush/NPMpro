@@ -12,7 +12,8 @@ const LISTED = "listed@example.net";
 const FORTY = 40;
 const NO_LONGER = /no longer an alert recipient/u;
 const ENV_NAMES = ["NPMPRO_TEST_SMTP"];
-const ITEM_LINES = /^- certificate\.renewal_failed/gmu;
+const ITEM_LINES = /^- (?:Renewal of certificate|Die Erneuerung des Zertifikats) cert \d+ /gmu;
+const unwrap = (raw) => raw.replace(/[=]\r?\n/gu, "");
 
 const api = await startApi({ env: { NPMPRO_TEST_SMTP: "loopback" } });
 const { createMailChannel } = await import("../lib/mail/channel.js");
@@ -129,9 +130,23 @@ describe("alert mails: recipients, accepts and the grouped send", () => {
 		clock.at += 5000;
 		await pass();
 		assert.equal(fake.messages.length, 2);
-		for (const raw of fake.messages) assert.equal(raw.match(ITEM_LINES).length, FORTY);
+		for (const raw of fake.messages) assert.equal(unwrap(raw).match(ITEM_LINES).length, FORTY);
 		assert.equal(fake.messages.filter((raw) => raw.includes(LISTED)).length, 1);
 		assert.equal((await rowsOf()).filter((row) => row.status === "sent").length, FORTY * 2);
+	});
+
+	it("tells each recipient why, in their own language, and adds the button with a public URL", async () => {
+		const fake = await listen("accept");
+		notifications = () => ({ ...baseNotifications(), public_url: "https://npm.example.com" });
+		await notify.deliver("certificate.renewal_failed", certificate(1));
+		clock.at += MINUTE;
+		await pass();
+		assert.equal(fake.messages.length, 2);
+		const boss = unwrap(fake.messages.find((raw) => raw.includes("To: Boss@")));
+		const listed = unwrap(fake.messages.find((raw) => raw.includes(LISTED)));
+		assert.ok(boss.includes("Administrator von") && boss.includes("Erneuerung des Zertifikats"));
+		assert.ok(listed.includes("address is listed") && listed.includes("Open NPMpro"));
+		assert.ok(!listed.includes("Administrator von"));
 	});
 
 	it("starts a new group for an event after the group was sent", async () => {
