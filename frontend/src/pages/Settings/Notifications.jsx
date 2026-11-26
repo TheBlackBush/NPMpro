@@ -284,6 +284,11 @@ function SampleAlertButton({ onError }) {
 			const { sent } = await send();
 			showSuccess(<T id="settings.notifications.alerts.test.sent" data={{ count: sent }} />);
 		} catch (err) {
+			// the shared limiter and the one-at-a-time guard answer 429 in English: show the translated text
+			if (err?.status === 429) {
+				onError(<T id="error.too-many-requests" />);
+				return;
+			}
 			const failure = sampleFailureOf(err);
 			if (!failure) {
 				onError(<ApiErrorContent error={err} />);

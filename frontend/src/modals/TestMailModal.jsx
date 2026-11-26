@@ -44,7 +44,8 @@ const TestMailModal = EasyModal.create(({ defaultTo, visible, remove }) => {
 			showSuccess(<T id="settings.email.test.sent" data={{ to }} />);
 			remove();
 		} catch (err) {
-			setError(<ApiErrorContent error={err} />);
+			// the limiter answers 429 in English: show the translated text
+			setError(err?.status === 429 ? <T id="error.too-many-requests" /> : <ApiErrorContent error={err} />);
 		}
 	};
 

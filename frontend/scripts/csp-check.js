@@ -5,8 +5,9 @@
 // one of: click, hover (the pointer moves to the element's centre in steps), waitFor (selectors), gone (a
 // selector: waits until it is hidden or removed, e.g. a tooltip after its menu opened), press (a key), fill
 // ([selector, text]: types the text into the field, e.g. a token name before Create),
-// scroll (a selector: the element is scrolled into view, e.g. a card below the fold), viewport ([width, height], until the action ends), skipIfDisabled (a selector: the rest of the action
-// is skipped, and logged, when that control is disabled, e.g. by an env var), skipIfMissing (a selector:
+// scroll (a selector: the element is scrolled into view, e.g. a card below the fold), viewport ([width, height],
+// until the action ends), skipIfDisabled (a selector: the rest of the action is skipped, and logged, when that
+// control is disabled, e.g. by an env var), skipIfMissing (a selector:
 // the same when it is not on the page within 5 s, e.g. the map without GeoIP databases), seedAccessLists
 // (a number: that many access lists named flow-csp-NN are created through the API, so a list has a paging
 // bar; they are removed when the action ends), seedDnsCredential (true: a Cloudflare credential named

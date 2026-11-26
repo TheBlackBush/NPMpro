@@ -191,7 +191,12 @@ async function mailAlerts(page, api, configured) {
 		if ((await page.locator(HOST_ERROR_EVENT).isChecked()) === wasOn)
 			throw new Error("the Host config errors switch is not shown changed after a reload");
 	} finally {
-		if ((await page.locator(HOST_ERROR_EVENT).isChecked()) !== wasOn) await set(wasOn);
+		// restoring must not hide the error that sent us here
+		try {
+			if ((await page.locator(HOST_ERROR_EVENT).isChecked()) !== wasOn) await set(wasOn);
+		} catch (restoreError) {
+			console.log(`mail alerts: the Host config errors switch was not restored (${restoreError.message})`);
+		}
 	}
 	if ((await storedNotifications(api)).alerts_addresses.length > 0)
 		throw new Error("the alert addresses were not removed");
