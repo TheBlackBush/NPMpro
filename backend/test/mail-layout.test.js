@@ -8,6 +8,14 @@ const GOLDEN = JSON.parse(fs.readFileSync(new URL("./fixtures/mail-text-parts.js
 // biome-ignore lint/security/noSecrets: a made-up reset link of the tests, not a secret
 const LINK = "https://box.example/reset-password#token=abc";
 const NAVY = "#0b1020";
+// the card cell's style, the long word wrap at its end
+const CARD =
+	"background:#ffffff;padding:32px;border-radius:0 0 12px 12px;overflow-wrap:anywhere;word-break:break-word;";
+const MSO_OPEN =
+	// biome-ignore lint/security/noSecrets: the Outlook-only table around the card, markup, not a secret
+	'<!--[if mso]><table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0"><tr><td><![endif]-->';
+// biome-ignore lint/security/noSecrets: markup, not a secret
+const MSO_CLOSE = "<!--[if mso]></td></tr></table><![endif]-->";
 const HTML_LIMIT = 30 * 1024;
 const REMOTE = /(?:src|url\(|href)\s*=?\s*["']?\s*(?:https?:)?\/\//iu;
 const HOSTILE = `<script>alert("x")</script> 'q' & "d"`;
@@ -53,6 +61,38 @@ describe("the branded mail layout", () => {
 		assert.ok(html.includes("max-width:620px"));
 		assert.ok(html.includes('role="presentation"'));
 		assert.ok(!html.includes("<script"));
+	});
+
+	it("lets a long word wrap inside the card", () => {
+		const word = "a".repeat(120);
+		const html = withSample(
+			{ subject: word, lines: [word], list: [{ text: word }], footer: [] },
+			(mail) => mail.html,
+		);
+		assert.ok(html.includes(`<td class="card pad" style="${CARD}">`));
+	});
+
+	it("keeps the card at 600 px in Outlook with a table only Outlook reads", () => {
+		const { html } = reset;
+		const [open, close] = [MSO_OPEN, MSO_CLOSE];
+		assert.equal(html.split(open).length - 1, 1);
+		assert.equal(html.split(close).length - 1, 1);
+		const start = html.indexOf(open);
+		const end = html.indexOf(close);
+		assert.ok(start < html.indexOf('style="max-width:600px;"'));
+		assert.ok(end > html.indexOf("Sent by NPMpro at box.example.</p>"));
+		assert.ok(html.slice(end).startsWith(`${close}</td></tr></table></body>`));
+	});
+
+	it("keeps the gradient line 4 px high in Outlook and shows the logo's alt text white on the header", () => {
+		const { html } = reset;
+		assert.ok(
+			html.includes(
+				'<td height="4" style="height:4px;mso-line-height-rule:exactly;line-height:4px;font-size:4px;background:#d91aff;',
+			),
+		);
+		assert.ok(html.includes("height:auto;color:#ffffff;font-family:"));
+		assert.ok(html.includes('font-size:20px;font-weight:700;"></td></tr>'));
 	});
 
 	it("takes the heading without the instance prefix and keeps the prefix in the subject", () => {

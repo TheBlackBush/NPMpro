@@ -20,15 +20,26 @@ const NOT_A_STRING = /must be a string/u;
 const NO_SUCH_USER = /no such user/u;
 const LOGO_PARTS = /Content-ID: <logo@npmpro>/gu;
 const LOGO_INLINE = /Content-Disposition: inline/u;
-const LOGO_REFERENCE = /src=(?:3D)?"cid:logo@npmpro"/u;
+const HTML_PART = /Content-Type: text\/html[\s\S]*?\r?\n\r?\n(?<body>[\s\S]*?)\r?\n--/u;
+const SOFT_BREAK = /[=]\r?\n/gu;
+const QP_BYTE = /[=](?<hex>[0-9A-F]{2})/gu;
 const PNG_PART = /Content-Type: image\/png/u;
+
+// the HTML part of a raw message, quoted-printable decoded, so a soft line break cannot split what a test looks for
+const htmlOf = (raw) => {
+	const body = raw.match(HTML_PART)?.groups.body ?? "";
+	const bytes = body
+		.replace(SOFT_BREAK, "")
+		.replace(QP_BYTE, (_whole, ...rest) => String.fromCharCode(Number.parseInt(rest.at(-1).hex, 16)));
+	return Buffer.from(bytes, "latin1").toString("utf8");
+};
 
 // what the raw message says about the logo: attached once, inline, and the HTML part points at the same cid
 const logoFacts = (raw) => ({
 	parts: raw.match(LOGO_PARTS)?.length,
 	inline: LOGO_INLINE.test(raw),
 	png: PNG_PART.test(raw),
-	referenced: LOGO_REFERENCE.test(raw),
+	referenced: htmlOf(raw).includes('<img src="cid:logo@npmpro"'),
 });
 const LOGO_ONCE = { parts: 1, inline: true, png: true, referenced: true };
 
