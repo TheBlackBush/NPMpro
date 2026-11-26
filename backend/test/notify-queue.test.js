@@ -101,6 +101,24 @@ describe("queue", () => {
 		assert.equal((await queue.claimDue({ channel: "webhook" })).length, 1);
 	});
 
+	it("gives a row of a waiting group the group's time, and leaves other rows alone", async () => {
+		const queue = queueOf();
+		await queue.add([row({ message_id: "1", group_key: "g", delay_ms: MINUTE })]);
+		clock.at += 30_000;
+		await queue.add([
+			row({ message_id: "2", group_key: "g", delay_ms: MINUTE }),
+			row({ message_id: "3", delay_ms: MINUTE }),
+			row({ message_id: "4", group_key: "other", delay_ms: MINUTE }),
+		]);
+		const times = Object.fromEntries((await rows()).map((one) => [one.message_id, one.next_try_on]));
+		assert.equal(times["2"], times["1"]);
+		assert.equal(times["3"], sql(clock.at + MINUTE));
+		assert.equal(times["4"], sql(clock.at + MINUTE));
+		await db.knex(TABLE).where({ message_id: "1" }).update({ next_try_on: null });
+		await queue.add([row({ message_id: "5", group_key: "g", delay_ms: MINUTE })]);
+		assert.equal((await rows()).find((one) => one.message_id === "5").next_try_on, null);
+	});
+
 	it("claims only the channel asked for and honours the limit", async () => {
 		const queue = queueOf();
 		await queue.add([row(), row(), row({ channel: "mail" })]);

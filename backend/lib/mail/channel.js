@@ -1,4 +1,5 @@
 import { hostname } from "node:os";
+import { eventById } from "../notify/catalogue.js";
 import { safeError } from "../notify/queue.js";
 import { alertRecipients } from "./recipients.js";
 import { ehloNameOf, isConfigured, publicHostOf, validateEmailValues } from "./settings-rules.js";
@@ -15,6 +16,7 @@ const MIN_PART = 3;
 const GROUP_DELAY_MS = 60_000;
 const ALERT_TEMPLATE = "alerts";
 const RESOLVED = ".resolved";
+const NO_LONGER = "The address is no longer an alert recipient, the mail was not sent";
 
 // ticking `x` covers `x.resolved` (the contract of alerts_events in settings-rules.js)
 const baseOf = (type) => (type.endsWith(RESOLVED) ? type.slice(0, -RESOLVED.length) : type);
@@ -122,6 +124,20 @@ const createMailChannel = ({ settings, admins, send, render, audit, log, clock =
 			}
 			if (typeof to !== "string" || to === "")
 				throw new MailError("The mail has no recipient", { code: "ECONFIG" });
+			let users = [];
+			if (admins && values.notifications?.alerts_admins === true) {
+				try {
+					users = await admins();
+				} catch {
+					throw new MailError("The administrators could not be read", { retry: true });
+				}
+			}
+			// an admin disabled or an address removed since the row was queued gets nothing
+			const current = alertRecipients({ admins: users, settings: values.notifications });
+			if (!current.some((one) => one.address.toLowerCase() === to.toLowerCase())) {
+				const duration_ms = clock.now() - started;
+				return rows.map((row) => ({ id: row.id, ok: false, retry: false, error: NO_LONGER, duration_ms }));
+			}
 			const instance = publicHostOf(values.notifications) ?? hostname();
 			const events = rows.map((row) => row.payload.envelope);
 			const mail = render(ALERT_TEMPLATE, { language: last.payload.language, data: { events }, instance });
@@ -131,12 +147,15 @@ const createMailChannel = ({ settings, admins, send, render, audit, log, clock =
 		} catch (error) {
 			const retry = error instanceof MailError && error.retry === true;
 			const text = safeText(error?.message ?? String(error), to);
+			// one fate for the group: its highest attempt count decides for every row
 			const final = !retry || rows.some((row) => Number(row.attempts) >= RETRY_DELAYS.length);
 			if (final) await recordFailure({ ...first, event: ALERT_TEMPLATE, payload: { to } }, text);
 			const duration_ms = clock.now() - started;
-			return rows.map((row) => ({ id: row.id, ok: false, retry, error: text, duration_ms }));
+			return rows.map((row) => ({ id: row.id, ok: false, retry: !final, error: text, duration_ms }));
 		}
 	};
+
+	let loaded = null;
 
 	const isAlertRow = (row) => Boolean(row.payload?.envelope);
 
@@ -155,14 +174,19 @@ const createMailChannel = ({ settings, admins, send, render, audit, log, clock =
 		retryDelays: RETRY_DELAYS,
 		// an alert: mail is set up and the event (or, for a recovery, its base event) is ticked; account mails are queued
 		// by internalMail.queueMail and not by an event
+		// (the settings read here are reused by the targets call of the same event)
 		accepts: async (type) => {
-			const { email, notifications } = await settings();
-			return isConfigured(email) && (notifications?.alerts_events ?? []).includes(baseOf(type));
+			loaded = await settings();
+			const base = baseOf(type);
+			// the base must be an event mail offers (a state event or webhook.disabled), whatever the stored list holds
+			const offered = eventById(base)?.mail === base && eventById(base).channels.includes("mail");
+			return isConfigured(loaded.email) && offered && (loaded.notifications?.alerts_events ?? []).includes(base);
 		},
 		// one row per recipient, resolved now: they all wait for their group's window
 		targets: async (envelope) => {
-			const { notifications } = await settings();
-			const users = admins ? await admins() : [];
+			const { notifications } = loaded ?? (await settings());
+			loaded = null;
+			const users = admins && notifications?.alerts_admins === true ? await admins() : [];
 			return alertRecipients({ admins: users, settings: notifications }).map(({ address, language }) => ({
 				recipient: address,
 				group_key: `alerts:${address.toLowerCase()}`,
