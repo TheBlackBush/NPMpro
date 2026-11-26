@@ -418,7 +418,7 @@ it("a backup of DNS credentials and DDNS records restores the records, checked a
 	assert.equal((await api.db("npmpro_ddns_history")).length, 0);
 });
 
-it("a restore removes the notification states of objects that are gone and keeps the others", async () => {
+it("a restore that replaces the DDNS records clears their notification states, another type keeps its own", async () => {
 	const created = await admin.post("/nginx/dns-credentials", {
 		name: "Notified DDNS",
 		provider: "cloudflare",
@@ -441,17 +441,27 @@ it("a restore removes the notification states of objects that are gone and keeps
 		since: new Date(),
 		data: "{}",
 	});
-	await api.db("npmpro_notification_state").insert([stateOf(record.body.id), stateOf(987_654)]);
+	await api
+		.db("npmpro_notification_state")
+		.insert([
+			stateOf(record.body.id),
+			stateOf(987_654),
+			{ ...stateOf("geoip"), key: "geoip.failed:geoip", event: "geoip.failed" },
+		]);
 	const { token } = await inspect(entry.name);
 	const done = await admin.post(`${BASE}/restore/${token}`, { types: ["dns_credentials", "ddns"], confirm: true });
 	assert.equal(done.status, 200, done.text);
 	const [restored] = await api.db("npmpro_ddns_record").where({ name: "home.ddns-nt.example" });
-	// the hosts the restore regenerates write their own ok states: only the DDNS ones are compared
+	// the hosts the restore regenerates write their own ok states: only the DDNS ones are compared. The restored
+	// record under its old id starts afresh, the state of a record that is gone goes too
 	const keys = (
 		await api.db("npmpro_notification_state").where({ event: "ddns.record_failed" }).pluck("object_id")
 	).sort();
 	assert.equal(restored.id, record.body.id);
-	assert.deepEqual(keys, [String(record.body.id)]);
+	assert.deepEqual(keys, []);
+	const geoip = api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" });
+	assert.equal((await geoip.clone().first()).state, "bad");
+	await geoip.delete();
 });
 
 it("cancels a restore session, after which its token has expired", async () => {

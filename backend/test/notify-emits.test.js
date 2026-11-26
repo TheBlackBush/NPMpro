@@ -226,7 +226,9 @@ describe("certificate emit points", () => {
 
 	it("a credential that cannot be opened gives a generic error text, never the certbot text", async () => {
 		const { certificate, credentialId } = await dnsCertificate("broken.example.com");
-		await api.db("npmpro_dns_credential").where({ id: credentialId }).update({ values: "v1:broken" });
+		const credential = () => api.db("npmpro_dns_credential").where({ id: credentialId });
+		const [{ values }] = await credential();
+		await credential().update({ values: "v1:broken" });
 		await certbotFails(api, `Challenge failed with token ${TOKEN}`);
 		seen = [];
 		const restore = keepLogs();
@@ -234,6 +236,8 @@ describe("certificate emit points", () => {
 			await run();
 		} finally {
 			restore();
+			// a later backup (the automatic one of a restore) opens every credential
+			await credential().update({ values });
 		}
 		const [sent] = eventsOf("certificate.renewal_failed", certificate.id);
 		assert.match(sent.data.error, GENERIC);
