@@ -54,6 +54,18 @@ it("DEFAULT_SELECTED lists every type", () => {
 	assert.deepEqual(DEFAULT_SELECTED([]), []);
 });
 
+it("the notifications type is a plain part of the settings category", () => {
+	const category = { id: "settings", types: ["settings_oidc", "settings_notifications"] };
+	assert.equal(categoryState(category, ["settings_notifications"]), "some");
+	assert.deepEqual(toggleType("settings_notifications", ["settings_oidc"]), [
+		"settings_oidc",
+		"settings_notifications",
+	]);
+	assert.deepEqual(categoriesOf([category], ["settings_notifications"]), [
+		{ id: "settings", types: ["settings_notifications"] },
+	]);
+});
+
 it("categoriesOf keeps only the given types and drops empty categories", () => {
 	assert.deepEqual(categoriesOf([hosts, settings], ["streams", "proxy_hosts"]), [
 		{ id: "hosts", types: ["proxy_hosts", "streams"] },

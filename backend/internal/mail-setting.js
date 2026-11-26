@@ -68,6 +68,11 @@ const mailValues = async () => ({
 /** Plugs the stored settings into the mail sender (startup); without it only the env counts */
 const useMailSettings = () => internalMail.useSettings(mailValues);
 
+/** After a restore: the settings are read from the database on every send, only the decrypt warning starts over */
+const reloadMailSettings = () => {
+	warnedSecret = false;
+};
+
 const invalid = (errors) => {
 	const [[key, i18n]] = Object.entries(errors);
 	return new errs.ValidationError(`The value of ${key} is not valid`, i18n);
@@ -222,5 +227,5 @@ const internalMailSetting = {
 	},
 };
 
-export { getEmailConfig, getNotificationsConfig, useMailSettings };
+export { getEmailConfig, getNotificationsConfig, reloadMailSettings, useMailSettings };
 export default internalMailSetting;

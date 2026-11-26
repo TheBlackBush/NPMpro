@@ -183,6 +183,27 @@ it("blanks access list passwords when stripped", () => {
 	assert.deepEqual(TYPES.access_lists.secrets.export(rows, box), rows);
 });
 
+it("opens, strips and seals the mail password and leaves the other settings rows alone", () => {
+	const rows = {
+		setting: [
+			{ id: "email", meta: { host: "smtp.example.com", password: box.encrypt("mail-pass") } },
+			{ id: "notifications", meta: { default_language: "de" } },
+		],
+	};
+	assert.deepEqual(
+		TYPES.settings_notifications.tables.map(({ table }) => table),
+		["setting"],
+	);
+	const opened = TYPES.settings_notifications.secrets.export(rows, box);
+	assert.equal(opened.setting[0].meta.password, "mail-pass");
+	assert.deepEqual(opened.setting[1], rows.setting[1]);
+	assert.deepEqual(TYPES.settings_notifications.secrets.strip(opened).setting[0].meta, { host: "smtp.example.com" });
+	assert.equal(
+		TYPES.settings_notifications.secrets.seal(opened, otherBox).setting[0].meta.password,
+		'v1:other:"mail-pass"',
+	);
+});
+
 it("opens, strips and seals the oidc client secret and the geoip license key", () => {
 	const oidc = { setting: [{ id: "oidc", meta: { client_id: "c", client_secret: box.encrypt("s") } }] };
 	const opened = TYPES.settings_oidc.secrets.export(oidc, box);

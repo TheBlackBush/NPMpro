@@ -188,6 +188,7 @@ it("a token cannot restore users or the sign-in settings", async () => {
 		{ types: ["users"] },
 		{ types: ["proxy_hosts", "users"] },
 		{ types: ["settings_oidc"] },
+		{ types: ["settings_notifications"] },
 		{ types: ["proxy_hosts", "settings_runtime"] },
 		{ types: ALL_TYPES },
 	];

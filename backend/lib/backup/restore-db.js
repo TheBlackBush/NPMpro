@@ -59,6 +59,7 @@ const SECRET_TYPES = new Set([
 	"ddns",
 	"users",
 	"settings_oidc",
+	"settings_notifications",
 	"settings_monitoring",
 	"settings_crowdsec",
 	"crowdsec_files",

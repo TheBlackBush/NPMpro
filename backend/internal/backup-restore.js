@@ -114,6 +114,7 @@ const createRestore = (
 
 	const reloadRestoredSettings = async (types) => {
 		if (types.includes("settings_oidc")) await reloadSettings.oidc?.();
+		if (types.includes("settings_notifications")) await reloadSettings.mail?.();
 		if (types.includes("settings_monitoring")) await reloadSettings.monitoring?.();
 		await reloadSettings.landingPages?.(types);
 		if (types.includes("settings_crowdsec") || types.includes("crowdsec_files")) await reloadSettings.crowdsec?.();

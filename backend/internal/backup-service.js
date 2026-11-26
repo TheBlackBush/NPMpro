@@ -19,6 +19,7 @@ import { reloadCrowdsecAfterRestore } from "./crowdsec-setting.js";
 import { pauseDdns, resumeDdns } from "./ddns.js";
 import internalDnsCredential from "./dns-credential.js";
 import { reloadLandingPagesAfterRestore } from "./landing-pages.js";
+import { reloadMailSettings } from "./mail-setting.js";
 import internalNginx from "./nginx.js";
 import { cleanupAfterRestore, clearReplacedStates, notify, pauseNotify, resumeNotify } from "./notify.js";
 import {
@@ -66,6 +67,7 @@ const internalBackup = createBackupService({
 	runtime: { loadRuntimeConfig, applyAllRuntime },
 	reloadSettings: {
 		oidc: clearDiscoveryCache,
+		mail: reloadMailSettings,
 		monitoring: () => geoip.reload(),
 		landingPages: reloadLandingPagesAfterRestore,
 		crowdsec: reloadCrowdsecAfterRestore,
