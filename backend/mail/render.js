@@ -6,7 +6,10 @@ import test from "./templates/test.js";
 const TEMPLATES = { test };
 const FALLBACK = "en";
 const PLACEHOLDER = /\{(?<name>\w+)\}/gu;
-const LINE_BREAKS = /[\r\n]+/gu;
+const SUBJECT_STRIP = /[\p{Cc}\u2028\u2029\u0085]+/gu;
+const TEXT_BREAKS = /[\r\n\u2028\u2029\u0085]+/gu;
+const SUBJECT_MAX = 200;
+const WEB_PROTOCOLS = new Set(["https:", "http:"]);
 const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 const HTML_SPECIALS = /[&<>"']/gu;
 
@@ -48,21 +51,42 @@ const makeT =
 		const text = tables[language]?.[key] ?? tables[FALLBACK]?.[key] ?? key;
 		return text.replace(PLACEHOLDER, (whole, ...rest) => {
 			const { name } = rest.at(-1);
-			return name in values ? String(values[name]) : whole;
+			return Object.hasOwn(values, name) ? String(values[name]) : whole;
 		});
 	};
+
+const oneLine = (text) => String(text).replace(TEXT_BREAKS, " ");
+
+/**
+ * A button link must be an absolute http or https URL: anything else is a caller bug
+ *
+ * @param {string} url
+ */
+const checkButtonUrl = (url) => {
+	let parsed;
+	try {
+		parsed = new URL(url);
+	} catch {
+		throw new Error("A mail button needs an absolute https or http URL");
+	}
+	if (!WEB_PROTOCOLS.has(parsed.protocol)) throw new Error("A mail button needs an absolute https or http URL");
+};
 
 const textPart = (model) => {
 	const blocks = [...model.lines];
 	if (model.button) blocks.push(`${model.button.label}: ${model.button.url}`);
 	if (model.list?.length) {
-		blocks.push(model.list.map((item) => `- ${item.text}${item.note ? ` (${item.note})` : ""}`).join("\n"));
+		blocks.push(
+			model.list
+				.map((item) => `- ${oneLine(item.text)}${item.note ? ` (${oneLine(item.note)})` : ""}`)
+				.join("\n"),
+		);
 	}
 	if (model.footer?.length) blocks.push(`-- \n${model.footer.join("\n")}`);
 	return `${blocks.join("\n\n")}\n`;
 };
 
-const htmlPart = (model) => {
+const htmlPart = (model, language) => {
 	const rows = model.lines.map((line) => `<tr><td style="${CELL}">${escapeHtml(line)}</td></tr>`);
 	if (model.button) {
 		rows.push(
@@ -83,7 +107,7 @@ const htmlPart = (model) => {
 			`<tr><td style="${FONT}font-size:13px;line-height:1.5;color:#6b7280;padding:0 0 4px 0;">${escapeHtml(line)}</td></tr>`,
 		);
 	}
-	return `<!DOCTYPE html><html><body style="margin:0;padding:16px;background:#f3f4f6;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:8px;"><tr><td style="padding:24px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows.join("")}</table></td></tr></table></body></html>`;
+	return `<!DOCTYPE html><html lang="${escapeHtml(language)}"><head><meta charset="utf-8"></head><body style="margin:0;padding:16px;background:#f3f4f6;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:8px;"><tr><td style="padding:24px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows.join("")}</table></td></tr></table></body></html>`;
 };
 
 /**
@@ -102,8 +126,9 @@ const renderMail = (templateId, { language = FALLBACK, data = {}, instance } = {
 	if (!template) throw new Error(`Unknown mail template ${templateId}`);
 	const name = instance || hostname();
 	const model = template({ t: makeT(language, tables), data, instance: name });
-	const subject = `[NPMpro ${name}] ${model.subject}`.replace(LINE_BREAKS, " ");
-	return { subject, text: textPart(model), html: htmlPart(model) };
+	const subject = `[NPMpro ${name}] ${model.subject}`.replace(SUBJECT_STRIP, " ").slice(0, SUBJECT_MAX);
+	if (model.button) checkButtonUrl(model.button.url);
+	return { subject, text: textPart(model), html: htmlPart(model, tables[language] ? language : FALLBACK) };
 };
 
 export { escapeHtml, loadDictionaries, makeT, renderMail, TEMPLATES };

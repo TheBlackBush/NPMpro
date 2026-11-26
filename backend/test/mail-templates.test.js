@@ -4,6 +4,8 @@ import { escapeHtml, makeT, renderMail, TEMPLATES } from "../mail/render.js";
 
 const LINE_BREAK = /[\r\n]/u;
 const SUBJECT_PATTERN = /^\[NPMpro .+\] Test mail$/u;
+const SEPARATORS = ["\u2028", "\u2029", "\u0085", "\u0000", "\t"];
+const ANCHORS = /<a href="[^"]*"/gu;
 const URLS = /https?:\/\/[^"]*/gu;
 const EN_LINES = ["This is a test mail from NPMpro at box.example.", "If you got it, mail works."];
 const FOOTER = "Sent by NPMpro at box.example.";
@@ -86,5 +88,67 @@ describe("mail templates", () => {
 		assert.equal(t("b"), "English b");
 		assert.equal(t("c"), "c");
 		assert.equal(t("a"), "Hallo {name}");
+	});
+
+	it("accepts only http and https button URLs", () => {
+		const withUrl = (url) => {
+			TEMPLATES.sample = () => ({ subject: "s", lines: ["x"], button: { label: "Go", url }, footer: [] });
+			return renderMail("sample", { instance: "i" });
+		};
+		try {
+			for (const bad of [
+				"javascript:alert(1)",
+				"data:text/html,x",
+				"/relative/path",
+				"npm.example/a",
+				"",
+				"ftp://x.example/",
+			]) {
+				assert.throws(
+					() => withUrl(bad),
+					{ message: "A mail button needs an absolute https or http URL" },
+					bad,
+				);
+			}
+			const quoted = withUrl('https://npm.example/a"onmouseover="x');
+			assert.equal(quoted.html.match(ANCHORS).length, 1);
+			assert.ok(!quoted.html.includes('"onmouseover'));
+			assert.ok(withUrl("http://npm.example/").html.includes('href="http://npm.example/"'));
+		} finally {
+			delete TEMPLATES.sample;
+		}
+	});
+
+	it("strips control and line separator characters from the subject and caps it", () => {
+		const dirty = ["a", "b", "c", "d", "e", "f"].reduce((all, ch, i) => all + SEPARATORS[i - 1] + ch);
+		const mail = renderMail("test", { instance: dirty });
+		assert.equal(mail.subject, "[NPMpro a b c d e f] Test mail");
+		assert.equal(renderMail("test", { instance: "x".repeat(500) }).subject.length, 200);
+	});
+
+	it("fills only own placeholders", () => {
+		const t = makeT("en", { en: { a: "{constructor} {toString} {name}" } });
+		assert.equal(t("a", { name: "n" }), "{constructor} {toString} n");
+	});
+
+	it("collapses line breaks in list text and notes in the text part", () => {
+		TEMPLATES.sample = () => ({
+			subject: "s",
+			lines: ["x"],
+			list: [{ text: "a\nb\r\nc", note: "n\u2028m" }],
+			footer: [],
+		});
+		try {
+			assert.ok(renderMail("sample", { instance: "i" }).text.includes("- a b c (n m)"));
+		} finally {
+			delete TEMPLATES.sample;
+		}
+	});
+
+	it("declares the language and charset in the HTML", () => {
+		const html = renderMail("test", { language: "de", instance: "i" }).html;
+		assert.ok(html.includes('<html lang="de">'));
+		assert.ok(html.includes('<meta charset="utf-8">'));
+		assert.ok(renderMail("test", { language: "xx", instance: "i" }).html.includes('<html lang="en">'));
 	});
 });
