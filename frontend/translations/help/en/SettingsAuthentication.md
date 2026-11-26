@@ -24,6 +24,8 @@ The button on the sign-in page: **Display name** (the text after "Sign in with")
 - **Skip two-factor after OIDC**: trusts the provider's own multi-factor check. Default: off. Variable: `OIDC_SKIP_MFA`.
 - **Disable password login**: only OIDC can sign in. You can turn it on only from a session that signed in with OIDC. Variable: `OIDC_DISABLE_PASSWORD`; to restore password login set it to `false` and recreate the container.
 
+- **Allow password reset by mail**: shown once the mail server is set up in Settings, Notifications. Users can then set a new password through a link sent to their address, and a notice goes out after every reset. It needs the public URL there. Default: off. Variable: `PASSWORD_RESET`. The command line reset keeps working.
+
 ### New users
 
 - **Create users on their first sign-in** (default: off): a person with no account gets one with the permissions below.

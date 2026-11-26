@@ -1,9 +1,11 @@
 import { useFormContext, useFormState } from "react-hook-form";
+import { Link } from "react-router";
 import { SwitchField } from "src/components";
 import { T } from "src/locale";
+import { passwordResetState } from "src/modules/AuthenticationForms";
 import { LockedBadge } from "./LockedBadge";
 
-function SignInRules({ data, isLocked }) {
+function SignInRules({ data, isLocked, email, notifications }) {
 	const { register, trigger } = useFormContext();
 	const { errors } = useFormState({ name: "disablePassword", exact: true });
 	// Turning password login off from a password session is refused by the backend; an already-on value may stay
@@ -29,6 +31,8 @@ function SignInRules({ data, isLocked }) {
 		/>
 	);
 
+	const reset = passwordResetState(email, notifications);
+
 	return (
 		<>
 			{rule(
@@ -40,6 +44,35 @@ function SignInRules({ data, isLocked }) {
 			{rule("disablePassword", "settings.authentication.disable-password", disablePasswordHint, {
 				disabled: passwordLockedOut,
 			})}
+			{reset.shown ? (
+				<SwitchField
+					{...register("allowPasswordReset")}
+					id="oidc-allowPasswordReset"
+					line
+					label={<T id="settings.authentication.allow-password-reset" />}
+					badges={
+						reset.locked ? (
+							<LockedBadge env={email.lockedBy?.allowPasswordReset ?? "PASSWORD_RESET"} />
+						) : null
+					}
+					hint={
+						reset.needsUrl ? (
+							<>
+								<T id="settings.authentication.allow-password-reset.hint" />{" "}
+								<Link
+									to="/settings/notifications"
+									className="text-primary underline underline-offset-4"
+								>
+									<T id="settings.authentication.allow-password-reset.needs-url" />
+								</Link>
+							</>
+						) : (
+							<T id="settings.authentication.allow-password-reset.hint" />
+						)
+					}
+					disabled={reset.locked || reset.needsUrl}
+				/>
+			) : null}
 		</>
 	);
 }
