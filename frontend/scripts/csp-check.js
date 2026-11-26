@@ -5,7 +5,7 @@
 // one of: click, hover (the pointer moves to the element's centre in steps), waitFor (selectors), gone (a
 // selector: waits until it is hidden or removed, e.g. a tooltip after its menu opened), press (a key), fill
 // ([selector, text]: types the text into the field, e.g. a token name before Create),
-// viewport ([width, height], until the action ends), skipIfDisabled (a selector: the rest of the action
+// scroll (a selector: the element is scrolled into view, e.g. a card below the fold), viewport ([width, height], until the action ends), skipIfDisabled (a selector: the rest of the action
 // is skipped, and logged, when that control is disabled, e.g. by an env var), skipIfMissing (a selector:
 // the same when it is not on the page within 5 s, e.g. the map without GeoIP databases), seedAccessLists
 // (a number: that many access lists named flow-csp-NN are created through the API, so a list has a paging
@@ -294,6 +294,7 @@ try {
 				if (step.waitFor) await page.locator(step.waitFor).first().waitFor();
 				if (step.gone) await page.locator(step.gone).first().waitFor({ state: "hidden" });
 				if (step.fill) await page.locator(step.fill[0]).first().fill(step.fill[1]);
+				if (step.scroll) await page.locator(step.scroll).first().scrollIntoViewIfNeeded();
 				if (step.press) await page.keyboard.press(step.press);
 			}
 			// biome-ignore lint/suspicious/noPlaywrightWaitForTimeout: what opened may still add its styles
