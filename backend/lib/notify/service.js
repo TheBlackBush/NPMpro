@@ -16,6 +16,17 @@ const HOST_TABLES = [
 
 const safeText = (error) => String(error?.message ?? error).slice(0, 200);
 
+// the states of a restored type: [event, object id prefix] (no prefix: every state of the event)
+const REPLACED_STATES = {
+	proxy_hosts: [["host.config_error", "proxy_host"]],
+	redirection_hosts: [["host.config_error", "redirection_host"]],
+	dead_hosts: [["host.config_error", "dead_host"]],
+	streams: [["host.config_error", "stream"]],
+	certificates: [["certificate.expiring"], ["certificate.renewal_failed"]],
+	ddns: [["ddns.record_failed"], ["ddns.record_stopped"]],
+	backup_schedules: [["backup.failed"]],
+};
+
 /**
  * @param   {Object}  options
  * @param   {Object}  options.knex
@@ -76,6 +87,27 @@ const createNotifyService = ({ knex, log, clock }) => {
 		resumeNotify: () => {
 			sweep.resume();
 			worker.resume();
+		},
+
+		/**
+		 * A restore that replaces types: their states go without an event before the restore writes anything, so an
+		 * object restored under an id that had a state starts afresh (the regeneration and the sweep record the states
+		 * again). A clear after the work would come too late: the regeneration has already compared its reports with
+		 * the old states and queued their resolved events.
+		 *
+		 * @param {String[]} types  the backup types the restore replaces
+		 */
+		clearReplacedStates: async (types) => {
+			try {
+				for (const type of types) {
+					for (const [event, prefix] of REPLACED_STATES[type] ?? []) {
+						if (prefix) await stateStore.clearMatching(event, prefix);
+						else await stateStore.removeMissing(event, []);
+					}
+				}
+			} catch (error) {
+				log.warn(`notify: clearing the states of the restored types failed: ${safeText(error)}`);
+			}
 		},
 
 		/** After a restore: the state rows of objects that no longer exist go away, without an event */

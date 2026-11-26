@@ -439,8 +439,11 @@ const createBackupService = ({
 					// the dynamic DNS cycle is awaited too; resumed first, in reverse order of the pauses
 					await ddns.pause();
 					try {
-						return await withNotifyPaused(notify, log, () =>
-							exclusive(() => runRestore({ access, adminUserId, entry, types: chosen })),
+						return await withNotifyPaused(
+							notify,
+							log,
+							() => exclusive(() => runRestore({ access, adminUserId, entry, types: chosen })),
+							{ replaced: chosen },
 						);
 					} finally {
 						ddns.resume();

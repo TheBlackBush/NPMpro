@@ -19,6 +19,7 @@ const {
 	pauseNotify,
 	resumeNotify,
 	cleanupAfterRestore,
+	clearReplacedStates,
 } = service;
 
 // the layer starts, then a database move since the last start is told
@@ -143,6 +144,7 @@ const checkDatabaseMoved = async () => {
 export {
 	checkDatabaseMoved,
 	cleanupAfterRestore,
+	clearReplacedStates,
 	fromAudit,
 	initNotify,
 	notify,
