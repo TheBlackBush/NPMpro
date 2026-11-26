@@ -190,6 +190,12 @@ it("needs the public URL to switch the reset on, but not to keep it on", () => {
 	assert.equal(passwordResetState({ ...MAIL, allowPasswordReset: true }, { publicUrl: "" }).needsUrl, false);
 });
 
+it("treats a public URL the server would refuse as not set", () => {
+	assert.equal(passwordResetState(MAIL, { publicUrl: "http://a.example" }).needsUrl, true);
+	assert.equal(passwordResetState(MAIL, { publicUrl: "https://a.example/path" }).needsUrl, true);
+	assert.equal(passwordResetState(MAIL, { publicUrl: "https://a.example" }).needsUrl, false);
+});
+
 it("reads the environment lock of the reset switch", () => {
 	assert.equal(passwordResetState({ ...MAIL, locked: ["allow_password_reset"] }, {}).locked, true);
 	assert.equal(passwordResetState(MAIL, {}).locked, false);

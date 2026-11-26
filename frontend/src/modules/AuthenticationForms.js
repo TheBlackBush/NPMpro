@@ -3,6 +3,7 @@
  * fields, the validate function, the fields whose message follows another field, and the request. Pure, so node --test
  * checks them without a DOM.
  */
+import { normalizePublicUrl } from "./NotificationForms.js";
 import {
 	DEFAULT_OIDC_COLOR,
 	isOidcColor,
@@ -166,7 +167,7 @@ export const authenticationPayload = (values, data) => {
 
 /**
  * The "Allow password reset by mail" line: shown once mail is configured; the switch is off-limits while the public URL
- * is empty (a reset link needs it) unless it is already on, and while the environment sets it
+ * is not a valid one (as the backend reads it) (a reset link needs it) unless it is already on, and while the environment sets it
  *
  * @param   {Object|undefined}  email          GET /settings/email (camelized)
  * @param   {Object|undefined}  notifications  GET /settings/notifications
@@ -178,7 +179,7 @@ export const passwordResetState = (email, notifications) => {
 		shown: Boolean(email?.configured),
 		value,
 		locked: (email?.locked ?? []).includes("allow_password_reset"),
-		needsUrl: !value && !String(notifications?.publicUrl ?? "").trim(),
+		needsUrl: !value && normalizePublicUrl(String(notifications?.publicUrl ?? "").trim()) === null,
 	};
 };
 

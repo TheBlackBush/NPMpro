@@ -172,11 +172,11 @@ function AuthenticationForm({ data, email, notifications }) {
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
 		try {
-			// the reset switch belongs to the mail settings: it saves through them, after the OIDC settings
+			// the reset switch belongs to the mail settings: it saves through them first (the likelier refusal), so a refusal leaves nothing half saved
 			const { allowPasswordReset, ...oidcValues } = values;
-			await save(authenticationPayload(oidcValues, data));
 			const resetBody = passwordResetPayload(allowPasswordReset, email);
 			if (resetBody) await saveEmail(resetBody);
+			await save(authenticationPayload(oidcValues, data));
 			methods.setValue("clientSecret", "", { shouldDirty: true });
 			showObjectSuccess("setting", "saved");
 		} catch (err) {
@@ -213,8 +213,8 @@ function AuthenticationForm({ data, email, notifications }) {
 export default function Authentication() {
 	const { data, isPending, error } = useOidcSettings();
 	// the reset line needs the mail settings: when they fail to load the line is simply not shown
-	const { data: email, isPending: emailPending } = useEmailSettings();
-	const { data: notifications, isPending: notificationsPending } = useNotificationSettings();
+	const { data: email, isPending: emailPending } = useEmailSettings({ retry: false });
+	const { data: notifications, isPending: notificationsPending } = useNotificationSettings({ retry: false });
 
 	return (
 		<SettingsForm
