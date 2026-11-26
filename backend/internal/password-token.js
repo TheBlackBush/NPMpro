@@ -78,7 +78,8 @@ const internalPasswordToken = {
 	 * @param   {String}    token
 	 * @param   {Function}  fn  (user, row, trx) => result
 	 * @param   {String}    [purpose]
-	 * @returns {Promise<*>}  the result of fn, or null when there is no usable token
+	 * @returns {Promise<*>}  the result of fn, or null when there is no usable token; so fn must return a non-null value
+	 *                       (a null result cannot be told from "no valid token")
 	 */
 	consume: (token, fn, purpose) =>
 		passwordTokenModel.transaction(async (trx) => {

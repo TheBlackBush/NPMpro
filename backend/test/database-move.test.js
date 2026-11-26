@@ -561,7 +561,13 @@ it("reports the database in use without secrets", async () => {
 			false,
 		);
 		// the password token table is named in the list, its rows are never shown
-		assert.equal(JSON.stringify({ ...status, tables: [] }).includes("password"), false);
+		assert.equal(
+			JSON.stringify({
+				...status,
+				tables: status.tables.filter((table) => table.name !== "npmpro_password_token"),
+			}).includes("password"),
+			false,
+		);
 	} finally {
 		await source.cleanup();
 		await ctx.target.cleanup();
