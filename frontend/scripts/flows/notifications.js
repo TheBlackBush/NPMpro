@@ -1,6 +1,8 @@
 // Settings, Notifications: the mail server card (locked by SMTP_HOST in the smoke test, free elsewhere), Send test mail
 // (only with a configured server: SMTP_HOST and SMTP_FROM, or saved settings), the public URL with its checks and the
 // default mail language. The flow leaves the stored settings as it found them.
+
+import process from "node:process";
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
 import { ADMIN_EMAIL, withToast } from "./lib.js";
@@ -183,8 +185,15 @@ async function resetSwitchLine(admin) {
 }
 
 // the language menu of the pages without a session: German, the reload keeps the invalid-link message, English again
-async function switchResetLanguage(page) {
+async function switchResetLanguage(page, checks) {
+	// a reload that lost the token shows the same text without any request, so each reload must bring a new check
+	// call that carries the token
+	const expectCheck = (before, step) => {
+		if (checks.length <= before || checks.at(-1) !== "x")
+			throw new Error(`no check call with the token after ${step} (calls: ${JSON.stringify(checks)})`);
+	};
 	const menu = (name) => page.getByRole("button", { name }).first();
+	const afterReload = checks.length;
 	await menu("Select language").click();
 	await Promise.all([
 		page.waitForEvent("load"),
@@ -192,7 +201,9 @@ async function switchResetLanguage(page) {
 	]);
 	await page.locator("html[lang=de]").waitFor({ state: "attached" });
 	await page.getByText(de["error.reset-invalid"], { exact: true }).waitFor();
+	expectCheck(afterReload, "the switch to German");
 	if (page.url().includes("token")) throw new Error("the token is back in the address after the language switch");
+	const afterGerman = checks.length;
 	await menu(de["aria.select-language"]).click();
 	await Promise.all([
 		page.waitForEvent("load"),
@@ -200,13 +211,16 @@ async function switchResetLanguage(page) {
 	]);
 	await page.locator("html[lang=en]").waitFor({ state: "attached" });
 	await page.getByText(INVALID_LINK, { exact: true }).waitFor();
+	expectCheck(afterGerman, "the switch back to English");
 }
 
 // The reset routes share a limit of 5 requests per address in 15 minutes and the user routes count 5 refused requests
 // (every page load without a session asks for the user) in 5 minutes, so the flow keeps both low: the real token check
 // runs once (the reloads of the language switch answer from a stub that gives the same refusal), one real request for
 // an unknown address, and the one sign-in at the end is on the login page loaded last. An answer of the limit itself
-// is logged, not failed.
+// is logged only on a marked rerun (FLOWS_RERUN=1); otherwise a limit or a wrong status fails the flow.
+// biome-ignore lint/style/noProcessEnv: a rerun of the flows on the same instance is marked from the command line
+const RERUN = process.env.FLOWS_RERUN === "1";
 const STUB_REFUSAL = {
 	status: 400,
 	contentType: "application/json",
@@ -227,7 +241,11 @@ async function pagesWithoutSession({ browser, base, password, offered }) {
 	page.setDefaultTimeout(15_000);
 	page.setDefaultNavigationTimeout(30_000);
 	try {
+		const checkResponse = page.waitForResponse((r) => r.url().includes("/api/password-reset/check"));
 		await page.goto("/reset-password#token=x");
+		const checkStatus = (await checkResponse).status();
+		if (checkStatus !== 400 && !(RERUN && checkStatus === 429))
+			throw new Error(`the real token check answered ${checkStatus}, expected 400`);
 		const answer = await Promise.race([
 			page
 				.getByText(INVALID_LINK, { exact: true })
@@ -240,18 +258,31 @@ async function pagesWithoutSession({ browser, base, password, offered }) {
 		]);
 		if (page.url().includes("#") || page.url().includes("token"))
 			throw new Error(`the address bar still shows the token: ${new URL(page.url()).pathname}`);
+		if (answer === "limited" && !RERUN) throw new Error("the wrong token was answered by the limit (not a rerun)");
 		console.log(
 			`password reset: the wrong token is ${answer === "invalid" ? "refused as invalid" : "answered by the limit"}`,
 		);
-		await context.route("**/api/password-reset/check", (route) => route.fulfill(STUB_REFUSAL));
+		const checks = [];
+		await context.route("**/api/password-reset/check", (route) => {
+			checks.push(route.request().postDataJSON()?.token);
+			return route.fulfill(STUB_REFUSAL);
+		});
 		await page.reload();
 		await page.getByText(INVALID_LINK, { exact: true }).waitFor();
-		await switchResetLanguage(page);
+		if (checks.length !== 1 || checks[0] !== "x")
+			throw new Error(`no check call with the token after the reload (calls: ${JSON.stringify(checks)})`);
+		await switchResetLanguage(page, checks);
 		await context.unroute("**/api/password-reset/check");
 
 		await page.goto("/forgot-password");
 		await page.locator("#forgot-email").fill("flow-nobody@example.com");
+		const sendResponse = page.waitForResponse(
+			(r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/password-reset",
+		);
 		await page.getByRole("button", { name: "Send", exact: true }).click();
+		const sendStatus = (await sendResponse).status();
+		if (sendStatus >= 500 || (sendStatus === 429 && !RERUN))
+			throw new Error(`the reset request answered ${sendStatus}`);
 		const sent = await Promise.race([
 			page
 				.getByText(ON_ITS_WAY)
@@ -262,6 +293,7 @@ async function pagesWithoutSession({ browser, base, password, offered }) {
 				.waitFor()
 				.then(() => "limited"),
 		]);
+		if (sent === "limited" && !RERUN) throw new Error("the reset request was answered by the limit (not a rerun)");
 		console.log(
 			`password reset: an unknown address is ${sent === "sent" ? "answered as on its way" : "answered by the limit"}`,
 		);
@@ -276,7 +308,6 @@ async function pagesWithoutSession({ browser, base, password, offered }) {
 		await page.locator("form button[type=submit]").click();
 		await page.locator("#login-email").waitFor({ state: "detached" });
 	} finally {
-		await page.evaluate(() => localStorage.setItem("locale", "en")).catch(() => undefined);
 		await context.close();
 	}
 }
