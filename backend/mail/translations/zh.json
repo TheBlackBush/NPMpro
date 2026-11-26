@@ -1,0 +1,6 @@
+{
+	"test.subject": "测试邮件",
+	"test.intro": "这是来自 {instance} 上 NPMpro 的测试邮件。",
+	"test.works": "如果你收到了这封邮件，说明邮件功能正常。",
+	"footer.sent": "由 {instance} 上的 NPMpro 发送。"
+}

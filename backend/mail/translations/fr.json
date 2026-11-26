@@ -1,0 +1,6 @@
+{
+	"test.subject": "E-mail de test",
+	"test.intro": "Ceci est un e-mail de test envoyé par NPMpro sur {instance}.",
+	"test.works": "Si vous l'avez reçu, l'envoi d'e-mails fonctionne.",
+	"footer.sent": "Envoyé par NPMpro sur {instance}."
+}
