@@ -9,14 +9,35 @@ import { MailError } from "./transport.js";
 
 const RETRY_DELAYS = [60_000, 300_000, 1_800_000, 7_200_000, 21_600_000];
 const MASK = "***";
+const MIN_PART = 3;
 
 const recipientsOf = (to) => (Array.isArray(to) ? to : [to]).filter((one) => typeof one === "string" && one !== "");
 
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+
+// every recipient, whatever its case, goes out of the text; an address the cut left in part loses that part at the end
 const maskRecipients = (text, to) => {
 	let masked = text;
-	for (const address of recipientsOf(to)) masked = masked.split(address).join(MASK);
+	for (const address of recipientsOf(to)) masked = masked.replace(new RegExp(escapeRegExp(address), "giu"), MASK);
 	return masked;
 };
+
+const cutPartial = (text, to) => {
+	let result = text;
+	for (const address of recipientsOf(to)) {
+		const lower = address.toLowerCase();
+		for (let size = Math.min(address.length - 1, result.length); size >= MIN_PART; size--) {
+			if (result.toLowerCase().endsWith(lower.slice(0, size))) {
+				result = result.slice(0, result.length - size);
+				break;
+			}
+		}
+	}
+	return result;
+};
+
+// masked before the text is cut, so the cut never leaves the first part of an address
+const safeText = (raw, to) => cutPartial(safeError(maskRecipients(String(raw ?? ""), to)), to);
 
 /**
  * @param   {Object}    options
@@ -57,16 +78,24 @@ const createMailChannel = ({ settings, send, render, audit, log, clock = { now: 
 		}
 	};
 
+	// the result of a failed try; a final one (no retry, or the last retry used) is audited
+	const failed = async (row, raw, retry) => {
+		const text = safeText(raw, row.payload?.to);
+		if (!retry || Number(row.attempts) >= RETRY_DELAYS.length) await recordFailure(row, text);
+		return { id: row.id, ok: false, retry, error: text };
+	};
+
 	const sendOne = async (row, values) => {
 		const started = clock.now();
 		try {
 			await sendRow(row, values);
 			return { id: row.id, ok: true, duration_ms: clock.now() - started };
 		} catch (error) {
-			const text = maskRecipients(safeError(error?.message ?? String(error)), row.payload?.to);
 			const retry = error instanceof MailError && error.retry === true;
-			if (!retry || Number(row.attempts) >= RETRY_DELAYS.length) await recordFailure(row, text);
-			return { id: row.id, ok: false, retry, error: text, duration_ms: clock.now() - started };
+			return {
+				...(await failed(row, error?.message ?? String(error), retry)),
+				duration_ms: clock.now() - started,
+			};
 		}
 	};
 
@@ -81,9 +110,8 @@ const createMailChannel = ({ settings, send, render, audit, log, clock = { now: 
 			try {
 				values = await settings();
 			} catch (error) {
-				const text = safeError(error?.message ?? String(error));
-				log?.warn?.(`mail: the settings could not be read: ${text}`);
-				return rows.map((row) => ({ id: row.id, ok: false, retry: true, error: text }));
+				log?.warn?.(`mail: the settings could not be read: ${safeError(error?.message ?? String(error))}`);
+				return Promise.all(rows.map((row) => failed(row, "The mail settings could not be read", true)));
 			}
 			const results = [];
 			for (const row of rows) results.push(await sendOne(row, values));

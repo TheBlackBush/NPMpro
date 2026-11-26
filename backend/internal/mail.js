@@ -1,6 +1,13 @@
 import { hostname } from "node:os";
 import errs from "../lib/error.js";
-import { isConfigured, mergeEmail, mergeNotifications, publicHostOf } from "../lib/mail/settings-rules.js";
+import {
+	isConfigured,
+	isSingleAddress,
+	MAIL_LANGUAGES,
+	mergeEmail,
+	mergeNotifications,
+	publicHostOf,
+} from "../lib/mail/settings-rules.js";
 import { sendMail } from "../lib/mail/transport.js";
 import { messageId } from "../lib/notify/catalogue.js";
 import { renderMail, TEMPLATES } from "../mail/render.js";
@@ -48,13 +55,19 @@ const internalMail = {
 		const known = TEMPLATES[template];
 		if (!known) throw new errs.InternalValidationError(`Unknown mail template ${template}`);
 		if (known.direct) throw new errs.InternalValidationError(`The mail template ${template} is never queued`);
-		if (!isConfigured((await settings()).email)) return { queued: false };
+		const recipients = Array.isArray(to) ? to : [to];
+		if (recipients.length === 0 || !recipients.every((one) => isSingleAddress(one))) {
+			throw new errs.InternalValidationError("A mail needs valid recipient addresses");
+		}
+		const stored = await settings();
+		if (!isConfigured(stored.email)) return { queued: false };
+		const chosen = MAIL_LANGUAGES.includes(language) ? language : stored.notifications.default_language;
 		await queue.add([
 			{
 				message_id: messageId(),
 				event: `mail.${template}`.slice(0, 64),
 				channel: "mail",
-				payload: { to, template, language, data },
+				payload: { to, template, language: chosen, data },
 			},
 		]);
 		worker.kick();

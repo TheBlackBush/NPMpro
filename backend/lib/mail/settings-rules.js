@@ -206,6 +206,7 @@ export {
 	EMAIL_DEFAULTS,
 	EMAIL_ENV_KEYS,
 	isConfigured,
+	isSingleAddress,
 	MAIL_LANGUAGES,
 	mergeEmail,
 	mergeNotifications,

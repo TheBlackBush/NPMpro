@@ -15,6 +15,8 @@ const SUBJECT = /Subject: \[NPMpro [^\]]+\] Notice/u;
 const SENT_TO = /To: bob@example\.net/u;
 const INSTANCE_SUBJECT = /Subject: \[NPMpro npm\.example\.com\] Notice/u;
 const NEVER_QUEUED = /never queued/u;
+const MASKED = /\*\*\*/u;
+const VALID_RECIPIENT = /valid recipient/u;
 const UNKNOWN = /Unknown/u;
 const NO_SUCH_USER = /no such user/u;
 
@@ -34,6 +36,8 @@ let db;
 let port;
 let audits;
 let queue;
+let override = {};
+let settingsBroken = false;
 let worker;
 let channel;
 let appWorker;
@@ -47,7 +51,10 @@ const emailValues = () => ({
 	password: PASSWORD,
 	from_address: "npm@example.com",
 });
-const settings = () => ({ email: emailValues(), notifications: { public_url: "", default_language: "en" } });
+const settings = () => ({
+	email: { ...emailValues(), ...override },
+	notifications: { public_url: "", default_language: "en" },
+});
 const listen = async (mode) => {
 	const fake = await startFakeSmtp({ mode });
 	servers.push(fake);
@@ -80,11 +87,14 @@ after(async () => {
 describe("the mail channel on the worker", () => {
 	beforeEach(async () => {
 		clock.at = START;
+		override = {};
+		settingsBroken = false;
 		audits = [];
 		await db.knex(TABLE).delete();
 		queue = createQueue({ knex: db.knex, clock });
 		channel = createMailChannel({
-			settings: () => Promise.resolve(settings()),
+			settings: () =>
+				settingsBroken ? Promise.reject(new Error(`broken ${PASSWORD}`)) : Promise.resolve(settings()),
 			send: sendMail,
 			render: renderMail,
 			audit: (entry) => {
@@ -204,6 +214,74 @@ describe("the mail channel on the worker", () => {
 	});
 });
 
+describe("the mail channel, final failures", () => {
+	const auditsOf = [];
+	const stub = (message, retry = false) =>
+		createMailChannel({
+			settings: () => Promise.resolve(settings()),
+			send: () => Promise.reject(new MailError(message, { retry })),
+			render: renderMail,
+			audit: (entry) => {
+				auditsOf.push(entry);
+				return Promise.resolve();
+			},
+		});
+	const rowOf = (to, attempts = 0) => ({
+		id: 1,
+		attempts,
+		event: "mail.notice",
+		payload: { to, template: "notice", language: "en", data: {} },
+	});
+
+	beforeEach(() => {
+		auditsOf.length = 0;
+		override = {};
+		port = 25;
+	});
+
+	it("masks an address in any case before the text is cut, and an address the cut splits", async () => {
+		const upper = await stub(`550 no mailbox ${BOB.toUpperCase()} here`).send([rowOf(BOB)]);
+		assert.ok(!upper[0].error.toLowerCase().includes("bob@"), upper[0].error);
+		assert.match(upper[0].error, MASKED);
+		// the address starts 290 characters in, so the cut of the text falls inside it
+		const cut = await stub(`${"x".repeat(290)}${BOB}`).send([rowOf(BOB)]);
+		assert.ok(!cut[0].error.includes("bob"), cut[0].error);
+		assert.ok(!JSON.stringify(auditsOf).toLowerCase().includes("bob"), JSON.stringify(auditsOf));
+		assert.equal(auditsOf.length, 2);
+	});
+
+	it("retries a settings read that fails, then audits the final failure without the error's secret", async () => {
+		settingsBroken = true;
+		const failing = createMailChannel({
+			settings: () => Promise.reject(new Error(`broken ${PASSWORD}`)),
+			send: sendMail,
+			render: renderMail,
+			audit: (entry) => {
+				auditsOf.push(entry);
+				return Promise.resolve();
+			},
+		});
+		const [again] = await failing.send([rowOf(BOB, 2)]);
+		assert.equal(again.ok, false);
+		assert.equal(again.retry, true);
+		assert.equal(auditsOf.length, 0);
+		const [last] = await failing.send([rowOf(BOB, 5)]);
+		assert.equal(last.retry, true);
+		assert.equal(auditsOf.length, 1);
+		assert.equal(auditsOf[0].action, "mail-failed");
+		assert.ok(!JSON.stringify(auditsOf).includes(PASSWORD));
+	});
+
+	it("fails invalid mail settings at once with one audit row", async () => {
+		override = { from_address: "not an address" };
+		const [result] = await stub("never sent").send([rowOf(BOB)]);
+		assert.equal(result.ok, false);
+		assert.equal(result.retry, false);
+		assert.equal(auditsOf.length, 1);
+		assert.equal(auditsOf[0].meta.recipients, 1);
+	});
+});
+
 describe("internalMail", () => {
 	const sentTo = (fake) => fake.messages.length;
 	const serveWith = async (mode) => {
@@ -262,6 +340,17 @@ describe("internalMail", () => {
 		await assert.rejects(internalMail.queueMail({ to: BOB, template: "test", language: "en" }), NEVER_QUEUED);
 		await assert.rejects(internalMail.queueMail({ to: BOB, template: "nope", language: "en" }), UNKNOWN);
 		assert.equal((await stored()).length, 0);
+	});
+
+	it("refuses a bad recipient without a row and takes the default language for a bad one", async () => {
+		await serveWith("rcpt-550");
+		for (const to of ["", "not an address", `${BOB}, other@example.net`, [BOB, "x"], []]) {
+			await assert.rejects(internalMail.queueMail({ to, template: "notice", language: "en" }), VALID_RECIPIENT);
+		}
+		assert.equal((await stored()).length, 0);
+		await internalMail.queueMail({ to: BOB, template: "notice", language: "xx" });
+		const [one] = await stored();
+		assert.equal(JSON.parse(one.payload).language, "de");
 	});
 
 	it("writes nothing while mail is not configured and sendNow throws error.mail-not-configured", async () => {
