@@ -89,6 +89,12 @@ try {
 				Math.floor(Date.now() / 1000),
 				user.id,
 			);
+			// the reset links still out would set the password again (the table is missing before its migration ran)
+			if (
+				db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'npmpro_password_token'").get()
+			) {
+				db.prepare("DELETE FROM npmpro_password_token WHERE user_id = ?").run(user.id);
+			}
 			console.log(`Password for user ${EMAIL} has been ${changes ? "reset" : "set"}.`);
 		}
 

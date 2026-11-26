@@ -65,7 +65,13 @@ const mailFailed = async (user, err) => {
 
 const work = async (email, ip) => {
 	if (!(await resetOffered())) return;
-	const user = await userModel.query().where("email", email.toLowerCase()).first();
+	// like the sign-in: an enabled user on the address, so a disabled row with the same address is never picked
+	const user = await userModel
+		.query()
+		.where("email", email.toLowerCase())
+		.andWhere("is_disabled", 0)
+		.orderBy("id")
+		.first();
 	if (!user || user.is_disabled) return;
 	if (!(await authModel.query().where({ user_id: user.id, type: "password" }).first())) return;
 	if (!allowAddress(email)) return;

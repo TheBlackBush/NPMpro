@@ -21,6 +21,7 @@ import settingModel from "../models/setting.js";
 import userModel from "../models/user.js";
 import internalAuditLog from "./audit-log.js";
 import internalMail from "./mail.js";
+import internalPasswordToken from "./password-token.js";
 
 const NAMES = { email: "Email", notifications: "Notifications" };
 const TARGET_KEYS = ["host", "port", "security", "username"];
@@ -186,6 +187,10 @@ const internalMailSetting = {
 
 		await saveStored("email", JSON.parse(JSON.stringify(next)));
 		warnedSecret = false;
+		// switching reset off is an emergency stop: the links still out must not come back when it is switched on
+		if (patch.allow_password_reset === false && config.values.allow_password_reset === true) {
+			await internalPasswordToken.removePurpose("reset");
+		}
 		await audit(access, "updated", { id: "email", changed });
 		return internalMailSetting.getEmail(access);
 	},

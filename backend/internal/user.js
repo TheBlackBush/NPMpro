@@ -198,7 +198,12 @@ const internalUser = {
 
 		if (data.is_disabled) data.npmpro_token_valid_after = Math.floor(Date.now() / 1000);
 
-		await userModel.query().findById(existingUser.id).patch(data);
+		// a reset link went to the old address, and enabling the user again must not bring an old link back
+		const endsLinks = data.is_disabled || (data.email !== undefined && data.email !== existingUser.email);
+		await userModel.transaction(async (trx) => {
+			await userModel.query(trx).findById(existingUser.id).patch(data);
+			if (endsLinks) await internalPasswordToken.removeForUser(trx, existingUser.id);
+		});
 		const user = await internalUser.get(access, { id: data.id });
 
 		await internalAuditLog.add(access, {

@@ -24,7 +24,8 @@ const lookup = async (trx, token, purpose) => {
 	const query = passwordTokenModel.query(trx).where({ token_hash: hash }).whereNull("used_on");
 	if (purpose) query.where({ purpose });
 	const row = await query.first();
-	if (!row || msOfDbTime(row.expires_on) <= Date.now()) return null;
+	// an expiry that cannot be read counts as expired
+	if (!row || !(msOfDbTime(row.expires_on) > Date.now())) return null;
 	const user = await userModel.query(trx).findById(row.user_id);
 	if (!user || user.is_disabled) return null;
 	return { row, user };
@@ -97,6 +98,9 @@ const internalPasswordToken = {
 
 	/** In the transaction of a password change or a user delete: the tokens of the user all go */
 	removeForUser: (trx, userId) => passwordTokenModel.query(trx).where({ user_id: userId }).delete(),
+
+	/** Turning password reset off: every open reset link goes, so turning it on again brings none back */
+	removePurpose: (purpose) => passwordTokenModel.query().where({ purpose }).delete(),
 
 	/** The hourly sweep: used and expired tokens go */
 	sweep: () =>
