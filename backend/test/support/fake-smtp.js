@@ -3,7 +3,8 @@ import tls from "node:tls";
 
 /**
  * A small SMTP server on 127.0.0.1 for the mail tests (node:net only; tlsOptions makes it an implicit-TLS server).
- * Modes: accept, rcpt-450, rcpt-550, auth-535-echo (the 535 reply echoes the password), drop (closes at once).
+ * Modes: accept, rcpt-450, rcpt-550, auth-535-echo (the 535 reply echoes the password), auth-535-base64 (echoes its
+ * base64), auth-535-url (a reply with URL credentials), drop (closes at once).
  * messages holds every received message raw; logins every AUTH as { user, password }.
  *
  * @param   {Object}  [options]
@@ -31,6 +32,9 @@ const startFakeSmtp = async ({ mode = "accept", tlsOptions } = {}) => {
 		const finishAuth = (user, password) => {
 			logins.push({ user, password });
 			if (mode === "auth-535-echo") send(`535 5.7.8 Authentication failed for ${password}`);
+			else if (mode === "auth-535-base64") send(`535 5.7.8 bad ${Buffer.from(password).toString("base64")}`);
+			else if (mode === "auth-535-url")
+				send("535 5.7.8 see https://admin:hunter22@example.com/help?token=abc123");
 			else send("235 2.7.0 Authentication successful");
 		};
 		const command = (line) => {
