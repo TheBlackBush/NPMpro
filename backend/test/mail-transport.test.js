@@ -201,7 +201,7 @@ describe("explainFailure", () => {
 		]) {
 			const answer = explain(err);
 			assert.equal(answer.message_i18n, "error.mail-security-mismatch", JSON.stringify(err));
-			assert.deepEqual(answer.message_values, { port: 465 });
+			assert.deepEqual(answer.message_values, { port: "465" });
 			assert.match(answer.text, PORT_HINT);
 		}
 		// a timeout after the greeting is not a Security problem
@@ -211,7 +211,7 @@ describe("explainFailure", () => {
 	it("names a refused connection with the configured host and the port", () => {
 		const answer = explain({ code: "ESOCKET", originalCode: "ECONNREFUSED" });
 		assert.equal(answer.message_i18n, "error.mail-connection-refused");
-		assert.deepEqual(answer.message_values, { host: "smtp.example.com", port: 465 });
+		assert.deepEqual(answer.message_values, { host: "smtp.example.com", port: "465" });
 		assert.doesNotMatch(answer.text, NODE_TEXT);
 	});
 
@@ -446,7 +446,7 @@ describe("sendMail", () => {
 		await open("accept");
 		const err = await failure({ security: "tls" });
 		assert.equal(err.message_i18n, "error.mail-security-mismatch");
-		assert.deepEqual(err.message_values, { port: server.port });
+		assert.deepEqual(err.message_values, { port: String(server.port) });
 		assert.doesNotMatch(err.message, NODE_TEXT);
 	});
 
@@ -465,7 +465,7 @@ describe("sendMail", () => {
 		);
 		assert.equal(err.retry, true);
 		assert.equal(err.message_i18n, "error.mail-connection-refused");
-		assert.deepEqual(err.message_values, { host: "127.0.0.1", port });
+		assert.deepEqual(err.message_values, { host: "127.0.0.1", port: String(port) });
 	});
 
 	it("tries the next checked address after a connect error, never after a reply", async () => {

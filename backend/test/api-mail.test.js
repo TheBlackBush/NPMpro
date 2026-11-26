@@ -434,7 +434,7 @@ it("answers a refused connection with the host and the port, never Node's text",
 	const failed = await admin.post("/settings/email/test", {});
 	assert.equal(failed.status, 400);
 	assert.equal(failed.body.error.message_i18n, "error.mail-connection-refused");
-	assert.deepEqual(failed.body.error.message_values, { host: "127.0.0.1", port });
+	assert.deepEqual(failed.body.error.message_values, { host: "127.0.0.1", port: String(port) });
 	assert.equal(failed.text.includes("ECONNREFUSED"), false);
 	assert.equal((await admin.put("/settings/email", { port: accept.port })).status, 200);
 });

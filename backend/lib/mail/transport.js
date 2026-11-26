@@ -130,14 +130,14 @@ const explainFailure = (values, err, detail) => {
 		return {
 			text: `The server on port ${values.port} did not answer as Security expects. Port 465 usually needs TLS, port 587 STARTTLS.`,
 			message_i18n: "error.mail-security-mismatch",
-			message_values: { port: values.port },
+			message_values: { port: String(values.port) },
 		};
 	}
 	if (err?.code === "ESOCKET" && err.originalCode === "ECONNREFUSED") {
 		return {
 			text: `${values.host} refused the connection on port ${values.port}.`,
 			message_i18n: "error.mail-connection-refused",
-			message_values: { host: values.host, port: values.port },
+			message_values: { host: values.host, port: String(values.port) },
 		};
 	}
 	if (err?.code === "EAUTH" || Number(err?.responseCode) === LOGIN_REFUSED) {
