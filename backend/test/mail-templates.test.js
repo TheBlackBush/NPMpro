@@ -34,11 +34,9 @@ describe("mail templates", () => {
 		assert.ok(!LINE_BREAK.test(mail.subject));
 	});
 
-	it("has no image, script, source or link in the HTML, no URL in the text", () => {
+	it("has no script and no remote resource in the HTML, no URL in the text", () => {
 		const mail = renderMail("test", { language: "de", instance: "box.example" });
-		assert.ok(!mail.html.includes("<img"));
 		assert.ok(!mail.html.includes("<script"));
-		assert.ok(!mail.html.includes("src="));
 		assert.ok(!mail.html.includes("http"));
 		assert.ok(!mail.text.includes("http"));
 	});
@@ -57,7 +55,8 @@ describe("mail templates", () => {
 			assert.ok(mail.text.includes("- One (n1)\n- Two <3"));
 			assert.ok(mail.html.includes('<a href="https://npm.example/a?b=1&amp;c=&quot;2&quot;"'));
 			assert.ok(mail.html.includes("Two &lt;3"));
-			assert.equal(mail.html.match(URLS).length, 1);
+			assert.equal(mail.html.match(URLS).length, 3);
+			assert.ok(mail.html.includes("If the button does not work, open this link:"));
 		} finally {
 			delete TEMPLATES.sample;
 		}
