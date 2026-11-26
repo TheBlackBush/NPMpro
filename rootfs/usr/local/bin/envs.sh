@@ -1050,6 +1050,11 @@ if [ -n "$SMTP_USERNAME" ] && { [ "${#SMTP_USERNAME}" -gt 254 ] || [ "$(mail_cou
     sleep inf
 fi
 
+if [ -n "$PASSWORD_RESET" ] && ! echo "$PASSWORD_RESET" | grep -q "^true$\|^false$"; then
+    echo "PASSWORD_RESET needs to be true or false."
+    sleep inf
+fi
+
 if [ -n "$PUBLIC_URL" ] && { ! echo "$PUBLIC_URL" | grep -qiE '^https://[^/?#@\\]+/?$' || [ "$(mail_count_chars "$PUBLIC_URL" '\041-\176')" -ne "${#PUBLIC_URL}" ]; }; then
     echo "PUBLIC_URL needs to be an https:// address without a path, query, fragment or user info."
     sleep inf

@@ -927,6 +927,7 @@
 	"error.regex-domain-admin-only": "Only administrators can use a regular expression (a name starting with ~) as a domain name.",
 	"error.request-failed": "Request failed (HTTP {status})",
 	"error.required": "This is required",
+	"error.reset-needs-public-url": "Set the public URL in Settings, Notifications first. The password reset link needs it.",
 	"error.stream-port-range-too-wide": "A port range can span at most 1000 ports. Split a bigger range into several streams.",
 	"error.stream-port-reserved": "Port {port} ({protocol}) is used by NPMpro itself ({setting}). Choose another incoming port.",
 	"error.stream.new-certificate-dns": "New certificates for streams need the DNS challenge",

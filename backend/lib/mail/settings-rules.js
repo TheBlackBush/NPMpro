@@ -14,6 +14,7 @@ const EMAIL_DEFAULTS = {
 	from_address: "",
 	from_name: "",
 	reply_to: "",
+	allow_password_reset: false,
 };
 
 const NOTIFICATION_DEFAULTS = {
@@ -31,6 +32,7 @@ const EMAIL_ENV_KEYS = {
 	from_address: "SMTP_FROM",
 	from_name: "SMTP_FROM_NAME",
 	reply_to: "SMTP_REPLY_TO",
+	allow_password_reset: "PASSWORD_RESET",
 };
 
 const NOTIFICATION_ENV_KEYS = {
@@ -39,7 +41,10 @@ const NOTIFICATION_ENV_KEYS = {
 };
 
 const EMAIL_NUMBER_KEYS = new Set(["port"]);
+// on unless the variable says false
 const EMAIL_BOOLEAN_KEYS = new Set(["verify_tls"]);
+// off unless the variable says true
+const EMAIL_OPT_IN_KEYS = new Set(["allow_password_reset"]);
 const SECURITY_MODES = ["starttls", "tls", "none"];
 const ADDRESS_PATTERN = /^[^\s@<>()",;:\\]+@[^\s@<>()",;:\\]+$/u;
 const ASCII_PRINTABLE_PATTERN = /^[\x21-\x7e]+$/u;
@@ -72,6 +77,8 @@ const mergeWithEnv = (defaults, envKeys, stored, env) => {
 			values[key] = Number(raw);
 		} else if (EMAIL_BOOLEAN_KEYS.has(key)) {
 			values[key] = raw !== "false";
+		} else if (EMAIL_OPT_IN_KEYS.has(key)) {
+			values[key] = raw === "true";
 		} else {
 			values[key] = raw;
 		}
@@ -153,6 +160,7 @@ const EMAIL_CHECKS = {
 	port: (value) => Number.isInteger(value) && value >= 1 && value <= 65535,
 	security: (value) => SECURITY_MODES.includes(value),
 	verify_tls: (value) => typeof value === "boolean",
+	allow_password_reset: (value) => typeof value === "boolean",
 	from_address: (value) => value === "" || isSingleAddress(value),
 	reply_to: (value) => value === "" || isSingleAddress(value),
 	from_name: (value) => isPlainText(value, NAME_MAX, NAME_PATTERN),

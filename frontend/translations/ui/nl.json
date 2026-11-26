@@ -927,6 +927,7 @@
 	"error.regex-domain-admin-only": "Alleen beheerders kunnen een reguliere expressie (een naam die met ~ begint) als domeinnaam gebruiken.",
 	"error.request-failed": "Verzoek mislukt (HTTP {status})",
 	"error.required": "Dit is verplicht",
+	"error.reset-needs-public-url": "Stel eerst de openbare URL in bij Instellingen, Meldingen. De link om het wachtwoord opnieuw in te stellen heeft hem nodig.",
 	"error.stream-port-range-too-wide": "Een poortbereik kan hoogstens 1000 poorten beslaan. Verdeel een groter bereik over meerdere streams.",
 	"error.stream-port-reserved": "Poort {port} ({protocol}) wordt door NPMpro zelf gebruikt ({setting}). Kies een andere inkomende poort.",
 	"error.stream.new-certificate-dns": "Nieuwe certificaten voor streams vereisen de DNS-challenge",

@@ -927,6 +927,7 @@
 	"error.regex-domain-admin-only": "只有管理员才能使用正则表达式（以 ~ 开头的名称）作为域名。",
 	"error.request-failed": "请求失败 (HTTP {status})",
 	"error.required": "此项为必填项",
+	"error.reset-needs-public-url": "请先在“设置”的“通知”中设置公开地址。重置密码的链接需要它。",
 	"error.stream-port-range-too-wide": "端口范围最多可包含 1000 个端口。请把更大的范围拆分为多个流。",
 	"error.stream-port-reserved": "端口 {port}（{protocol}）已被 NPMpro 自身使用（{setting}）。请选择其他传入端口。",
 	"error.stream.new-certificate-dns": "流的新证书需要 DNS 验证",

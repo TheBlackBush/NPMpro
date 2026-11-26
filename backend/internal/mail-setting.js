@@ -14,6 +14,7 @@ import {
 } from "../lib/mail/settings-rules.js";
 import { checkSmtpTarget } from "../lib/mail/smtp-target.js";
 import { MailError } from "../lib/mail/transport.js";
+import { getOidcConfig } from "../lib/oidc-config.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
@@ -121,6 +122,9 @@ const blockedHost = (host) =>
 const targetError = (err, host) =>
 	err.code === "EBLOCKED" ? blockedHost(host) : new errs.ValidationError(err.message, err.message_i18n);
 
+const resetNeedsPublicUrl = () =>
+	new errs.ValidationError("Password reset by mail needs the public URL", "error.reset-needs-public-url");
+
 const audit = (access, action, meta) => internalAuditLog.add(access, { action, object_type: "setting", meta });
 
 const internalMailSetting = {
@@ -159,6 +163,14 @@ const internalMailSetting = {
 				changed.push("password");
 			}
 		}
+
+		// switching reset on needs the address its links point at; a stored true kept by a save is not checked again
+		if (
+			patch.allow_password_reset === true &&
+			config.values.allow_password_reset !== true &&
+			!normalizePublicUrl((await getNotificationsConfig()).values.public_url)
+		)
+			throw resetNeedsPublicUrl();
 
 		// the target is resolved and checked at a save that moves it
 		if (changed.some((key) => TARGET_KEYS.includes(key))) {
@@ -240,5 +252,20 @@ const internalMailSetting = {
 	},
 };
 
-export { getEmailConfig, getNotificationsConfig, reloadMailSettings, useMailSettings };
+/**
+ * Whether a reset by mail is offered: mail configured, a valid public URL, the switch on and password sign-in not turned
+ * off by OIDC. Every reset route answers as if no account exists while this is false.
+ *
+ * @param   {Object}  [oidc]  the result of getOidcConfig() when the caller has it already
+ * @returns {Promise<boolean>}
+ */
+const resetOffered = async (oidc) => {
+	const { values: email } = await getEmailConfig();
+	if (email.allow_password_reset !== true || !isConfigured(email)) return false;
+	if (!normalizePublicUrl((await getNotificationsConfig()).values.public_url)) return false;
+	const cfg = oidc ?? (await getOidcConfig());
+	return !(cfg.active && cfg.values.disable_password);
+};
+
+export { getEmailConfig, getNotificationsConfig, reloadMailSettings, resetOffered, useMailSettings };
 export default internalMailSetting;

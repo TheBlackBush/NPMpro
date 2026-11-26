@@ -927,6 +927,7 @@
 	"error.regex-domain-admin-only": "Solo gli amministratori possono usare un'espressione regolare (un nome che inizia con ~) come nome di dominio.",
 	"error.request-failed": "Richiesta non riuscita (HTTP {status})",
 	"error.required": "Campo obbligatorio",
+	"error.reset-needs-public-url": "Imposta prima l'URL pubblico in Impostazioni, Notifiche. Il link per reimpostare la password ne ha bisogno.",
 	"error.stream-port-range-too-wide": "Un intervallo di porte può comprendere al massimo 1000 porte. Dividi un intervallo più grande in più stream.",
 	"error.stream-port-reserved": "La porta {port} ({protocol}) è usata da NPMpro stesso ({setting}). Scegli un'altra porta in ingresso.",
 	"error.stream.new-certificate-dns": "I nuovi certificati per gli stream richiedono la challenge DNS",

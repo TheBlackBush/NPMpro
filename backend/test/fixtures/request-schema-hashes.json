@@ -106,7 +106,7 @@
 	"put /settings/runtime/logs": "bc8c1d32d309c09988b7340d6445c77632e9e9b73dd0b230600b3b2ba98bf8e0",
 	"put /settings/runtime/ddns": "1413a1d6fbab2af48ca813eddae75df30447137f2b3939ee655989904bb02da1",
 	"put /settings/runtime/advanced": "d2cf94a67814b1b3582c7445b951c6fd547b1a61392b32081d134ef25d0399af",
-	"put /settings/email": "5bbc3d5ca7e0e25546275c8dbf9c5a17c3df5e472afac5ba0b360fea91bdba0e",
+	"put /settings/email": "ce8e19feefb9417715bd9d8f47e09ffed05bb16fbde1146ee0abfbdd71e0009a",
 	"post /settings/email/test": "9c49d59026eaa6e577bdd2a1239673f7923f1bc9530e73ee0934df5112ca933a",
 	"put /settings/notifications": "a75eee590c297c1aa080db95ed0c56a84c9f57f076a67b65723bb3bddbbe7bd2",
 	"get /settings/{settingID}": "e6c42ed17e793c7fb599d96324b4c2a72a9073454d160da3f858849ee1cab050",

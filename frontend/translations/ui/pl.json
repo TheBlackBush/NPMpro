@@ -927,6 +927,7 @@
 	"error.regex-domain-admin-only": "Tylko administratorzy mogą używać wyrażenia regularnego (nazwy zaczynającej się od ~) jako nazwy domeny.",
 	"error.request-failed": "Żądanie nie powiodło się (HTTP {status})",
 	"error.required": "To pole jest wymagane",
+	"error.reset-needs-public-url": "Najpierw ustaw publiczny adres URL w Ustawieniach, Powiadomieniach. Link do resetowania hasła go wymaga.",
 	"error.stream-port-range-too-wide": "Zakres portów może obejmować najwyżej 1000 portów. Podziel większy zakres na kilka strumieni.",
 	"error.stream-port-reserved": "Port {port} ({protocol}) jest używany przez sam NPMpro ({setting}). Wybierz inny port przychodzący.",
 	"error.stream.new-certificate-dns": "Nowe certyfikaty dla strumieni wymagają weryfikacji DNS",

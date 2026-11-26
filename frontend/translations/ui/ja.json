@@ -927,6 +927,7 @@
 	"error.regex-domain-admin-only": "正規表現（~ で始まる名前）をドメイン名として使用できるのは管理者のみです。",
 	"error.request-failed": "リクエストに失敗しました (HTTP {status})",
 	"error.required": "必須項目です",
+	"error.reset-needs-public-url": "先に「設定」の「通知」で公開URLを設定してください。パスワード再設定のリンクに必要です。",
 	"error.stream-port-range-too-wide": "ポート範囲は最大 1000 ポートまでです。大きな範囲は複数のストリームに分けてください。",
 	"error.stream-port-reserved": "ポート {port}（{protocol}）は NPMpro 自身が使用しています（{setting}）。別の受信ポートを選んでください。",
 	"error.stream.new-certificate-dns": "ストリームの新しい証明書には DNS チャレンジが必要です",

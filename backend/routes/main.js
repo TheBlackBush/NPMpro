@@ -1,5 +1,6 @@
 import express from "express";
 import internalDeadHost from "../internal/dead-host.js";
+import { resetOffered } from "../internal/mail-setting.js";
 import internalProxyHost from "../internal/proxy-host.js";
 import internalRedirectionHost from "../internal/redirection-host.js";
 import internalStream from "../internal/stream.js";
@@ -66,6 +67,8 @@ router.get(["/api", "/api/"], async (_, res /*, next*/) => {
 		status: "OK",
 		setup: await isSetup(),
 		password: !(cfg.active && cfg.values.disable_password),
+		// only while a reset by mail is offered: the sign-in page shows the forgot password link on it
+		...((await resetOffered(cfg)) ? { password_reset: true } : {}),
 		cert_warning_days: warningDays(),
 		oidc: oidcHealth(cfg),
 		// every page polls this: the banner, and the move window's sign that the new process answers

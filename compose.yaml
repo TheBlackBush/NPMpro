@@ -205,6 +205,7 @@ services:
 #      - "SMTP_REPLY_TO=admin@example.com" # reply address, one plain address
 #      - "PUBLIC_URL=https://npm.example.com" # address you open NPMpro with, https:// only, no path; used in links of mails
 #      - "MAIL_LANGUAGE=en" # language of mails without a known recipient language: en, de, zh, fr, es, pt, ru, it, nl, pl, ja, ko or uk, default en
+#      - "PASSWORD_RESET=true" # lets users reset a forgotten password by mail (needs mail set up and PUBLIC_URL), default false
 
       # Advanced (Time zone: TZ at the top)
 #      - "DISABLE_NGINX_BEAUTIFIER=true" # do not format the configs NPMpro writes, useful when nginxbeautifier fails on non-standard custom/advanced configs, default false

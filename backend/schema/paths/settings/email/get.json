@@ -28,6 +28,7 @@
 								"from_address": "npmpro@example.com",
 								"from_name": "NPMpro",
 								"reply_to": "",
+								"allow_password_reset": false,
 								"password_set": true,
 								"secret_error": false,
 								"locked": [],

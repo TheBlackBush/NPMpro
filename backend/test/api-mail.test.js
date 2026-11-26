@@ -8,7 +8,14 @@ import { startFakeSmtp } from "./support/fake-smtp.js";
 // guarded target and the test mail against a fake SMTP server.
 
 const PASSWORD_VALUE = "s3cret-pass-9";
-const ENV_VARS = ["SMTP_HOST", "SMTP_PASSWORD", "SMTP_FROM", "PUBLIC_URL"];
+const OIDC_ENV = {
+	OIDC_ISSUER_URL: "https://idp.example.com",
+	OIDC_CLIENT_ID: "client",
+	OIDC_CLIENT_SECRET: "secret-value-1",
+	OIDC_REDIRECT_DOMAIN: "npm.example.com",
+	OIDC_DISABLE_PASSWORD: "true",
+};
+const ENV_VARS = ["SMTP_HOST", "SMTP_PASSWORD", "SMTP_FROM", "PUBLIC_URL", "PASSWORD_RESET", ...Object.keys(OIDC_ENV)];
 const SEALED = /^v1:/u;
 const TO_ADMIN = /To: admin@example\.com/u;
 const TO_OTHER = /To: someone@example\.org/u;
@@ -110,6 +117,7 @@ it("starts unconfigured: the defaults, no password, the test mail refused", asyn
 		from_address: "",
 		from_name: "",
 		reply_to: "",
+		allow_password_reset: false,
 		password_set: false,
 		secret_error: false,
 		locked: [],
@@ -477,5 +485,103 @@ it("answers PUBLIC_URL as the origin", async () => {
 		assert.deepEqual(got.config_errors, []);
 	} finally {
 		delete process.env.PUBLIC_URL;
+	}
+});
+
+const offered = async () => (await api.client().get("")).body.password_reset;
+
+it("offers the password reset only when mail, the public URL, the switch and password sign-in all hold", async () => {
+	// the earlier tests leave a configured server, a public URL and mail; start from a clean slate
+	await api.db("setting").whereIn("id", ["email", "notifications"]).delete();
+	assert.equal("password_reset" in (await api.client().get("")).body, false);
+
+	// the switch alone: no mail, no public URL
+	const noMail = await admin.put("/settings/email", { allow_password_reset: true });
+	assert.equal(noMail.status, 400, noMail.text);
+	assert.equal(noMail.body.error.message_i18n, "error.reset-needs-public-url");
+
+	// the public URL and the switch, but mail not configured
+	assert.equal((await admin.put("/settings/notifications", { public_url: "https://npm.example.test" })).status, 200);
+	const switchOn = await admin.put("/settings/email", { allow_password_reset: true });
+	assert.equal(switchOn.status, 200, switchOn.text);
+	assert.equal(switchOn.body.allow_password_reset, true);
+	assert.equal(await offered(), undefined);
+
+	// mail configured too: offered
+	assert.equal((await admin.put("/settings/email", serverOf(accept))).status, 200);
+	assert.equal(await offered(), true);
+	// the flag is a bare true, never false
+	assert.equal(JSON.stringify((await api.client().get("")).body).includes('"password_reset":true'), true);
+
+	// no public URL: not offered
+	assert.equal((await admin.put("/settings/notifications", { public_url: "" })).status, 200);
+	assert.equal(await offered(), undefined);
+	assert.equal((await admin.put("/settings/notifications", { public_url: "https://npm.example.test" })).status, 200);
+	assert.equal(await offered(), true);
+
+	// switch off: not offered
+	assert.equal((await admin.put("/settings/email", { allow_password_reset: false })).status, 200);
+	assert.equal(await offered(), undefined);
+	assert.equal((await admin.put("/settings/email", { allow_password_reset: true })).status, 200);
+	assert.equal(await offered(), true);
+
+	// password sign-in turned off by OIDC: not offered
+	Object.assign(process.env, OIDC_ENV);
+	try {
+		const health = (await api.client().get("")).body;
+		assert.equal(health.password, false);
+		assert.equal("password_reset" in health, false);
+	} finally {
+		for (const name of Object.keys(OIDC_ENV)) delete process.env[name];
+	}
+	assert.equal(await offered(), true);
+});
+
+it("refuses the switch without a valid public URL, keeps a stored true on a save that keeps it, audits the key", async () => {
+	assert.equal((await admin.put("/settings/email", { allow_password_reset: false })).status, 200);
+	assert.equal((await admin.put("/settings/notifications", { public_url: "" })).status, 200);
+	const refused = await admin.put("/settings/email", { allow_password_reset: true, from_name: "Nope" });
+	assert.equal(refused.status, 400);
+	assert.equal(refused.body.error.message_i18n, "error.reset-needs-public-url");
+	assert.equal((await admin.get("/settings/email")).body.allow_password_reset, false);
+	assert.notEqual((await settingRow("email")).from_name, "Nope");
+
+	const bad = await admin.put("/settings/email", { allow_password_reset: "yes" });
+	assert.equal(bad.status, 400);
+
+	// a stored true stays through a save that keeps it, with no public URL
+	await api
+		.db("setting")
+		.where({ id: "email" })
+		.update({
+			meta: JSON.stringify({ ...(await settingRow("email")), allow_password_reset: true }),
+		});
+	const kept = await admin.put("/settings/email", { allow_password_reset: true, from_name: "Kept" });
+	assert.equal(kept.status, 200, kept.text);
+	assert.equal(kept.body.allow_password_reset, true);
+	assert.equal(await offered(), undefined);
+
+	assert.equal((await admin.put("/settings/notifications", { public_url: "https://npm.example.test" })).status, 200);
+	assert.equal((await admin.put("/settings/email", { allow_password_reset: false })).status, 200);
+	const row = (await auditRows()).filter((entry) => entry.action === "updated").at(-1);
+	assert.deepEqual(parsed(row.meta).changed, ["allow_password_reset"]);
+});
+
+it("locks the switch with PASSWORD_RESET, true or false, and ignores a save for it", async () => {
+	process.env.PASSWORD_RESET = "true";
+	try {
+		const got = (await admin.get("/settings/email")).body;
+		assert.equal(got.allow_password_reset, true);
+		assert.equal(got.locked.includes("allow_password_reset"), true);
+		assert.equal(got.locked_by.allow_password_reset, "PASSWORD_RESET");
+		assert.equal(await offered(), true);
+		const dropped = await admin.put("/settings/email", { allow_password_reset: false });
+		assert.equal(dropped.status, 200, dropped.text);
+		assert.equal(dropped.body.allow_password_reset, true);
+		process.env.PASSWORD_RESET = "false";
+		assert.equal((await admin.get("/settings/email")).body.allow_password_reset, false);
+		assert.equal(await offered(), undefined);
+	} finally {
+		delete process.env.PASSWORD_RESET;
 	}
 });
