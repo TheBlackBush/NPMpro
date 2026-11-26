@@ -23,7 +23,8 @@
 								"public_url": "https://npm.example.com",
 								"default_language": "en",
 								"locked": [],
-								"locked_by": {}
+								"locked_by": {},
+								"config_errors": []
 							}
 						}
 					},
@@ -34,5 +35,5 @@
 			}
 		}
 	},
-	"description": "Returns the effective notification settings: the saved values with the ones set by environment variables on top (listed in locked and locked_by).\n\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Returns the effective notification settings: the saved values with the ones set by environment variables on top (listed in locked and locked_by). public_url is answered as the origin; config_errors lists the fields whose effective value is not valid.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

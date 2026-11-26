@@ -11,7 +11,9 @@ import { startFakeSmtp } from "./support/fake-smtp.js";
 import { opensslMissing } from "./support/tls-files.js";
 
 const { checkSmtpTarget } = await import("../lib/mail/smtp-target.js");
-const { classifySmtpError, createMailTransport, MailError, sendMail } = await import("../lib/mail/transport.js");
+const { classifySmtpError, createMailTransport, explainFailure, MailError, sendMail } = await import(
+	"../lib/mail/transport.js"
+);
 const { EMAIL_DEFAULTS } = await import("../lib/mail/settings-rules.js");
 
 const realLookup = dns.lookup;
@@ -59,7 +61,11 @@ const BASE64_PASSWORD = /czNjcmV0LXBhc3Mtd29yZA|hunter22|abc123/u;
 const URL_SECRETS = /hunter22|abc123/u;
 const PASSWORD = /s3cret-pass-word/u;
 const STARS = /\*\*\*/u;
-const PORT_INVALID = /settings\.email\.port\.invalid/u;
+const PORT_FIELD = /: port$/u;
+const VERIFY_HINT = /Verify certificate/u;
+const PORT_HINT = /465 usually needs TLS, port 587 STARTTLS/u;
+const RAW_KEY = /settings\.email/u;
+const NODE_TEXT = /use-system-ca|openssl|routines|ECONNREFUSED/iu;
 const NOT_REACH = /may not reach/u;
 
 const base = { security: "starttls", username: "" };
@@ -166,6 +172,64 @@ describe("classifySmtpError", () => {
 	});
 });
 
+describe("explainFailure", () => {
+	const values = { ...EMAIL_DEFAULTS, host: "smtp.example.com", port: 465 };
+	const explain = (err, detail = "raw detail") => explainFailure(values, err, detail);
+
+	it("names a certificate failure and the Verify certificate hint", () => {
+		for (const originalCode of [
+			"DEPTH_ZERO_SELF_SIGNED_CERT",
+			"SELF_SIGNED_CERT_IN_CHAIN",
+			"UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+			"UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+			"CERT_HAS_EXPIRED",
+			"ERR_TLS_CERT_ALTNAME_INVALID",
+		]) {
+			const answer = explain({ code: "ESOCKET", originalCode });
+			assert.equal(answer.message_i18n, "error.mail-certificate", originalCode);
+			assert.match(answer.text, VERIFY_HINT);
+			assert.doesNotMatch(answer.text, NODE_TEXT);
+		}
+	});
+
+	it("names a Security that does not fit the port: a TLS record error and a missing greeting", () => {
+		for (const err of [
+			{ code: "ESOCKET", originalCode: "ERR_SSL_WRONG_VERSION_NUMBER" },
+			{ code: "ESOCKET", originalCode: "ERR_SSL_PACKET_LENGTH_TOO_LONG" },
+			{ code: "ESOCKET", originalCode: "EPROTO" },
+			{ code: "ETIMEDOUT", message: "Greeting never received" },
+		]) {
+			const answer = explain(err);
+			assert.equal(answer.message_i18n, "error.mail-security-mismatch", JSON.stringify(err));
+			assert.deepEqual(answer.message_values, { port: 465 });
+			assert.match(answer.text, PORT_HINT);
+		}
+		// a timeout after the greeting is not a Security problem
+		assert.equal(explain({ code: "ETIMEDOUT", message: "Timeout" }).message_i18n, undefined);
+	});
+
+	it("names a refused connection with the configured host and the port", () => {
+		const answer = explain({ code: "ESOCKET", originalCode: "ECONNREFUSED" });
+		assert.equal(answer.message_i18n, "error.mail-connection-refused");
+		assert.deepEqual(answer.message_values, { host: "smtp.example.com", port: 465 });
+		assert.doesNotMatch(answer.text, NODE_TEXT);
+	});
+
+	it("names a refused login with the scrubbed reply as a detail", () => {
+		for (const err of [{ code: "EAUTH", responseCode: 535 }, { code: "EAUTH" }, { responseCode: 535 }]) {
+			const answer = explain(err, "Invalid login: 535 *** rejected");
+			assert.equal(answer.message_i18n, "error.mail-login-failed");
+			assert.deepEqual(answer.message_values, { error: "Invalid login: 535 *** rejected" });
+		}
+	});
+
+	it("keeps the scrubbed reply of any other failure, without a key", () => {
+		assert.deepEqual(explain({ code: "EENVELOPE", responseCode: 550 }, "550 no such user"), {
+			text: "550 no such user",
+		});
+	});
+});
+
 describe("createMailTransport", () => {
 	const values = { ...EMAIL_DEFAULTS, host: "smtp.example.com", port: 465, security: "tls", verify_tls: false };
 
@@ -185,6 +249,14 @@ describe("createMailTransport", () => {
 		assert.equal(options.debug, false);
 		assert.equal(options.pool, undefined);
 		assert.equal(options.auth, undefined);
+	});
+
+	it("sends no servername for an IP literal host (RFC 6066) and no EHLO name when none is given", () => {
+		for (const host of ["10.0.0.5", "2001:db8::5", "[2001:db8::5]"]) {
+			const { options } = createMailTransport({ ...values, host }, { address: "10.0.0.5" });
+			assert.deepEqual(options.tls, { rejectUnauthorized: false }, host);
+			assert.equal("name" in options, false, host);
+		}
 	});
 
 	it("maps the security modes and sets auth only with a username", () => {
@@ -295,17 +367,21 @@ describe("sendMail", () => {
 			});
 			const untrusted = await failure({ host: "smtp.test", security: "tls", verify_tls: true });
 			assert.equal(untrusted.retry, false);
+			assert.equal(untrusted.message_i18n, "error.mail-certificate");
+			assert.doesNotMatch(untrusted.message, NODE_TEXT);
 			assert.deepEqual(await send({ host: "smtp.test", security: "tls", verify_tls: false }), { ok: true });
 		} finally {
 			fs.rmSync(dir, { recursive: true, force: true });
 		}
 	});
 
-	it("refuses invalid settings without retry", async () => {
+	it("refuses invalid settings without retry, naming the fields and no raw key", async () => {
 		await open("accept");
 		const err = await failure({ port: 0 });
 		assert.equal(err.retry, false);
-		assert.match(err.message, PORT_INVALID);
+		assert.equal(err.message_i18n, "error.mail-config-invalid");
+		assert.match(err.message, PORT_FIELD);
+		assert.doesNotMatch(err.message, RAW_KEY);
 		assert.equal(server.messages.length, 0);
 	});
 
@@ -366,6 +442,14 @@ describe("sendMail", () => {
 		assert.deepEqual(server.logins[0], { user: "loginuser", password: "login-pass" });
 	});
 
+	it("names TLS spoken to a plain port as a Security mismatch", async () => {
+		await open("accept");
+		const err = await failure({ security: "tls" });
+		assert.equal(err.message_i18n, "error.mail-security-mismatch");
+		assert.deepEqual(err.message_values, { port: server.port });
+		assert.doesNotMatch(err.message, NODE_TEXT);
+	});
+
 	it("retries a refused port", async () => {
 		const probe = await startFakeSmtp();
 		const { port } = probe;
@@ -380,6 +464,8 @@ describe("sendMail", () => {
 			(error) => error,
 		);
 		assert.equal(err.retry, true);
+		assert.equal(err.message_i18n, "error.mail-connection-refused");
+		assert.deepEqual(err.message_values, { host: "127.0.0.1", port });
 	});
 
 	it("tries the next checked address after a connect error, never after a reply", async () => {

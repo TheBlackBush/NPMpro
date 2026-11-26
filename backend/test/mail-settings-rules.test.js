@@ -3,6 +3,7 @@ import { it } from "node:test";
 import {
 	EMAIL_DEFAULTS,
 	EMAIL_ENV_KEYS,
+	ehloNameOf,
 	isConfigured,
 	MAIL_LANGUAGES,
 	mergeEmail,
@@ -212,6 +213,28 @@ it("works out the host of the public url", () => {
 	assert.equal(publicHostOf({ public_url: "" }), null);
 	assert.equal(publicHostOf({ public_url: "not a url" }), null);
 	assert.equal(publicHostOf(undefined), null);
+	// only a valid public URL counts
+	assert.equal(publicHostOf({ public_url: "http://npm.example.com" }), null);
+});
+
+it("takes the EHLO name from the public URL without its port, else a host name with a dot, else none", () => {
+	const at = (public_url, host = "511cefe860e1") => ehloNameOf({ public_url }, host);
+	assert.equal(at("https://npm.example.com:81"), "npm.example.com");
+	assert.equal(at("https://npm.example.com"), "npm.example.com");
+	assert.equal(at("https://10.0.0.5:81"), "[10.0.0.5]");
+	assert.equal(at("https://[2001:db8::5]:81"), "[IPv6:2001:db8::5]");
+	assert.equal(at(""), undefined);
+	assert.equal(at("", "proxy.lan.example"), "proxy.lan.example");
+	assert.equal(at("http://npm.example.com", "box"), undefined);
+	assert.equal(ehloNameOf(undefined, ""), undefined);
+});
+
+it("merges PUBLIC_URL as the origin and keeps an invalid one as it is, so the check names it", () => {
+	const merged = mergeNotifications({}, { PUBLIC_URL: "https://NPM.Example.com/" });
+	assert.equal(merged.values.public_url, "https://npm.example.com");
+	assert.deepEqual(merged.locked, ["public_url"]);
+	assert.equal(mergeNotifications({ public_url: "https://A.test" }, {}).values.public_url, "https://a.test");
+	assert.equal(mergeNotifications({}, { PUBLIC_URL: "http://x.test" }).values.public_url, "http://x.test");
 });
 
 it("checks the merged values: an env sender with CR and LF is an error, a kept legacy stored value too", () => {

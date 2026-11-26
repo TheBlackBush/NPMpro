@@ -1,6 +1,6 @@
 import { hostname } from "node:os";
 import { safeError } from "../notify/queue.js";
-import { publicHostOf, validateEmailValues } from "./settings-rules.js";
+import { ehloNameOf, publicHostOf, validateEmailValues } from "./settings-rules.js";
 import { MailError } from "./transport.js";
 
 // The mail channel of the notification worker. A row holds { to, template, language, data } as its payload; one row is
@@ -42,7 +42,7 @@ const safeText = (raw, to) => cutPartial(safeError(maskRecipients(String(raw ?? 
 /**
  * @param   {Object}    options
  * @param   {Function}  options.settings  async () => { email, notifications } (the merged values, password in clear)
- * @param   {Function}  options.send      sendMail(values, message, { ehloName })
+ * @param   {Function}  options.send      sendMail(values, message, { ehloName })  (ehloName may be undefined)
  * @param   {Function}  options.render    renderMail(template, { language, data, instance })
  * @param   {Function}  options.audit     async (entry) => the audit row is written (never throws into the worker)
  * @param   {Object}    [options.log]
@@ -58,7 +58,7 @@ const createMailChannel = ({ settings, send, render, audit, log, clock = { now: 
 		}
 		const instance = publicHostOf(values.notifications) ?? hostname();
 		const mail = render(input.template, { language: input.language, data: input.data, instance });
-		await send(values.email, { to: input.to, ...mail }, { ehloName: instance });
+		await send(values.email, { to: input.to, ...mail }, { ehloName: ehloNameOf(values.notifications) });
 	};
 
 	const recordFailure = async (row, error) => {

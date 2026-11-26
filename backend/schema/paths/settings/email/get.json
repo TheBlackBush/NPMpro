@@ -32,7 +32,8 @@
 								"secret_error": false,
 								"locked": [],
 								"locked_by": {},
-								"configured": true
+								"configured": true,
+								"config_errors": []
 							}
 						}
 					},
@@ -43,5 +44,5 @@
 			}
 		}
 	},
-	"description": "Returns the effective mail settings: the saved values with the ones set by environment variables on top (listed in locked and locked_by). The password is never returned, password_set says whether there is one.\n\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Returns the effective mail settings: the saved values with the ones set by environment variables on top (listed in locked and locked_by). The password is never returned, password_set says whether there is one. config_errors lists the fields whose effective value the sender refuses (a restored row, for example).\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

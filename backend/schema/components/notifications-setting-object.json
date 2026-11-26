@@ -6,7 +6,8 @@
 		"public_url",
 		"default_language",
 		"locked",
-		"locked_by"
+		"locked_by",
+		"config_errors"
 	],
 	"properties": {
 		"public_url": {
@@ -45,6 +46,13 @@
 				"type": "string"
 			},
 			"description": "For each locked field, the name of the environment variable that sets it"
+		},
+		"config_errors": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"description": "Fields whose effective value is not valid (a restored row or an env value)"
 		}
 	}
 }

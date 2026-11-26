@@ -1,3 +1,5 @@
+import { isIP } from "node:net";
+import { hostname } from "node:os";
 import addressparser from "nodemailer/lib/addressparser";
 
 const MAIL_LANGUAGES = ["en", "de", "zh", "fr", "es", "pt", "ru", "it", "nl", "pl", "ja", "ko", "uk"];
@@ -80,7 +82,20 @@ const mergeWithEnv = (defaults, envKeys, stored, env) => {
 
 const mergeEmail = (stored, env) => mergeWithEnv(EMAIL_DEFAULTS, EMAIL_ENV_KEYS, stored, env);
 
-const mergeNotifications = (stored, env) => mergeWithEnv(NOTIFICATION_DEFAULTS, NOTIFICATION_ENV_KEYS, stored, env);
+/**
+ * The notification settings, the public URL as the origin (PUBLIC_URL=https://NPM.example.com/ gives
+ * https://npm.example.com); a value that is not valid stays as it is, so validateNotificationValues names it
+ *
+ * @param   {Object}  stored
+ * @param   {Object}  env
+ * @returns {{values: Object, locked: string[]}}
+ */
+const mergeNotifications = (stored, env) => {
+	const merged = mergeWithEnv(NOTIFICATION_DEFAULTS, NOTIFICATION_ENV_KEYS, stored, env);
+	const origin = merged.values.public_url ? normalizePublicUrl(merged.values.public_url) : null;
+	if (origin) merged.values.public_url = origin;
+	return merged;
+};
 
 /**
  * Mail is configured when the server and the sender are set (database or env)
@@ -188,23 +203,43 @@ const validateEmailValues = (values) => errorsOf(EMAIL_CHECKS, "email", values);
 const validateNotificationValues = (values) => errorsOf(NOTIFICATION_CHECKS, "notifications", values);
 
 /**
- * The host of the public URL (for the subject and the EHLO name)
+ * The host of a valid public URL, with its port (for the subject)
  *
  * @param   {Object}  values  the values of mergeNotifications
  * @returns {string|null}
  */
 const publicHostOf = (values) => {
-	if (!values?.public_url) return null;
-	try {
-		return new URL(values.public_url).host;
-	} catch {
-		return null;
+	const origin = normalizePublicUrl(values?.public_url);
+	return origin ? new URL(origin).host : null;
+};
+
+const DOT = ".";
+
+/**
+ * The EHLO name (RFC 5321: a domain or an address literal, never a port): the host name of a valid public URL, an IP
+ * one as an address literal; without one the container's host name when it is a domain (it holds a dot), else
+ * undefined (Nodemailer's own default)
+ *
+ * @param   {Object}  values      the values of mergeNotifications
+ * @param   {string}  [hostName]  the container's host name (os.hostname())
+ * @returns {string|undefined}
+ */
+const ehloNameOf = (values, hostName = hostname()) => {
+	const origin = normalizePublicUrl(values?.public_url);
+	if (origin) {
+		const name = new URL(origin).hostname;
+		const bare = name.replace(/^\[|\]$/gu, "");
+		if (isIP(bare) === 6) return `[IPv6:${bare}]`;
+		if (isIP(bare) === 4) return `[${bare}]`;
+		return name;
 	}
+	return hostName?.includes(DOT) ? hostName : undefined;
 };
 
 export {
 	EMAIL_DEFAULTS,
 	EMAIL_ENV_KEYS,
+	ehloNameOf,
 	isConfigured,
 	isSingleAddress,
 	MAIL_LANGUAGES,

@@ -16,8 +16,7 @@ const SENT_TO = /To: bob@example\.net/u;
 const INSTANCE_SUBJECT = /Subject: \[NPMpro npm\.example\.com\] Notice/u;
 const NEVER_QUEUED = /never queued/u;
 const MASKED = /\*\*\*/u;
-const VALID_RECIPIENT = /valid recipient/u;
-const UNKNOWN = /Unknown/u;
+const NOT_A_STRING = /must be a string/u;
 const NO_SUCH_USER = /no such user/u;
 
 const api = await startApi({ env: { NPMPRO_TEST_SMTP: "loopback" } });
@@ -335,19 +334,53 @@ describe("internalMail", () => {
 		assert.ok(!JSON.stringify(logged[0]).includes(PASSWORD));
 	});
 
-	it("refuses a direct template and an unknown one, writing nothing", async () => {
+	it("throws for a caller bug only: a direct template, a template name or a recipient that is not a string", async () => {
 		await serveWith("accept");
 		await assert.rejects(internalMail.queueMail({ to: BOB, template: "test", language: "en" }), NEVER_QUEUED);
-		await assert.rejects(internalMail.queueMail({ to: BOB, template: "nope", language: "en" }), UNKNOWN);
+		await assert.rejects(internalMail.queueMail({ to: BOB, template: 7, language: "en" }), NOT_A_STRING);
+		await assert.rejects(internalMail.queueMail({ to: 7, template: "notice", language: "en" }), NOT_A_STRING);
+		await assert.rejects(internalMail.queueMail({ to: [BOB, null], template: "notice" }), NOT_A_STRING);
 		assert.equal((await stored()).length, 0);
 	});
 
-	it("refuses a bad recipient without a row and takes the default language for a bad one", async () => {
+	it("does not queue a missing template, a refused recipient or a failed queue write, and never throws", async () => {
 		await serveWith("rcpt-550");
-		for (const to of ["", "not an address", `${BOB}, other@example.net`, [BOB, "x"], []]) {
-			await assert.rejects(internalMail.queueMail({ to, template: "notice", language: "en" }), VALID_RECIPIENT);
+		assert.deepEqual(await internalMail.queueMail({ to: BOB, template: "nope", language: "en" }), {
+			queued: false,
+			reason: "template",
+		});
+		assert.deepEqual(await internalMail.queueMail({ to: BOB, template: "toString", language: "en" }), {
+			queued: false,
+			reason: "template",
+		});
+		for (const to of [
+			"",
+			"not an address",
+			`${BOB}, other@example.net`,
+			`${BOB}\r\nBcc: evil@example.org`,
+			"Bob <bob@example.net>",
+			"jöhn@example.net",
+			[BOB, "x"],
+			[],
+		]) {
+			assert.deepEqual(
+				await internalMail.queueMail({ to, template: "notice", language: "en" }),
+				{ queued: false, reason: "recipient" },
+				JSON.stringify(to),
+			);
 		}
 		assert.equal((await stored()).length, 0);
+		const { queue: appQueue } = await import("../internal/notify.js");
+		const add = appQueue.add;
+		appQueue.add = () => Promise.reject(Object.assign(new Error("SQLITE_BUSY"), { code: "SQLITE_BUSY" }));
+		try {
+			assert.deepEqual(await internalMail.queueMail({ to: BOB, template: "notice", language: "en" }), {
+				queued: false,
+				reason: "queue",
+			});
+		} finally {
+			appQueue.add = add;
+		}
 		await internalMail.queueMail({ to: BOB, template: "notice", language: "xx" });
 		const [one] = await stored();
 		assert.equal(JSON.parse(one.payload).language, "de");
@@ -363,6 +396,7 @@ describe("internalMail", () => {
 		assert.equal(await internalMail.configured(), false);
 		assert.deepEqual(await internalMail.queueMail({ to: BOB, template: "notice", language: "en" }), {
 			queued: false,
+			reason: "not-configured",
 		});
 		assert.equal((await stored()).length, 0);
 		await assert.rejects(internalMail.sendNow({ to: BOB, template: "test", language: "en" }), (error) => {
@@ -387,6 +421,24 @@ describe("internalMail", () => {
 			return true;
 		});
 		assert.equal((await stored()).length, 0);
+	});
+
+	it("refuses a bad recipient of a direct mail before anything is sent", async () => {
+		const fake = await serveWith("accept");
+		for (const to of [
+			`${BOB}, other@example.net`,
+			`${BOB}\r\nBcc: evil@example.org`,
+			"Bob <bob@example.net>",
+			"",
+			7,
+		]) {
+			await assert.rejects(internalMail.sendNow({ to, template: "test", language: "en" }), (error) => {
+				assert.equal(error.name, "ValidationError");
+				assert.equal(error.message_i18n, "error.mail-bad-recipient");
+				return true;
+			});
+		}
+		assert.equal(fake.messages.length, 0);
 	});
 
 	it("takes the language of the user, else the default language", async () => {

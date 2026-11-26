@@ -104,7 +104,8 @@
 								"secret_error": false,
 								"locked": [],
 								"locked_by": {},
-								"configured": true
+								"configured": true,
+								"config_errors": []
 							}
 						}
 					},

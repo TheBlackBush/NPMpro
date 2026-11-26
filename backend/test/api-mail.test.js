@@ -115,6 +115,7 @@ it("starts unconfigured: the defaults, no password, the test mail refused", asyn
 		locked: [],
 		locked_by: {},
 		configured: false,
+		config_errors: [],
 	});
 	const refused = await admin.post("/settings/email/test", {});
 	assert.equal(refused.status, 400);
@@ -400,7 +401,8 @@ it("never answers the password a server echoes in its 535 reply, nor its base64"
 		);
 		const failed = await (await bearer(true)).post("/settings/email/test", {});
 		assert.equal(failed.status, 400);
-		assert.equal(failed.body.error.message_i18n, "error.mail-test-failed");
+		assert.equal(failed.body.error.message_i18n, "error.mail-login-failed");
+		assert.equal(typeof failed.body.error.message_values.error, "string");
 		assert.equal(echo.logins.length > 0, true);
 		assert.equal(failed.text.includes(PASSWORD_VALUE), false);
 		assert.equal(failed.text.includes(Buffer.from(PASSWORD_VALUE).toString("base64")), false);
@@ -421,5 +423,59 @@ it("answers an unexpected error of the sender with a generic text, never its mes
 		assert.equal(typeof failed.body.error.message_values.error, "string");
 	} finally {
 		internalMail.sendNow = original;
+	}
+});
+
+it("answers a refused connection with the host and the port, never Node's text", async () => {
+	const probe = await startFakeSmtp();
+	const { port } = probe;
+	await probe.close();
+	assert.equal((await admin.put("/settings/email", { ...serverOf(accept), port, username: "" })).status, 200);
+	const failed = await admin.post("/settings/email/test", {});
+	assert.equal(failed.status, 400);
+	assert.equal(failed.body.error.message_i18n, "error.mail-connection-refused");
+	assert.deepEqual(failed.body.error.message_values, { host: "127.0.0.1", port });
+	assert.equal(failed.text.includes("ECONNREFUSED"), false);
+	assert.equal((await admin.put("/settings/email", { port: accept.port })).status, 200);
+});
+
+it("answers the fields a restored row holds that the sender refuses, and the test mail names no raw key", async () => {
+	const email = await settingRow("email");
+	const notifications = await settingRow("notifications");
+	try {
+		await api
+			.db("setting")
+			.where({ id: "email" })
+			.update({ meta: JSON.stringify({ ...email, from_address: "Bad <bad@example.com>" }) });
+		await api
+			.db("setting")
+			.where({ id: "notifications" })
+			.update({ meta: JSON.stringify({ ...notifications, public_url: "http://npm.example.test" }) });
+		assert.deepEqual((await admin.get("/settings/email")).body.config_errors, ["from_address"]);
+		assert.deepEqual((await admin.get("/settings/notifications")).body.config_errors, ["public_url"]);
+		const failed = await admin.post("/settings/email/test", {});
+		assert.equal(failed.status, 400);
+		assert.equal(failed.body.error.message_i18n, "error.mail-config-invalid");
+		assert.equal(failed.text.includes("settings.email"), false);
+	} finally {
+		await api
+			.db("setting")
+			.where({ id: "email" })
+			.update({ meta: JSON.stringify(email) });
+		await api
+			.db("setting")
+			.where({ id: "notifications" })
+			.update({ meta: JSON.stringify(notifications) });
+	}
+});
+
+it("answers PUBLIC_URL as the origin", async () => {
+	process.env.PUBLIC_URL = "https://NPM.Example.test/";
+	try {
+		const got = (await admin.get("/settings/notifications")).body;
+		assert.equal(got.public_url, "https://npm.example.test");
+		assert.deepEqual(got.config_errors, []);
+	} finally {
+		delete process.env.PUBLIC_URL;
 	}
 });

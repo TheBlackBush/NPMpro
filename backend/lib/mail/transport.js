@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import nodemailer from "nodemailer";
 import { clean } from "../notify/catalogue.js";
 import { safeError } from "../notify/queue.js";
@@ -24,11 +25,12 @@ class MailError extends Error {
 	name = "MailError";
 	public = true;
 	status = 400;
-	constructor(message, { retry = false, code, message_i18n } = {}) {
+	constructor(message, { retry = false, code, message_i18n, message_values } = {}) {
 		super(message);
 		this.retry = retry;
 		if (code) this.code = code;
 		if (message_i18n) this.message_i18n = message_i18n;
+		if (message_values) this.message_values = message_values;
 	}
 }
 
@@ -53,9 +55,11 @@ const classifySmtpError = (err) => {
  * @param   {Object}  values   the values of mergeEmail
  * @param   {Object}  target   the checked address
  * @param   {String}  target.address
- * @param   {String}  target.ehloName
+ * @param   {String}  [target.ehloName]
  * @returns {Object}  a Nodemailer transporter (no pool, no logging)
  */
+const BRACKETS = /^\[|\]$/gu;
+
 const createMailTransport = (values, { address, ehloName }) =>
 	nodemailer.createTransport({
 		host: address,
@@ -63,9 +67,14 @@ const createMailTransport = (values, { address, ehloName }) =>
 		secure: values.security === "tls",
 		requireTLS: values.security === "starttls",
 		ignoreTLS: values.security === "none",
-		tls: { servername: values.host, rejectUnauthorized: values.verify_tls },
+		// SNI carries a name only (RFC 6066): with an IP as Host the certificate is checked against that IP
+		tls: {
+			...(isIP(String(values.host ?? "").replace(BRACKETS, "")) === 0 ? { servername: values.host } : {}),
+			rejectUnauthorized: values.verify_tls,
+		},
 		...(values.username ? { auth: { user: values.username, pass: values.password } } : {}),
-		name: ehloName,
+		// without a name Nodemailer says EHLO with its own default
+		...(ehloName ? { name: ehloName } : {}),
 		connectionTimeout: TIMEOUT_MS.connection,
 		greetingTimeout: TIMEOUT_MS.greeting,
 		socketTimeout: TIMEOUT_MS.socket,
@@ -73,11 +82,83 @@ const createMailTransport = (values, { address, ehloName }) =>
 		debug: false,
 	});
 
+// the certificate checks of Node and OpenSSL that fail a server with Verify on (self-signed, expired, another name)
+const CERTIFICATE_CODES = new Set([
+	"DEPTH_ZERO_SELF_SIGNED_CERT",
+	"SELF_SIGNED_CERT_IN_CHAIN",
+	"UNABLE_TO_GET_ISSUER_CERT",
+	"UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+	"UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+	"CERT_HAS_EXPIRED",
+	"CERT_NOT_YET_VALID",
+	"CERT_UNTRUSTED",
+	"CERT_REJECTED",
+	"ERR_TLS_CERT_ALTNAME_INVALID",
+]);
+// TLS spoken to a plain port (or the other way round): the record layer cannot read the answer
+const TLS_MISMATCH_CODES = new Set([
+	"ERR_SSL_WRONG_VERSION_NUMBER",
+	"ERR_SSL_PACKET_LENGTH_TOO_LONG",
+	"ERR_SSL_RECORD_LAYER_FAILURE",
+	"ERR_SSL_UNSUPPORTED_PROTOCOL",
+	"ERR_SSL_TLSV1_ALERT_PROTOCOL_VERSION",
+	"EPROTO",
+]);
+// STARTTLS or None on an implicit TLS port: the server waits for TLS and never greets
+const GREETING_TIMEOUT = "Greeting never received";
+const LOGIN_REFUSED = 535;
+
+/**
+ * The text a person can act on for a failure: a translated key with its values and the same text in English (the
+ * message, also the audit row of a queued mail); never Node's or OpenSSL's own text. A failure without a known cause
+ * keeps the scrubbed server reply as its text and has no key (the caller words it).
+ *
+ * @param   {Object}  values  the values of mergeEmail
+ * @param   {Error}   err
+ * @param   {string}  detail  the scrubbed text of the error
+ * @returns {{text: string, message_i18n?: string, message_values?: Object}}
+ */
+const explainFailure = (values, err, detail) => {
+	const original = err?.originalCode ?? err?.code;
+	if (CERTIFICATE_CODES.has(original)) {
+		return {
+			text: "The certificate of the mail server is not trusted (self-signed, expired or issued for another name). Turn Verify certificate off only for a server you trust on your local network.",
+			message_i18n: "error.mail-certificate",
+		};
+	}
+	if (TLS_MISMATCH_CODES.has(original) || (err?.code === "ETIMEDOUT" && err.message === GREETING_TIMEOUT)) {
+		return {
+			text: `The server on port ${values.port} did not answer as Security expects. Port 465 usually needs TLS, port 587 STARTTLS.`,
+			message_i18n: "error.mail-security-mismatch",
+			message_values: { port: values.port },
+		};
+	}
+	if (err?.code === "ESOCKET" && err.originalCode === "ECONNREFUSED") {
+		return {
+			text: `${values.host} refused the connection on port ${values.port}.`,
+			message_i18n: "error.mail-connection-refused",
+			message_values: { host: values.host, port: values.port },
+		};
+	}
+	if (err?.code === "EAUTH" || Number(err?.responseCode) === LOGIN_REFUSED) {
+		return {
+			text: `The mail server refused the login: ${detail}`,
+			message_i18n: "error.mail-login-failed",
+			message_values: { error: detail },
+		};
+	}
+	return { text: detail };
+};
+
 const failure = (values, err, retry) => {
 	// the server's reply is inside message and response (a 535 may echo the login), so both are scrubbed
 	const reply = err?.response && !String(err.message).includes(err.response) ? ` ${err.response}` : "";
-	const text = safeError(clean(`${err?.message ?? "mail error"}${reply}`, secretsOf(values)));
-	return new MailError(text, { retry, code: err?.code, message_i18n: err?.message_i18n });
+	const detail = safeError(clean(`${err?.message ?? "mail error"}${reply}`, secretsOf(values)));
+	// a refusal of the guard already carries its own key
+	const { text, message_i18n, message_values } = err?.message_i18n
+		? { text: detail, message_i18n: err.message_i18n, message_values: err.message_values }
+		: explainFailure(values, err, detail);
+	return new MailError(text, { retry, code: err?.code, message_i18n, message_values });
 };
 
 const toBase64 = (text) => Buffer.from(text).toString("base64");
@@ -117,14 +198,16 @@ const deliver = async (values, message, address, ehloName) => {
  * @param   {Object}  values   the values of mergeEmail
  * @param   {Object}  message  to, subject, text, html (from and reply-to come from the settings)
  * @param   {Object}  options
- * @param   {String}  options.ehloName
- * @returns {Promise<{ok: true}>}  throws a MailError with retry
+ * @param   {String}  [options.ehloName]  the EHLO name (ehloNameOf); none: Nodemailer's default
+ * @returns {Promise<{ok: true}>}  throws a MailError with retry, its text in English and, for a known cause, a
+ *          translated key with its values (message_i18n, message_values)
  */
 const sendMail = async (values, message, { ehloName }) => {
 	const { errors } = validateEmailValues(values);
 	if (Object.keys(errors).length > 0) {
-		throw new MailError(`The mail settings are not valid: ${Object.values(errors).join(", ")}`, {
+		throw new MailError(`The mail settings are not valid: ${Object.keys(errors).join(", ")}`, {
 			code: "ECONFIG",
+			message_i18n: "error.mail-config-invalid",
 		});
 	}
 	let target;
@@ -146,4 +229,4 @@ const sendMail = async (values, message, { ehloName }) => {
 	throw failure(values, last, classifySmtpError(last) === "retry");
 };
 
-export { classifySmtpError, createMailTransport, MailError, sendMail };
+export { classifySmtpError, createMailTransport, explainFailure, MailError, sendMail };

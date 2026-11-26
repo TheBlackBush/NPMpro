@@ -8,7 +8,9 @@ import {
 	mergeNotifications,
 	normalizePublicUrl,
 	validateEmailPatch,
+	validateEmailValues,
 	validateNotificationsPatch,
+	validateNotificationValues,
 } from "../lib/mail/settings-rules.js";
 import { checkSmtpTarget } from "../lib/mail/smtp-target.js";
 import { MailError } from "../lib/mail/transport.js";
@@ -83,6 +85,9 @@ const dropLocked = (body, locked) => Object.fromEntries(Object.entries(body).fil
 const changedKeys = (patch, current) =>
 	Object.keys(patch).filter((key) => JSON.stringify(patch[key]) !== JSON.stringify(current[key]));
 
+// the fields whose effective value the sender would refuse (a restored row, an env value): the UI names them
+const configErrorsOf = ({ errors }) => Object.keys(errors);
+
 const emailAnswer = (config) => {
 	const { password, ...values } = config.values;
 	return {
@@ -92,6 +97,7 @@ const emailAnswer = (config) => {
 		locked: config.locked,
 		locked_by: lockedByOf("email", config.locked),
 		configured: isConfigured(config.values),
+		config_errors: configErrorsOf(validateEmailValues(config.values)),
 	};
 };
 
@@ -99,6 +105,7 @@ const notificationsAnswer = (config) => ({
 	...config.values,
 	locked: config.locked,
 	locked_by: lockedByOf("notifications", config.locked),
+	config_errors: configErrorsOf(validateNotificationValues(config.values)),
 });
 
 // the guard's refusals are public messages of the settings form; a blocked host has a translated key with the host name
@@ -190,6 +197,12 @@ const internalMailSetting = {
 		} catch (err) {
 			if (err instanceof errs.ValidationError) throw err;
 			if (err?.code === "EBLOCKED") throw blockedHost((await getEmailConfig()).values.host);
+			// a known cause has its own translated text (the server reply, scrubbed, as a detail)
+			if (err instanceof MailError && err.message_i18n) {
+				const values = err.message_values ? { ...err.message_values } : undefined;
+				if (typeof values?.error === "string") values.error = values.error.slice(0, TEST_ERROR_MAX);
+				throw new errs.ValidationError(err.message, err.message_i18n, values ? { values } : {});
+			}
 			// only a MailError carries a scrubbed text; anything else gets a generic one
 			const text = err instanceof MailError ? err.message : "The mail could not be sent";
 			throw new errs.ValidationError("The test mail could not be sent", "error.mail-test-failed", {

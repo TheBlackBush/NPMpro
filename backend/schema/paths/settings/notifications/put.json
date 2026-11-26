@@ -65,7 +65,8 @@
 								"public_url": "https://npm.example.com",
 								"default_language": "en",
 								"locked": [],
-								"locked_by": {}
+								"locked_by": {},
+								"config_errors": []
 							}
 						}
 					},

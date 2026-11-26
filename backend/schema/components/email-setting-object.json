@@ -15,7 +15,8 @@
 		"secret_error",
 		"locked",
 		"locked_by",
-		"configured"
+		"configured",
+		"config_errors"
 	],
 	"properties": {
 		"host": {
@@ -82,6 +83,13 @@
 		"configured": {
 			"type": "boolean",
 			"description": "Whether mail can be sent: the server and the sender address are set"
+		},
+		"config_errors": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"description": "Fields whose effective value the sender refuses (a restored row or an env value); mail is not sent until they are corrected"
 		}
 	}
 }
