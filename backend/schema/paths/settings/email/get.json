@@ -1,0 +1,47 @@
+{
+	"operationId": "getEmailSettings",
+	"summary": "Get the mail settings",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The mail settings as they are now, without the password",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"host": "smtp.example.com",
+								"port": 587,
+								"security": "starttls",
+								"verify_tls": true,
+								"username": "npmpro",
+								"from_address": "npmpro@example.com",
+								"from_name": "NPMpro",
+								"reply_to": "",
+								"password_set": true,
+								"secret_error": false,
+								"locked": [],
+								"locked_by": {},
+								"configured": true
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/email-setting-object.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Returns the effective mail settings: the saved values with the ones set by environment variables on top (listed in locked and locked_by). The password is never returned, password_set says whether there is one.\n\nNeeds: an administrator (a token needs its Administrator switch)"
+}

@@ -1,0 +1,50 @@
+{
+	"type": "object",
+	"description": "Effective notification settings",
+	"additionalProperties": false,
+	"required": [
+		"public_url",
+		"default_language",
+		"locked",
+		"locked_by"
+	],
+	"properties": {
+		"public_url": {
+			"type": "string",
+			"description": "The https address of this instance used in the links of mails; empty when not set"
+		},
+		"default_language": {
+			"type": "string",
+			"enum": [
+				"en",
+				"de",
+				"zh",
+				"fr",
+				"es",
+				"pt",
+				"ru",
+				"it",
+				"nl",
+				"pl",
+				"ja",
+				"ko",
+				"uk"
+			],
+			"description": "The language of mails to people without a language of their own. Default: en"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "string"
+			},
+			"description": "For each locked field, the name of the environment variable that sets it"
+		}
+	}
+}

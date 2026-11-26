@@ -14,6 +14,7 @@ import { initDdnsTimer, restartDdnsTimer } from "./internal/ddns.js";
 import internalHostDnsRecord from "./internal/host-dns-record.js";
 import internalIpRanges from "./internal/ip_ranges.js";
 import { startLandingPages } from "./internal/landing-pages.js";
+import { useMailSettings } from "./internal/mail-setting.js";
 import {
 	crowdsecService,
 	internalMonitoring,
@@ -48,6 +49,8 @@ import setup from "./setup.js";
  * @returns {Promise}
  */
 const prepareApp = async ({ background = true } = {}) => {
+	// the mail sender reads the saved mail settings (with the environment on top), not the environment alone
+	useMailSettings();
 	// the stored instance CA first: every write of startup-settings.env below (and the runtime defaults) names it.
 	// A failed read stops this pass (the caller retries) rather than write the file without the stored CA
 	await loadAcmeServer();

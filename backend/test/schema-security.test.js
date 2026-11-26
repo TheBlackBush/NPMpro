@@ -30,6 +30,8 @@ const SESSION_ONLY = new Set([
 	"put /users/{userID}/permissions",
 	// the settings that decide who can sign in (Administrator switch included)
 	"put /settings/oidc",
+	// where mail and its login go
+	"put /settings/email",
 	"post /settings/oidc/test",
 	"post /settings/oidc/icon",
 	"delete /settings/oidc/icon",
