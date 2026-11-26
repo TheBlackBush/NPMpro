@@ -37,6 +37,8 @@ const PHONE_RULES = [
 	.map(([name, property, size]) => `.${name}{${property}:${size}!important}`)
 	.join("");
 const STYLES = `@media (prefers-color-scheme: dark){${DARK_RULES}}@media (max-width:620px){${PHONE_RULES}}`;
+// pads the hidden preheader so an inbox snippet stops after it instead of reading on into the heading
+const PREHEADER_FILLER = "&zwnj;&nbsp;".repeat(100);
 const PARAGRAPH = `${FONT}margin:0 0 14px;font-size:16px;line-height:1.6;color:#1f2933;`;
 const MUTED = "font-size:13px;line-height:1.5;color:#6b7280;";
 
@@ -125,7 +127,7 @@ const logoAttachment = () => {
 };
 
 const buttonHtml = (button, fallback) =>
-	`<table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0 8px;"><tr><td style="border-radius:8px;background:#7c3aed;"><a href="${escapeHtml(button.url)}" style="${FONT}display:inline-block;padding:13px 26px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;background:#7c3aed;">${escapeHtml(button.label)}</a></td></tr></table><p class="mt" style="${FONT}margin:14px 0 0;${MUTED}">${escapeHtml(fallback)}<br><a class="lk" href="${escapeHtml(button.url)}" style="color:#6d28d9;word-break:break-all;">${escapeHtml(button.url)}</a></p>`;
+	`<table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0 8px;"><tr><td style="border-radius:8px;background:#7c3aed;padding:13px 26px;"><a href="${escapeHtml(button.url)}" style="${FONT}font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;">${escapeHtml(button.label)}</a></td></tr></table><p class="mt" style="${FONT}margin:14px 0 0;${MUTED}">${escapeHtml(fallback)}<br><a class="lk" href="${escapeHtml(button.url)}" style="color:#6d28d9;word-break:break-all;">${escapeHtml(button.url)}</a></p>`;
 
 const listHtml = (list) => {
 	const items = list
@@ -147,7 +149,7 @@ const htmlPart = (model, language, t) => {
 			: "";
 	const preheader = escapeHtml(model.lines[0] ?? "");
 	const heading = escapeHtml(model.subject);
-	return `<!DOCTYPE html><html lang="${escapeHtml(language)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>${heading}</title><style>${STYLES}</style></head><body class="bg" style="margin:0;padding:0;background:#f4f5f8;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${preheader}</div><table role="presentation" class="bg" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f8;"><tr><td align="center" style="padding:32px 12px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;"><tr><td class="hd" style="background:#0b1020;padding:24px 32px;border-radius:12px 12px 0 0;"><img src="cid:${LOGO_CID}" width="168" height="69" alt="NPMpro" style="display:block;border:0;width:168px;height:auto;"></td></tr><tr><td style="height:4px;line-height:4px;font-size:0;background:#d91aff;background-image:${GRADIENT};">&nbsp;</td></tr><tr><td class="card pad" style="background:#ffffff;padding:32px;border-radius:0 0 12px 12px;"><h1 class="tx" style="${FONT}margin:0 0 16px;font-size:22px;line-height:1.3;color:#111827;font-weight:700;">${heading}</h1>${paragraphs}${list}${button}${footer}</td></tr></table></td></tr></table></body></html>`;
+	return `<!DOCTYPE html><html lang="${escapeHtml(language)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>${heading}</title><style>${STYLES}</style></head><body class="bg" style="margin:0;padding:0;background:#f4f5f8;"><div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;font-size:1px;line-height:1px;">${preheader}${PREHEADER_FILLER}</div><table role="presentation" class="bg" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f8;"><tr><td align="center" style="padding:32px 12px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;"><tr><td class="hd" style="background:#0b1020;padding:24px 32px;border-radius:12px 12px 0 0;"><img src="cid:${LOGO_CID}" width="168" height="69" alt="NPMpro" style="display:block;border:0;width:168px;height:auto;"></td></tr><tr><td style="height:4px;line-height:4px;font-size:0;background:#d91aff;background-image:${GRADIENT};">&nbsp;</td></tr><tr><td class="card pad" style="background:#ffffff;padding:32px;border-radius:0 0 12px 12px;"><h1 class="tx" style="${FONT}margin:0 0 16px;font-size:22px;line-height:1.3;color:#111827;font-weight:700;">${heading}</h1>${paragraphs}${list}${button}${footer}</td></tr></table></td></tr></table></body></html>`;
 };
 
 /**

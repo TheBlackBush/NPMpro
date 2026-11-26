@@ -7,7 +7,7 @@ import { renderMail, TEMPLATES } from "../mail/render.js";
 const GOLDEN = JSON.parse(fs.readFileSync(new URL("./fixtures/mail-text-parts.json", import.meta.url), "utf8"));
 const LINK = "https://box.example/reset-password#token=abc";
 const HTML_LIMIT = 30 * 1024;
-const REMOTE = /(?:src|url\(|href)\s*=?\s*["']?\s*(?:https?:)?\/\//giu;
+const REMOTE = /(?:src|url\(|href)\s*=?\s*["']?\s*(?:https?:)?\/\//iu;
 const HOSTILE = `<script>alert("x")</script> 'q' & "d"`;
 const ESCAPED = "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &#39;q&#39; &amp; &quot;d&quot;";
 const URLS = /https?:\/\/[^\s"'<)]+/gu;
@@ -37,8 +37,10 @@ describe("the branded mail layout", () => {
 		assert.ok(html.includes(">Reset your NPMpro password</h1>"));
 		assert.ok(html.includes("<title>Reset your NPMpro password</title>"));
 		assert.ok(html.includes("display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;"));
-		assert.ok(html.includes("Someone asked to reset the password of your NPMpro account at box.example.</div>"));
-		assert.ok(html.includes('<td style="border-radius:8px;background:#7c3aed;"><a href="'));
+		assert.ok(
+			html.includes("Someone asked to reset the password of your NPMpro account at box.example.&zwnj;&nbsp;"),
+		);
+		assert.ok(html.includes('<td style="border-radius:8px;background:#7c3aed;padding:13px 26px;"><a href="'));
 		assert.ok(html.includes("If the button does not work, open this link:<br>"));
 		assert.ok(html.includes(`>${LINK}</a>`));
 		assert.ok(html.includes("Sent by NPMpro at box.example.</p>"));
@@ -72,7 +74,6 @@ describe("the branded mail layout", () => {
 	it("has no remote resource besides the button link and the fallback link", () => {
 		for (const mail of [reset, renderMail("test", { instance: "box.example" })]) {
 			assert.ok(!REMOTE.test(mail.html.replace(/href="[^"]*"/gu, 'href="#"')));
-			REMOTE.lastIndex = 0;
 			assert.ok(!mail.html.includes("url("));
 			assert.ok(!mail.html.includes("@import"));
 			assert.ok(!mail.html.includes("<link"));
@@ -95,9 +96,13 @@ describe("the branded mail layout", () => {
 		);
 		assert.ok(!html.includes("<script"));
 		assert.ok(!html.includes('"x"'));
-		assert.ok(html.split(ESCAPED).length - 1 >= 8);
+		assert.equal(html.split(ESCAPED).length - 1, 8);
 		assert.ok(html.includes("<title>" + ESCAPED + "</title>"));
-		assert.ok(html.includes('opacity:0;color:transparent;">' + ESCAPED + "</div>"));
+		assert.ok(
+			html.includes(
+				'opacity:0;color:transparent;mso-hide:all;font-size:1px;line-height:1px;">' + ESCAPED + "&zwnj;&nbsp;",
+			),
+		);
 		assert.ok(html.includes("https://npm.example/a?b=&quot;1&quot;&amp;c=&#39;2&#39;"));
 		const instance = renderMail("test", { instance: HOSTILE }).html;
 		assert.ok(!instance.includes("<script"));
@@ -122,7 +127,7 @@ describe("the branded mail layout", () => {
 
 	it("leaves a mail without a button or a footer well formed", () => {
 		const html = withSample({ subject: "s", lines: [], footer: [] }, (mail) => mail.html);
-		assert.ok(html.includes('opacity:0;color:transparent;"></div>'));
+		assert.ok(html.includes('line-height:1px;">&zwnj;&nbsp;'));
 		assert.ok(!html.includes("border-top"));
 		assert.ok(!html.includes("If the button"));
 	});
