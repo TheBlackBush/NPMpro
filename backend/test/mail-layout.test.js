@@ -26,7 +26,8 @@ describe("the branded mail layout", () => {
 
 	it("has the header, the logo, the gradient line, the heading, the preheader, the button, the fallback and the footer", () => {
 		const { html } = reset;
-		assert.ok(html.includes("background:#0b1020"));
+		// the header colour also as a gradient, which the Gmail app keeps in dark mode
+		assert.ok(html.includes("background:#0b1020;background-image:linear-gradient(#0b1020,#0b1020);"));
 		assert.ok(html.includes('<img src="cid:logo@npmpro" width="168" height="69" alt="NPMpro"'));
 		assert.ok(
 			html.includes(
