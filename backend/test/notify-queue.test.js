@@ -119,6 +119,18 @@ describe("queue", () => {
 		assert.equal((await rows()).find((one) => one.message_id === "5").next_try_on, null);
 	});
 
+	it("does not make a new row of a group in a retry wait wait for it", async () => {
+		const queue = queueOf();
+		await queue.add([row({ message_id: "1", group_key: "g" })]);
+		await queue.claimDue({ channel: "webhook" });
+		await queue.settle([{ id: (await rows())[0].id, ok: false, retry: true }], { retryDelays: [6 * 3_600_000] });
+		clock.at += 30_000;
+		await queue.add([row({ message_id: "2", group_key: "g", delay_ms: MINUTE })]);
+		const times = Object.fromEntries((await rows()).map((one) => [one.message_id, one.next_try_on]));
+		assert.equal(times["1"], sql(clock.at - 30_000 + 6 * 3_600_000));
+		assert.equal(times["2"], sql(clock.at + MINUTE));
+	});
+
 	it("claims only the channel asked for and honours the limit", async () => {
 		const queue = queueOf();
 		await queue.add([row(), row(), row({ channel: "mail" })]);

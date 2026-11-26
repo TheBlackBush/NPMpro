@@ -27,6 +27,14 @@ const safeError = (text) =>
 			.replace(URL_QUERY, "$<url>?***"),
 	);
 
+// the earliest first, a row due at once (no time) before the rest
+const byTime = (left, right) => {
+	if (left.next_try_on === right.next_try_on) return 0;
+	if (left.next_try_on === null) return -1;
+	if (right.next_try_on === null) return 1;
+	return left.next_try_on < right.next_try_on ? -1 : 1;
+};
+
 const textOrNull = (value) => (value === undefined || value === null ? null : String(value));
 
 const parsePayload = (text) => {
@@ -51,7 +59,7 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 	/**
 	 * Adds pending rows. A row: { message_id, event, channel, target_id?, recipient?, group_key?, payload, delay_ms? }
 	 * where payload is an object or JSON text and delay_ms postpones the first try. A row with a group_key joins the
-	 * pending rows of its key: it gets the earliest of their next_try_on (none when one is due at once).
+	 * pending rows of its key: it gets the earliest of their next_try_on (none when one is due at once) while that group has not been tried yet.
 	 *
 	 * @param   {Object[]}  rows
 	 * @returns {Promise<number>}  the number of rows added
@@ -75,18 +83,15 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 		}));
 		await knex.transaction(async (trx) => {
 			for (const record of records) {
-				// a row of a group joins the group that waits: it is due when the group is (a group in a retry wait keeps its
-				// shared time, a due group takes it at once); a key with no pending row, and a row with no key, keep their own time
+				// a row of a group joins a group that still waits for its first try: it is due when the group is (a due
+				// group takes it at once). A group in a retry wait is not joined, the row keeps its own time; a key with no
+				// pending row and a row with no key keep their own time too
 				if (record.group_key !== null) {
 					const waiting = await trx(TABLE)
-						.select("next_try_on")
+						.select("next_try_on", "attempts")
 						.where({ group_key: record.group_key, status: "pending" });
-					if (waiting.length > 0) {
-						record.next_try_on = waiting.some((one) => one.next_try_on === null)
-							? null
-							: [...waiting].sort((left, right) => (left.next_try_on < right.next_try_on ? -1 : 1))[0]
-									.next_try_on;
-					}
+					const first = [...waiting].sort(byTime)[0];
+					if (first && Number(first.attempts) === 0) record.next_try_on = first.next_try_on;
 				}
 				await trx(TABLE).insert(record);
 			}
