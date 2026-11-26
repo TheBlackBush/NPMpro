@@ -24,6 +24,7 @@ import { intl, T } from "src/locale";
 import { showTestMailModal } from "src/modals";
 import {
 	browserPublicUrl,
+	configErrorItems,
 	emailPayload,
 	emailValues,
 	MAIL_LANGUAGES,
@@ -85,6 +86,29 @@ function TestMailButton({ configured, defaultTo }) {
 				<T id="settings.email.test" />
 			</Button>
 		</div>
+	);
+}
+
+// the saved values the sender refuses (a restored backup, an env value): mail is not sent until they are corrected
+function ConfigErrors({ email, notifications }) {
+	const items = configErrorItems(email, notifications);
+	if (items.length === 0) return null;
+	return (
+		<StatusAlert variant="danger" icon={CircleAlert}>
+			<p>
+				<T id="settings.notifications.config-errors" />
+			</p>
+			<ul className="mt-1 list-disc ps-5">
+				{items.map((item) => (
+					<li key={item.field}>
+						<span className="font-medium">
+							<T id={item.label} />
+						</span>
+						: <T id={item.error} />
+					</li>
+				))}
+			</ul>
+		</StatusAlert>
 	);
 }
 
@@ -371,6 +395,7 @@ function NotificationsForm({ email, notifications }) {
 			{email.secretError ? (
 				<StatusAlert variant="danger" icon={CircleAlert} id="settings.email.secret-error" />
 			) : null}
+			<ConfigErrors email={email} notifications={notifications} />
 			<MailServerCard data={email} locks={emailLocks} defaultTo={me?.email} />
 			<LinksCard locks={notificationLocks} />
 			<SaveBar labels={FIELD_LABELS} />

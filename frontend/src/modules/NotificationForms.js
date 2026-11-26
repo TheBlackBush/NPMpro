@@ -251,3 +251,30 @@ export const sendsPlainLogin = (values) => values.security === "none" && String(
  * @returns {string|null}  the translation id of the error, or null
  */
 export const testMailValidate = (to) => (isSingleAddress(String(to ?? "").trim()) ? null : "settings.email.to.invalid");
+
+// config_errors of the two GET answers (backend field names) -> the label and the error text of the field; every id is
+// written out whole (check-unused reads them)
+const CONFIG_ERRORS = {
+	port: ["settings.email.port", "settings.email.port.invalid"],
+	security: ["settings.email.security", "settings.email.security.invalid"],
+	verify_tls: ["settings.email.verify-tls", "settings.email.verify-tls.invalid"],
+	username: ["settings.email.username", "settings.email.username.invalid"],
+	from_name: ["settings.email.from-name", "settings.email.from-name.invalid"],
+	from_address: ["settings.email.from-address", "settings.email.from-address.invalid"],
+	reply_to: ["settings.email.reply-to", "settings.email.reply-to.invalid"],
+	public_url: ["settings.notifications.public-url", "settings.notifications.public-url.invalid"],
+	default_language: ["settings.notifications.default-language", "settings.notifications.default-language.invalid"],
+};
+
+/**
+ * The saved values the sender refuses (a restored backup, an env value), as translation ids: the field's label and its
+ * error text. A field the UI does not know is left out, so a raw key never shows.
+ *
+ * @param   {Object}  email          GET /settings/email (camelized; configErrors keeps the backend's field names)
+ * @param   {Object}  notifications  GET /settings/notifications
+ * @returns {{ field: string, label: string, error: string }[]}
+ */
+export const configErrorItems = (email, notifications) =>
+	[...(email?.configErrors ?? []), ...(notifications?.configErrors ?? [])]
+		.filter((field) => Object.hasOwn(CONFIG_ERRORS, field))
+		.map((field) => ({ field, label: CONFIG_ERRORS[field][0], error: CONFIG_ERRORS[field][1] }));

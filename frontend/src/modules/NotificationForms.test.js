@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
 	browserPublicUrl,
+	configErrorItems,
 	emailPayload,
 	emailValidate,
 	emailValues,
@@ -217,4 +218,17 @@ it("does not check a value kept as stored, so a legacy value never blocks anothe
 	assert.deepEqual(Object.keys(validate({ ...savedEmail, ...savedNotifications, fromName: 'New "x"' })), [
 		"fromName",
 	]);
+});
+
+it("names the saved values the sender refuses with the field's label and text, never a raw or unknown key", () => {
+	assert.deepEqual(configErrorItems({ configErrors: ["from_address", "nope"] }, { configErrors: ["public_url"] }), [
+		{ field: "from_address", label: "settings.email.from-address", error: "settings.email.from-address.invalid" },
+		{
+			field: "public_url",
+			label: "settings.notifications.public-url",
+			error: "settings.notifications.public-url.invalid",
+		},
+	]);
+	assert.deepEqual(configErrorItems({}, undefined), []);
+	assert.deepEqual(configErrorItems({ configErrors: ["toString"] }, {}), []);
 });
