@@ -17,6 +17,17 @@ With Security **None** and a user, the password would travel unencrypted, so it 
 
 **Send test mail** sends a mail with the saved settings to the address you type (yours by default) and shows the server's answer if it fails. Save first: the button is disabled while the form has unsaved changes, and hidden until mail is set up.
 
+### Mail alerts
+
+Shown once a mail server is set up. Mails about problems NPMpro detects, and when they are resolved; a problem that stays open is repeated.
+
+- **Send to administrators**: every enabled administrator with a valid address gets the alerts.
+- **Also send to**: more addresses, at most 20, for example a team list. A refused address is marked on its chip. Variable: `ALERT_ADDRESSES` (comma separated).
+- **Events**: tick the problems you want mail about, grouped by area. Ticking one also covers its recovery.
+- **Remind every (hours)**: how long a problem stays quiet before it is mailed again; 0 never repeats it, at most 168.
+
+**Send a sample** sends an example alert at once to everyone who would get alerts, with the saved settings. Save first: the button is disabled while the form has unsaved changes. If a send fails, the message names the address.
+
 ### Links and language
 
 - **Public URL**: the address people open NPMpro at, used for the links in mails, for example `https://npm.example.com`. HTTPS only, no path. **Use this browser's address** fills it with the address of this page when it is opened over HTTPS. Variable: `PUBLIC_URL`.

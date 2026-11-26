@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	getEmailSettings,
+	getNotificationEvents,
 	getNotificationSettings,
+	sendSampleAlert,
 	sendTestMail,
 	updateEmailSettings,
 	updateNotificationSettings,
@@ -45,12 +47,25 @@ const useSaveNotificationSettings = () => {
 	return useMutation({ mutationFn: (values) => updateNotificationSettings(values), onSuccess: invalidate });
 };
 
+// the events the mail channel offers; they only change with a new version
+const useNotificationEvents = (options = {}) =>
+	useQuery({
+		queryKey: ["notification-events"],
+		queryFn: () => getNotificationEvents(),
+		staleTime: 10 * 60 * 1000,
+		...options,
+	});
+
+const useSendSampleAlert = () => useMutation({ mutationFn: () => sendSampleAlert() });
+
 const useSendTestMail = () => useMutation({ mutationFn: (to) => sendTestMail(to) });
 
 export {
 	useEmailSettings,
+	useNotificationEvents,
 	useNotificationSettings,
 	useSaveEmailSettings,
 	useSaveNotificationSettings,
+	useSendSampleAlert,
 	useSendTestMail,
 };
