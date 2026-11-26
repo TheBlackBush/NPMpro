@@ -10,6 +10,7 @@ import {
 	ENVIRONMENT_ITEMS,
 	environmentInfo,
 	LOCK_GROUP_ORDER,
+	lockedByOf,
 	settingLocksOf,
 } from "../lib/environment-info.js";
 import { EMAIL_ENV_KEYS, NOTIFICATION_ENV_KEYS } from "../lib/mail/settings-rules.js";
@@ -463,8 +464,7 @@ it("lists the CrowdSec env locks after forward authentication", () => {
 	);
 });
 
-it("names the variable of every locked oidc, monitoring and geoip key (locked_by), names only", async () => {
-	const { lockedByOf } = await import("../lib/environment-info.js");
+it("names the variable of every locked oidc, monitoring and geoip key (locked_by), names only", () => {
 	assert.deepEqual(lockedByOf("oidc", ["issuer_url", "client_secret"]), {
 		issuer_url: "OIDC_ISSUER_URL",
 		client_secret: "OIDC_CLIENT_SECRET",
@@ -566,8 +566,7 @@ it("gives the updater the stored value an invalid DDNS_ env value leaves in plac
 	]);
 });
 
-it("lists the mail and notification env locks, the mail credentials are secret envs, none is a startup env", async () => {
-	const { lockedByOf } = await import("../lib/environment-info.js");
+it("lists the mail and notification env locks, the mail credentials are secret envs, none is a startup env", () => {
 	const envs = readFileSync(ENVS_SH, "utf8");
 	const secrets = SECRET_LINE.exec(envs).groups.names.split(" ");
 	const startup = STARTUP_LINE.exec(envs).groups.names.split(" ");

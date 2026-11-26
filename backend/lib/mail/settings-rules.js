@@ -39,10 +39,12 @@ const NOTIFICATION_ENV_KEYS = {
 const EMAIL_NUMBER_KEYS = new Set(["port"]);
 const EMAIL_BOOLEAN_KEYS = new Set(["verify_tls"]);
 const SECURITY_MODES = ["starttls", "tls", "none"];
-const ADDRESS_PATTERN = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+$/u;
+const ADDRESS_PATTERN = /^[^\s@<>()",;:\\]+@[^\s@<>()",;:\\]+$/u;
+const ASCII_PRINTABLE_PATTERN = /^[\x21-\x7e]+$/u;
+const HTTPS_PREFIX_PATTERN = /^https:\/\//iu;
 const CONTROL_PATTERN = /[\r\n\0]/u;
 const NAME_PATTERN = /[\r\n\0"]/u;
-const URL_FORBIDDEN_PATTERN = /[\s?#\\]/u;
+const URL_FORBIDDEN_PATTERN = /[?#\\]/u;
 const ADDRESS_MAX = 254;
 const NAME_MAX = 100;
 
@@ -97,7 +99,7 @@ const isConfigured = (values) => Boolean(values?.host && values?.from_address);
  */
 const isSingleAddress = (value) => {
 	if (typeof value !== "string" || value.length > ADDRESS_MAX || CONTROL_PATTERN.test(value)) return false;
-	if (!ADDRESS_PATTERN.test(value)) return false;
+	if (!ASCII_PRINTABLE_PATTERN.test(value) || value.includes("=?") || !ADDRESS_PATTERN.test(value)) return false;
 	const entries = addressparser(value);
 	return entries.length === 1 && Boolean(entries[0].address) && !entries[0].group;
 };
@@ -105,13 +107,21 @@ const isSingleAddress = (value) => {
 const isPlainText = (value, max, pattern) => typeof value === "string" && value.length <= max && !pattern.test(value);
 
 /**
- * The public URL as stored: https only, without the trailing slash; null when it is not valid
+ * The public URL as stored: the origin (lower-case scheme and host, no trailing slash) of an https URL typed with the
+ * literal https:// prefix, printable ASCII only, no path beyond /, no query, fragment or user info; null when invalid
  *
  * @param   {*}  value
  * @returns {string|null}
  */
 const normalizePublicUrl = (value) => {
-	if (typeof value !== "string" || URL_FORBIDDEN_PATTERN.test(value)) return null;
+	if (
+		typeof value !== "string" ||
+		!ASCII_PRINTABLE_PATTERN.test(value) ||
+		!HTTPS_PREFIX_PATTERN.test(value) ||
+		URL_FORBIDDEN_PATTERN.test(value)
+	) {
+		return null;
+	}
 	let url;
 	try {
 		url = new URL(value);
@@ -121,7 +131,7 @@ const normalizePublicUrl = (value) => {
 	if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash || url.pathname !== "/") {
 		return null;
 	}
-	return value.endsWith("/") ? value.slice(0, -1) : value;
+	return url.origin;
 };
 
 const EMAIL_CHECKS = {
@@ -139,13 +149,15 @@ const NOTIFICATION_CHECKS = {
 	default_language: (value) => MAIL_LANGUAGES.includes(value),
 };
 
-const validatePatch = (checks, prefix, patch, current) => {
+const kebab = (key) => key.replaceAll("_", "-");
+
+const errorsOf = (checks, area, values, current) => {
 	const errors = {};
 	for (const [key, check] of Object.entries(checks)) {
-		if (!(key in patch)) continue;
+		if (!(key in values)) continue;
 		// a stored value passes a save that keeps it, even when it would not pass today
-		if (current && patch[key] === current[key]) continue;
-		if (!check(patch[key])) errors[key] = `${prefix}.${key}`;
+		if (current && values[key] === current[key]) continue;
+		if (!check(values[key])) errors[key] = `settings.${area}.${kebab(key)}.invalid`;
 	}
 	return { errors };
 };
@@ -153,12 +165,27 @@ const validatePatch = (checks, prefix, patch, current) => {
 /**
  * @param   {Object}  patch    the keys of a save
  * @param   {Object}  current  the stored values (a key kept as stored is not checked again)
- * @returns {{errors: Object<string, string>}}  key to i18n key
+ * @returns {{errors: Object<string, string>}}  key to i18n key (settings.email.<field-kebab>.invalid)
  */
-const validateEmailPatch = (patch, current) => validatePatch(EMAIL_CHECKS, "mail.invalid", patch, current);
+const validateEmailPatch = (patch, current) => errorsOf(EMAIL_CHECKS, "email", patch, current);
 
-const validateNotificationsPatch = (patch, current) =>
-	validatePatch(NOTIFICATION_CHECKS, "notifications.invalid", patch, current);
+const validateNotificationsPatch = (patch, current) => errorsOf(NOTIFICATION_CHECKS, "notifications", patch, current);
+
+/**
+ * The same rules over the merged values (mergeEmail: stored and env). A value from env or a legacy stored value that a
+ * save kept is not checked anywhere else, so the sender (Tasks 2a.3 and 2a.5) calls this before every send and refuses
+ * with a config error when it returns errors, and the GET answers the errors.
+ *
+ * @param   {Object}  values  the values of mergeEmail
+ * @returns {{errors: Object<string, string>}}
+ */
+const validateEmailValues = (values) => errorsOf(EMAIL_CHECKS, "email", values);
+
+/**
+ * @param   {Object}  values  the values of mergeNotifications
+ * @returns {{errors: Object<string, string>}}
+ */
+const validateNotificationValues = (values) => errorsOf(NOTIFICATION_CHECKS, "notifications", values);
 
 /**
  * The host of the public URL (for the subject and the EHLO name)
@@ -187,5 +214,7 @@ export {
 	normalizePublicUrl,
 	publicHostOf,
 	validateEmailPatch,
+	validateEmailValues,
 	validateNotificationsPatch,
+	validateNotificationValues,
 };

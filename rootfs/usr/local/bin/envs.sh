@@ -1018,8 +1018,40 @@ if [ -n "$SMTP_VERIFY_TLS" ] && ! echo "$SMTP_VERIFY_TLS" | grep -q "^true$\|^fa
     sleep inf
 fi
 
-if [ -n "$PUBLIC_URL" ] && ! echo "$PUBLIC_URL" | grep -q "^https://"; then
-    echo "PUBLIC_URL needs to start with https://."
+# the characters of $1 that are in the tr set $2 (a set of tr -cd), counted
+mail_count_chars() {
+    printf '%s' "$1" | LC_ALL=C tr -cd "$2" | wc -c
+}
+
+# one plain address: printable ASCII only (no space, CR or LF), no quote, comma, colon, semicolon, angle bracket,
+# parenthesis or backslash, no =?, at most 254 characters (the same rule as backend/lib/mail/settings-rules.js)
+mail_address_ok() {
+    [ "${#1}" -le 254 ] &&
+        [ "$(mail_count_chars "$1" '\041-\176')" -eq "${#1}" ] &&
+        printf '%s\n' "$1" | grep -qE '^[^@<>(),;:"\\]+@[^@<>(),;:"\\]+$' &&
+        ! printf '%s' "$1" | grep -qF '=?'
+}
+
+for name in SMTP_FROM SMTP_REPLY_TO; do
+    value="$(printenv "$name")"
+    if [ -n "$value" ] && ! mail_address_ok "$value"; then
+        echo "$name needs to be one plain address (printable ASCII, no name, no quotes, comma or angle brackets, at most 254 characters)."
+        sleep inf
+    fi
+done
+
+if [ -n "$SMTP_FROM_NAME" ] && { [ "${#SMTP_FROM_NAME}" -gt 100 ] || [ "$(mail_count_chars "$SMTP_FROM_NAME" '\r\n"')" -gt 0 ]; }; then
+    echo "SMTP_FROM_NAME needs to be at most 100 characters without quotes or line breaks."
+    sleep inf
+fi
+
+if [ -n "$SMTP_USERNAME" ] && { [ "${#SMTP_USERNAME}" -gt 254 ] || [ "$(mail_count_chars "$SMTP_USERNAME" '\r\n')" -gt 0 ]; }; then
+    echo "SMTP_USERNAME needs to be at most 254 characters without line breaks."
+    sleep inf
+fi
+
+if [ -n "$PUBLIC_URL" ] && { ! echo "$PUBLIC_URL" | grep -qiE '^https://[^/?#@\\]+/?$' || [ "$(mail_count_chars "$PUBLIC_URL" '\041-\176')" -ne "${#PUBLIC_URL}" ]; }; then
+    echo "PUBLIC_URL needs to be an https:// address without a path, query, fragment or user info."
     sleep inf
 fi
 

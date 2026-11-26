@@ -12,7 +12,9 @@ import {
 	normalizePublicUrl,
 	publicHostOf,
 	validateEmailPatch,
+	validateEmailValues,
 	validateNotificationsPatch,
+	validateNotificationValues,
 } from "../lib/mail/settings-rules.js";
 
 const okEmail = (patch, current) => validateEmailPatch(patch, current).errors;
@@ -91,6 +93,11 @@ it("accepts one plain address and refuses lists, names, CR, LF, NUL and long val
 		"a@b.c\nd@e.f",
 		"a@b.c\r",
 		"a@b.c\0",
+		"a@b.c\x85",
+		"a\\b@c.d",
+		"=?utf-8?B?QQ==?=@b.c",
+		"a@b.c\u2028",
+		"é@b.c",
 		'"x" <a@b.c>',
 		"<a@b.c>",
 		"not an address",
@@ -99,8 +106,12 @@ it("accepts one plain address and refuses lists, names, CR, LF, NUL and long val
 		42,
 		null,
 	]) {
-		assert.deepEqual(okEmail({ from_address: bad }), { from_address: "mail.invalid.from_address" }, String(bad));
-		assert.deepEqual(okEmail({ reply_to: bad }), { reply_to: "mail.invalid.reply_to" }, String(bad));
+		assert.deepEqual(
+			okEmail({ from_address: bad }),
+			{ from_address: "settings.email.from-address.invalid" },
+			String(bad),
+		);
+		assert.deepEqual(okEmail({ reply_to: bad }), { reply_to: "settings.email.reply-to.invalid" }, String(bad));
 	}
 	assert.deepEqual(okEmail({ from_address: `${"a".repeat(248)}@b.cde` }), {});
 	assert.equal(Object.keys(okEmail({ from_address: `${"a".repeat(249)}@b.cde` })).length, 1);
@@ -110,20 +121,20 @@ it("checks port, security, verify_tls, from_name and username", () => {
 	assert.deepEqual(okEmail({ port: 1 }), {});
 	assert.deepEqual(okEmail({ port: 65535 }), {});
 	for (const port of [0, 65536, 1.5, "25", null, Number.NaN]) {
-		assert.deepEqual(okEmail({ port }), { port: "mail.invalid.port" }, String(port));
+		assert.deepEqual(okEmail({ port }), { port: "settings.email.port.invalid" }, String(port));
 	}
 	for (const security of ["starttls", "tls", "none"]) assert.deepEqual(okEmail({ security }), {});
-	assert.deepEqual(okEmail({ security: "ssl" }), { security: "mail.invalid.security" });
+	assert.deepEqual(okEmail({ security: "ssl" }), { security: "settings.email.security.invalid" });
 	assert.deepEqual(okEmail({ verify_tls: false }), {});
-	assert.deepEqual(okEmail({ verify_tls: "false" }), { verify_tls: "mail.invalid.verify_tls" });
+	assert.deepEqual(okEmail({ verify_tls: "false" }), { verify_tls: "settings.email.verify-tls.invalid" });
 	assert.deepEqual(okEmail({ from_name: "NPMpro Alerts" }), {});
 	assert.deepEqual(okEmail({ from_name: "a".repeat(100) }), {});
 	for (const from_name of ['say "hi"', "a\nb", "a\rb", "a".repeat(101)]) {
-		assert.deepEqual(okEmail({ from_name }), { from_name: "mail.invalid.from_name" }, from_name);
+		assert.deepEqual(okEmail({ from_name }), { from_name: "settings.email.from-name.invalid" }, from_name);
 	}
 	assert.deepEqual(okEmail({ username: "user@example.com" }), {});
-	assert.deepEqual(okEmail({ username: "a\r\nb" }), { username: "mail.invalid.username" });
-	assert.deepEqual(okEmail({ username: "a".repeat(255) }), { username: "mail.invalid.username" });
+	assert.deepEqual(okEmail({ username: "a\r\nb" }), { username: "settings.email.username.invalid" });
+	assert.deepEqual(okEmail({ username: "a".repeat(255) }), { username: "settings.email.username.invalid" });
 });
 
 it("checks only the keys of the patch and reports every bad one", () => {
@@ -138,7 +149,7 @@ it("a stored invalid value passes a save that keeps it and fails a save that cha
 	const current = { from_address: "Team <a@b.c>", port: 0, from_name: 'a"b' };
 	assert.deepEqual(okEmail({ from_address: "Team <a@b.c>", port: 0, from_name: 'a"b' }, current), {});
 	assert.deepEqual(okEmail({ from_address: "Team <a@b.c>x" }, current), {
-		from_address: "mail.invalid.from_address",
+		from_address: "settings.email.from-address.invalid",
 	});
 	assert.deepEqual(okEmail({ port: 1 }, current), {});
 });
@@ -147,6 +158,8 @@ it("stores the public url without the trailing slash and refuses everything but 
 	assert.equal(normalizePublicUrl("https://npm.example.com/"), "https://npm.example.com");
 	assert.equal(normalizePublicUrl("https://npm.example.com"), "https://npm.example.com");
 	assert.equal(normalizePublicUrl("https://npm.example.com:8443/"), "https://npm.example.com:8443");
+	assert.equal(normalizePublicUrl("HTTPS://X.com/"), "https://x.com");
+	assert.equal(normalizePublicUrl("https://x.com:443"), "https://x.com");
 	for (const bad of [
 		"http://npm.example.com",
 		"https://x/y",
@@ -158,6 +171,14 @@ it("stores the public url without the trailing slash and refuses everything but 
 		"https://x#f",
 		"https://x/#f",
 		"https://x y",
+		"https://x.com/\0",
+		"https://x.com/\x01",
+		"https://x.com/\x1b",
+		"https://x.com\x85",
+		"https:/x.com",
+		"https:x.com",
+		" https://x.com",
+		"https://x.com ",
 		"https://x\\y",
 		"ftp://x",
 		"npm.example.com",
@@ -169,7 +190,7 @@ it("stores the public url without the trailing slash and refuses everything but 
 	assert.deepEqual(validateNotificationsPatch({ public_url: "https://npm.example.com/" }).errors, {});
 	assert.deepEqual(validateNotificationsPatch({ public_url: "" }).errors, {});
 	assert.deepEqual(validateNotificationsPatch({ public_url: "http://x" }).errors, {
-		public_url: "notifications.invalid.public_url",
+		public_url: "settings.notifications.public-url.invalid",
 	});
 });
 
@@ -177,7 +198,7 @@ it("checks the default language and keeps a stored value that is kept", () => {
 	for (const code of MAIL_LANGUAGES)
 		assert.deepEqual(validateNotificationsPatch({ default_language: code }).errors, {});
 	assert.deepEqual(validateNotificationsPatch({ default_language: "xx" }).errors, {
-		default_language: "notifications.invalid.default_language",
+		default_language: "settings.notifications.default-language.invalid",
 	});
 	assert.deepEqual(
 		validateNotificationsPatch({ public_url: "http://old.test" }, { public_url: "http://old.test" }).errors,
@@ -191,4 +212,28 @@ it("works out the host of the public url", () => {
 	assert.equal(publicHostOf({ public_url: "" }), null);
 	assert.equal(publicHostOf({ public_url: "not a url" }), null);
 	assert.equal(publicHostOf(undefined), null);
+});
+
+it("checks the merged values: an env sender with CR and LF is an error, a kept legacy stored value too", () => {
+	const good = mergeEmail({ host: "h", from_address: "a@b.c" }, {});
+	assert.deepEqual(validateEmailValues(good.values), { errors: {} });
+	assert.deepEqual(validateEmailValues(mergeEmail({}, {}).values), { errors: {} });
+	const injected = mergeEmail({ from_address: "a@b.c" }, { SMTP_FROM: "a@b.c\r\nBcc: x@y.z", SMTP_FROM_NAME: 'x"y' });
+	assert.deepEqual(injected.locked, ["from_address", "from_name"]);
+	assert.deepEqual(validateEmailValues(injected.values).errors, {
+		from_address: "settings.email.from-address.invalid",
+		from_name: "settings.email.from-name.invalid",
+	});
+	// a legacy stored value passes a save that keeps it, but never the check of the merged values
+	const legacy = { from_address: "a@b.c, d@e.f" };
+	assert.deepEqual(validateEmailPatch({ from_address: legacy.from_address }, legacy), { errors: {} });
+	assert.deepEqual(validateEmailValues(mergeEmail(legacy, {}).values).errors, {
+		from_address: "settings.email.from-address.invalid",
+	});
+	const url = mergeNotifications({}, { PUBLIC_URL: "https://x/y?a", MAIL_LANGUAGE: "xx" });
+	assert.deepEqual(validateNotificationValues(url.values).errors, {
+		public_url: "settings.notifications.public-url.invalid",
+		default_language: "settings.notifications.default-language.invalid",
+	});
+	assert.deepEqual(validateNotificationValues(mergeNotifications({}, {}).values), { errors: {} });
 });
