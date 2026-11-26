@@ -122,12 +122,17 @@ it("leaves the fields set by the environment out of the checks", () => {
 	};
 	const none = () => false;
 	assert.deepEqual(
-		Object.keys(notificationsValidate(rules, none, none)(values)).sort((a, b) => a.localeCompare(b)),
+		Object.keys(notificationsValidate(rules, { isEmailLocked: none, isNotificationsLocked: none })(values)).sort(
+			(a, b) => a.localeCompare(b),
+		),
 		["defaultLanguage", "fromAddress", "port", "publicUrl"],
 	);
 	const all = () => true;
-	assert.deepEqual(notificationsValidate(rules, all, all)(values), {});
-	assert.equal(notificationsValidate(rules, none, none)(values).port, "settings.email.port.invalid");
+	assert.deepEqual(notificationsValidate(rules, { isEmailLocked: all, isNotificationsLocked: all })(values), {});
+	assert.equal(
+		notificationsValidate(rules, { isEmailLocked: none, isNotificationsLocked: none })(values).port,
+		"settings.email.port.invalid",
+	);
 });
 
 it("sends only what changed and never a locked key or an empty password", () => {
@@ -178,4 +183,38 @@ it("checks the address of a test mail", () => {
 	assert.equal(testMailValidate(" a@b.example "), null);
 	assert.equal(testMailValidate(""), "settings.email.to.invalid");
 	assert.equal(testMailValidate("a@b.example, c@d.example"), "settings.email.to.invalid");
+});
+
+it("caps the public URL at 253 characters like the backend", () => {
+	const long = `https://${"a".repeat(250)}.example`;
+	assert.equal(publicUrlValidate(long), "error.max-character-length");
+	const message = notificationsValidate(rules, { isEmailLocked: () => false, isNotificationsLocked: () => false })({
+		...emailValues(stored),
+		publicUrl: long,
+		defaultLanguage: "en",
+	});
+	assert.equal(message.publicUrl, 'error.max-character-length{"max":253}');
+});
+
+it("does not check a value kept as stored, so a legacy value never blocks another field", () => {
+	const legacy = {
+		...stored,
+		fromName: 'Old "name"',
+		fromAddress: "legacy",
+		publicUrl: "http://legacy",
+		defaultLanguage: "xx",
+	};
+	const savedEmail = emailValues(legacy);
+	const savedNotifications = notificationValues(legacy);
+	const none = () => false;
+	const validate = notificationsValidate(
+		rules,
+		{ isEmailLocked: none, isNotificationsLocked: none },
+		{ savedEmail, savedNotifications },
+	);
+	assert.deepEqual(validate({ ...savedEmail, ...savedNotifications }), {});
+	assert.deepEqual(Object.keys(validate({ ...savedEmail, ...savedNotifications, port: "0" })), ["port"]);
+	assert.deepEqual(Object.keys(validate({ ...savedEmail, ...savedNotifications, fromName: 'New "x"' })), [
+		"fromName",
+	]);
 });

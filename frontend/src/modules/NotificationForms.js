@@ -19,6 +19,7 @@ const DIGITS = /^\d+$/u;
 const ADDRESS_MAX = 254;
 const NAME_MAX = 100;
 const HOST_MAX = 253;
+const PUBLIC_URL_MAX = 253;
 
 // the fixed name of the password's variable: the API answers its name blank (it blanks every value under "password")
 export const PASSWORD_ENV = "SMTP_PASSWORD";
@@ -75,6 +76,7 @@ export const normalizePublicUrl = (text) => {
  */
 export const publicUrlValidate = (text) => {
 	const trimmed = String(text ?? "").trim();
+	if (trimmed.length > PUBLIC_URL_MAX) return "error.max-character-length";
 	if (trimmed === "" || normalizePublicUrl(trimmed) !== null) return null;
 	return "settings.notifications.public-url.invalid";
 };
@@ -159,22 +161,35 @@ export const emailValidate = (values) => {
  * @param   {Object}    rules      createValidations(intl) (its message)
  * @param   {Function}  isEmailLocked          camelCase key -> locked
  * @param   {Function}  isNotificationsLocked  camelCase key -> locked
+ * @param   {Object}    [savedEmail]           emailValues of the stored settings
+ * @param   {Object}    [savedNotifications]   notificationValues of the stored settings
  * @returns {Function}
  */
-export const notificationsValidate = (rules, isEmailLocked, isNotificationsLocked) => (values) => {
-	const errors = {};
-	for (const [key, error] of Object.entries(emailValidate(values))) {
-		if (!isEmailLocked(key)) errors[key] = rules.message(error.id, error.values);
-	}
-	if (!isNotificationsLocked("publicUrl")) {
-		const id = publicUrlValidate(values.publicUrl);
-		if (id) errors.publicUrl = rules.message(id);
-	}
-	if (!isNotificationsLocked("defaultLanguage") && !MAIL_LANGUAGES.includes(values.defaultLanguage)) {
-		errors.defaultLanguage = rules.message("settings.notifications.default-language.invalid");
-	}
-	return errors;
-};
+export const notificationsValidate =
+	(rules, { isEmailLocked, isNotificationsLocked }, { savedEmail = {}, savedNotifications = {} } = {}) =>
+	(values) => {
+		const errors = {};
+		// a value kept as stored is not checked: the backend keeps a legacy stored value too
+		const kept = (key, saved) => key in saved && String(values[key] ?? "").trim() === String(saved[key] ?? "");
+		for (const [key, error] of Object.entries(emailValidate(values))) {
+			if (!(isEmailLocked(key) || kept(key, savedEmail))) errors[key] = rules.message(error.id, error.values);
+		}
+		if (!(isNotificationsLocked("publicUrl") || kept("publicUrl", savedNotifications))) {
+			const id = publicUrlValidate(values.publicUrl);
+			if (id)
+				errors.publicUrl = rules.message(
+					id,
+					id === "error.max-character-length" ? { max: PUBLIC_URL_MAX } : undefined,
+				);
+		}
+		if (
+			!(isNotificationsLocked("defaultLanguage") || kept("defaultLanguage", savedNotifications)) &&
+			!MAIL_LANGUAGES.includes(values.defaultLanguage)
+		) {
+			errors.defaultLanguage = rules.message("settings.notifications.default-language.invalid");
+		}
+		return errors;
+	};
 
 const TRIMMED = ["host", "username", "fromName", "fromAddress", "replyTo"];
 

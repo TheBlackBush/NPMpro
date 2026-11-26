@@ -321,7 +321,11 @@ function NotificationsForm({ email, notifications }) {
 		defaultValues: saved,
 		values: saved,
 		keepEdits: false,
-		validate: notificationsValidate(validations, emailLocks.isLocked, notificationLocks.isLocked),
+		validate: notificationsValidate(
+			validations,
+			{ isEmailLocked: emailLocks.isLocked, isNotificationsLocked: notificationLocks.isLocked },
+			{ savedEmail: emailValues(email), savedNotifications: notificationValues(notifications) },
+		),
 	});
 
 	useEffect(() => {
@@ -336,7 +340,19 @@ function NotificationsForm({ email, notifications }) {
 			const emailBody = emailPayload(values, email);
 			if (emailBody) await saveEmail(emailBody);
 			const notificationBody = notificationPayload(values, notifications);
-			if (notificationBody) await saveNotifications(notificationBody);
+			if (notificationBody) {
+				try {
+					await saveNotifications(notificationBody);
+				} catch (err) {
+					// the saved mail server reloaded the form: the card that failed keeps the user's edit
+					if (emailBody) {
+						for (const key of ["publicUrl", "defaultLanguage"]) {
+							methods.setValue(key, values[key], { shouldDirty: true });
+						}
+					}
+					throw err;
+				}
+			}
 			methods.setValue("password", "", { shouldDirty: true });
 			methods.setValue("clearPassword", false, { shouldDirty: true });
 			showObjectSuccess("setting", "saved");
