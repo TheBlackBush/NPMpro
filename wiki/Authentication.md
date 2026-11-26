@@ -29,11 +29,11 @@ It is offered only when all of these are true:
 Only then does the sign-in page show **Forgot password?** under the sign-in button. The page asks for an address and always answers that a mail is on its way if an account exists, so it cannot be used to find out which addresses have accounts (see [Security](Security#password-reset-by-mail)).
 
 - The mail holds a button with a link to `/reset-password`. The one-time token is in the part of the link after `#` (the fragment), so it is not sent to the server with the page address and is not written to the logs. The link works once and for 30 minutes.
-- A newer request, a password change or a used link makes an older link invalid. Only a hash of the token is stored.
+- A newer request, a password change (also from the command line or by a backup merge that replaces the user), a change of the user's email address, disabling the user, turning the reset off or a used link makes an older link invalid. Enabling the user or turning the reset on again brings no old link back. Only a hash of the token is stored.
 - After a reset every session is signed out. Two-factor sign-in stays as it is, and API tokens keep working.
 - A notice mail "Your NPMpro password was reset" goes out after every reset made with the link, with the time, the address the request came from and the number of API tokens that are still active (see [Notifications](Notifications#account-mails)). If you did not ask for the reset, sign in as an administrator, revoke the tokens and change the password.
 - Every user can reset by mail, the only administrator included. A user without a password (OIDC only) and a disabled user get no mail.
-- Limits: 5 requests per 15 minutes from one IP address (an IPv6 address counts per /48), across the three reset routes, and at most 3 mails per hour to one address. A request over a limit gets the same answer and no mail.
+- Limits: 5 requests per 15 minutes from one IP address (an IPv6 address counts per /48), across the three reset routes, and at most 3 mails per hour to one address. A request over the IP limit gets 429 (Too many requests), the same for every address. A request over the address limit gets the same answer as any other and no mail.
 - If the mail cannot be sent, nothing else happens: the user sees the same answer and the administrator finds a line in the audit log.
 
 When the switch is off, or the mail server or public URL is missing, the reset is not offered and the command line reset below still works, so it stays the way to recover an instance nobody can reach by mail.
