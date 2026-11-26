@@ -121,9 +121,9 @@ it("setup: a name, an email address and a password of eight characters or more",
 });
 
 it("pastedCodeValue puts a partial paste at the caret and a complete code over the whole value", () => {
-	assert.equal(pastedCodeValue("12", "34", 2, 2, 6), "1234");
-	assert.equal(pastedCodeValue("1234", "98", 1, 3, 6), "1984");
-	assert.equal(pastedCodeValue("123456", "654 321", 3, 3, 6), "654321");
-	assert.equal(pastedCodeValue("abcd1234", "WXYZ-9876", 8, 8, 8), "WXYZ9876");
-	assert.equal(pastedCodeValue("", "98 76-54", 0, 0, 6), "987654");
+	assert.equal(pastedCodeValue("12", "34", { start: 2, end: 2, length: 6 }), "1234");
+	assert.equal(pastedCodeValue("1234", "98", { start: 1, end: 3, length: 6 }), "1984");
+	assert.equal(pastedCodeValue("123456", "654 321", { start: 3, end: 3, length: 6 }), "654321");
+	assert.equal(pastedCodeValue("abcd1234", "WXYZ-9876", { start: 8, end: 8, length: 8 }), "WXYZ9876");
+	assert.equal(pastedCodeValue("", "98 76-54", { start: 0, end: 0, length: 6 }), "987654");
 });

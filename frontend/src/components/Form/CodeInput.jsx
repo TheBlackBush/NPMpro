@@ -56,7 +56,10 @@ function CodeInput({
 		event.stopPropagation();
 		const { value, selectionStart, selectionEnd } = event.currentTarget;
 		const text = event.clipboardData.getData("text");
-		const next = shown(pastedCodeValue(value, text, selectionStart, selectionEnd, length)).slice(0, length);
+		const next = shown(pastedCodeValue(value, text, { start: selectionStart, end: selectionEnd, length })).slice(
+			0,
+			length,
+		);
 		if (next.length > 0 && new RegExp(pattern).test(next)) field.onChange(next);
 	};
 	const starts = groups.map((_, group) => groups.slice(0, group).reduce((sum, size) => sum + size, 0));

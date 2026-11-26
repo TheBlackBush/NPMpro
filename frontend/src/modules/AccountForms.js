@@ -31,12 +31,10 @@ export const CODE_VALUES = Object.freeze({ code: "", backupCode: "", useBackup: 
  *
  * @param   {string} current  the value before
  * @param   {string} text     the clipboard text
- * @param   {number} start    selectionStart
- * @param   {number} end      selectionEnd
- * @param   {number} length   the number of boxes
+ * @param   {{ start: number, end: number, length: number }} input  selectionStart, selectionEnd and the number of boxes
  * @returns {string}
  */
-export const pastedCodeValue = (current, text, start, end, length) => {
+export const pastedCodeValue = (current, text, { start, end, length }) => {
 	const cleaned = String(text ?? "").replace(BACKUP_SEPARATORS, "");
 	if (cleaned.length >= length) return cleaned;
 	return current.slice(0, start) + cleaned + current.slice(end);
