@@ -90,7 +90,8 @@ const secretsOf = ({ username, password }) => [
 ];
 
 // the connection never reached the server: the next checked address may be tried (never after a reply or a TLS error)
-const CONNECT_CODES = new Set(["ECONNREFUSED", "EHOSTUNREACH", "ENETUNREACH", "ETIMEDOUT"]);
+// a socket timeout can come after DATA (the server may have taken the mail): only the connect timeout moves on
+const CONNECT_CODES = new Set(["ECONNREFUSED", "EHOSTUNREACH", "ENETUNREACH"]);
 const CONNECT_TIMEOUT = "Connection timeout";
 const isConnectError = (err) =>
 	(err?.code === "ESOCKET" && CONNECT_CODES.has(err.originalCode)) ||
