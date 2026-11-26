@@ -59,7 +59,7 @@ Account mails go to the address of the account and in the user's language (see [
 
 ## What a mail contains
 
-Every mail has a plain text part and a simple HTML part with the same text. It has no images, loads no remote content and has no tracking, so nothing in it reports back when it is opened.
+Every mail has a plain text part and an HTML part with the same text. The HTML part has the NPMpro look (the logo, in light and dark mode). The logo is embedded in the mail, so nothing is loaded from the internet and nothing reports back when a mail is opened; there is no tracking.
 
 ## Who can change it
 

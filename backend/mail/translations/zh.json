@@ -8,6 +8,7 @@
 	"reset-link.expires": "请使用下方按钮设置新密码。该链接只能使用一次,30 分钟后失效。",
 	"reset-link.ignore": "如果这不是您本人的操作,请忽略此邮件,您的密码不会改变。",
 	"reset-link.button": "设置新密码",
+	"button.fallback": "如果按钮无法使用,请打开此链接:",
 	"password-reset.subject": "您的 NPMpro 密码已被重置",
 	"password-reset.done": "您在 {instance} 的账户密码已于 {time} (UTC) 从地址 {ip} 重置。",
 	"password-reset.sessions": "所有会话均已退出登录。双因素登录保持不变。",

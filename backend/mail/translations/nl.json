@@ -8,6 +8,7 @@
 	"reset-link.expires": "Gebruik de knop hieronder om een nieuw wachtwoord te kiezen. De link werkt maar één keer en verloopt na 30 minuten.",
 	"reset-link.ignore": "Heb je dit niet gevraagd, negeer dan deze mail: je wachtwoord blijft zoals het is.",
 	"reset-link.button": "Nieuw wachtwoord kiezen",
+	"button.fallback": "Werkt de knop niet, open dan deze link:",
 	"password-reset.subject": "Je NPMpro-wachtwoord is opnieuw ingesteld",
 	"password-reset.done": "Het wachtwoord van je account op {instance} is op {time} (UTC) opnieuw ingesteld vanaf het adres {ip}.",
 	"password-reset.sessions": "Alle sessies zijn afgemeld. Aanmelden met twee factoren is ongewijzigd.",

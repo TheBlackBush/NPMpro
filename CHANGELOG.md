@@ -79,6 +79,7 @@ below as its release notes.
 
 ### Changed
 
+- **Notifications:** mails have the NPMpro look (logo, light and dark mode).
 - **Hosts:** saving is safer: a save whose nginx reload fails is kept and says so, streams cannot use NPMpro's own
   ports or ranges wider than 1000 ports, and Pass Auth to Upstream with several access lists needs every list to allow
   it.
