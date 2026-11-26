@@ -32,6 +32,7 @@ export * from "./useLanguageSync";
 export * from "./useLeaveGuard";
 export * from "./useListFilters";
 export * from "./useMonitoring";
+export * from "./useNotificationSettings";
 export * from "./useOidcSettings";
 export * from "./usePaging";
 export * from "./useProxyHost";
