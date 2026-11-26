@@ -23,6 +23,7 @@ Przycisk na stronie logowania: **Wyświetlana nazwa** (tekst po "Zaloguj się pr
 - **Wymagaj zweryfikowanego adresu e-mail**: odrzuca użytkowników, których dostawca nie zweryfikował adresu e-mail. Domyślnie: włączone. Zmienna: `OIDC_REQUIRE_VERIFIED_EMAIL`.
 - **Pomiń weryfikację dwuetapową po OIDC**: ufa własnej weryfikacji wieloskładnikowej dostawcy. Domyślnie: wyłączone. Zmienna: `OIDC_SKIP_MFA`.
 - **Wyłącz logowanie hasłem**: zalogować się może tylko OIDC. Możesz to włączyć tylko z sesji zalogowanej przez OIDC. Zmienna: `OIDC_DISABLE_PASSWORD`; aby przywrócić logowanie hasłem, ustaw ją na `false` i utwórz kontener ponownie.
+- **Zezwalaj na resetowanie hasła pocztą**: widoczne po skonfigurowaniu serwera poczty w Ustawieniach, Powiadomieniach. Użytkownicy mogą wtedy ustawić nowe hasło za pomocą linku wysłanego na ich adres, a po każdym resecie wysyłane jest powiadomienie. Wymaga publicznego adresu URL z tych samych ustawień. Domyślnie: wyłączone. Zmienna: `PASSWORD_RESET`. Reset z wiersza poleceń nadal działa.
 
 ### Nowi użytkownicy
 

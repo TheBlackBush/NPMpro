@@ -23,6 +23,7 @@ Le bouton de la page de connexion : **Nom affiché** (le texte après « Se conn
 - **Exiger une adresse e-mail vérifiée** : refuse les utilisateurs dont le fournisseur n'a pas vérifié l'adresse e-mail. Par défaut : activé. Variable : `OIDC_REQUIRE_VERIFIED_EMAIL`.
 - **Ignorer la double authentification après OIDC** : fait confiance au contrôle multifacteur du fournisseur. Par défaut : désactivé. Variable : `OIDC_SKIP_MFA`.
 - **Désactiver la connexion par mot de passe** : seul OIDC peut se connecter. Vous ne pouvez l'activer que depuis une session connectée avec OIDC. Variable : `OIDC_DISABLE_PASSWORD` ; pour rétablir la connexion par mot de passe, mettez-la à `false` et recréez le conteneur.
+- **Autoriser la réinitialisation du mot de passe par e-mail** : affiché une fois le serveur de messagerie configuré dans Paramètres, Notifications. Les utilisateurs peuvent alors définir un nouveau mot de passe via un lien envoyé à leur adresse, et une notification est envoyée après chaque réinitialisation. Elle nécessite l'URL publique de ces mêmes paramètres. Par défaut : désactivé. Variable : `PASSWORD_RESET`. La réinitialisation en ligne de commande continue de fonctionner.
 
 ### Nouveaux utilisateurs
 

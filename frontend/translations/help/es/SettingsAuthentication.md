@@ -23,6 +23,7 @@ El botón de la página de acceso: **Nombre visible** (el texto después de «In
 - **Exigir un correo verificado**: rechaza a los usuarios cuyo proveedor no ha verificado su correo. Por defecto: activado. Variable: `OIDC_REQUIRE_VERIFIED_EMAIL`.
 - **Omitir el segundo factor tras OIDC**: confía en la comprobación multifactor del propio proveedor. Por defecto: desactivado. Variable: `OIDC_SKIP_MFA`.
 - **Desactivar inicio de sesión con contraseña**: solo OIDC puede iniciar sesión. Solo puedes activarlo desde una sesión iniciada con OIDC. Variable: `OIDC_DISABLE_PASSWORD`; para restaurar el inicio de sesión con contraseña, ponla en `false` y recrea el contenedor.
+- **Permitir restablecer la contraseña por correo**: se muestra cuando el servidor de correo está configurado en Ajustes, Notificaciones. Los usuarios pueden entonces establecer una nueva contraseña mediante un enlace enviado a su dirección, y se envía un aviso después de cada restablecimiento. Necesita la URL pública de esos mismos ajustes. Por defecto: desactivado. Variable: `PASSWORD_RESET`. El restablecimiento por línea de comandos sigue funcionando.
 
 ### Usuarios nuevos
 
