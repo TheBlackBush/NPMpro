@@ -21,6 +21,17 @@ const refusedAddress = (address) => isBlockedAddress(address) && !isTestLoopback
 
 const mailError = (code, message) => Object.assign(new Error(message), { code, message_i18n: `error.${code}` });
 
+// the resolver says the name does not exist (or has no address): a settings problem, not a passing outage
+const NO_SUCH_NAME = new Set(["ENOTFOUND", "ENODATA"]);
+
+const unresolved = (name) => mailError("mail-host-unresolved", `${name} does not resolve`);
+
+// a resolver outage (EAI_AGAIN, a timeout, SERVFAIL, a refused query): the send may be tried again later
+const lookupFailed = (name, err) =>
+	Object.assign(mailError("mail-host-lookup-failed", `${name} could not be looked up (${err?.code ?? "error"})`), {
+		temporary: true,
+	});
+
 /**
  * Resolves the SMTP host and refuses it when any address is blocked, when a name does not resolve, or when a login
  * would travel in plain text to an address that is not a private LAN address. The caller connects to the returned
@@ -30,7 +41,7 @@ const mailError = (code, message) => Object.assign(new Error(message), { code, m
  * @param   {String}  target.host
  * @param   {String}  target.security  starttls, tls or none
  * @param   {String}  [target.username]
- * @returns {Promise<{address: String, family: Number}>}
+ * @returns {Promise<{address: String, family: Number, addresses: Object[]}>}  the first address and the whole checked list
  */
 const checkSmtpTarget = async ({ host, security, username }) => {
 	const name = String(host ?? "").replace(BRACKETS, "");
@@ -38,10 +49,10 @@ const checkSmtpTarget = async ({ host, security, username }) => {
 	if (isIP(name) === 0) {
 		try {
 			addresses = await lookupAll(name);
-		} catch {
-			throw mailError("mail-host-unresolved", `${name} does not resolve`);
+		} catch (err) {
+			throw NO_SUCH_NAME.has(err?.code) ? unresolved(name) : lookupFailed(name, err);
 		}
-		if (addresses.length === 0) throw mailError("mail-host-unresolved", `${name} does not resolve`);
+		if (addresses.length === 0) throw unresolved(name);
 	} else {
 		addresses = [{ address: name, family: isIP(name) }];
 	}
@@ -53,7 +64,9 @@ const checkSmtpTarget = async ({ host, security, username }) => {
 	) {
 		throw mailError("mail-plain-credentials", "A login is not sent in plain text to a non-private address");
 	}
-	return { address: addresses[0].address, family: addresses[0].family };
+	// IPv4 first (the sort is stable); every address in the list was checked above
+	const ordered = [...addresses].sort((a, b) => a.family - b.family);
+	return { address: ordered[0].address, family: ordered[0].family, addresses: ordered };
 };
 
 export { checkSmtpTarget };
