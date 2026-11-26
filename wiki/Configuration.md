@@ -59,6 +59,14 @@ When a saved setting applies:
 | Dynamic DNS | Services that tell the public IPv4 address, space separated, `https://` only (2 to 10, as a new address needs a second service to confirm it, each at most 200 characters; a single URL is ignored with a warning; default `https://api.ipify.org https://ipv4.icanhazip.com https://v4.ident.me`) | `DDNS_IPV4_SERVICES` | at once, also Settings, Dynamic DNS; a set variable locks the field |
 | Dynamic DNS | Services that tell the public IPv6 address, same format (default `https://api6.ipify.org https://ipv6.icanhazip.com https://v6.ident.me`) | `DDNS_IPV6_SERVICES` | at once, also Settings, Dynamic DNS; a set variable locks the field |
 | Dynamic DNS | DNS servers for the check of a record's name, space separated (IPv4 or [IPv6], optional :port, at most 8). Empty (the default): the container's resolver. Use it when your network answers your own names with a LAN address | `DDNS_RESOLVER` | at once, also Settings, Dynamic DNS; a set variable locks the field |
+| Notifications | Mail server host | `SMTP_HOST` | on save |
+| Notifications | Port (1 to 65535, default `587`) | `SMTP_PORT` | on save |
+| Notifications | Security: STARTTLS (default), TLS or None | `SMTP_SECURITY` (`starttls`, `tls` or `none`) | on save |
+| Notifications | Verify certificate (on by default) | `SMTP_VERIFY_TLS` (`true` or `false`) | on save |
+| Notifications | User and password | `SMTP_USERNAME`, `SMTP_PASSWORD` (or `SMTP_USERNAME_FILE`, `SMTP_PASSWORD_FILE`) | on save |
+| Notifications | Sender name, sender address, reply-to | `SMTP_FROM_NAME`, `SMTP_FROM`, `SMTP_REPLY_TO` | on save |
+| Notifications | Public URL: the https address of NPMpro, origin only | `PUBLIC_URL` | on save |
+| Notifications | Default mail language (default `en`) | `MAIL_LANGUAGE` (`en`, `de`, `zh`, `fr`, `es`, `pt`, `ru`, `it`, `nl`, `pl`, `ja`, `ko` or `uk`) | on save |
 | Advanced | Format nginx configs | `DISABLE_NGINX_BEAUTIFIER` (inverted) | immediately |
 | Advanced | Gravatar profile pictures (a real photo only; a user without one, or with Gravatar off, gets their initials drawn by NPMpro) | `DISABLE_GRAVATAR` (inverted) | immediately (a user's picture is refreshed when the user is created (also by the first OIDC sign-in) or saved) |
 | Advanced | Time zone | `TZ` | after a restart |
@@ -111,7 +119,7 @@ If you moved from NPMplus, users only stay signed in through the upgrade when yo
 
 A Docker or Compose secret keeps a password out of `compose.yaml` and `docker inspect`: the secret is a file on the host that Compose mounts read-only at `/run/secrets/<name>`. For these variables NPMpro reads the value from a file when you set `<NAME>_FILE` to its path instead of `<NAME>`:
 
-`DB_MYSQL_USER`, `DB_MYSQL_PASSWORD`, `DB_POSTGRES_USER`, `DB_POSTGRES_PASSWORD`, `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD`, `ACME_EMAIL`, `ACME_EAB_KID`, `ACME_EAB_HMAC_KEY`, `COOKIE_SECRET`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `GEOIP_ACCOUNT_ID`, `GEOIP_LICENSE_KEY`, `CROWDSEC_API_KEY`.
+`DB_MYSQL_USER`, `DB_MYSQL_PASSWORD`, `DB_POSTGRES_USER`, `DB_POSTGRES_PASSWORD`, `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD`, `ACME_EMAIL`, `ACME_EAB_KID`, `ACME_EAB_HMAC_KEY`, `COOKIE_SECRET`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `GEOIP_ACCOUNT_ID`, `GEOIP_LICENSE_KEY`, `CROWDSEC_API_KEY`, `SMTP_USERNAME`, `SMTP_PASSWORD`.
 
 Other variables have no `_FILE` form. Example for `COOKIE_SECRET`: create the file once on the host, as root, readable only by root,
 

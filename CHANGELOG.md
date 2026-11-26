@@ -10,6 +10,7 @@ below as its release notes.
 
 - **Certificates:** a Warn before expiry setting (default 14 days, at most a third of a certificate's lifetime, so short-lived certificates no longer show as expiring all the time).
 - **Notifications:** an event layer that detects certificate, host, backup, GeoIP, CrowdSec and Dynamic DNS problems and changes, the base of mail and webhook notifications.
+- **Notifications:** mail through your SMTP server: Settings, Notifications with a test mail, a public URL for links and a mail language per user.
 - **DNS:** test a saved DNS credential, see where each host name points, clean up leftover ACME challenge records, and a CAA warning in the certificate windows and list.
 - **DNS:** dynamic DNS: records under Certificates & DNS, Dynamic DNS keep names pointed at the instance's public IP (address records, or aliases such as a wildcard CNAME to one address record) with the saved Cloudflare, DigitalOcean, Hetzner Cloud and Gandi credentials, with Update now, Check now, history, backups and Settings, Dynamic DNS.
 - **DNS:** an opt-in option in the host windows to create a host's DNS record at the provider, kept current by dynamic DNS.

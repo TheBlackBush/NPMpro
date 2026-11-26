@@ -23,6 +23,7 @@
 - [Load balancing](Load-balancing)
 - [PHP](PHP)
 - [Monitoring](Monitoring)
+- [Notifications](Notifications)
 
 **Data and operations**
 - [Backup and restore](Backup-and-restore)
