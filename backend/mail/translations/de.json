@@ -19,6 +19,8 @@
 	"alerts.reminder.undated": "Weiterhin offen",
 	"alerts.resolved": "Behoben am {date}",
 	"alerts.button": "NPMpro öffnen",
+	"alerts.sample.subject": "Beispiel: {subject}",
+	"alerts.sample.note": "Dies ist eine Beispiel-Alarmmail. Es liegt kein Problem vor: sie zeigt nur, wie ein Alarm aussieht.",
 	"alerts.footer.admin": "Du erhältst diese Mail, weil du Administrator von NPMpro unter {instance} bist.",
 	"alerts.footer.listed": "Du erhältst diese Mail, weil diese Adresse für Warnmeldungen von NPMpro unter {instance} eingetragen ist.",
 	"alerts.unknown": "Ereignis {type}",

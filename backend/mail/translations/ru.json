@@ -19,6 +19,8 @@
 	"alerts.reminder.undated": "По-прежнему не устранено",
 	"alerts.resolved": "Устранено {date}",
 	"alerts.button": "Открыть NPMpro",
+	"alerts.sample.subject": "Пример: {subject}",
+	"alerts.sample.note": "Это пример письма с оповещением. Проблем нет: письмо лишь показывает, как выглядит оповещение.",
 	"alerts.footer.admin": "Вы получили это письмо, потому что вы администратор NPMpro на {instance}.",
 	"alerts.footer.listed": "Вы получили это письмо, потому что этот адрес указан в списке получателей оповещений NPMpro на {instance}.",
 	"alerts.unknown": "Событие {type}",

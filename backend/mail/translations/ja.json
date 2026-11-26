@@ -19,6 +19,8 @@
 	"alerts.reminder.undated": "未解決のままです",
 	"alerts.resolved": "{date} に解決",
 	"alerts.button": "NPMpro を開く",
+	"alerts.sample.subject": "サンプル: {subject}",
+	"alerts.sample.note": "これはサンプルのアラートメールです。問題は発生していません。アラートの見た目を示すだけのものです。",
 	"alerts.footer.admin": "{instance} の NPMpro の管理者であるため、このメールをお送りしています。",
 	"alerts.footer.listed": "このアドレスが {instance} の NPMpro のアラート通知先に登録されているため、このメールをお送りしています。",
 	"alerts.unknown": "イベント {type}",

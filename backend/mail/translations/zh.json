@@ -19,6 +19,8 @@
 	"alerts.reminder.undated": "仍未解决",
 	"alerts.resolved": "于 {date} 解决",
 	"alerts.button": "打开 NPMpro",
+	"alerts.sample.subject": "示例：{subject}",
+	"alerts.sample.note": "这是一封示例警报邮件。没有任何问题，它只是展示警报的样子。",
 	"alerts.footer.admin": "你收到这封邮件，是因为你是 {instance} 上 NPMpro 的管理员。",
 	"alerts.footer.listed": "你收到这封邮件，是因为这个地址已被列入 {instance} 上 NPMpro 的警报收件人。",
 	"alerts.unknown": "事件 {type}",

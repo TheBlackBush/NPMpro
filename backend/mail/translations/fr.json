@@ -19,6 +19,8 @@
 	"alerts.reminder.undated": "Toujours en cours",
 	"alerts.resolved": "Résolu le {date}",
 	"alerts.button": "Ouvrir NPMpro",
+	"alerts.sample.subject": "Exemple : {subject}",
+	"alerts.sample.note": "Ceci est un e-mail d'alerte d'exemple. Il n'y a aucun problème : il montre seulement à quoi ressemble une alerte.",
 	"alerts.footer.admin": "Vous recevez ce message parce que vous êtes administrateur de NPMpro sur {instance}.",
 	"alerts.footer.listed": "Vous recevez ce message parce que cette adresse figure parmi les destinataires des alertes de NPMpro sur {instance}.",
 	"alerts.unknown": "Événement {type}",

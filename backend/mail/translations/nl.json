@@ -19,6 +19,8 @@
 	"alerts.reminder.undated": "Nog steeds open",
 	"alerts.resolved": "Opgelost op {date}",
 	"alerts.button": "NPMpro openen",
+	"alerts.sample.subject": "Voorbeeld: {subject}",
+	"alerts.sample.note": "Dit is een voorbeeld van een waarschuwingsmail. Er is niets aan de hand: ze toont alleen hoe een waarschuwing eruitziet.",
 	"alerts.footer.admin": "Je ontvangt deze mail omdat je beheerder van NPMpro op {instance} bent.",
 	"alerts.footer.listed": "Je ontvangt deze mail omdat dit adres is opgenomen voor meldingen van NPMpro op {instance}.",
 	"alerts.unknown": "Gebeurtenis {type}",

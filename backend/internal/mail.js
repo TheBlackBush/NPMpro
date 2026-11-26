@@ -1,5 +1,6 @@
 import { hostname } from "node:os";
 import errs from "../lib/error.js";
+import { alertRecipients } from "../lib/mail/recipients.js";
 import {
 	ehloNameOf,
 	isConfigured,
@@ -7,12 +8,14 @@ import {
 	MAIL_LANGUAGES,
 	mergeEmail,
 	mergeNotifications,
+	normalizePublicUrl,
 	publicHostOf,
 } from "../lib/mail/settings-rules.js";
 import { sendMail } from "../lib/mail/transport.js";
-import { messageId } from "../lib/notify/catalogue.js";
+import { makeEnvelope, messageId } from "../lib/notify/catalogue.js";
 import { global as logger } from "../logger.js";
 import { renderMail, TEMPLATES } from "../mail/render.js";
+import userModel from "../models/user.js";
 import { queue, worker } from "./notify.js";
 
 // Mail of the app: queueMail for account notices (through the delivery queue and its retries), sendNow for the mails
@@ -37,6 +40,23 @@ const isText = (value) => typeof value === "string";
 const notQueued = (reason, why) => {
 	logger.warn(`mail: a mail was not queued: ${why}`);
 	return { queued: false, reason };
+};
+
+// the two events of a sample alert: a certificate that expires soon and a host with an nginx error (made up, marked)
+const sampleEvents = () => {
+	const sample = [
+		["certificate.expiring", { id: 1, nice_name: "example.com", state: "soon", days_left: 5 }],
+		[
+			"host.config_error",
+			{
+				type: "proxy_host",
+				id: 1,
+				domain_names: ["app.example.com"],
+				error: "unknown directive in /data/nginx/proxy_host/1.conf",
+			},
+		],
+	];
+	return sample.map(([type, data]) => ({ ...makeEnvelope(type, data), sample: true }));
 };
 
 const internalMail = {
@@ -121,6 +141,44 @@ const internalMail = {
 		const instance = publicHostOf(notifications) ?? hostname();
 		const mail = renderMail(template, { language: chosen, data, instance });
 		return sendMail(email, { to, ...mail }, { ehloName: ehloNameOf(notifications) });
+	},
+
+	/**
+	 * Sends the sample alert mail at once (never through the queue) to every current alert recipient, each in their
+	 * own language, with the footer that says why they get it. Every recipient is tried: a failure does not stop the
+	 * others. The failures are returned with the address (the administrator's own setting) and the raw error.
+	 *
+	 * @param   {Access}  access
+	 * @returns {Promise<{recipients: number, sent: number, failed: {address: string, error: Error}[]}>}  throws
+	 *          error.mail-not-configured, or a ValidationError of a recipient (a bug of the recipient list)
+	 */
+	sendSample: async (access) => {
+		access.canAdmin();
+		const { email, notifications } = await settings();
+		if (!isConfigured(email)) throw mailNotConfigured();
+		const users = notifications.alerts_admins
+			? await userModel.query().select("email", "roles", "is_disabled", "npmpro_language")
+			: [];
+		const recipients = alertRecipients({ admins: users, settings: notifications });
+		const url = normalizePublicUrl(notifications.public_url) ?? undefined;
+		const events = sampleEvents();
+		const failed = [];
+		let sent = 0;
+		for (const { address, language, reason } of recipients) {
+			try {
+				await internalMail.sendNow({
+					to: address,
+					template: "alerts",
+					language,
+					data: { events, reason, url, sample: true },
+				});
+				sent += 1;
+			} catch (error) {
+				if (error instanceof errs.ValidationError) throw error;
+				failed.push({ address, error });
+			}
+		}
+		return { recipients: recipients.length, sent, failed };
 	},
 };
 

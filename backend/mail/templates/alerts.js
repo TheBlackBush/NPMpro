@@ -162,14 +162,17 @@ const subjectOf = (items, t) => {
  *                                          ({ id, type, timestamp, data })
  * @param   {string}    [input.data.url]    the public URL, for the button
  * @param   {string}    [input.data.reason] `admin` or `listed`, for the footer
+ * @param   {boolean}   [input.data.sample] a sample mail (Settings, Notifications): "Sample" leads the subject and a
+ *                                          line says nothing is wrong
  * @returns {Object}
  */
 const alerts = ({ t, data, instance }) => {
 	const items = data.events.map((event) => itemOf(event, t));
 	const ordered = [...items.filter((item) => !item.resolved), ...items.filter((item) => item.resolved)];
+	const sample = data.sample === true;
 	const model = {
-		subject: subjectOf(ordered, t),
-		lines: [t("alerts.intro", { instance })],
+		subject: sample ? t("alerts.sample.subject", { subject: subjectOf(ordered, t) }) : subjectOf(ordered, t),
+		lines: sample ? [t("alerts.intro", { instance }), t("alerts.sample.note")] : [t("alerts.intro", { instance })],
 		list: ordered.map((item) => ({
 			text: item.error ? `${item.sentence}: ${item.error}` : item.sentence,
 			note: noteOf(item, t),

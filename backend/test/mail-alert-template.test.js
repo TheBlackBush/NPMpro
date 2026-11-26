@@ -256,4 +256,20 @@ describe("alert mail template", () => {
 		assert.ok(subject("ja").endsWith("3 件の問題"));
 		assert.ok(subject("zh").endsWith("3 个问题"));
 	});
+
+	it("marks a sample with a translated subject prefix and a note, in every language", () => {
+		const events = [event("backup.failed")];
+		const plain = mail(events);
+		const sample = mail(events, { data: { sample: true } });
+		assert.ok(!plain.subject.includes("Sample"));
+		assert.ok(sample.subject.includes("Sample: Backup nightly failed"), sample.subject);
+		assert.ok(sample.text.includes("sample alert mail"));
+		for (const language of Object.keys(loadDictionaries())) {
+			const one = renderMail("alerts", { language, instance: INSTANCE, data: { events, sample: true } });
+			const normal = renderMail("alerts", { language, instance: INSTANCE, data: { events } });
+			assert.notEqual(one.subject, normal.subject, language);
+			assert.ok(!one.subject.includes("alerts.sample"), language);
+			assert.ok(!one.text.includes("alerts.sample"), language);
+		}
+	});
 });

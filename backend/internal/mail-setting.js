@@ -130,6 +130,22 @@ const resetNeedsPublicUrl = () =>
 
 const audit = (access, action, meta) => internalAuditLog.add(access, { action, object_type: "setting", meta });
 
+// a failed test send as the error the settings form shows: a known cause has its own translated text (the server reply,
+// scrubbed, as a detail); only a MailError carries a scrubbed text, anything else gets a generic one
+const testFailure = async (err, extra = {}) => {
+	if (err instanceof errs.ValidationError) return err;
+	if (err?.code === "EBLOCKED") return blockedHost((await getEmailConfig()).values.host);
+	if (err instanceof MailError && err.message_i18n) {
+		const values = { ...err.message_values, ...extra };
+		if (typeof values.error === "string") values.error = values.error.slice(0, TEST_ERROR_MAX);
+		return new errs.ValidationError(err.message, err.message_i18n, { values });
+	}
+	const text = err instanceof MailError ? err.message : "The mail could not be sent";
+	return new errs.ValidationError("The test mail could not be sent", "error.mail-test-failed", {
+		values: { error: text.slice(0, TEST_ERROR_MAX), ...extra },
+	});
+};
+
 const internalMailSetting = {
 	/**
 	 * @param   {Access}  access
@@ -214,22 +230,29 @@ const internalMailSetting = {
 		try {
 			await internalMail.sendNow({ to, template: "test", language, data: {} });
 		} catch (err) {
-			if (err instanceof errs.ValidationError) throw err;
-			if (err?.code === "EBLOCKED") throw blockedHost((await getEmailConfig()).values.host);
-			// a known cause has its own translated text (the server reply, scrubbed, as a detail)
-			if (err instanceof MailError && err.message_i18n) {
-				const values = err.message_values ? { ...err.message_values } : undefined;
-				if (typeof values?.error === "string") values.error = values.error.slice(0, TEST_ERROR_MAX);
-				throw new errs.ValidationError(err.message, err.message_i18n, values ? { values } : {});
-			}
-			// only a MailError carries a scrubbed text; anything else gets a generic one
-			const text = err instanceof MailError ? err.message : "The mail could not be sent";
-			throw new errs.ValidationError("The test mail could not be sent", "error.mail-test-failed", {
-				values: { error: text.slice(0, TEST_ERROR_MAX) },
-			});
+			throw await testFailure(err);
 		}
 		await audit(access, "test-sent", { id: "email" });
 		return { sent: true };
+	},
+
+	/**
+	 * Sends the sample alert mail at once to every current alert recipient (each in their language). Every recipient
+	 * is tried; when some fail, the answer is the 400 of the first failure with its address (message_values.address),
+	 * the number that failed and the number sent: the others got their mail.
+	 *
+	 * @param   {Access}  access
+	 * @returns {Promise<{sent: number}>}
+	 */
+	testAlerts: async (access) => {
+		const { recipients, sent, failed } = await internalMail.sendSample(access);
+		if (recipients === 0) throw new errs.ValidationError("Nobody gets alert mails", "error.notify-no-recipients");
+		if (sent > 0) await audit(access, "test-sent", { id: "notifications", recipients: sent });
+		if (failed.length > 0) {
+			const [{ address, error }] = failed;
+			throw await testFailure(error, { address, failed: failed.length, sent });
+		}
+		return { sent };
 	},
 
 	/**

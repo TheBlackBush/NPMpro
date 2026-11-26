@@ -19,6 +19,8 @@
 	"alerts.reminder.undated": "Still open",
 	"alerts.resolved": "Resolved on {date}",
 	"alerts.button": "Open NPMpro",
+	"alerts.sample.subject": "Sample: {subject}",
+	"alerts.sample.note": "This is a sample alert mail. Nothing is wrong: it only shows what an alert looks like.",
 	"alerts.footer.admin": "You get this mail because you are an administrator of NPMpro at {instance}.",
 	"alerts.footer.listed": "You get this mail because this address is listed for alerts of NPMpro at {instance}.",
 	"alerts.unknown": "Event {type}",
