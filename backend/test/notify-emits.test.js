@@ -403,6 +403,45 @@ describe("host config state emit points", () => {
 		await settle();
 	});
 
+	it("a host restored under an id that had a bad state sends no resolved event and is recorded afresh", async () => {
+		const host = await makeProxy("restored.example.com");
+		await settle();
+		const made = await admin.post("/backups", { types: ["proxy_hosts"], secrets: false, keep: true });
+		assert.equal(made.status, 200, made.text);
+		api.outside.control.failNext = LONG_ERROR;
+		await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 81 });
+		await settle();
+		assert.equal(hostEvents("host.config_error", host.id).length, 1);
+		await api.db(STATE).insert({
+			key: "geoip.failed:geoip",
+			event: "geoip.failed",
+			object_id: "geoip",
+			state: "bad",
+			since: sql(Date.now()),
+			data: "{}",
+		});
+		seen = [];
+		const opened = await admin.post(`/backups/${made.body.entry.name}/inspect`, {});
+		assert.equal(opened.status, 200, opened.text);
+		const restored = await admin.post(`/backups/restore/${opened.body.token}`, {
+			mode: "replace",
+			types: ["proxy_hosts"],
+			confirm: true,
+		});
+		assert.equal(restored.status, 200, restored.text);
+		await settle();
+		assert.equal(hostEvents("host.config_error.resolved", host.id).length, 0);
+		assert.deepEqual(
+			(await hostStates(host.id)).map((row) => row.state),
+			["ok"],
+		);
+		// a type the restore did not replace keeps its state
+		assert.equal((await api.db(STATE).where({ key: "geoip.failed:geoip" }).first()).state, "bad");
+		await api.db(STATE).where({ key: "geoip.failed:geoip" }).delete();
+		assert.equal((await admin.delete(`/nginx/proxy-hosts/${host.id}`)).status, 200);
+		await settle();
+	});
+
 	it("an nginx error with a URL password and an access list password reaches neither the event nor a log line", async () => {
 		const restore = keepLogs();
 		try {

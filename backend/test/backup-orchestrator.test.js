@@ -947,7 +947,7 @@ it("a restore pauses the notifications, cleans up, then resumes", TIMEOUT, async
 		const entry = await backupThenChange(ctx);
 		const { token } = await ctx.service.inspect(access, entry.name, { passphrase: PASSPHRASE });
 		await ctx.service.restore(access, token, { types: ["proxy_hosts"] });
-		assert.deepEqual(ctx.calls.notify, ["pause", "cleanup", "resume"]);
+		assert.deepEqual(ctx.calls.notify, ["pause", "clear proxy_hosts", "cleanup", "resume"]);
 	} finally {
 		await ctx.cleanup();
 	}
@@ -964,7 +964,7 @@ it("a failed restore still cleans up and resumes, and its error is the one throw
 		const entry = await backupThenChange(ctx);
 		const { token } = await ctx.service.inspect(access, entry.name, { passphrase: PASSPHRASE });
 		await assert.rejects(ctx.service.restore(access, token, { types: ["proxy_hosts"] }), hasCode("nginx-failed"));
-		assert.deepEqual(ctx.calls.notify, ["pause", "cleanup", "resume"]);
+		assert.deepEqual(ctx.calls.notify, ["pause", "clear proxy_hosts", "cleanup", "resume"]);
 	} finally {
 		await ctx.cleanup();
 	}
@@ -977,7 +977,7 @@ it("a cleanup that throws does not change the result of a restore", TIMEOUT, asy
 		const { token } = await ctx.service.inspect(access, entry.name, { passphrase: PASSPHRASE });
 		const result = await ctx.service.restore(access, token, { types: ["proxy_hosts"] });
 		assert.deepEqual(result.counts, { proxy_hosts: 1 });
-		assert.deepEqual(ctx.calls.notify, ["pause", "cleanup", "resume"]);
+		assert.deepEqual(ctx.calls.notify, ["pause", "clear proxy_hosts", "cleanup", "resume"]);
 	} finally {
 		await ctx.cleanup();
 	}

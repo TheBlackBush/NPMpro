@@ -124,6 +124,10 @@ const setup = async ({
 				calls.notify.push("cleanup");
 				await notifyCleanup();
 			},
+			clearReplaced: (types) => {
+				calls.notify.push(`clear ${types.join(",")}`);
+				return Promise.resolve();
+			},
 			resume: () => {
 				calls.notify.push("resume");
 			},

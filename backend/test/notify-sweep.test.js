@@ -268,6 +268,33 @@ describe("the notify service", () => {
 		await db.knex("certificate").where({ id: certId }).delete();
 	});
 
+	it("clearReplacedStates removes the states of the replaced types only, silently", async () => {
+		const service = serviceOf();
+		const bad = (event, objectId) => service.stateStore.report({ event, objectId, state: "bad", data: {} });
+		await bad("host.config_error", "proxy_host:7");
+		await bad("host.config_error", "proxy_host:7:location");
+		await bad("host.config_error", "stream:7");
+		await bad("certificate.expiring", 3);
+		await bad("certificate.renewal_failed", 3);
+		await bad("ddns.record_failed", 5);
+		await bad("ddns.record_stopped", 5);
+		await bad("backup.failed", 2);
+		await bad("geoip.failed", "geoip");
+		await service.clearReplacedStates(["proxy_hosts", "certificates", "ddns", "backup_schedules", "users"]);
+		assert.deepEqual(
+			(await db.knex(STATE).orderBy("key")).map((row) => row.key),
+			["geoip.failed:geoip", "host.config_error:stream:7"],
+		);
+		assert.deepEqual(await db.knex(DELIVERY), []);
+	});
+
+	it("clearReplacedStates logs a failure and never throws", async () => {
+		const service = serviceOf();
+		service.stateStore.clearMatching = () => Promise.reject(new Error("store broke"));
+		await service.clearReplacedStates(["streams"]);
+		assert.ok(service.log.lines.some((line) => line.includes("store broke")));
+	});
+
 	it("a restore waits for a slow send and the worker runs again after resume", async () => {
 		const service = serviceOf();
 		let release;
