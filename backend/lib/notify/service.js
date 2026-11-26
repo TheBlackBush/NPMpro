@@ -32,9 +32,10 @@ const REPLACED_STATES = {
  * @param   {Object}  options.knex
  * @param   {Object}  [options.log]
  * @param   {Object}  [options.clock]  { now() } in ms (tests)
+ * @param   {Function}  [options.reminderHours]  () => hours between reminders, or a Promise of it (the state store default: 24)
  */
-const createNotifyService = ({ knex, log, clock }) => {
-	const stateStore = createStateStore({ knex, clock });
+const createNotifyService = ({ knex, log, clock, reminderHours }) => {
+	const stateStore = createStateStore({ knex, clock, reminderHours });
 	const queue = createQueue({ knex, clock });
 	const worker = createWorker({ queue, channels: () => notify.channels(), log });
 	const notify = createNotify({ stateStore, queue, worker, log, clock });

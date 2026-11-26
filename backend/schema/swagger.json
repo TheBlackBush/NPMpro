@@ -765,6 +765,11 @@
 				"$ref": "./paths/settings/notifications/put.json"
 			}
 		},
+		"/notifications/events": {
+			"get": {
+				"$ref": "./paths/notifications/events/get.json"
+			}
+		},
 		"/settings/{settingID}": {
 			"get": {
 				"$ref": "./paths/settings/settingID/get.json"

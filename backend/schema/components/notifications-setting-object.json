@@ -5,6 +5,10 @@
 	"required": [
 		"public_url",
 		"default_language",
+		"alerts_admins",
+		"alerts_addresses",
+		"alerts_events",
+		"reminder_hours",
 		"locked",
 		"locked_by",
 		"config_errors"
@@ -32,6 +36,30 @@
 				"uk"
 			],
 			"description": "The language of mails to people without a language of their own. Default: en"
+		},
+		"alerts_admins": {
+			"type": "boolean",
+			"description": "Mail alerts go to every enabled administrator with a valid address. Default: true"
+		},
+		"alerts_addresses": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"description": "Extra addresses that get alert mails (at most 20, one plain address each). Set by ALERT_ADDRESSES (a comma list) when that variable is set"
+		},
+		"alerts_events": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"description": "The events mailed as alerts: the state events and webhook.disabled (see GET /notifications/events). Default: every state event"
+		},
+		"reminder_hours": {
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 168,
+			"description": "Hours between reminders of a state that is still bad, 0 for none. Default: 24"
 		},
 		"locked": {
 			"type": "array",

@@ -1,6 +1,7 @@
 import { lockedByOf } from "../lib/environment-info.js";
 import errs from "../lib/error.js";
 import {
+	alertProblemOf,
 	EMAIL_ENV_KEYS,
 	isConfigured,
 	isSingleAddress,
@@ -248,6 +249,14 @@ const internalMailSetting = {
 		access.canAdmin();
 		const config = await getNotificationsConfig();
 		const patch = dropLocked(body, config.locked);
+		const problem = alertProblemOf(patch, config.values);
+		if (problem) {
+			throw new errs.ValidationError(
+				"An alert setting is not valid",
+				problem.i18n,
+				problem.values ? { values: problem.values } : {},
+			);
+		}
 		const { errors } = validateNotificationsPatch(patch, config.values);
 		if (Object.keys(errors).length > 0) throw invalid(errors);
 		if (patch.public_url) patch.public_url = normalizePublicUrl(patch.public_url);

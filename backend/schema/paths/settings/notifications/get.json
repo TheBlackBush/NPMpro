@@ -22,6 +22,19 @@
 							"value": {
 								"public_url": "https://npm.example.com",
 								"default_language": "en",
+								"alerts_admins": true,
+								"alerts_addresses": [],
+								"alerts_events": [
+									"certificate.expiring",
+									"certificate.renewal_failed",
+									"host.config_error",
+									"backup.failed",
+									"geoip.failed",
+									"crowdsec.unreachable",
+									"ddns.record_failed",
+									"ddns.record_stopped"
+								],
+								"reminder_hours": 24,
 								"locked": [],
 								"locked_by": {},
 								"config_errors": []
