@@ -1,25 +1,25 @@
-## Notifications
+## 通知
 
-NPMpro sends mail through an SMTP server you choose. Mail is used for the test mail now and for password reset and alerts later. The settings here can also come from container variables: a variable set on the container wins over the UI and locks its field (the field shows "Set by environment"). Use the UI for anything not set in the container.
+NPMpro 通过您选择的 SMTP 服务器发送邮件。目前邮件用于测试邮件，之后用于重置密码和告警。此处的设置也可以来自容器变量：在容器上设置的变量优先于界面，并锁定对应字段（字段显示“由环境变量设置”）。容器中未设置的内容请在界面中设置。
 
-### Mail server
+### 邮件服务器
 
-Every connection is checked like other outbound requests: the server name must resolve, and local and link-local addresses are refused. Mail is considered set up when the host and the sender address are filled in.
+每个连接都像其他出站请求一样受到检查：服务器名称必须可解析，本地和链路本地地址会被拒绝。填写主机和发件人地址后，邮件即视为已设置。
 
-- **Host** and **Port**: the SMTP server. Variables: `SMTP_HOST`, `SMTP_PORT` (default 587).
-- **Security**: **STARTTLS** upgrades a plain connection (usually port 587), **TLS** is encrypted from the start (usually port 465), **None** sends without encryption. Variable: `SMTP_SECURITY` (`starttls`, `tls` or `none`).
-- **Verify certificate**: refuse a server whose certificate is not valid. Variable: `SMTP_VERIFY_TLS` (`false` turns it off).
-- **User** and **Password**: the login. The password is stored encrypted and never shown again; **Remove** deletes it, and if the saved one cannot be decrypted, type it again. Variables: `SMTP_USERNAME`, `SMTP_PASSWORD`.
-- **Sender name** and **Sender address**: how mail from NPMpro appears. Variables: `SMTP_FROM_NAME`, `SMTP_FROM`.
-- **Reply-to**: where replies go; empty uses the sender address. Variable: `SMTP_REPLY_TO`.
+- **主机**和**端口**：SMTP 服务器。变量：`SMTP_HOST`、`SMTP_PORT`（默认 587）。
+- **安全**：**STARTTLS** 将普通连接升级为加密连接（通常为端口 587），**TLS** 从一开始就加密（通常为端口 465），**无**则不加密发送。变量：`SMTP_SECURITY`（`starttls`、`tls` 或 `none`）。
+- **验证证书**：拒绝证书无效的服务器。变量：`SMTP_VERIFY_TLS`（`false` 表示关闭）。
+- **用户**和**密码**：登录信息。密码加密保存，之后不再显示；**移除**会删除它，如果已保存的密码无法解密，请重新输入。变量：`SMTP_USERNAME`、`SMTP_PASSWORD`。
+- **发件人名称**和**发件人地址**：NPMpro 邮件的显示方式。变量：`SMTP_FROM_NAME`、`SMTP_FROM`。
+- **回复地址**：回复发送到的地址；留空则使用发件人地址。变量：`SMTP_REPLY_TO`。
 
-With Security **None** and a user, the password would travel unencrypted, so it is only allowed for a server on your local network.
+安全为**无**且设置了用户时，密码将以未加密方式传输，因此仅允许用于本地网络中的服务器。
 
-**Send test mail** sends a mail with the saved settings to the address you type (yours by default) and shows the server's answer if it fails. Save first: the button is disabled while the form has unsaved changes, and hidden until mail is set up.
+**发送测试邮件**使用已保存的设置向您输入的地址（默认是您自己的）发送一封邮件，失败时显示服务器的回复。请先保存：表单有未保存的更改时按钮会被禁用，邮件尚未设置时按钮会隐藏。
 
-### Links and language
+### 链接和语言
 
-- **Public URL**: the address people open NPMpro at, used for the links in mails, for example `https://npm.example.com`. HTTPS only, no path. **Use this browser's address** fills it with the address of this page when it is opened over HTTPS. Variable: `PUBLIC_URL`.
-- **Default mail language**: the language of mails for people who have not chosen one. Each user's own interface language is remembered and used for their mails. Variable: `MAIL_LANGUAGE`.
+- **公开 URL**：人们打开 NPMpro 所用的地址，用于邮件中的链接，例如 `https://npm.example.com`。仅限 HTTPS，不含路径。**使用此浏览器的地址**会在此页面通过 HTTPS 打开时，用本页地址填入。变量：`PUBLIC_URL`。
+- **默认邮件语言**：未选择语言的用户收到的邮件语言。每个用户自己的界面语言会被记住并用于其邮件。变量：`MAIL_LANGUAGE`。
 
-More in the wiki: Configuration.
+更多内容见 wiki：Configuration。

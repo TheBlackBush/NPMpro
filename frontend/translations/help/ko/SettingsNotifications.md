@@ -1,25 +1,25 @@
-## Notifications
+## 알림
 
-NPMpro sends mail through an SMTP server you choose. Mail is used for the test mail now and for password reset and alerts later. The settings here can also come from container variables: a variable set on the container wins over the UI and locks its field (the field shows "Set by environment"). Use the UI for anything not set in the container.
+NPMpro는 선택한 SMTP 서버를 통해 메일을 보냅니다. 현재 메일은 테스트 메일에 사용되며, 이후 비밀번호 재설정과 경고에 사용됩니다. 여기의 설정은 컨테이너 변수에서 올 수도 있습니다. 컨테이너에 설정한 변수는 UI보다 우선하며 해당 필드를 잠급니다(필드에 "환경 변수로 설정됨"이 표시됩니다). 컨테이너에서 설정하지 않은 항목은 UI에서 설정하세요.
 
-### Mail server
+### 메일 서버
 
-Every connection is checked like other outbound requests: the server name must resolve, and local and link-local addresses are refused. Mail is considered set up when the host and the sender address are filled in.
+모든 연결은 다른 나가는 요청과 마찬가지로 검사됩니다. 서버 이름이 확인되어야 하며 로컬 및 링크 로컬 주소는 거부됩니다. 호스트와 보내는 사람 주소를 입력하면 메일이 설정된 것으로 간주됩니다.
 
-- **Host** and **Port**: the SMTP server. Variables: `SMTP_HOST`, `SMTP_PORT` (default 587).
-- **Security**: **STARTTLS** upgrades a plain connection (usually port 587), **TLS** is encrypted from the start (usually port 465), **None** sends without encryption. Variable: `SMTP_SECURITY` (`starttls`, `tls` or `none`).
-- **Verify certificate**: refuse a server whose certificate is not valid. Variable: `SMTP_VERIFY_TLS` (`false` turns it off).
-- **User** and **Password**: the login. The password is stored encrypted and never shown again; **Remove** deletes it, and if the saved one cannot be decrypted, type it again. Variables: `SMTP_USERNAME`, `SMTP_PASSWORD`.
-- **Sender name** and **Sender address**: how mail from NPMpro appears. Variables: `SMTP_FROM_NAME`, `SMTP_FROM`.
-- **Reply-to**: where replies go; empty uses the sender address. Variable: `SMTP_REPLY_TO`.
+- **호스트**와 **포트**: SMTP 서버. 변수: `SMTP_HOST`, `SMTP_PORT`(기본값 587).
+- **보안**: **STARTTLS**는 일반 연결을 암호화 연결로 전환합니다(보통 포트 587). **TLS**는 처음부터 암호화됩니다(보통 포트 465). **없음**은 암호화 없이 보냅니다. 변수: `SMTP_SECURITY`(`starttls`, `tls` 또는 `none`).
+- **인증서 확인**: 인증서가 유효하지 않은 서버를 거부합니다. 변수: `SMTP_VERIFY_TLS`(`false`로 끔).
+- **사용자**와 **비밀번호**: 로그인 정보. 비밀번호는 암호화되어 저장되며 다시 표시되지 않습니다. **제거**로 삭제할 수 있으며, 저장된 비밀번호를 복호화할 수 없으면 다시 입력하세요. 변수: `SMTP_USERNAME`, `SMTP_PASSWORD`.
+- **보내는 사람 이름**과 **보내는 사람 주소**: NPMpro에서 보낸 메일이 표시되는 방식. 변수: `SMTP_FROM_NAME`, `SMTP_FROM`.
+- **회신 주소**: 회신이 전달될 주소. 비워 두면 보내는 사람 주소를 사용합니다. 변수: `SMTP_REPLY_TO`.
 
-With Security **None** and a user, the password would travel unencrypted, so it is only allowed for a server on your local network.
+보안이 **없음**이고 사용자가 있으면 비밀번호가 암호화되지 않은 채 전송되므로, 로컬 네트워크의 서버에만 허용됩니다.
 
-**Send test mail** sends a mail with the saved settings to the address you type (yours by default) and shows the server's answer if it fails. Save first: the button is disabled while the form has unsaved changes, and hidden until mail is set up.
+**테스트 메일 보내기**는 저장된 설정으로 입력한 주소(기본값은 본인 주소)에 메일을 보내고, 실패하면 서버의 응답을 표시합니다. 먼저 저장하세요. 양식에 저장하지 않은 변경 사항이 있으면 버튼이 비활성화되고, 메일이 설정될 때까지 숨겨집니다.
 
-### Links and language
+### 링크 및 언어
 
-- **Public URL**: the address people open NPMpro at, used for the links in mails, for example `https://npm.example.com`. HTTPS only, no path. **Use this browser's address** fills it with the address of this page when it is opened over HTTPS. Variable: `PUBLIC_URL`.
-- **Default mail language**: the language of mails for people who have not chosen one. Each user's own interface language is remembered and used for their mails. Variable: `MAIL_LANGUAGE`.
+- **공개 URL**: 메일 링크에 사용할, 사람들이 NPMpro를 여는 주소. 예: `https://npm.example.com`. HTTPS만 가능하며 경로는 없어야 합니다. **이 브라우저의 주소 사용**은 이 페이지가 HTTPS로 열려 있을 때 이 페이지의 주소를 채웁니다. 변수: `PUBLIC_URL`.
+- **기본 메일 언어**: 언어를 선택하지 않은 사람에게 보내는 메일의 언어. 각 사용자의 인터페이스 언어는 기억되어 해당 사용자의 메일에 사용됩니다. 변수: `MAIL_LANGUAGE`.
 
-More in the wiki: Configuration.
+자세한 내용은 위키의 Configuration을 참고하세요.

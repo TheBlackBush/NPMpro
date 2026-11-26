@@ -1,25 +1,25 @@
-## Notifications
+## Notificações
 
-NPMpro sends mail through an SMTP server you choose. Mail is used for the test mail now and for password reset and alerts later. The settings here can also come from container variables: a variable set on the container wins over the UI and locks its field (the field shows "Set by environment"). Use the UI for anything not set in the container.
+O NPMpro envia correio através de um servidor SMTP à sua escolha. Por agora o correio é usado para o correio de teste e, mais tarde, para repor palavras-passe e para alertas. As definições aqui também podem vir de variáveis do contentor: uma variável definida no contentor prevalece sobre a interface e bloqueia o seu campo (o campo mostra "Definido pelo ambiente"). Use a interface para tudo o que não esteja definido no contentor.
 
-### Mail server
+### Servidor de correio
 
-Every connection is checked like other outbound requests: the server name must resolve, and local and link-local addresses are refused. Mail is considered set up when the host and the sender address are filled in.
+Cada ligação é verificada como os outros pedidos de saída: o nome do servidor tem de ser resolvido e os endereços locais e link-local são recusados. O correio considera-se configurado quando o host e o endereço do remetente estão preenchidos.
 
-- **Host** and **Port**: the SMTP server. Variables: `SMTP_HOST`, `SMTP_PORT` (default 587).
-- **Security**: **STARTTLS** upgrades a plain connection (usually port 587), **TLS** is encrypted from the start (usually port 465), **None** sends without encryption. Variable: `SMTP_SECURITY` (`starttls`, `tls` or `none`).
-- **Verify certificate**: refuse a server whose certificate is not valid. Variable: `SMTP_VERIFY_TLS` (`false` turns it off).
-- **User** and **Password**: the login. The password is stored encrypted and never shown again; **Remove** deletes it, and if the saved one cannot be decrypted, type it again. Variables: `SMTP_USERNAME`, `SMTP_PASSWORD`.
-- **Sender name** and **Sender address**: how mail from NPMpro appears. Variables: `SMTP_FROM_NAME`, `SMTP_FROM`.
-- **Reply-to**: where replies go; empty uses the sender address. Variable: `SMTP_REPLY_TO`.
+- **Host** e **Porta**: o servidor SMTP. Variáveis: `SMTP_HOST`, `SMTP_PORT` (587 por omissão).
+- **Segurança**: **STARTTLS** converte uma ligação simples em encriptada (normalmente a porta 587), **TLS** é encriptado desde o início (normalmente a porta 465), **Nenhuma** envia sem encriptação. Variável: `SMTP_SECURITY` (`starttls`, `tls` ou `none`).
+- **Verificar certificado**: recusa um servidor cujo certificado não é válido. Variável: `SMTP_VERIFY_TLS` (`false` desativa).
+- **Utilizador** e **Palavra-passe**: o início de sessão. A palavra-passe é guardada encriptada e nunca mais mostrada; **Remover** apaga-a e, se a guardada não puder ser desencriptada, escreva-a de novo. Variáveis: `SMTP_USERNAME`, `SMTP_PASSWORD`.
+- **Nome do remetente** e **Endereço do remetente**: como o correio do NPMpro aparece. Variáveis: `SMTP_FROM_NAME`, `SMTP_FROM`.
+- **Responder para**: para onde vão as respostas; vazio usa o endereço do remetente. Variável: `SMTP_REPLY_TO`.
 
-With Security **None** and a user, the password would travel unencrypted, so it is only allowed for a server on your local network.
+Com a segurança **Nenhuma** e um utilizador, a palavra-passe viajaria sem encriptação, por isso só é permitido para um servidor da sua rede local.
 
-**Send test mail** sends a mail with the saved settings to the address you type (yours by default) and shows the server's answer if it fails. Save first: the button is disabled while the form has unsaved changes, and hidden until mail is set up.
+**Enviar correio de teste** envia um correio com as definições guardadas para o endereço que escrever (o seu por omissão) e mostra a resposta do servidor se falhar. Guarde primeiro: o botão fica desativado enquanto o formulário tiver alterações por guardar e oculto até o correio estar configurado.
 
-### Links and language
+### Ligações e idioma
 
-- **Public URL**: the address people open NPMpro at, used for the links in mails, for example `https://npm.example.com`. HTTPS only, no path. **Use this browser's address** fills it with the address of this page when it is opened over HTTPS. Variable: `PUBLIC_URL`.
-- **Default mail language**: the language of mails for people who have not chosen one. Each user's own interface language is remembered and used for their mails. Variable: `MAIL_LANGUAGE`.
+- **URL público**: o endereço com que as pessoas abrem o NPMpro, usado para as ligações dos correios, por exemplo `https://npm.example.com`. Apenas HTTPS, sem caminho. **Usar o endereço deste navegador** preenche-o com o endereço desta página quando é aberta por HTTPS. Variável: `PUBLIC_URL`.
+- **Idioma do correio por omissão**: o idioma dos correios para as pessoas que não escolheram um. O idioma de interface de cada utilizador é memorizado e usado para os seus correios. Variável: `MAIL_LANGUAGE`.
 
-More in the wiki: Configuration.
+Mais na wiki: Configuration.
