@@ -46,3 +46,19 @@ it("does not repeat a failed send and does not throw", async () => {
 	sync({ npmproLanguage: "en" });
 	assert.equal(calls, 1);
 });
+
+it("sends nothing for a user who never chose a language, so the default mail language applies", () => {
+	const sent = [];
+	const sync = createLanguageSync(null, async (language) => sent.push(language));
+	sync({ npmproLanguage: null });
+	sync({ npmproLanguage: "de" });
+	assert.deepEqual(sent, []);
+	assert.equal(languageNeedsSync({ npmproLanguage: null }, null), false);
+	assert.equal(languageNeedsSync({ npmproLanguage: "fr" }, undefined), false);
+});
+
+it("sends an English the user chose", () => {
+	const sent = [];
+	createLanguageSync("en", async (language) => sent.push(language))({ npmproLanguage: null });
+	assert.deepEqual(sent, ["en"]);
+});
