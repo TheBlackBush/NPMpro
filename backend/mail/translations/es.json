@@ -8,6 +8,7 @@
 	"reset-link.expires": "Usa el botón de abajo para elegir una contraseña nueva. El enlace funciona una sola vez y caduca en 30 minutos.",
 	"reset-link.ignore": "Si no lo solicitaste, ignora este correo: tu contraseña no cambia.",
 	"reset-link.button": "Elegir una contraseña nueva",
+	"button.fallback": "Si el botón no funciona, abre este enlace:",
 	"password-reset.subject": "Se restableció tu contraseña de NPMpro",
 	"password-reset.done": "La contraseña de tu cuenta en {instance} se restableció el {time} (UTC) desde la dirección {ip}.",
 	"password-reset.sessions": "Se cerraron todas las sesiones. El inicio de sesión en dos pasos no cambia.",

@@ -8,6 +8,7 @@
 	"reset-link.expires": "Wähle mit der Schaltfläche unten ein neues Passwort. Der Link funktioniert nur einmal und läuft nach 30 Minuten ab.",
 	"reset-link.ignore": "Wenn du das nicht angefordert hast, ignoriere diese Mail: Dein Passwort bleibt unverändert.",
 	"reset-link.button": "Neues Passwort wählen",
+	"button.fallback": "Falls die Schaltfläche nicht funktioniert, öffne diesen Link:",
 	"password-reset.subject": "Dein NPMpro-Passwort wurde zurückgesetzt",
 	"password-reset.done": "Das Passwort deines Kontos auf {instance} wurde am {time} (UTC) von der Adresse {ip} aus zurückgesetzt.",
 	"password-reset.sessions": "Alle Sitzungen wurden abgemeldet. Die Zwei-Faktor-Anmeldung bleibt unverändert.",

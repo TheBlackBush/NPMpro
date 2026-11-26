@@ -8,6 +8,7 @@
 	"reset-link.expires": "Użyj poniższego przycisku, aby wybrać nowe hasło. Link działa tylko raz i wygasa po 30 minutach.",
 	"reset-link.ignore": "Jeśli to nie Ty, zignoruj tę wiadomość: Twoje hasło pozostaje bez zmian.",
 	"reset-link.button": "Wybierz nowe hasło",
+	"button.fallback": "Jeśli przycisk nie działa, otwórz ten link:",
 	"password-reset.subject": "Twoje hasło do NPMpro zostało zresetowane",
 	"password-reset.done": "Hasło do Twojego konta na {instance} zostało zresetowane {time} (UTC) z adresu {ip}.",
 	"password-reset.sessions": "Wszystkie sesje zostały wylogowane. Logowanie dwuskładnikowe pozostaje bez zmian.",
