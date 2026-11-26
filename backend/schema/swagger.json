@@ -818,6 +818,11 @@
 				"$ref": "./paths/users/userID/delete.json"
 			}
 		},
+		"/users/me/language": {
+			"put": {
+				"$ref": "./paths/users/userID/language/put.json"
+			}
+		},
 		"/users/{userID}/avatar": {
 			"post": {
 				"$ref": "./paths/users/userID/avatar/post.json"

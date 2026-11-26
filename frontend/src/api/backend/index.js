@@ -124,6 +124,7 @@ export * from "./updateGeoipNow";
 export * from "./updateGeoipSettings";
 export * from "./updateLandingPages";
 export * from "./updateMonitoringSettings";
+export * from "./updateMyLanguage";
 export * from "./updateOidcSettings";
 export * from "./updateRuntimeSettings";
 export * from "./updateUser";

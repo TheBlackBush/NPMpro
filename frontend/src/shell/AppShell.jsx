@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { TapTooltip } from "src/components/TapTooltip";
 import { SidebarProvider, SidebarTrigger } from "src/components/ui/sidebar";
 import { usePreferences } from "src/context";
+import { useLanguageSync } from "src/hooks/useLanguageSync";
 import { useMediaQuery } from "src/hooks/useMediaQuery";
 import { intl } from "src/locale";
 import { AUTO_COLLAPSE_BELOW, sidebarOpen, sidebarOpenChange } from "src/modules/SidebarOpen";
@@ -14,6 +15,7 @@ import { TopBar } from "./TopBar";
 
 /** The signed-in layout: the top bar or the sidebar (a per-user choice), content area, footer, command palette */
 export default function AppShell({ children }) {
+	useLanguageSync();
 	return (
 		<CommandPaletteProvider>
 			{/* Once for both layouts, so Ctrl+K works on every page */}

@@ -7,6 +7,7 @@ const SESSION_ONLY = new Set([
 	"delete /settings/acme/accounts/{accountID}",
 	"get /tokens",
 	"put /users/{userID}/auth",
+	"put /users/me/language",
 	"get /users/{userID}/mfa",
 	"delete /users/{userID}/mfa",
 	"post /users/{userID}/mfa/totp",

@@ -28,6 +28,7 @@ export * from "./useElapsed";
 export * from "./useHealth";
 export * from "./useHostReport";
 export * from "./useLandingPages";
+export * from "./useLanguageSync";
 export * from "./useLeaveGuard";
 export * from "./useListFilters";
 export * from "./useMonitoring";

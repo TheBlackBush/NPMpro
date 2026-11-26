@@ -44,6 +44,7 @@ function logoutOnUnauthorized(reload) {
 }
 
 async function processResponse(response, reload = true) {
+	if (response.status === 204) return null;
 	let payload = {};
 	try {
 		payload = await response.json();
