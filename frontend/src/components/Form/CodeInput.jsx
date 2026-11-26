@@ -60,7 +60,7 @@ function CodeInput({
 			0,
 			length,
 		);
-		if (next.length > 0 && new RegExp(pattern).test(next)) field.onChange(next);
+		if (next.length > 0 && new RegExp(pattern, "u").test(next)) field.onChange(next);
 	};
 	const starts = groups.map((_, group) => groups.slice(0, group).reduce((sum, size) => sum + size, 0));
 	return (
