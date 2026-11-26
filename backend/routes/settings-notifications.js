@@ -1,8 +1,8 @@
 import express from "express";
-import { rateLimit } from "express-rate-limit";
 import internalMailSetting from "../internal/mail-setting.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
 import sessionOnly from "../lib/express/session-only.js";
+import { oneAtATime, testMailLimiter } from "../lib/express/test-mail-limiter.js";
 import apiValidator from "../lib/validator/api.js";
 import { getValidationSchema } from "../schema/index.js";
 
@@ -10,16 +10,6 @@ const router = express.Router({
 	caseSensitive: true,
 	strict: true,
 	mergeParams: true,
-});
-
-// a sample alert reaches a real mail server: 5 per minute per IP address, as the test mail
-const testLimiter = rateLimit({
-	windowMs: 60 * 1000,
-	limit: 5,
-	message: { error: { message: "Too many requests, please try again later." } },
-	standardHeaders: "draft-8",
-	legacyHeaders: false,
-	ipv6Subnet: 48,
 });
 
 /**
@@ -48,8 +38,11 @@ router
 	.all(jwtdecode())
 
 	/** POST /api/settings/notifications/test-alert: like the test mail it carries no link, so an API token may send it */
-	.post(testLimiter, async (_, res) => {
-		res.status(200).send(await internalMailSetting.testAlerts(res.locals.access));
-	});
+	.post(
+		testMailLimiter,
+		oneAtATime(async (_, res) => {
+			res.status(200).send(await internalMailSetting.testAlerts(res.locals.access));
+		}),
+	);
 
 export default router;

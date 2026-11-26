@@ -12,7 +12,7 @@
 			"bearerAuth": []
 		}
 	],
-	"description": "Sends a sample alert mail (two made-up events, \"Sample\" in the subject) at once and outside the queue to every current alert recipient, each in their own language. At most 5 requests a minute. Every recipient is tried: when some fail, the answer is a 400 with the (scrubbed) reply for the first failure and its address in message_values.address, the number that failed in message_values.failed and the number of mails that went out in message_values.sent. Answers 400 with error.notify-no-recipients when nobody gets alert mails.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Sends a sample alert mail (two made-up events, \"Sample\" in the subject) at once and outside the queue to every current alert recipient, each in their own language. At most 5 requests a minute per address, counted together with the test mail, and one sample at a time (a second request while one runs answers 429). A recipient the server refuses does not stop the others; a failure of the server (connection, login, TLS, timeout) stops the run. When something fails the answer is a 400 with the (scrubbed) reply for the first failure and its address in message_values.address, and the counts message_values.failed, message_values.sent and message_values.skipped (the recipients not tried). Answers 400 with error.notify-no-recipients when nobody gets alert mails.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"responses": {
 		"200": {
 			"description": "The sample was handed to the server for every recipient",

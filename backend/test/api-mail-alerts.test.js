@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import net from "node:net";
 import { after, before, it } from "node:test";
 import { generateApiToken } from "../lib/api-token.js";
 import { startApi } from "./support/api.js";
@@ -24,6 +25,7 @@ const unwrap = (raw) => raw.replace(/[=]\r?\n/gu, "");
 const SUBJECT_SAMPLE = /^Subject: \[NPMpro [^\]]*\] Sample: /mu;
 const RECIPIENT = /^To: (?<address>.+)$/mu;
 const NO_SUCH_USER = /no such user/u;
+const TOO_MANY = /Too many requests/u;
 
 let api;
 let admin;
@@ -295,7 +297,7 @@ it("sends one sample mail per recipient with two sample events, in the language 
 		assert.ok(opsMail.includes(text), text);
 	const rows = await auditRows();
 	assert.equal(rows.length, 1);
-	assert.deepEqual(parsed(rows[0].meta), { id: "notifications", recipients: 2 });
+	assert.deepEqual(parsed(rows[0].meta), { id: "notifications", recipients: 2, failed: 0, skipped: 0 });
 	assert.equal(JSON.stringify(rows).includes("ops@example.com"), false);
 });
 
@@ -335,7 +337,8 @@ it("tries every recipient when one is refused and names the first failure with i
 	assert.ok(flaky.messages.some((raw) => raw.includes("To: admin@example.com")));
 	const rows = await auditRows();
 	assert.equal(rows.length, rowsBefore + 1);
-	assert.deepEqual(parsed(rows.at(-1).meta), { id: "notifications", recipients: 2 });
+	assert.deepEqual(parsed(rows.at(-1).meta), { id: "notifications", recipients: 2, failed: 1, skipped: 0 });
+	assert.equal(failed.body.error.message_values.skipped, 0);
 });
 
 it("answers the scrubbed error when the server refuses every recipient, and records no audit row", async () => {
@@ -354,6 +357,98 @@ it("answers the scrubbed error when the server refuses every recipient, and reco
 		await reject.close();
 		await admin.put("/settings/email", serverOf(accept));
 	}
+});
+
+const TABLES = ["npmpro_notification_delivery", "npmpro_notification_state"];
+const countRows = async () =>
+	Promise.all(TABLES.map(async (table) => (await api.db(table).count({ n: "*" }).first()).n));
+
+// a server that counts connections and closes each at once, or holds them until released
+const startCounter = async ({ hold = false } = {}) => {
+	const sockets = new Set();
+	let connections = 0;
+	const server = net.createServer((socket) => {
+		connections += 1;
+		sockets.add(socket);
+		socket.on("error", () => {});
+		if (!hold) socket.destroy();
+	});
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	return {
+		port: server.address().port,
+		connections: () => connections,
+		release: () => {
+			for (const socket of sockets) socket.destroy();
+		},
+		close: () => new Promise((resolve) => server.close(resolve)),
+	};
+};
+
+it("stops at a failure of the server: one connection attempt, the rest skipped, no audit", async () => {
+	const dead = await startCounter();
+	try {
+		assert.equal((await admin.put("/settings/email", serverOf(dead))).status, 200);
+		assert.equal(
+			(
+				await admin.put("/settings/notifications", {
+					alerts_addresses: ["a@example.com", "b@example.com", "c@example.com"],
+				})
+			).status,
+			200,
+		);
+		const rowsBefore = (await auditRows()).length;
+		const failed = await (await bearer()).post("/settings/notifications/test-alert", {});
+		assert.equal(failed.status, 400, failed.text);
+		const values = failed.body.error.message_values;
+		assert.equal(values.failed, 1);
+		assert.equal(values.sent, 0);
+		// the administrator and three listed addresses: one tried, three not
+		assert.equal(values.skipped, 3);
+		assert.equal(dead.connections(), 1);
+		assert.equal((await auditRows()).length, rowsBefore);
+	} finally {
+		await dead.close();
+		await admin.put("/settings/email", serverOf(accept));
+	}
+});
+
+it("keeps the notify tables as they are after a sample", async () => {
+	assert.equal((await admin.put("/settings/notifications", { alerts_addresses: ["a@example.com"] })).status, 200);
+	const rowsBefore = await countRows();
+	const sent = await (await bearer()).post("/settings/notifications/test-alert", {});
+	assert.equal(sent.status, 200, sent.text);
+	assert.deepEqual(await countRows(), rowsBefore);
+});
+
+it("runs one sample at a time: a second request while one runs answers 429", async () => {
+	const holding = await startCounter({ hold: true });
+	try {
+		assert.equal((await admin.put("/settings/email", serverOf(holding))).status, 200);
+		const first = (await bearer()).post("/settings/notifications/test-alert", {});
+		for (let wait = 0; wait < 200 && holding.connections() === 0; wait += 1) {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		}
+		assert.equal(holding.connections(), 1, "the first sample is running");
+		const second = await (await bearer()).post("/settings/notifications/test-alert", {});
+		assert.equal(second.status, 429);
+		assert.match(second.body.error.message, TOO_MANY);
+		holding.release();
+		assert.equal((await first).status, 400);
+		assert.equal(holding.connections(), 1, "the second request sent nothing");
+	} finally {
+		holding.release();
+		await holding.close();
+		await admin.put("/settings/email", serverOf(accept));
+	}
+});
+
+it("counts the test mail and the sample together: 5 a minute per address", async () => {
+	const other = await bearer();
+	for (let n = 0; n < 3; n += 1) assert.equal((await other.post("/settings/email/test", {})).status, 200);
+	for (let n = 0; n < 2; n += 1)
+		assert.equal((await other.post("/settings/notifications/test-alert", {})).status, 200);
+	assert.equal((await other.post("/settings/email/test", {})).status, 429);
+	assert.equal((await other.post("/settings/notifications/test-alert", {})).status, 429);
 });
 
 it("limits the sample to 5 a minute per address", async () => {

@@ -239,18 +239,19 @@ const internalMailSetting = {
 	/**
 	 * Sends the sample alert mail at once to every current alert recipient (each in their language). Every recipient
 	 * is tried; when some fail, the answer is the 400 of the first failure with its address (message_values.address),
-	 * the number that failed and the number sent: the others got their mail.
+	 * the number that failed, sent and skipped. A refusal of one recipient does not stop the others; a failure of the server does (the rest are skipped).
 	 *
 	 * @param   {Access}  access
 	 * @returns {Promise<{sent: number}>}
 	 */
 	testAlerts: async (access) => {
-		const { recipients, sent, failed } = await internalMail.sendSample(access);
+		const { recipients, sent, skipped, failed } = await internalMail.sendSample(access);
 		if (recipients === 0) throw new errs.ValidationError("Nobody gets alert mails", "error.notify-no-recipients");
-		if (sent > 0) await audit(access, "test-sent", { id: "notifications", recipients: sent });
+		if (sent > 0)
+			await audit(access, "test-sent", { id: "notifications", recipients: sent, failed: failed.length, skipped });
 		if (failed.length > 0) {
 			const [{ address, error }] = failed;
-			throw await testFailure(error, { address, failed: failed.length, sent });
+			throw await testFailure(error, { address, failed: failed.length, sent, skipped });
 		}
 		return { sent };
 	},

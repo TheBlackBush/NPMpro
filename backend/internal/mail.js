@@ -59,6 +59,9 @@ const sampleEvents = () => {
 	return sample.map(([type, data]) => ({ ...makeEnvelope(type, data), sample: true }));
 };
 
+// the refusal of one recipient: Nodemailer's code for it (a 5xx reply to RCPT TO); every other failure is the server's
+const isRecipientRefusal = (error) => error?.code === "EENVELOPE";
+
 const internalMail = {
 	/** Plugs the settings service in: an async function that answers { email, notifications } (merged, password in clear) */
 	useSettings: (fn) => {
@@ -145,11 +148,13 @@ const internalMail = {
 
 	/**
 	 * Sends the sample alert mail at once (never through the queue) to every current alert recipient, each in their
-	 * own language, with the footer that says why they get it. Every recipient is tried: a failure does not stop the
-	 * others. The failures are returned with the address (the administrator's own setting) and the raw error.
+	 * own language, with the footer that says why they get it. A refusal of one recipient (Nodemailer's EENVELOPE, the
+	 * server's 550 to 554 reply to RCPT) does not stop the others; any other failure (the connection, the login, TLS,
+	 * a timeout) is about the server, so the loop stops there and the rest are counted as skipped (one wait, not one
+	 * per recipient). The failures are returned with the address (the administrator's own setting) and the raw error.
 	 *
 	 * @param   {Access}  access
-	 * @returns {Promise<{recipients: number, sent: number, failed: {address: string, error: Error}[]}>}  throws
+	 * @returns {Promise<{recipients: number, sent: number, skipped: number, failed: {address: string, error: Error}[]}>}  throws
 	 *          error.mail-not-configured, or a ValidationError of a recipient (a bug of the recipient list)
 	 */
 	sendSample: async (access) => {
@@ -164,7 +169,8 @@ const internalMail = {
 		const events = sampleEvents();
 		const failed = [];
 		let sent = 0;
-		for (const { address, language, reason } of recipients) {
+		let skipped = 0;
+		for (const [index, { address, language, reason }] of recipients.entries()) {
 			try {
 				await internalMail.sendNow({
 					to: address,
@@ -176,9 +182,13 @@ const internalMail = {
 			} catch (error) {
 				if (error instanceof errs.ValidationError) throw error;
 				failed.push({ address, error });
+				if (!isRecipientRefusal(error)) {
+					skipped = recipients.length - index - 1;
+					break;
+				}
 			}
 		}
-		return { recipients: recipients.length, sent, failed };
+		return { recipients: recipients.length, sent, skipped, failed };
 	},
 };
 
