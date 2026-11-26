@@ -190,7 +190,8 @@ const selectableEvents = () =>
 	CATALOGUE.filter((entry) => entry.selectable).map(({ id, kind, channels }) => ({
 		id,
 		kind,
-		channels: [...channels],
+		// mail ticks the base event, which covers its recovery: a .resolved twin is for webhooks only
+		channels: channels.filter((channel) => channel !== "mail" || !id.endsWith(".resolved")),
 	}));
 
 /**

@@ -308,6 +308,14 @@ it("the alert settings: defaults, the env list, one problem with its placeholder
 		i18n: "settings.notifications.alerts-addresses.invalid",
 		values: { index: 1 },
 	});
+	assert.equal(
+		alertProblemOf({ alerts_events: Array.from({ length: 10 }, () => "backup.failed") }, values).i18n,
+		"settings.notifications.alerts-events.invalid",
+	);
+	assert.equal(
+		alertProblemOf({ alerts_events: ["backup.failed.resolved"] }, values).i18n,
+		"error.notify-event-not-for-mail",
+	);
 	assert.equal(alertProblemOf({ reminder_hours: 169 }, values).i18n, "settings.notifications.reminder-hours.invalid");
 	assert.equal(alertProblemOf({ alerts_events: ["host.created"] }, { alerts_events: ["host.created"] }), null);
 	assert.equal(alertProblemOf({ alerts_events: values.alerts_events, reminder_hours: 0 }, values), null);

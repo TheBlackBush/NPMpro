@@ -1094,3 +1094,21 @@ describe("action events from the audit hook", () => {
 		});
 	});
 });
+
+describe("the reminder interval setting", () => {
+	it("reaches the state store through internal/notify: 0 means no reminder, a number makes an old state due", async () => {
+		await stateStore.report({ event: "certificate.expiring", objectId: "77777", state: "soon", data: {} });
+		await api.db(STATE).where({ object_id: "77777" }).update({ last_sent_on: "2000-01-01 00:00:00" });
+		try {
+			assert.equal((await admin.put("/settings/notifications", { reminder_hours: 0 })).status, 200);
+			assert.deepEqual(await stateStore.dueReminders(), []);
+			assert.equal((await admin.put("/settings/notifications", { reminder_hours: 1 })).status, 200);
+			const due = await stateStore.dueReminders();
+			assert.equal(due.length, 1);
+			assert.equal(due[0].type, "certificate.expiring");
+			assert.equal(due[0].data.reminder, true);
+		} finally {
+			await admin.put("/settings/notifications", { reminder_hours: 24 });
+		}
+	});
+});

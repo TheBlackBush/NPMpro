@@ -1,7 +1,7 @@
 import { isIP } from "node:net";
 import { hostname } from "node:os";
 import addressparser from "nodemailer/lib/addressparser";
-import { isSelectable, stateEvents } from "../notify/catalogue.js";
+import { selectableEvents, stateEvents } from "../notify/catalogue.js";
 
 const MAIL_LANGUAGES = ["en", "de", "zh", "fr", "es", "pt", "ru", "it", "nl", "pl", "ja", "ko", "uk"];
 
@@ -186,6 +186,13 @@ const kebab = (key) => key.replaceAll("_", "-");
 
 const ALERT_KEYS = ["alerts_admins", "alerts_addresses", "alerts_events", "reminder_hours"];
 
+// The events mail offers: the base ids only (the state events and webhook.disabled). The contract for the alert channel:
+// ticking `x` covers the problem, its changes, its reminders and its recovery, so the channel's `accepts` maps
+// `x.resolved` to `x` before it looks the type up in alerts_events. An `x.resolved` id is never stored in the list.
+const MAIL_EVENT_IDS = selectableEvents()
+	.filter(({ channels }) => channels.includes("mail"))
+	.map(({ id }) => id);
+
 /**
  * What is wrong with an alert setting, or null: the i18n key (and the placeholders of its text) of the refusal. A list
  * of addresses names the index (from 0) of the first bad one; an event the mail channel does not offer (an action event,
@@ -207,7 +214,8 @@ const alertProblem = (key, value) => {
 		const index = value.findIndex((address) => !isSingleAddress(address));
 		return index === -1 ? null : { ...generic, values: { index } };
 	}
-	const event = value.find((id) => typeof id !== "string" || !isSelectable(id, "mail"));
+	if (value.length > MAIL_EVENT_IDS.length) return generic;
+	const event = value.find((id) => typeof id !== "string" || !MAIL_EVENT_IDS.includes(id));
 	if (event === undefined) return null;
 	return { i18n: "error.notify-event-not-for-mail", values: { event: String(event).slice(0, NAME_MAX) } };
 };
@@ -216,6 +224,25 @@ const NOTIFICATION_CHECKS = {
 	public_url: (value) => value === "" || normalizePublicUrl(value) !== null,
 	default_language: (value) => MAIL_LANGUAGES.includes(value),
 	...Object.fromEntries(ALERT_KEYS.map((key) => [key, (value) => alertProblem(key, value) === null])),
+};
+
+/**
+ * The alert lists of a save without repeats: events by id, addresses case-insensitively (the first spelling stays)
+ *
+ * @param   {Object}  patch
+ * @returns {Object}  the patch with its lists deduplicated
+ */
+const dedupeAlertLists = (patch) => {
+	const out = { ...patch };
+	if (Array.isArray(out.alerts_events)) out.alerts_events = [...new Set(out.alerts_events)];
+	if (Array.isArray(out.alerts_addresses)) {
+		const seen = new Set();
+		out.alerts_addresses = out.alerts_addresses.filter((address) => {
+			const key = address.toLowerCase();
+			return seen.has(key) ? false : seen.add(key);
+		});
+	}
+	return out;
 };
 
 const isSame = (a, b) => a === b || (Array.isArray(a) && JSON.stringify(a) === JSON.stringify(b));
@@ -309,6 +336,7 @@ const ehloNameOf = (values, hostName = hostname()) => {
 
 export {
 	alertProblemOf,
+	dedupeAlertLists,
 	EMAIL_DEFAULTS,
 	EMAIL_ENV_KEYS,
 	ehloNameOf,

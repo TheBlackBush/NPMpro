@@ -79,12 +79,31 @@ it("refuses an action event, a wildcard and an unknown id in alerts_events", asy
 	assert.deepEqual((await admin.get("/settings/notifications")).body.alerts_events, STATE_EVENTS);
 });
 
-it("accepts webhook.disabled and the resolved side of a state event", async () => {
+it("accepts webhook.disabled and refuses a .resolved id: ticking the base event covers its recovery", async () => {
+	const saved = await admin.put("/settings/notifications", { alerts_events: ["webhook.disabled", "backup.failed"] });
+	assert.equal(saved.status, 200);
+	for (const id of ["backup.failed.resolved", "webhook.disabled.resolved"]) {
+		const refused = await admin.put("/settings/notifications", { alerts_events: [id] });
+		assert.equal(refused.status, 400, id);
+		assert.equal(refused.body.error.message_i18n, NOT_FOR_MAIL);
+	}
+	await admin.put("/settings/notifications", { alerts_events: STATE_EVENTS });
+});
+
+it("saves alerts_events and alerts_addresses without repeats", async () => {
 	const saved = await admin.put("/settings/notifications", {
-		alerts_events: ["webhook.disabled", "backup.failed.resolved"],
+		alerts_events: ["backup.failed", "backup.failed", "geoip.failed"],
+		alerts_addresses: ["Ops@Example.com", "ops@example.com", "other@example.com", "OTHER@example.com"],
 	});
 	assert.equal(saved.status, 200);
-	await admin.put("/settings/notifications", { alerts_events: STATE_EVENTS });
+	assert.deepEqual(saved.body.alerts_events, ["backup.failed", "geoip.failed"]);
+	assert.deepEqual(saved.body.alerts_addresses, ["Ops@Example.com", "other@example.com"]);
+	// a long list of repeats is a list of one
+	const repeated = await admin.put("/settings/notifications", {
+		alerts_events: Array.from({ length: 50 }, () => "backup.failed"),
+	});
+	assert.deepEqual(repeated.body.alerts_events, ["backup.failed"]);
+	await admin.put("/settings/notifications", { alerts_events: STATE_EVENTS, alerts_addresses: [] });
 });
 
 it("refuses 21 addresses and names the index of a bad address", async () => {
@@ -139,6 +158,8 @@ it("locks alerts_addresses with ALERT_ADDRESSES and ignores a save of it", async
 		);
 		process.env.ALERT_ADDRESSES = "ok@example.com,broken";
 		assert.deepEqual((await admin.get("/settings/notifications")).body.config_errors, ["alerts_addresses"]);
+		process.env.ALERT_ADDRESSES = Array.from({ length: 21 }, (_, index) => `user${index}@example.com`).join(",");
+		assert.deepEqual((await admin.get("/settings/notifications")).body.config_errors, ["alerts_addresses"]);
 	} finally {
 		delete process.env.ALERT_ADDRESSES;
 	}
@@ -149,11 +170,9 @@ it("lists the events: state events and webhook.disabled for mail, all but the te
 	const got = await admin.get("/notifications/events");
 	assert.equal(got.status, 200);
 	const forMail = got.body.filter(({ channels }) => channels.includes("mail")).map(({ id }) => id);
-	assert.deepEqual(
-		forMail.filter((id) => !id.endsWith(".resolved")),
-		[...STATE_EVENTS, "webhook.disabled"],
-	);
-	assert.ok(forMail.includes("backup.failed.resolved"));
+	assert.deepEqual(forMail, [...STATE_EVENTS, "webhook.disabled"]);
+	assert.ok(!forMail.some((id) => id.endsWith(".resolved")));
+	assert.deepEqual(got.body.find(({ id }) => id === "backup.failed.resolved").channels, ["webhook"]);
 	assert.ok(!forMail.includes("host.created"));
 	const forWebhook = got.body.filter(({ channels }) => channels.includes("webhook")).map(({ id }) => id);
 	assert.ok(forWebhook.includes("host.created"));

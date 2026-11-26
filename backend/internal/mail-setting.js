@@ -2,6 +2,7 @@ import { lockedByOf } from "../lib/environment-info.js";
 import errs from "../lib/error.js";
 import {
 	alertProblemOf,
+	dedupeAlertLists,
 	EMAIL_ENV_KEYS,
 	isConfigured,
 	isSingleAddress,
@@ -248,7 +249,7 @@ const internalMailSetting = {
 	updateNotifications: async (access, body) => {
 		access.canAdmin();
 		const config = await getNotificationsConfig();
-		const patch = dropLocked(body, config.locked);
+		const patch = dedupeAlertLists(dropLocked(body, config.locked));
 		const problem = alertProblemOf(patch, config.values);
 		if (problem) {
 			throw new errs.ValidationError(

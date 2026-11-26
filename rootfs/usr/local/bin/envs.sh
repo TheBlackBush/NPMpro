@@ -1060,6 +1060,16 @@ if [ -n "$PUBLIC_URL" ] && { ! echo "$PUBLIC_URL" | grep -qiE '^https://[^/?#@\\
     sleep inf
 fi
 
+# a comma list of at most 20 plain addresses (the backend checks each one again and lists a bad value in config_errors)
+if [ -n "$ALERT_ADDRESSES" ]; then
+    alert_count="$(printf '%s' "$ALERT_ADDRESSES" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -c .)"
+    alert_bad="$(printf '%s' "$ALERT_ADDRESSES" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -c '[[:space:]<>"]')"
+    if [ "$alert_count" -gt 20 ] || [ "$alert_bad" -gt 0 ]; then
+        echo "ALERT_ADDRESSES needs to be a comma list of at most 20 plain addresses without spaces, < >, or quotes."
+        sleep inf
+    fi
+fi
+
 if [ -n "$MAIL_LANGUAGE" ] && ! echo "$MAIL_LANGUAGE" | grep -q "^\(en\|de\|zh\|fr\|es\|pt\|ru\|it\|nl\|pl\|ja\|ko\|uk\)$"; then
     echo "MAIL_LANGUAGE needs to be one of en, de, zh, fr, es, pt, ru, it, nl, pl, ja, ko, uk."
     sleep inf
