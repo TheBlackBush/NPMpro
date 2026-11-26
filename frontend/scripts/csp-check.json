@@ -148,6 +148,7 @@
 			"name": "test mail window",
 			"route": "/settings/notifications",
 			"steps": [
+				{ "skipIfMissing": "role=button[name='Send test mail']" },
 				{ "click": "role=button[name='Send test mail']" },
 				{ "waitFor": "[role=dialog] #test-mail-to" },
 				{ "press": "Escape" }

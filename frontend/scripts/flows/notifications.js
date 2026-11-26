@@ -1,5 +1,6 @@
-// Settings, Notifications: the mail server card (locked by SMTP_HOST in the smoke test, free elsewhere), Send test mail,
-// the public URL with its checks and the default mail language. The flow leaves the stored settings as it found them.
+// Settings, Notifications: the mail server card (locked by SMTP_HOST in the smoke test, free elsewhere), Send test mail
+// (only with a configured server: SMTP_HOST and SMTP_FROM, or saved settings), the public URL with its checks and the
+// default mail language. The flow leaves the stored settings as it found them.
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import { ADMIN_EMAIL, withToast } from "./lib.js";
 
@@ -28,10 +29,11 @@ async function mailServerCard(page, locked) {
 	await page.getByText(BLOCKED).first().waitFor({ timeout: 10_000 });
 }
 
-// Send test mail: the window opens with the signed-in user's address; the refused or failed send shows inside the window
-async function testMailWindow(page, locked) {
+// Send test mail: the window opens with the signed-in user's address; the refused or failed send shows inside the window.
+// The button needs a configured server (a host and a sender, as SMTP_HOST and SMTP_FROM give the smoke test)
+async function testMailWindow(page, configured) {
 	const open = page.getByRole("button", { name: "Send test mail", exact: true });
-	if (!locked) {
+	if (!configured) {
 		if ((await open.count()) > 0) throw new Error("Send test mail shows although the mail server is not saved");
 		console.log("notifications settings: no test mail without a saved mail server");
 		return;
@@ -128,8 +130,9 @@ async function notificationsSettings({ admin }) {
 		await page.goto("/settings/notifications");
 		await page.locator(HOST).waitFor();
 		const locked = email.locked.includes("host");
+		// the saved settings first: the card below leaves the form unsaved when the host is not locked
+		await testMailWindow(page, email.configured);
 		await mailServerCard(page, locked);
-		await testMailWindow(page, locked);
 		if (!locked) await page.reload();
 		await page.locator(PUBLIC_URL).waitFor();
 		await publicUrl(page, api, before);
