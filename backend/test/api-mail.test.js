@@ -523,6 +523,8 @@ it("offers the password reset only when mail, the public URL, the switch and pas
 	assert.equal((await admin.put("/settings/email", { allow_password_reset: false })).status, 200);
 	assert.equal(await offered(), undefined);
 	assert.equal((await admin.put("/settings/email", { allow_password_reset: true })).status, 200);
+	const onRow = (await auditRows()).filter((entry) => entry.action === "updated").at(-1);
+	assert.deepEqual(parsed(onRow.meta).changed, ["allow_password_reset"]);
 	assert.equal(await offered(), true);
 
 	// password sign-in turned off by OIDC: not offered
@@ -583,5 +585,25 @@ it("locks the switch with PASSWORD_RESET, true or false, and ignores a save for 
 		assert.equal(await offered(), undefined);
 	} finally {
 		delete process.env.PASSWORD_RESET;
+	}
+});
+
+it("reads no sealed password and no mail server check while the switch is off", async () => {
+	const { resetOffered } = await import("../internal/mail-setting.js");
+	assert.equal((await admin.put("/settings/email", { allow_password_reset: false })).status, 200);
+	// a sealed password that cannot be decrypted would log a warning and flag secret_error if it were read
+	const stored = await settingRow("email");
+	await api
+		.db("setting")
+		.where({ id: "email" })
+		.update({ meta: JSON.stringify({ ...stored, password: "v1:garbage" }) });
+	try {
+		assert.equal(await resetOffered(), false);
+		assert.equal((await admin.get("/settings/email")).body.secret_error, true);
+	} finally {
+		await api
+			.db("setting")
+			.where({ id: "email" })
+			.update({ meta: JSON.stringify(stored) });
 	}
 });

@@ -260,11 +260,15 @@ const internalMailSetting = {
  * @returns {Promise<boolean>}
  */
 const resetOffered = async (oidc) => {
-	const { values: email } = await getEmailConfig();
-	if (email.allow_password_reset !== true || !isConfigured(email)) return false;
+	// the cheap checks first (this answers the public, polled /api): the switch from the row or the env, without the
+	// password (no decrypt), then the public URL, then password sign-in, and the mail server last
+	const { password: _sealed, ...stored } = await readStored("email");
+	const { values: email } = mergeEmail(stored, process.env);
+	if (email.allow_password_reset !== true) return false;
 	if (!normalizePublicUrl((await getNotificationsConfig()).values.public_url)) return false;
 	const cfg = oidc ?? (await getOidcConfig());
-	return !(cfg.active && cfg.values.disable_password);
+	if (cfg.active && cfg.values.disable_password) return false;
+	return isConfigured(email);
 };
 
 export { getEmailConfig, getNotificationsConfig, reloadMailSettings, resetOffered, useMailSettings };
