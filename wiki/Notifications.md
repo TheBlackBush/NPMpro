@@ -2,7 +2,7 @@
 
 NPMpro can send mail through your own SMTP server. Under Settings, Notifications you set the mail server, the public address of your instance and the language of the mails. Send a test mail to check the setup. The events NPMpro detects are listed under [Monitoring](Monitoring#events).
 
-Only administrators see this page. Every setting here can also be set with an environment variable, see [Configuration](Configuration) (a set variable locks its field).
+Only administrators see this page. Every setting here can also be set with an environment variable, see [Configuration](Configuration) (a set variable locks its field). A value that is not valid, from a restored backup or an environment variable, is named in a red box at the top of the page; mail may not be sent until it is corrected. A `PUBLIC_URL` is used as its origin (`https://NPM.example.com/` becomes `https://npm.example.com`).
 
 ## Mail server
 
@@ -23,7 +23,7 @@ With **Security** set to **None**, a user name is only allowed when the host is 
 The button **Send test mail** sits in the card header. It sends at once, to your own address by default, or to any other address you type. It uses the saved settings, so save first (the button says so while the form has unsaved changes). The test mail is not queued and is not retried.
 
 - At most 5 test mails per minute from one IP address.
-- When the mail cannot be sent, the window shows the server's error. The password is removed from it.
+- When the mail cannot be sent, the window says why: a certificate that is not trusted (turn **Verify certificate** off only for a server you trust on your local network), a **Security** that does not fit the port (port 465 usually needs TLS, port 587 STARTTLS), a refused connection, a refused login or the server's own reply. The password is removed from it.
 
 ## How the mail server is reached
 
@@ -44,7 +44,7 @@ The card **Links and language** holds two settings, and your own language is tak
 
 - **Public URL**: the address people open NPMpro at, for example `https://npm.example.com`. It must start with `https://` and be the origin only: no path, no query, no `#` part and no user name. **Use this browser's address** fills in the address of the page you have open. The button works only when the page is opened over HTTPS; otherwise it is disabled and says so.
 - **Default mail language**: the language of the mails for people who have not signed in yet or have not chosen a language. Choose one of the 13 languages of the interface.
-- Each user's language is the interface language they use. NPMpro remembers it at sign-in (and again after a language change), and that user's mails come in it. Other people get the default mail language.
+- Each user who picks a language with the language switch of the interface gets their mails in it. NPMpro remembers the choice right after the switch, and again at sign-in in that browser. People who never picked one (also those who use the interface in English without choosing it) get the default mail language.
 
 The host of the public URL names your instance in the mails (the test mail says "This is a test mail from NPMpro at ..."). Without a public URL, the host name of the container is used.
 
