@@ -80,6 +80,16 @@ export const codeComplete = (values) =>
 export const codeModeChanges = (useBackup) =>
 	useBackup ? { useBackup: true, backupCode: "" } : { useBackup: false, code: "" };
 
+// new and repeat: 8 to 255 characters, untrimmed
+const newPasswordRules = (rules) => ({
+	new: rules.validateString(8, 255, false),
+	confirm: rules.validateString(8, 255, false),
+});
+
+// the repeat must match the new password, and that message wins over the repeat's length message
+const passwordsMatch = (rules) => (values) =>
+	values.confirm && values.new !== values.confirm ? { confirm: rules.message("error.passwords-must-match") } : {};
+
 /**
  * Change password: current 1 to 255 characters, new and repeat 8 to 255, all untrimmed; the repeat must match the
  * new one, and that message wins over the repeat's length message
@@ -91,14 +101,18 @@ export const changePasswordValidate = (rules) =>
 	fieldsValidate(
 		{
 			current: rules.validateString(1, 255, false),
-			new: rules.validateString(8, 255, false),
-			confirm: rules.validateString(8, 255, false),
+			...newPasswordRules(rules),
 		},
-		(values) =>
-			values.confirm && values.new !== values.confirm
-				? { confirm: rules.message("error.passwords-must-match") }
-				: {},
+		passwordsMatch(rules),
 	);
+
+/**
+ * The reset by mail (the page of the link): the new password and its repeat with the rules of change password
+ *
+ * @param   {Object} rules  createValidations(intl)
+ * @returns {Function}
+ */
+export const resetPasswordValidate = (rules) => fieldsValidate(newPasswordRules(rules), passwordsMatch(rules));
 
 /**
  * Set password (an admin for another user): the new password, 8 to 255 characters, untrimmed

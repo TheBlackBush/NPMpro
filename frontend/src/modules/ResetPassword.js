@@ -2,10 +2,6 @@
  * The pure parts of the forgot and reset password pages
  */
 
-// the same rules as the password of the user window: 8 to 255 characters, not trimmed
-const PASSWORD_MIN = 8;
-const PASSWORD_MAX = 255;
-
 const FORGOT_PATH = "/forgot-password";
 const RESET_PATH = "/reset-password";
 
@@ -38,20 +34,16 @@ export const tokenFromHash = (hash) => {
 };
 
 /**
- * Checks a new password and its repeat: the first problem, as the field it belongs to and a reason ("required", "short",
- * "long" or "mismatch"), or null. A mismatch shows only once the password itself is fine and the repeat is filled in.
+ * The token of the page: the fragment first, then the one kept in the history entry (the page removes the fragment
+ * from the address, and a reload, such as the language switch, comes back with the entry's state), else "".
  *
- * @param   {string} password
- * @param   {string} repeat
- * @returns {{ field: "new"|"confirm", reason: string }|null}
+ * @param   {string} hash   location.hash
+ * @param   {unknown} state  history.state
+ * @returns {string}
  */
-export const passwordPairValidate = (password, repeat) => {
-	const first = String(password ?? "");
-	if (first.length === 0) return { field: "new", reason: "required" };
-	if (first.length < PASSWORD_MIN) return { field: "new", reason: "short" };
-	if (first.length > PASSWORD_MAX) return { field: "new", reason: "long" };
-	if (String(repeat ?? "") !== first) return { field: "confirm", reason: "mismatch" };
-	return null;
+export const resetTokenOf = (hash, state) => {
+	const fromHash = tokenFromHash(hash);
+	if (fromHash !== "") return fromHash;
+	const kept = state?.resetToken;
+	return typeof kept === "string" ? kept : "";
 };
-
-export { PASSWORD_MAX, PASSWORD_MIN };

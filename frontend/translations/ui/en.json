@@ -1385,6 +1385,7 @@
 	"reset-password.description": "Enter the new password twice.",
 	"reset-password.done": "Your password was changed. Sign in with it.",
 	"reset-password.request-new": "Ask for a new link",
+	"reset-password.retry": "Try again",
 	"reset-password.title": "Choose a new password",
 	"role.admin": "Administrator",
 	"role.standard-user": "Standard User",

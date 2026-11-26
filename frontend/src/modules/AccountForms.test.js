@@ -11,6 +11,7 @@ import {
 	mfaCodeValidate,
 	normalizeBackupCode,
 	pastedCodeValue,
+	resetPasswordValidate,
 	setPasswordValidate,
 	setupValidate,
 	userValidate,
@@ -37,6 +38,17 @@ it("change password: the same errors as the Formik fields and validate", () => {
 	assert.deepEqual(validate({ current: "x", new: "long enough", confirm: "long enough" }), {});
 	// untrimmed: eight spaces are a valid password
 	assert.deepEqual(validate({ current: " ", new: "        ", confirm: "        " }), {});
+});
+
+it("reset password: the rules of change password without the current password", () => {
+	const validate = resetPasswordValidate(rules);
+	assert.deepEqual(validate({ new: "", confirm: "" }), { new: "This is required", confirm: "This is required" });
+	assert.deepEqual(validate({ new: "short", confirm: "short" }), {
+		new: "Minimum length is 8 characters",
+		confirm: "Minimum length is 8 characters",
+	});
+	assert.deepEqual(validate({ new: "long enough", confirm: "abc" }), { confirm: "Passwords must match" });
+	assert.deepEqual(validate({ new: "        ", confirm: "        " }), {});
 });
 
 it("set password: eight characters or more", () => {

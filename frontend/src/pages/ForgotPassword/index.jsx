@@ -33,8 +33,9 @@ export default function ForgotPassword() {
 		} catch (err) {
 			if (err?.status === 429) {
 				setOutcome("limited");
-			} else if (err?.status === undefined) {
-				// no answer at all (offline): nothing was asked
+			} else if (err?.status === undefined || err.status >= 500) {
+				// no answer or a server failure: no mail is on its way, so say so. Every other refusal keeps the
+				// same text (the server answers 202 before it reads the address, so this tells nothing)
 				setError(err);
 			} else {
 				setOutcome("sent");

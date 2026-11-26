@@ -1,37 +1,45 @@
 import { useEffect, useRef, useState } from "react";
 import { checkResetToken, confirmPasswordReset } from "src/api/backend";
-import { ApiErrorContent, ErrorAlert, FormSubmit, HookForm, Loading, NoticeAlert, useAppForm } from "src/components";
+import {
+	ApiErrorContent,
+	Button,
+	ErrorAlert,
+	FormSubmit,
+	HookForm,
+	Loading,
+	NoticeAlert,
+	useAppForm,
+} from "src/components";
 import { PasswordInput } from "src/components/Form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "src/components/ui/card";
 import { intl, T } from "src/locale";
-import { PASSWORD_MAX, PASSWORD_MIN, passwordPairValidate, tokenFromHash } from "src/modules/ResetPassword";
+import { resetPasswordValidate } from "src/modules/AccountForms";
+import { resetTokenOf } from "src/modules/ResetPassword";
+import { validations } from "src/modules/Validations";
 import { AuthLayout } from "src/shell/AuthLayout";
 import { BackToSignIn } from "../ForgotPassword/BackToSignIn";
 
 // The token comes in the address fragment. It is read once and removed from the address bar at once (before
-// anything else runs), and kept in memory only: never in a request line, a storage or a log. A module variable
-// survives the second render of development mode, where the fragment is already gone.
+// anything else runs), and kept in memory only: never in a request line, a storage or a log. The history entry keeps
+// it too (history.state is not sent anywhere), so a reload, such as the language switch, finds it again. A module
+// variable survives the second render of development mode, where the fragment is already gone.
 let heldToken = "";
 function takeToken() {
-	const token = tokenFromHash(window.location.hash);
+	const token = resetTokenOf(window.location.hash, window.history.state);
 	if (token !== "") {
 		heldToken = token;
-		window.history.replaceState(null, "", window.location.pathname + window.location.search);
+		window.history.replaceState({ resetToken: token }, "", window.location.pathname + window.location.search);
 	}
 	return heldToken;
 }
 
-const REASONS = {
-	required: () => intl.formatMessage({ id: "error.required" }),
-	short: () => intl.formatMessage({ id: "error.min-character-length" }, { min: PASSWORD_MIN }),
-	long: () => intl.formatMessage({ id: "error.max-character-length" }, { max: PASSWORD_MAX }),
-	mismatch: () => intl.formatMessage({ id: "error.passwords-must-match" }),
-};
+// after a saved password the token is gone from memory and from the history entry
+function dropToken() {
+	heldToken = "";
+	window.history.replaceState(null, "", window.location.pathname + window.location.search);
+}
 
-const validate = (values) => {
-	const problem = passwordPairValidate(values.new, values.confirm);
-	return problem ? { [problem.field]: REASONS[problem.reason]() } : {};
-};
+const validate = resetPasswordValidate(validations);
 
 function InvalidLink() {
 	return (
@@ -54,10 +62,14 @@ function NewPasswordForm({ token, onDone, onInvalid }) {
 		setError(null);
 		try {
 			await confirmPasswordReset(token, values.new);
+			dropToken();
 			onDone();
 		} catch (err) {
 			if (err?.payload?.error?.message_i18n === "error.reset-invalid") {
+				dropToken();
 				onInvalid();
+			} else if (err?.status === 429) {
+				setError(intl.formatMessage({ id: "error.too-many-requests" }));
 			} else {
 				setError(<ApiErrorContent error={err} />);
 			}
@@ -107,22 +119,47 @@ function NewPasswordForm({ token, onDone, onInvalid }) {
  */
 export default function ResetPassword() {
 	const [token] = useState(takeToken);
-	// "checking", "form", "invalid" or "done"
+	// "checking", "form", "invalid", "failed" (the check could not be made) or "done"
 	const [step, setStep] = useState(token === "" ? "invalid" : "checking");
-	const checked = useRef(false);
+	const [attempt, setAttempt] = useState(0);
+	const [failure, setFailure] = useState(null);
+	const checkedAttempt = useRef(-1);
 
+	// only a 400 (error.reset-invalid) means the link is no good; a 429 or any other failure may pass
 	useEffect(() => {
-		if (token === "" || checked.current) return;
-		checked.current = true;
+		if (token === "" || checkedAttempt.current === attempt) return;
+		checkedAttempt.current = attempt;
 		checkResetToken(token).then(
 			() => setStep("form"),
-			() => setStep("invalid"),
+			(err) => {
+				if (err?.status === 400) {
+					setStep("invalid");
+				} else {
+					setFailure(err?.status === 429 ? intl.formatMessage({ id: "error.too-many-requests" }) : err);
+					setStep("failed");
+				}
+			},
 		);
-	}, [token]);
+	}, [token, attempt]);
+
+	const retry = () => {
+		setStep("checking");
+		setAttempt((n) => n + 1);
+	};
 
 	let body = null;
 	if (step === "checking") {
 		body = <Loading noLogo />;
+	} else if (step === "failed") {
+		body = (
+			<CardContent className="flex flex-col gap-4">
+				<ErrorAlert error={failure} />
+				<Button type="button" fullWidth color="primary" size="lg" onClick={retry}>
+					<T id="reset-password.retry" />
+				</Button>
+				<BackToSignIn />
+			</CardContent>
+		);
 	} else if (step === "invalid") {
 		body = <InvalidLink />;
 	} else if (step === "done") {
