@@ -23,6 +23,7 @@
 		"/settings/certificates",
 		"/settings/monitoring",
 		"/settings/geoip",
+		"/settings/notifications",
 		"/settings/backup",
 		"/settings/database",
 		"/settings/advanced",
@@ -140,6 +141,15 @@
 				{ "click": "role=button[name='Actions for ab']" },
 				{ "click": "role=menuitem[name='Set Password']" },
 				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "test mail window",
+			"route": "/settings/notifications",
+			"steps": [
+				{ "click": "role=button[name='Send test mail']" },
+				{ "waitFor": "[role=dialog] #test-mail-to" },
 				{ "press": "Escape" }
 			]
 		},

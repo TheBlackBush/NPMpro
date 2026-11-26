@@ -14,6 +14,7 @@ import { dnsFlows } from "./dns.js";
 import { hostDnsFlows } from "./hostdns.js";
 import { hostFlows } from "./hosts.js";
 import { ADMIN_EMAIL, removeFlowData, signIn, VIEWER_EMAIL } from "./lib.js";
+import { notificationsFlows } from "./notifications.js";
 import { windowFlows } from "./windows.js";
 
 const [base = "https://127.0.0.1:81", engine = "chromium", ...only] = process.argv.slice(2);
@@ -32,9 +33,15 @@ const VIEWER_PERMISSIONS = {
 	certificates: "view",
 };
 
-const flows = [...hostFlows, ...windowFlows, ...appFlows, ...dnsFlows, ...hostDnsFlows, ...ddnsFlows].filter(
-	(flow) => only.length === 0 || only.includes(flow.name),
-);
+const flows = [
+	...hostFlows,
+	...windowFlows,
+	...appFlows,
+	...dnsFlows,
+	...hostDnsFlows,
+	...ddnsFlows,
+	...notificationsFlows,
+].filter((flow) => only.length === 0 || only.includes(flow.name));
 // FLOWS_CDP (a remote Chromium's DevTools WebSocket URL, for machines that cannot launch one) is for local runs only;
 // the smoke test launches Chromium itself. The URL holds a token: no message prints it.
 // biome-ignore lint/style/noProcessEnv: the switch is read once
