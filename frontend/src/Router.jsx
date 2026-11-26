@@ -4,11 +4,14 @@ import { ErrorNotFound, LoadingPage, Unhealthy } from "src/components";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
 import { adminRedirect } from "src/modules/AdminRoutes";
+import { publicPageOf } from "src/modules/ResetPassword";
 import { AppShell } from "src/shell";
 
 const ApiReference = lazy(() => import("src/pages/ApiReference"));
 const Setup = lazy(() => import("src/pages/Setup"));
 const Login = lazy(() => import("src/pages/Login"));
+const ForgotPassword = lazy(() => import("src/pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("src/pages/ResetPassword"));
 const Dashboard = lazy(() => import("src/pages/Dashboard"));
 const Settings = lazy(() => import("src/pages/Settings"));
 const Certificates = lazy(() => import("src/pages/Certificates"));
@@ -45,6 +48,18 @@ function Router() {
 		return (
 			<Suspense fallback={<LoadingPage fullScreen />}>
 				<Setup />
+			</Suspense>
+		);
+	}
+
+	// the pages of the password reset need no session and none of the signed-in views: they render for anyone (a
+	// signed-in user keeps the page and its link), and they call no endpoint that needs a session
+	const publicPage = publicPageOf(window.location.pathname);
+	if (publicPage) {
+		const Page = publicPage === "reset" ? ResetPassword : ForgotPassword;
+		return (
+			<Suspense fallback={<LoadingPage fullScreen />}>
+				<Page />
 			</Suspense>
 		);
 	}

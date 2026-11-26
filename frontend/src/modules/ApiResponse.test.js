@@ -6,6 +6,10 @@ it("gives null for a 204 without a body", async () => {
 	assert.equal(await readPayload(new Response(null, { status: 204 })), null);
 });
 
+it("gives null for a 202 without a body", async () => {
+	assert.equal(await readPayload(new Response(null, { status: 202 })), null);
+});
+
 it("still parses a 200 with JSON", async () => {
 	assert.deepEqual(await readPayload(new Response('{"a_b":1}', { status: 200 })), { a_b: 1 });
 });

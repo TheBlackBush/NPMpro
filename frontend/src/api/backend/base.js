@@ -51,6 +51,7 @@ async function processResponse(response, reload = true) {
 		if (response.status === 401) logoutOnUnauthorized(reload);
 		const error = new Error(payload.error?.message_i18n ?? payload.error?.message ?? `HTTP ${response.status}`);
 		error.payload = payload;
+		error.status = response.status;
 		throw error;
 	}
 	return camelizeResponse(payload, response.url);

@@ -101,7 +101,7 @@ const redirectToOIDC = () => {
 /**
  * Email and password; Sign in waits for a valid address and a password. emailRef gets the email input, for the focus.
  */
-function PasswordFields({ emailRef, onSubmit }) {
+function PasswordFields({ emailRef, onSubmit, resetOffered }) {
 	const methods = useAppForm({ defaultValues: { email: "", password: "" } });
 	const { register } = methods;
 	const { isSubmitting, touchedFields } = methods.formState;
@@ -150,6 +150,11 @@ function PasswordFields({ emailRef, onSubmit }) {
 				>
 					<T id="sign-in" />
 				</Button>
+				{resetOffered ? (
+					<a href="/forgot-password" className="text-center text-sm underline underline-offset-4">
+						<T id="forgot-password.link" />
+					</a>
+				) : null}
 			</div>
 		</HookForm>
 	);
@@ -207,7 +212,13 @@ function PasswordForm({ oidcError, noRedirect }) {
 						<T id="or" />
 					</FieldSeparator>
 				)}
-				{passwordAllowed && <PasswordFields emailRef={emailRef} onSubmit={onSubmit} />}
+				{passwordAllowed && (
+					<PasswordFields
+						emailRef={emailRef}
+						onSubmit={onSubmit}
+						resetOffered={health.data?.passwordReset === true}
+					/>
+				)}
 			</CardContent>
 		</>
 	);
