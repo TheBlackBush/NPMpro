@@ -2,5 +2,15 @@
 	"test.subject": "测试邮件",
 	"test.intro": "这是来自 {instance} 上 NPMpro 的测试邮件。",
 	"test.works": "如果你收到了这封邮件，说明邮件功能正常。",
-	"footer.sent": "由 {instance} 上的 NPMpro 发送。"
+	"footer.sent": "由 {instance} 上的 NPMpro 发送。",
+	"reset-link.subject": "重置您的 NPMpro 密码",
+	"reset-link.intro": "有人请求重置您在 {instance} 的 NPMpro 账户密码。",
+	"reset-link.expires": "请使用下方按钮设置新密码。该链接只能使用一次,30 分钟后失效。",
+	"reset-link.ignore": "如果这不是您本人的操作,请忽略此邮件,您的密码不会改变。",
+	"reset-link.button": "设置新密码",
+	"password-reset.subject": "您的 NPMpro 密码已被重置",
+	"password-reset.done": "您在 {instance} 的账户密码已于 {time} (UTC) 从地址 {ip} 重置。",
+	"password-reset.sessions": "所有会话均已退出登录。双因素登录保持不变。",
+	"password-reset.tokens.one": "{count} 个 API 令牌仍然有效;如果这不是您本人的操作,请在“设置”的“API 访问”中撤销它。",
+	"password-reset.tokens.other": "{count} 个 API 令牌仍然有效;如果这不是您本人的操作,请在“设置”的“API 访问”中撤销它们。"
 }

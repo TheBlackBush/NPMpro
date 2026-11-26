@@ -48,6 +48,15 @@ The card **Links and language** holds two settings, and your own language is tak
 
 The host of the public URL names your instance in the mails (the test mail says "This is a test mail from NPMpro at ..."). Without a public URL, the host name of the container is used.
 
+## Account mails
+
+Besides the events of [Monitoring](Monitoring#events), NPMpro sends two mails about a user's own account, to that user:
+
+- **Reset link**: "Reset your NPMpro password", sent when someone asks for a password reset and the reset is on (see [Authentication](Authentication#password-reset-by-mail)). The button opens the link, which works once and for 30 minutes. The mail is sent at once, is not queued and is not retried.
+- **Reset notice**: "Your NPMpro password was reset", sent after every reset made with the link (a command line reset sends none). It gives the time (UTC), the address the request came from and how many API tokens are still active. Every session was signed out; two-factor sign-in is unchanged. Revoke the tokens under Settings, API access if you did not make the reset.
+
+Account mails go to the address of the account and in the user's language (see [Public URL and language](#public-url-and-language)). A user who is disabled or has no password gets no reset mail.
+
 ## What a mail contains
 
 Every mail has a plain text part and a simple HTML part with the same text. It has no images, loads no remote content and has no tracking, so nothing in it reports back when it is opened.

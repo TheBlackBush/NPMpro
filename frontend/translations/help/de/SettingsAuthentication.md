@@ -23,6 +23,7 @@ Der Button auf der Anmeldeseite: **Anzeigename** (der Text nach „Mit“ und vo
 - **Verifizierte E-Mail verlangen**: weist Benutzer ab, deren Anbieter die E-Mail-Adresse nicht verifiziert hat. Standard: an. Variable: `OIDC_REQUIRE_VERIFIED_EMAIL`.
 - **Zwei-Faktor nach OIDC überspringen**: vertraut der Multi-Faktor-Prüfung des Anbieters. Standard: aus. Variable: `OIDC_SKIP_MFA`.
 - **Passwortanmeldung deaktivieren**: nur OIDC kann sich anmelden. Sie können es nur in einer Sitzung einschalten, die mit OIDC angemeldet wurde. Variable: `OIDC_DISABLE_PASSWORD`; um die Passwortanmeldung wiederherzustellen, setzen Sie sie auf `false` und erstellen Sie den Container neu.
+- **Passwort-Zurücksetzen per Mail erlauben**: erscheint, sobald der Mailserver unter Einstellungen, Benachrichtigungen eingerichtet ist. Benutzer können dann über einen Link, der an ihre Adresse gesendet wird, ein neues Passwort festlegen, und nach jedem Zurücksetzen wird eine Benachrichtigung gesendet. Dort wird auch die öffentliche URL benötigt. Standard: aus. Variable: `PASSWORD_RESET`. Das Zurücksetzen über die Kommandozeile funktioniert weiterhin.
 
 ### Neue Benutzer
 

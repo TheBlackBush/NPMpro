@@ -1,0 +1,71 @@
+{
+	"operationId": "checkPasswordResetToken",
+	"summary": "Check a reset link",
+	"tags": [
+		"public"
+	],
+	"requestBody": {
+		"description": "Payload",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"token"
+					],
+					"properties": {
+						"token": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 255,
+							"example": "Abc123-_abc123Abc123-_abc123Abc123-_abc123A",
+							"description": "The token from the link of the mail (the part after #token=)"
+						}
+					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"token": "Abc123-_abc123Abc123-_abc123Abc123-_abc123A"
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "The token can be used",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"properties": {
+							"purpose": {
+								"type": "string",
+								"example": "reset",
+								"description": "What the token is for: `reset`"
+							}
+						}
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"purpose": "reset"
+							}
+						}
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "The link is invalid or has expired"
+		},
+		"429": {
+			"description": "Too many requests from this address"
+		}
+	},
+	"description": "Tells whether a reset token can still be used, so the page of the link can show its form or its refusal. An unknown, used, expired or replaced token, a disabled user, and any token while a reset by mail is not offered all answer 400 `error.reset-invalid`. Shares the limit of POST /password-reset.\n\nNeeds: nothing (public)"
+}

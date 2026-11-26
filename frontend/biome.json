@@ -116,6 +116,16 @@
 			}
 		},
 		{
+			"includes": ["src/**/*.test.js"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noNodejsModules": "off"
+					}
+				}
+			}
+		},
+		{
 			"includes": ["scripts/**"],
 			"linter": {
 				"rules": {

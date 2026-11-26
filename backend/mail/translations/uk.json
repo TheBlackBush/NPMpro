@@ -2,5 +2,15 @@
 	"test.subject": "Тестовий лист",
 	"test.intro": "Це тестовий лист від NPMpro на {instance}.",
 	"test.works": "Якщо ви його отримали, надсилання пошти працює.",
-	"footer.sent": "Надіслано NPMpro на {instance}."
+	"footer.sent": "Надіслано NPMpro на {instance}.",
+	"reset-link.subject": "Скидання пароля NPMpro",
+	"reset-link.intro": "Хтось запросив скидання пароля вашого облікового запису NPMpro на {instance}.",
+	"reset-link.expires": "Натисніть кнопку нижче, щоб вибрати новий пароль. Посилання діє один раз і спливає за 30 хвилин.",
+	"reset-link.ignore": "Якщо ви цього не робили, проігноруйте цей лист: ваш пароль залишиться без змін.",
+	"reset-link.button": "Вибрати новий пароль",
+	"password-reset.subject": "Ваш пароль NPMpro було скинуто",
+	"password-reset.done": "Пароль вашого облікового запису на {instance} було скинуто {time} (UTC) з адреси {ip}.",
+	"password-reset.sessions": "Усі сеанси завершено. Двофакторний вхід не змінився.",
+	"password-reset.tokens.one": "{count} API-токен залишається активним; якщо це були не ви, відкличте його в розділі «Налаштування», «Доступ до API».",
+	"password-reset.tokens.other": "Активними залишаються API-токени: {count}; якщо це були не ви, відкличте їх у розділі «Налаштування», «Доступ до API»."
 }

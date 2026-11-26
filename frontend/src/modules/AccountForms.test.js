@@ -11,6 +11,7 @@ import {
 	mfaCodeValidate,
 	normalizeBackupCode,
 	pastedCodeValue,
+	resetPasswordValidate,
 	setPasswordValidate,
 	setupValidate,
 	userValidate,
@@ -37,6 +38,17 @@ it("change password: the same errors as the Formik fields and validate", () => {
 	assert.deepEqual(validate({ current: "x", new: "long enough", confirm: "long enough" }), {});
 	// untrimmed: eight spaces are a valid password
 	assert.deepEqual(validate({ current: " ", new: "        ", confirm: "        " }), {});
+});
+
+it("reset password: the rules of change password without the current password", () => {
+	const validate = resetPasswordValidate(rules);
+	assert.deepEqual(validate({ new: "", confirm: "" }), { new: "This is required", confirm: "This is required" });
+	assert.deepEqual(validate({ new: "short", confirm: "short" }), {
+		new: "Minimum length is 8 characters",
+		confirm: "Minimum length is 8 characters",
+	});
+	assert.deepEqual(validate({ new: "long enough", confirm: "abc" }), { confirm: "Passwords must match" });
+	assert.deepEqual(validate({ new: "        ", confirm: "        " }), {});
 });
 
 it("set password: eight characters or more", () => {
@@ -109,9 +121,9 @@ it("setup: a name, an email address and a password of eight characters or more",
 });
 
 it("pastedCodeValue puts a partial paste at the caret and a complete code over the whole value", () => {
-	assert.equal(pastedCodeValue("12", "34", 2, 2, 6), "1234");
-	assert.equal(pastedCodeValue("1234", "98", 1, 3, 6), "1984");
-	assert.equal(pastedCodeValue("123456", "654 321", 3, 3, 6), "654321");
-	assert.equal(pastedCodeValue("abcd1234", "WXYZ-9876", 8, 8, 8), "WXYZ9876");
-	assert.equal(pastedCodeValue("", "98 76-54", 0, 0, 6), "987654");
+	assert.equal(pastedCodeValue("12", "34", { start: 2, end: 2, length: 6 }), "1234");
+	assert.equal(pastedCodeValue("1234", "98", { start: 1, end: 3, length: 6 }), "1984");
+	assert.equal(pastedCodeValue("123456", "654 321", { start: 3, end: 3, length: 6 }), "654321");
+	assert.equal(pastedCodeValue("abcd1234", "WXYZ-9876", { start: 8, end: 8, length: 8 }), "WXYZ9876");
+	assert.equal(pastedCodeValue("", "98 76-54", { start: 0, end: 0, length: 6 }), "987654");
 });

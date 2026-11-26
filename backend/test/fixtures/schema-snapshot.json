@@ -115,6 +115,18 @@
 	},
 	{
 		"type": "index",
+		"name": "npmpro_password_token_hash",
+		"table": "npmpro_password_token",
+		"sql": "CREATE UNIQUE INDEX `npmpro_password_token_hash` on `npmpro_password_token` (`token_hash`)"
+	},
+	{
+		"type": "index",
+		"name": "npmpro_password_token_user",
+		"table": "npmpro_password_token",
+		"sql": "CREATE INDEX `npmpro_password_token_user` on `npmpro_password_token` (`user_id`)"
+	},
+	{
+		"type": "index",
 		"name": "npmpro_user_oidc_identity",
 		"table": "user",
 		"sql": "CREATE UNIQUE INDEX `npmpro_user_oidc_identity` on `user` (`npmpro_oidc_issuer`, `npmpro_oidc_subject`)"
@@ -310,6 +322,12 @@
 		"name": "npmpro_notification_state",
 		"table": "npmpro_notification_state",
 		"sql": "CREATE TABLE `npmpro_notification_state` (`id` integer not null primary key autoincrement, `key` varchar(191) not null, `event` varchar(64) not null, `object_id` varchar(64) not null, `state` varchar(16) not null, `since` datetime not null, `last_sent_on` datetime null, `data` text null)"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_password_token",
+		"table": "npmpro_password_token",
+		"sql": "CREATE TABLE `npmpro_password_token` (`id` integer not null primary key autoincrement, `user_id` integer not null, `purpose` varchar(16) not null, `token_hash` varchar(64) not null, `created_on` datetime not null, `expires_on` datetime not null, `used_on` datetime null, `requested_ip` varchar(45) null, constraint `npmpro_password_token_user_fk` foreign key(`user_id`) references `user`(`id`) on delete CASCADE)"
 	},
 	{
 		"type": "table",

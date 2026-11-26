@@ -1,5 +1,6 @@
 import express from "express";
 import internalDeadHost from "../internal/dead-host.js";
+import { resetOffered } from "../internal/mail-setting.js";
 import internalProxyHost from "../internal/proxy-host.js";
 import internalRedirectionHost from "../internal/redirection-host.js";
 import internalStream from "../internal/stream.js";
@@ -27,6 +28,7 @@ import dnsCheckRoutes from "./nginx/dns_check.js";
 import dnsCredentialsRoutes from "./nginx/dns_credentials.js";
 import dnsDomainsRoutes from "./nginx/dns_domains.js";
 import oidcRoutes from "./oidc.js";
+import passwordResetRoutes from "./password-reset.js";
 import reportsRoutes from "./reports.js";
 import schemaRoutes from "./schema.js";
 import settingsRoutes from "./settings.js";
@@ -66,6 +68,8 @@ router.get(["/api", "/api/"], async (_, res /*, next*/) => {
 		status: "OK",
 		setup: await isSetup(),
 		password: !(cfg.active && cfg.values.disable_password),
+		// only while a reset by mail is offered: the sign-in page shows the forgot password link on it
+		...((await resetOffered(cfg)) ? { password_reset: true } : {}),
 		cert_warning_days: warningDays(),
 		oidc: oidcHealth(cfg),
 		// every page polls this: the banner, and the move window's sign that the new process answers
@@ -95,6 +99,7 @@ router.get(["/api/docs", "/api/docs/"], (_req, res) => res.redirect(302, "/api-r
 router.use("/api/schema", schemaRoutes);
 router.use("/api/tokens", tokensRoutes);
 router.use("/api/oidc", oidcRoutes);
+router.use("/api/password-reset", passwordResetRoutes);
 router.use("/api/users", usersRoutes);
 router.use("/api/api-tokens", apiTokensRoutes);
 router.use("/api/audit-log", auditLogRoutes);

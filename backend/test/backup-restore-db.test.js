@@ -10,6 +10,7 @@ import { up as createAcmeAccountTable } from "../migrations/20261119120000_acme_
 import { up as createDnsDomainTable } from "../migrations/20261123120000_dns_domains.js";
 import { up as createDdnsTables } from "../migrations/20261124120000_ddns_records.js";
 import { up as addDdnsHostColumns } from "../migrations/20261125120000_ddns_host_records.js";
+import { up as createPasswordTokens } from "../migrations/20261127130000_password_tokens.js";
 
 process.env.TZ = "UTC";
 
@@ -91,6 +92,7 @@ const sqlite = async () => {
 	});
 	await createDnsDomainTable(knex);
 	await createDdnsTables(knex);
+	await createPasswordTokens(knex);
 	await addDdnsHostColumns(knex);
 	await knex.schema.createTable("setting", (t) => {
 		t.string("id").primary();
@@ -203,6 +205,15 @@ const usersData = () => ({
 it("replaces users but keeps the restoring admin, skips the admin's email and moves a colliding id", async () => {
 	const knex = await sqlite();
 	const data = { ...usersData(), ...hostsData([host(5, { owner_user_id: 1 }), host(6, { owner_user_id: 4 })]) };
+	// reset links of the replaced users must not survive: a restored id may now name someone else
+	const tokenRow = (userId, hash) => ({
+		user_id: userId,
+		purpose: "reset",
+		token_hash: hash.repeat(64),
+		created_on: "2026-11-27 10:00:00",
+		expires_on: "2026-11-27 11:00:00",
+	});
+	await knex("npmpro_password_token").insert([tokenRow(1, "a"), tokenRow(2, "b")]);
 	const result = await replaceTypes({
 		knex,
 		data,
@@ -211,6 +222,11 @@ it("replaces users but keeps the restoring admin, skips the admin's email and mo
 		box,
 		now: NOW,
 	});
+	assert.deepEqual(
+		(await knex("npmpro_password_token")).map((row) => row.user_id),
+		[1],
+		"the restoring admin keeps the token, the replaced user's token is gone",
+	);
 	const users = await knex("user").orderBy("id");
 	const admin = users.find((row) => row.id === 1);
 	assert.equal(admin.email, "admin@example.com");

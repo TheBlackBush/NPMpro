@@ -462,12 +462,25 @@ it("moves an added user's avatar to the new id and keeps an external one", async
 	}
 });
 
-it("replaces a user in place with the backup's auth rows and a fresh token time; never the admin", async () => {
+it("replaces a user in place with the backup's auth rows, a fresh token time and no reset link; never the admin", async () => {
 	const knex = await open();
 	try {
 		await knex("user").insert({ id: 2, email: "bob@example.com", name: "Old Bob", roles: "[]" });
 		await knex("auth").insert({ id: 2, user_id: 2, type: "password", secret: "old", meta: "{}" });
 		await knex("user_permission").insert({ id: 2, user_id: 2, visibility: "all" });
+		// an open reset link of the replaced user, and one of the admin that the merge leaves alone
+		for (const [userId, hash] of [
+			[2, "a".repeat(64)],
+			[1, "b".repeat(64)],
+		]) {
+			await knex("npmpro_password_token").insert({
+				user_id: userId,
+				purpose: "reset",
+				token_hash: hash,
+				created_on: "2026-11-26 10:00:00",
+				expires_on: "2099-01-01 00:00:00",
+			});
+		}
 		const data = {
 			users: {
 				user: [
@@ -507,6 +520,11 @@ it("replaces a user in place with the backup's auth rows and a fresh token time;
 		assert.deepEqual(
 			(await knex("user_permission").where({ user_id: 2 })).map((row) => row.visibility),
 			["user"],
+		);
+		assert.deepEqual(
+			(await knex("npmpro_password_token")).map((row) => row.user_id),
+			[1],
+			"the reset links of the replaced user went with its old password",
 		);
 		const admin = await knex("user").where({ id: 1 }).first();
 		assert.equal(admin.name, "Admin");

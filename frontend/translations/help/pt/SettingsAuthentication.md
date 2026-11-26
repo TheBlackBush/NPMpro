@@ -23,6 +23,7 @@ O botão na página de início de sessão: **Nome apresentado** (o texto depois 
 - **Exigir email verificado**: recusa utilizadores cujo fornecedor não verificou o email. Predefinição: ativado. Variável: `OIDC_REQUIRE_VERIFIED_EMAIL`.
 - **Ignorar dois fatores após OIDC**: confia na verificação multifator do próprio fornecedor. Predefinição: desativado. Variável: `OIDC_SKIP_MFA`.
 - **Desativar início de sessão com palavra-passe**: só o OIDC pode iniciar sessão. Só o pode ativar a partir de uma sessão iniciada com OIDC. Variável: `OIDC_DISABLE_PASSWORD`; para restaurar o início de sessão com palavra-passe defina-a como `false` e recrie o contentor.
+- **Permitir a redefinição da palavra-passe por e-mail**: aparece depois de o servidor de correio estar configurado em Definições, Notificações. Os utilizadores podem então definir uma nova palavra-passe através de uma ligação enviada para o seu endereço, e é enviado um aviso após cada redefinição. Precisa do URL público dessas mesmas definições. Predefinição: desativado. Variável: `PASSWORD_RESET`. A redefinição pela linha de comandos continua a funcionar.
 
 ### Novos utilizadores
 

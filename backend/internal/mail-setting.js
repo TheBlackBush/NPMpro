@@ -14,12 +14,14 @@ import {
 } from "../lib/mail/settings-rules.js";
 import { checkSmtpTarget } from "../lib/mail/smtp-target.js";
 import { MailError } from "../lib/mail/transport.js";
+import { getOidcConfig } from "../lib/oidc-config.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
 import userModel from "../models/user.js";
 import internalAuditLog from "./audit-log.js";
 import internalMail from "./mail.js";
+import internalPasswordToken from "./password-token.js";
 
 const NAMES = { email: "Email", notifications: "Notifications" };
 const TARGET_KEYS = ["host", "port", "security", "username"];
@@ -121,6 +123,9 @@ const blockedHost = (host) =>
 const targetError = (err, host) =>
 	err.code === "EBLOCKED" ? blockedHost(host) : new errs.ValidationError(err.message, err.message_i18n);
 
+const resetNeedsPublicUrl = () =>
+	new errs.ValidationError("Password reset by mail needs the public URL", "error.reset-needs-public-url");
+
 const audit = (access, action, meta) => internalAuditLog.add(access, { action, object_type: "setting", meta });
 
 const internalMailSetting = {
@@ -160,6 +165,14 @@ const internalMailSetting = {
 			}
 		}
 
+		// switching reset on needs the address its links point at; a stored true kept by a save is not checked again
+		if (
+			patch.allow_password_reset === true &&
+			config.values.allow_password_reset !== true &&
+			!normalizePublicUrl((await getNotificationsConfig()).values.public_url)
+		)
+			throw resetNeedsPublicUrl();
+
 		// the target is resolved and checked at a save that moves it
 		if (changed.some((key) => TARGET_KEYS.includes(key))) {
 			const target = { ...config.values, ...patch };
@@ -174,6 +187,10 @@ const internalMailSetting = {
 
 		await saveStored("email", JSON.parse(JSON.stringify(next)));
 		warnedSecret = false;
+		// switching reset off is an emergency stop: the links still out must not come back when it is switched on
+		if (patch.allow_password_reset === false && config.values.allow_password_reset === true) {
+			await internalPasswordToken.removePurpose("reset");
+		}
 		await audit(access, "updated", { id: "email", changed });
 		return internalMailSetting.getEmail(access);
 	},
@@ -240,5 +257,24 @@ const internalMailSetting = {
 	},
 };
 
-export { getEmailConfig, getNotificationsConfig, reloadMailSettings, useMailSettings };
+/**
+ * Whether a reset by mail is offered: mail configured, a valid public URL, the switch on and password sign-in not turned
+ * off by OIDC. Every reset route answers as if no account exists while this is false.
+ *
+ * @param   {Object}  [oidc]  the result of getOidcConfig() when the caller has it already
+ * @returns {Promise<boolean>}
+ */
+const resetOffered = async (oidc) => {
+	// the cheap checks first (this answers the public, polled /api): the switch from the row or the env, without the
+	// password (no decrypt), then the public URL, then password sign-in, and the mail server last
+	const { password: _sealed, ...stored } = await readStored("email");
+	const { values: email } = mergeEmail(stored, process.env);
+	if (email.allow_password_reset !== true) return false;
+	if (!normalizePublicUrl((await getNotificationsConfig()).values.public_url)) return false;
+	const cfg = oidc ?? (await getOidcConfig());
+	if (cfg.active && cfg.values.disable_password) return false;
+	return isConfigured(email);
+};
+
+export { getEmailConfig, getNotificationsConfig, reloadMailSettings, resetOffered, useMailSettings };
 export default internalMailSetting;

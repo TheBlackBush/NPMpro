@@ -13,6 +13,7 @@ import userPermissionModel from "../models/user_permission.js";
 import internalApiToken from "./api-token.js";
 import internalAuditLog from "./audit-log.js";
 import { createOidcIdentity } from "./oidc-identity.js";
+import internalPasswordToken from "./password-token.js";
 import internalToken from "./token.js";
 
 const oidcIdentity = createOidcIdentity({
@@ -20,6 +21,27 @@ const oidcIdentity = createOidcIdentity({
 	audit: (row) => auditLogModel.query().insert(row),
 	tryBeginWrite: maintenance.tryBeginWrite,
 });
+
+// The one write of a password: the auth row, the end of every older session, and the end of the reset links and
+// invitations that are still out. setPassword and setPasswordByReset share it.
+const writePassword = async (trx, userId, type, secret) => {
+	const existing_auth = await authModel.query(trx).where("user_id", userId).andWhere("type", type).first();
+
+	if (existing_auth) {
+		await authModel.query(trx).where("user_id", userId).andWhere("type", type).patch({
+			type, // This is required for the model to encrypt on save
+			secret,
+		});
+	} else {
+		await authModel.query(trx).insert({ user_id: userId, type, secret, meta: {} });
+	}
+
+	await userModel
+		.query(trx)
+		.where("id", userId)
+		.patch({ npmpro_token_valid_after: Math.floor(Date.now() / 1000) });
+	await internalPasswordToken.removeForUser(trx, userId);
+};
 
 const internalUser = {
 	/**
@@ -176,7 +198,12 @@ const internalUser = {
 
 		if (data.is_disabled) data.npmpro_token_valid_after = Math.floor(Date.now() / 1000);
 
-		await userModel.query().findById(existingUser.id).patch(data);
+		// a reset link went to the old address, and enabling the user again must not bring an old link back
+		const endsLinks = data.is_disabled || (data.email !== undefined && data.email !== existingUser.email);
+		await userModel.transaction(async (trx) => {
+			await userModel.query(trx).findById(existingUser.id).patch(data);
+			if (endsLinks) await internalPasswordToken.removeForUser(trx, existingUser.id);
+		});
 		const user = await internalUser.get(access, { id: data.id });
 
 		await internalAuditLog.add(access, {
@@ -252,6 +279,7 @@ const internalUser = {
 			await authModel.query(trx).where("user_id", user.id).delete();
 			await userPermissionModel.query(trx).where("user_id", user.id).delete();
 			await internalApiToken.deleteForUser(trx, user.id);
+			await internalPasswordToken.removeForUser(trx, user.id);
 			await userModel.query(trx).deleteById(user.id);
 		});
 		await internalUser.deleteAvatarFiles(user.id);
@@ -292,6 +320,20 @@ const internalUser = {
 	},
 
 	/**
+	 * The password write of a reset link: the same transaction body as setPassword, without the current-password check
+	 * (the link is the proof). Run it inside the transaction of the token's use, so a failed write leaves the link valid.
+	 *
+	 * @param  {Number}  userId
+	 * @param  {String}  secret
+	 * @param  {Object}  [trx]  the open transaction; without it the write has its own
+	 * @return {Promise}
+	 */
+	setPasswordByReset: (userId, secret, trx) =>
+		trx
+			? writePassword(trx, userId, "password", secret)
+			: userModel.transaction((own) => writePassword(own, userId, "password", secret)),
+
+	/**
 	 * @param  {Access}  access
 	 * @param  {Object}  data
 	 * @param  {Integer} data.id
@@ -314,32 +356,7 @@ const internalUser = {
 			});
 		}
 
-		await userModel.transaction(async (trx) => {
-			const existing_auth = await authModel
-				.query(trx)
-				.where("user_id", user.id)
-				.andWhere("type", data.type)
-				.first();
-
-			if (existing_auth) {
-				await authModel.query(trx).where("user_id", user.id).andWhere("type", data.type).patch({
-					type: data.type, // This is required for the model to encrypt on save
-					secret: data.secret,
-				});
-			} else {
-				await authModel.query(trx).insert({
-					user_id: user.id,
-					type: data.type,
-					secret: data.secret,
-					meta: {},
-				});
-			}
-
-			await userModel
-				.query(trx)
-				.where("id", user.id)
-				.patch({ npmpro_token_valid_after: Math.floor(Date.now() / 1000) });
-		});
+		await userModel.transaction((trx) => writePassword(trx, user.id, data.type, data.secret));
 
 		await internalAuditLog.add(access, {
 			action: "updated",

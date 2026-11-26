@@ -130,6 +130,47 @@ for (const [name, label] of [
 			assert.equal((await knex("certificate").first()).npmpro_valid_from, null);
 		});
 
+		it("creates the password token table: a unique hash, a 45 character address and tokens that go with their user", async () => {
+			const { knex } = ctx;
+			const [id] = await knex("user")
+				.insert({
+					created_on: NOW,
+					modified_on: NOW,
+					name: "u",
+					nickname: "u",
+					email: "token@example.com",
+					roles: "[]",
+					avatar: "",
+				})
+				.returning("id");
+			const userId = typeof id === "object" ? id.id : id;
+			const row = {
+				user_id: userId,
+				purpose: "reset",
+				token_hash: "a".repeat(64),
+				created_on: NOW,
+				expires_on: NOW,
+				requested_ip: "2001:db8:0000:0000:0000:0000:0000:0001".padEnd(39, "0"),
+			};
+			await knex("npmpro_password_token").insert(row);
+			await assert.rejects(knex("npmpro_password_token").insert(row));
+			await assert.rejects(
+				knex("npmpro_password_token").insert({
+					...row,
+					token_hash: "b".repeat(64),
+					requested_ip: "x".repeat(46),
+				}),
+			);
+			await assert.rejects(
+				knex("npmpro_password_token").insert({ ...row, token_hash: "c".repeat(64), user_id: 987654 }),
+			);
+			assert.equal((await knex("npmpro_password_token").first()).used_on, null);
+			const index = await indexColumns(knex, name, "npmpro_password_token", "npmpro_password_token_user");
+			assert.deepEqual(index, ["user_id"]);
+			await knex("user").where({ id: userId }).del();
+			assert.equal(Number((await knex("npmpro_password_token").count({ count: "*" }))[0].count), 0);
+		});
+
 		it("runs the state store: transitions, a racing insert, reminders, clearMatching and prune", async () => {
 			const { knex } = ctx;
 			await knex("npmpro_notification_state").delete();

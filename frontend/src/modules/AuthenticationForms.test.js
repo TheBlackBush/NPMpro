@@ -7,6 +7,8 @@ import {
 	authenticationPayload,
 	authenticationValidate,
 	authenticationValues,
+	passwordResetPayload,
+	passwordResetState,
 } from "./AuthenticationForms.js";
 import { fieldPaths } from "./HookForm.js";
 import { camel } from "./Oidc.js";
@@ -172,4 +174,36 @@ it("sends the settings as before: the button, the new-user defaults, no empty se
 	const picked = authenticationPayload({ ...values, buttonIcon: "lock", clientSecret: "s3cret" }, DATA);
 	assert.deepEqual(picked.button.icon, { type: "builtin", name: "lock" });
 	assert.equal(picked.clientSecret, "s3cret");
+});
+
+const MAIL = { configured: true, allowPasswordReset: false, locked: [] };
+
+it("shows the reset line only when mail is configured", () => {
+	assert.equal(passwordResetState({ ...MAIL, configured: false }, { publicUrl: "https://a.example" }).shown, false);
+	assert.equal(passwordResetState(undefined, undefined).shown, false);
+	assert.equal(passwordResetState(MAIL, { publicUrl: "https://a.example" }).shown, true);
+});
+
+it("needs the public URL to switch the reset on, but not to keep it on", () => {
+	assert.equal(passwordResetState(MAIL, { publicUrl: "  " }).needsUrl, true);
+	assert.equal(passwordResetState(MAIL, { publicUrl: "https://a.example" }).needsUrl, false);
+	assert.equal(passwordResetState({ ...MAIL, allowPasswordReset: true }, { publicUrl: "" }).needsUrl, false);
+});
+
+it("treats a public URL the server would refuse as not set", () => {
+	assert.equal(passwordResetState(MAIL, { publicUrl: "http://a.example" }).needsUrl, true);
+	assert.equal(passwordResetState(MAIL, { publicUrl: "https://a.example/path" }).needsUrl, true);
+	assert.equal(passwordResetState(MAIL, { publicUrl: "https://a.example" }).needsUrl, false);
+});
+
+it("reads the environment lock of the reset switch", () => {
+	assert.equal(passwordResetState({ ...MAIL, locked: ["allow_password_reset"] }, {}).locked, true);
+	assert.equal(passwordResetState(MAIL, {}).locked, false);
+});
+
+it("saves the reset switch only when it changed, is shown and is not locked", () => {
+	assert.deepEqual(passwordResetPayload(true, MAIL), { allowPasswordReset: true });
+	assert.equal(passwordResetPayload(false, MAIL), null);
+	assert.equal(passwordResetPayload(true, { ...MAIL, configured: false }), null);
+	assert.equal(passwordResetPayload(true, { ...MAIL, locked: ["allow_password_reset"] }), null);
 });

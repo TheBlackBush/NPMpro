@@ -82,7 +82,7 @@
 		},
 		{
 			"name": "public",
-			"description": "Routes that need no sign-in: the health check, the first administrator of a new instance, and the OIDC sign-in redirect, callback and icon."
+			"description": "Routes that need no sign-in: the health check, the first administrator of a new instance, the OIDC sign-in redirect, callback and icon, and the password reset by mail (request, check and confirm)."
 		},
 		{
 			"name": "version",
@@ -771,6 +771,21 @@
 			},
 			"put": {
 				"$ref": "./paths/settings/settingID/put.json"
+			}
+		},
+		"/password-reset": {
+			"post": {
+				"$ref": "./paths/password-reset/post.json"
+			}
+		},
+		"/password-reset/check": {
+			"post": {
+				"$ref": "./paths/password-reset/check/post.json"
+			}
+		},
+		"/password-reset/confirm": {
+			"post": {
+				"$ref": "./paths/password-reset/confirm/post.json"
 			}
 		},
 		"/tokens": {

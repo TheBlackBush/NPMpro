@@ -3,6 +3,7 @@
  * fields, the validate function, the fields whose message follows another field, and the request. Pure, so node --test
  * checks them without a DOM.
  */
+import { normalizePublicUrl } from "./NotificationForms.js";
 import {
 	DEFAULT_OIDC_COLOR,
 	isOidcColor,
@@ -162,4 +163,35 @@ export const authenticationPayload = (values, data) => {
 		permissions: autoCreatePermissions,
 	};
 	return oidcSettingsPayload({ ...data, ...rest, autoCreate, button });
+};
+
+/**
+ * The "Allow password reset by mail" line: shown once mail is configured; the switch is off-limits while the public URL
+ * is not a valid one (as the backend reads it) (a reset link needs it) unless it is already on, and while the environment sets it
+ *
+ * @param   {Object|undefined}  email          GET /settings/email (camelized)
+ * @param   {Object|undefined}  notifications  GET /settings/notifications
+ * @returns {{ shown: boolean, value: boolean, locked: boolean, needsUrl: boolean }}
+ */
+export const passwordResetState = (email, notifications) => {
+	const value = Boolean(email?.allowPasswordReset);
+	return {
+		shown: Boolean(email?.configured),
+		value,
+		locked: (email?.locked ?? []).includes("allow_password_reset"),
+		needsUrl: !value && normalizePublicUrl(String(notifications?.publicUrl ?? "").trim()) === null,
+	};
+};
+
+/**
+ * What a save changes about the reset switch (it saves through the mail settings, not the OIDC settings); null when
+ * nothing changes, the line is hidden or the environment sets it
+ *
+ * @param   {boolean}           value  the form's switch
+ * @param   {Object|undefined}  email  GET /settings/email
+ * @returns {{ allowPasswordReset: boolean }|null}
+ */
+export const passwordResetPayload = (value, email) => {
+	const { shown, value: saved, locked } = passwordResetState(email);
+	return shown && !locked && value !== saved ? { allowPasswordReset: value } : null;
 };

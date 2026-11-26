@@ -16,6 +16,28 @@ Signing in to the NPMpro web UI: passwords, two-factor authentication and OIDC. 
 
 Every user signs in with an email address and a password. Two-factor authentication (TOTP, with one-time backup codes) can be turned on for each account in the user menu (Account window, **MFA** part). When password sign-in is off (OIDC only), the **Password** part still changes the password and says that it is used again once password sign-in is turned back on. If you are locked out, the password and MFA can be reset from the command line (SQLite only): `docker exec -it npmpro password-reset.js USER_EMAIL [--disable-mfa]`, the new password is read from stdin. See [Usage](Usage#password-and-mfa-reset). The session cookie is signed with `COOKIE_SECRET`, see [Configuration](Configuration#cookie_secret).
 
+## Password reset by mail
+
+A user who forgot the password can set a new one from a link sent to their address. It is off by default, because whoever controls a user's mailbox can take over the account: turn it on only when you accept that risk. Under Settings, Authentication, the switch **Allow password reset by mail** (in the sign-in rules) turns it on. `PASSWORD_RESET=true` or `false` sets it from the environment and locks the switch.
+
+It is offered only when all of these are true:
+- Mail is set up under Settings, Notifications (see [Notifications](Notifications)).
+- A public URL is set there (or with `PUBLIC_URL`): an `https://` address with no path, the link is built from it.
+- The switch is on.
+- Password sign-in is not turned off by OIDC (see [OIDC login](#oidc-login)).
+
+Only then does the sign-in page show **Forgot password?** under the sign-in button. The page asks for an address and always answers that a mail is on its way if an account exists, so it cannot be used to find out which addresses have accounts (see [Security](Security#password-reset-by-mail)).
+
+- The mail holds a button with a link to `/reset-password`. The one-time token is in the part of the link after `#` (the fragment), so it is not sent to the server with the page address and is not written to the logs. The link works once and for 30 minutes.
+- A newer request, a password change (also from the command line or by a backup merge that replaces the user), a change of the user's email address, disabling the user, turning the reset off or a used link makes an older link invalid. Enabling the user or turning the reset on again brings no old link back. Only a hash of the token is stored.
+- After a reset every session is signed out. Two-factor sign-in stays as it is, and API tokens keep working.
+- A notice mail "Your NPMpro password was reset" goes out after every reset made with the link, with the time, the address the request came from and the number of API tokens that are still active (see [Notifications](Notifications#account-mails)). If you did not ask for the reset, sign in as an administrator, revoke the tokens and change the password.
+- Every user can reset by mail, the only administrator included. A user without a password (OIDC only) and a disabled user get no mail.
+- Limits: 5 requests per 15 minutes from one IP address (an IPv6 address counts per /48), across the three reset routes, and at most 3 mails per hour to one address. A request over the IP limit gets 429 (Too many requests), the same for every address. A request over the address limit gets the same answer as any other and no mail.
+- If the mail cannot be sent, nothing else happens: the user sees the same answer and the administrator finds a line in the audit log.
+
+When the switch is off, or the mail server or public URL is missing, the reset is not offered and the command line reset below still works, so it stays the way to recover an instance nobody can reach by mail.
+
 ## OIDC login
 
 OIDC is set up under Settings, Authentication in the web UI (administrators only). Enter the issuer URL, client ID, client secret and redirect domain, register the shown callback URL at your provider, then enable it. The sign-in page then shows a button with the name, colour and icon you choose.

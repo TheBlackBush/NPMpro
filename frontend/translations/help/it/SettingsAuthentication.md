@@ -23,6 +23,7 @@ Il pulsante nella pagina di accesso: **Nome visualizzato** (il testo dopo "Acced
 - **Richiedi un'e-mail verificata**: rifiuta gli utenti la cui e-mail non è stata verificata dal provider. Predefinito: attivo. Variabile: `OIDC_REQUIRE_VERIFIED_EMAIL`.
 - **Salta il secondo fattore dopo OIDC**: si fida del controllo multifattore del provider. Predefinito: disattivato. Variabile: `OIDC_SKIP_MFA`.
 - **Disattiva accesso con password**: può accedere solo OIDC. Puoi attivarlo solo da una sessione avviata con OIDC. Variabile: `OIDC_DISABLE_PASSWORD`; per ripristinare l'accesso con password impostala su `false` e ricrea il container.
+- **Consenti il reset della password via mail**: compare quando il server di posta è configurato in Impostazioni, Notifiche. Gli utenti possono allora impostare una nuova password tramite un link inviato al loro indirizzo, e dopo ogni reset viene inviato un avviso. Richiede l'URL pubblico di quelle stesse impostazioni. Predefinito: disattivato. Variabile: `PASSWORD_RESET`. Il reset da riga di comando continua a funzionare.
 
 ### Nuovi utenti
 

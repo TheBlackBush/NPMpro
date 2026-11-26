@@ -38,6 +38,8 @@
 		"/api-reference",
 		"/api-reference#proxy-hosts/post-nginx-proxy-hosts",
 		"/login",
+		"/forgot-password",
+		"/reset-password",
 		"/no-such-page",
 		"/settings/nope",
 		"/monitoring/nope"

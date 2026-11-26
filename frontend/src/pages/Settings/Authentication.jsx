@@ -3,9 +3,21 @@ import { useEffect, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { ApiErrorContent, ErrorAlert, HookForm, StatusBadge, useAppForm } from "src/components";
 import { Badge } from "src/components/ui/badge";
-import { useOidcSettings, useSaveOidcSettings } from "src/hooks";
+import {
+	useEmailSettings,
+	useNotificationSettings,
+	useOidcSettings,
+	useSaveEmailSettings,
+	useSaveOidcSettings,
+} from "src/hooks";
 import { T } from "src/locale";
-import { authenticationPayload, authenticationValidate, authenticationValues } from "src/modules/AuthenticationForms";
+import {
+	authenticationPayload,
+	authenticationValidate,
+	authenticationValues,
+	passwordResetPayload,
+	passwordResetState,
+} from "src/modules/AuthenticationForms";
 import { camel, parseDomains } from "src/modules/Oidc";
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
@@ -20,7 +32,7 @@ import { SettingsHeading } from "./SettingsHeading";
 import { SettingsLead } from "./SettingsLead";
 import { StatusAlert } from "./StatusAlert";
 
-const RULE_FIELDS = ["requireVerifiedEmail", "skipMfa", "disablePassword"];
+const RULE_FIELDS = ["requireVerifiedEmail", "skipMfa", "disablePassword", "allowPasswordReset"];
 const NEW_USER_FIELDS = ["autoCreateEnabled", "autoCreateDomains"];
 
 function Heading() {
@@ -80,7 +92,7 @@ function NewUsersSummary() {
 const PERMISSION_FIELDS = ["autoCreatePermissions"];
 
 // The rarely changed groups as collapsed cards; a refused save opens the one holding the error
-function AuthGroups({ data, isLocked }) {
+function AuthGroups({ data, isLocked, email, notifications }) {
 	return (
 		<>
 			<SettingsCard
@@ -92,7 +104,7 @@ function AuthGroups({ data, isLocked }) {
 				info={<T id="settings.authentication.rules.description" />}
 				actions={<RulesSummary isLocked={isLocked} />}
 			>
-				<SignInRules data={data} isLocked={isLocked} />
+				<SignInRules data={data} isLocked={isLocked} email={email} notifications={notifications} />
 			</SettingsCard>
 			<SettingsCard
 				id="auth-new-users"
@@ -126,6 +138,7 @@ const FIELD_LABELS = {
 	redirectDomain: "settings.authentication.redirect-domain",
 	scopes: "settings.authentication.scopes",
 	disablePassword: "settings.authentication.disable-password",
+	allowPasswordReset: "settings.authentication.allow-password-reset",
 	buttonLabel: "settings.authentication.button.label",
 	buttonColor: "settings.authentication.button.color",
 	autoCreateDomains: "settings.authentication.allowed-domains",
@@ -135,13 +148,14 @@ const FIELD_LABELS = {
  * The form of the loaded settings: the saved settings are its values, also after a save or a refetch (new settings
  * replace every field); the secret field is emptied after a save, a saved secret is never shown
  */
-function AuthenticationForm({ data }) {
+function AuthenticationForm({ data, email, notifications }) {
 	const { mutateAsync: save } = useSaveOidcSettings();
+	const { mutateAsync: saveEmail } = useSaveEmailSettings();
 	const [errorMsg, setErrorMsg] = useState(null);
 	const errorRef = useRef(null);
 	const locked = new Set((data.locked ?? []).map(camel));
 	const isLocked = (key) => locked.has(key);
-	const saved = authenticationValues(data);
+	const saved = { ...authenticationValues(data), allowPasswordReset: passwordResetState(email).value };
 	const methods = useAppForm({
 		defaultValues: saved,
 		values: saved,
@@ -158,7 +172,11 @@ function AuthenticationForm({ data }) {
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
 		try {
-			await save(authenticationPayload(values, data));
+			// the reset switch belongs to the mail settings: it saves through them first (the likelier refusal), so a refusal leaves nothing half saved
+			const { allowPasswordReset, ...oidcValues } = values;
+			const resetBody = passwordResetPayload(allowPasswordReset, email);
+			if (resetBody) await saveEmail(resetBody);
+			await save(authenticationPayload(oidcValues, data));
 			methods.setValue("clientSecret", "", { shouldDirty: true });
 			showObjectSuccess("setting", "saved");
 		} catch (err) {
@@ -186,7 +204,7 @@ function AuthenticationForm({ data }) {
 			) : null}
 			<ProviderFields data={data} isLocked={isLocked} />
 			<ButtonFields data={data} />
-			<AuthGroups data={data} isLocked={isLocked} />
+			<AuthGroups data={data} isLocked={isLocked} email={email} notifications={notifications} />
 			<SaveBar labels={FIELD_LABELS} />
 		</HookForm>
 	);
@@ -194,10 +212,17 @@ function AuthenticationForm({ data }) {
 
 export default function Authentication() {
 	const { data, isPending, error } = useOidcSettings();
+	// the reset line needs the mail settings: when they fail to load the line is simply not shown
+	const { data: email, isPending: emailPending } = useEmailSettings({ retry: false });
+	const { data: notifications, isPending: notificationsPending } = useNotificationSettings({ retry: false });
 
 	return (
-		<SettingsForm titleId="settings.authentication" error={error} isPending={isPending}>
-			{() => <AuthenticationForm data={data} />}
+		<SettingsForm
+			titleId="settings.authentication"
+			error={error}
+			isPending={isPending || emailPending || notificationsPending}
+		>
+			{() => <AuthenticationForm data={data} email={email} notifications={notifications} />}
 		</SettingsForm>
 	);
 }

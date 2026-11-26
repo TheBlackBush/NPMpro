@@ -23,6 +23,7 @@ De knop op de inlogpagina: **Weergavenaam** (de tekst na „Inloggen met”), **
 - **Geverifieerd e-mailadres vereisen**: weigert gebruikers van wie de provider het e-mailadres niet heeft geverifieerd. Standaard: aan. Variabele: `OIDC_REQUIRE_VERIFIED_EMAIL`.
 - **Tweestapsverificatie na OIDC overslaan**: vertrouwt op de eigen multifactorcontrole van de provider. Standaard: uit. Variabele: `OIDC_SKIP_MFA`.
 - **Inloggen met wachtwoord uitschakelen**: alleen OIDC kan inloggen. U kunt het alleen aanzetten vanuit een sessie die met OIDC is ingelogd. Variabele: `OIDC_DISABLE_PASSWORD`; om inloggen met wachtwoord te herstellen zet u haar op `false` en maakt u de container opnieuw aan.
+- **Wachtwoord opnieuw instellen via mail toestaan**: verschijnt zodra de mailserver is ingesteld bij Instellingen, Meldingen. Gebruikers kunnen dan een nieuw wachtwoord instellen via een link die naar hun adres wordt gestuurd, en na elke herstelactie wordt een melding verstuurd. Daarvoor is de openbare URL op dezelfde plek nodig. Standaard: uit. Variabele: `PASSWORD_RESET`. Opnieuw instellen via de opdrachtregel blijft werken.
 
 ### Nieuwe gebruikers
 

@@ -2,5 +2,15 @@
 	"test.subject": "Email di prova",
 	"test.intro": "Questa è un'email di prova inviata da NPMpro su {instance}.",
 	"test.works": "Se l'hai ricevuta, l'invio delle email funziona.",
-	"footer.sent": "Inviata da NPMpro su {instance}."
+	"footer.sent": "Inviata da NPMpro su {instance}.",
+	"reset-link.subject": "Reimposta la tua password NPMpro",
+	"reset-link.intro": "Qualcuno ha chiesto di reimpostare la password del tuo account NPMpro su {instance}.",
+	"reset-link.expires": "Usa il pulsante qui sotto per scegliere una nuova password. Il link funziona una sola volta e scade tra 30 minuti.",
+	"reset-link.ignore": "Se non l'hai chiesto tu, ignora questa email: la tua password resta invariata.",
+	"reset-link.button": "Scegli una nuova password",
+	"password-reset.subject": "La tua password NPMpro è stata reimpostata",
+	"password-reset.done": "La password del tuo account su {instance} è stata reimpostata il {time} (UTC) dall'indirizzo {ip}.",
+	"password-reset.sessions": "Tutte le sessioni sono state chiuse. L'accesso a due fattori non è cambiato.",
+	"password-reset.tokens.one": "{count} token API resta attivo; revocalo in Impostazioni, Accesso API se non sei stato tu.",
+	"password-reset.tokens.other": "{count} token API restano attivi; revocali in Impostazioni, Accesso API se non sei stato tu."
 }

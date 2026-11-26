@@ -24,5 +24,5 @@
 			}
 		}
 	},
-	"description": "Returns `OK` with whether the first administrator exists (`setup`), whether password sign-in is on, the warning days for expiring certificates (`cert_warning_days`), the OIDC sign-in button and, while a database move runs, `maintenance`. The sign-in page and the web interface poll it. Both `/api` and `/api/` answer.\n\nNeeds: nothing (public)"
+	"description": "Returns `OK` with whether the first administrator exists (`setup`), whether password sign-in is on, the warning days for expiring certificates (`cert_warning_days`), the OIDC sign-in button, `password_reset` (only while a reset by mail is offered) and, while a database move runs, `maintenance`. The sign-in page and the web interface poll it. Both `/api` and `/api/` answer.\n\nNeeds: nothing (public)"
 }

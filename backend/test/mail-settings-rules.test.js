@@ -31,6 +31,7 @@ it("names every env key and the 13 languages", () => {
 		from_address: "SMTP_FROM",
 		from_name: "SMTP_FROM_NAME",
 		reply_to: "SMTP_REPLY_TO",
+		allow_password_reset: "PASSWORD_RESET",
 	});
 	assert.deepEqual(NOTIFICATION_ENV_KEYS, { public_url: "PUBLIC_URL", default_language: "MAIL_LANGUAGE" });
 	assert.equal(MAIL_LANGUAGES.length, 13);
@@ -259,4 +260,23 @@ it("checks the merged values: an env sender with CR and LF is an error, a kept l
 		default_language: "settings.notifications.default-language.invalid",
 	});
 	assert.deepEqual(validateNotificationValues(mergeNotifications({}, {}).values), { errors: {} });
+});
+
+it("allow_password_reset is off by default, on only for the word true, and must be a boolean", () => {
+	assert.equal(mergeEmail({}, {}).values.allow_password_reset, false);
+	assert.equal(mergeEmail({ allow_password_reset: true }, {}).values.allow_password_reset, true);
+	for (const raw of ["1", "yes", "TRUE", "false"]) {
+		assert.equal(
+			mergeEmail({ allow_password_reset: true }, { PASSWORD_RESET: raw }).values.allow_password_reset,
+			false,
+			raw,
+		);
+	}
+	const on = mergeEmail({}, { PASSWORD_RESET: "true" });
+	assert.equal(on.values.allow_password_reset, true);
+	assert.deepEqual(on.locked, ["allow_password_reset"]);
+	assert.deepEqual(okEmail({ allow_password_reset: "true" }), {
+		allow_password_reset: "settings.email.allow-password-reset.invalid",
+	});
+	assert.deepEqual(okEmail({ allow_password_reset: false }), {});
 });

@@ -2,5 +2,15 @@
 	"test.subject": "Testowy e-mail",
 	"test.intro": "To jest testowy e-mail z NPMpro na {instance}.",
 	"test.works": "Jeśli ta wiadomość do Ciebie dotarła, wysyłanie e-maili działa.",
-	"footer.sent": "Wysłano z NPMpro na {instance}."
+	"footer.sent": "Wysłano z NPMpro na {instance}.",
+	"reset-link.subject": "Zresetuj hasło do NPMpro",
+	"reset-link.intro": "Ktoś poprosił o zresetowanie hasła do Twojego konta NPMpro na {instance}.",
+	"reset-link.expires": "Użyj poniższego przycisku, aby wybrać nowe hasło. Link działa tylko raz i wygasa po 30 minutach.",
+	"reset-link.ignore": "Jeśli to nie Ty, zignoruj tę wiadomość: Twoje hasło pozostaje bez zmian.",
+	"reset-link.button": "Wybierz nowe hasło",
+	"password-reset.subject": "Twoje hasło do NPMpro zostało zresetowane",
+	"password-reset.done": "Hasło do Twojego konta na {instance} zostało zresetowane {time} (UTC) z adresu {ip}.",
+	"password-reset.sessions": "Wszystkie sesje zostały wylogowane. Logowanie dwuskładnikowe pozostaje bez zmian.",
+	"password-reset.tokens.one": "{count} token API pozostaje aktywny; jeśli to nie Ty, unieważnij go w Ustawieniach, Dostęp do API.",
+	"password-reset.tokens.other": "Aktywnych tokenów API: {count}; jeśli to nie Ty, unieważnij je w Ustawieniach, Dostęp do API."
 }

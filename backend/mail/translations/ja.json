@@ -2,5 +2,15 @@
 	"test.subject": "テストメール",
 	"test.intro": "これは {instance} の NPMpro から送信したテストメールです。",
 	"test.works": "このメールが届いていれば、メール送信は正常に動作しています。",
-	"footer.sent": "{instance} の NPMpro から送信されました。"
+	"footer.sent": "{instance} の NPMpro から送信されました。",
+	"reset-link.subject": "NPMpro のパスワードをリセット",
+	"reset-link.intro": "{instance} の NPMpro アカウントのパスワードのリセットが要求されました。",
+	"reset-link.expires": "下のボタンから新しいパスワードを設定してください。このリンクは 1 回だけ使え、30 分で期限切れになります。",
+	"reset-link.ignore": "心当たりがない場合はこのメールを無視してください。パスワードは変更されません。",
+	"reset-link.button": "新しいパスワードを設定",
+	"password-reset.subject": "NPMpro のパスワードがリセットされました",
+	"password-reset.done": "{instance} のアカウントのパスワードが {time} (UTC) にアドレス {ip} からリセットされました。",
+	"password-reset.sessions": "すべてのセッションがサインアウトされました。2 要素認証でのサインインは変わりません。",
+	"password-reset.tokens.one": "API トークン {count} 件は引き続き有効です。心当たりがない場合は、設定の API アクセスで取り消してください。",
+	"password-reset.tokens.other": "API トークン {count} 件は引き続き有効です。心当たりがない場合は、設定の API アクセスで取り消してください。"
 }

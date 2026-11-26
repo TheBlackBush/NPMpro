@@ -5,6 +5,7 @@ import { up as createDdnsTables } from "../../migrations/20261124120000_ddns_rec
 import { up as addDdnsHostColumns } from "../../migrations/20261125120000_ddns_host_records.js";
 import { up as addCertificateValidFrom } from "../../migrations/20261126110000_certificate_valid_from.js";
 import { up as createNotificationTables } from "../../migrations/20261126120000_notification_tables.js";
+import { up as createPasswordTokens } from "../../migrations/20261127130000_password_tokens.js";
 
 export const createSchema = async (knex) => {
 	const hostTable = (name, extra = () => {}) =>
@@ -127,6 +128,7 @@ export const createSchema = async (knex) => {
 	await addDdnsHostColumns(knex);
 	await addCertificateValidFrom(knex);
 	await createNotificationTables(knex);
+	await createPasswordTokens(knex);
 	await knex.schema.createTable("setting", (t) => {
 		t.string("id").primary();
 		t.string("name").notNull().defaultTo("");

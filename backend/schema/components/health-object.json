@@ -92,6 +92,11 @@
 					}
 				}
 			}
+		},
+		"password_reset": {
+			"type": "boolean",
+			"description": "Present and true only while a password reset by mail is offered: mail is set up, the public URL is set, the allow password reset switch is on and password sign-in is not turned off",
+			"example": true
 		}
 	}
 }

@@ -2,5 +2,15 @@
 	"test.subject": "테스트 이메일",
 	"test.intro": "{instance}의 NPMpro에서 보낸 테스트 이메일입니다.",
 	"test.works": "이 이메일을 받으셨다면 이메일 발송이 정상적으로 작동하는 것입니다.",
-	"footer.sent": "{instance}의 NPMpro에서 보냈습니다."
+	"footer.sent": "{instance}의 NPMpro에서 보냈습니다.",
+	"reset-link.subject": "NPMpro 비밀번호 재설정",
+	"reset-link.intro": "누군가 {instance}의 NPMpro 계정 비밀번호 재설정을 요청했습니다.",
+	"reset-link.expires": "아래 버튼으로 새 비밀번호를 선택하세요. 링크는 한 번만 사용할 수 있으며 30분 후 만료됩니다.",
+	"reset-link.ignore": "요청한 적이 없다면 이 메일을 무시하세요. 비밀번호는 그대로 유지됩니다.",
+	"reset-link.button": "새 비밀번호 선택",
+	"password-reset.subject": "NPMpro 비밀번호가 재설정되었습니다",
+	"password-reset.done": "{instance}의 계정 비밀번호가 {time}(UTC)에 주소 {ip}에서 재설정되었습니다.",
+	"password-reset.sessions": "모든 세션이 로그아웃되었습니다. 2단계 인증 로그인은 변경되지 않습니다.",
+	"password-reset.tokens.one": "API 토큰 {count}개가 계속 활성 상태입니다. 직접 한 일이 아니라면 설정의 API 액세스에서 폐기하세요.",
+	"password-reset.tokens.other": "API 토큰 {count}개가 계속 활성 상태입니다. 직접 한 일이 아니라면 설정의 API 액세스에서 폐기하세요."
 }

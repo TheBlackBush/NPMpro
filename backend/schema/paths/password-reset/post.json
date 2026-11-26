@@ -1,0 +1,47 @@
+{
+	"operationId": "requestPasswordReset",
+	"summary": "Ask for a password reset link",
+	"tags": [
+		"public"
+	],
+	"requestBody": {
+		"description": "Payload",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"email"
+					],
+					"properties": {
+						"email": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 255,
+							"example": "user@example.com",
+							"description": "The email address of the account, not case sensitive"
+						}
+					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"email": "user@example.com"
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"202": {
+			"description": "Accepted; no body"
+		},
+		"429": {
+			"description": "Too many requests from this address"
+		}
+	},
+	"description": "Always answers 202 with no body, whether or not an account exists, mail is set up or a reset is allowed, so the answer shows nothing about the address. When the account exists, has a password, is enabled and a reset by mail is offered, a link that works once for 30 minutes is mailed to it; at most 3 mails per address per hour. 5 requests per address (an IPv6 /48) in 15 minutes for this route and its check and confirm routes together, every request counted; more answers 429.\n\nNeeds: nothing (public)"
+}

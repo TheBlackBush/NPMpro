@@ -64,6 +64,10 @@
 							"description": "The address replies go to; may be empty",
 							"maxLength": 254
 						},
+						"allow_password_reset": {
+							"type": "boolean",
+							"description": "Whether users may reset a forgotten password by mail. Turning it on needs the public URL"
+						},
 						"password": {
 							"type": "string",
 							"maxLength": 1024,
@@ -100,6 +104,7 @@
 								"from_address": "npmpro@example.com",
 								"from_name": "NPMpro",
 								"reply_to": "",
+								"allow_password_reset": false,
 								"password_set": true,
 								"secret_error": false,
 								"locked": [],

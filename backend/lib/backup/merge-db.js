@@ -220,7 +220,10 @@ const mergeTypes = async ({
 				if (key(userId) === key(adminUserId)) throw new Error("A merge never replaces the restoring admin");
 				const avatar = movedAvatar(row.avatar, item.id, userId);
 				await updateRow("user", userId, avatar === null ? row : { ...row, avatar });
-				for (const table of ["auth", "user_permission"]) await trx(table).where({ user_id: userId }).del();
+				// the reset links of the replaced user go with its old password
+				for (const table of ["auth", "user_permission", "npmpro_password_token"]) {
+					await trx(table).where({ user_id: userId }).del();
+				}
 				replacedUserIds.push(userId);
 			}
 			maps.user.set(key(item.id), userId);

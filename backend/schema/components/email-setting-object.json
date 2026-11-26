@@ -11,6 +11,7 @@
 		"from_address",
 		"from_name",
 		"reply_to",
+		"allow_password_reset",
 		"password_set",
 		"secret_error",
 		"locked",
@@ -57,6 +58,10 @@
 		"reply_to": {
 			"type": "string",
 			"description": "The address replies go to; may be empty"
+		},
+		"allow_password_reset": {
+			"type": "boolean",
+			"description": "Whether users may reset a forgotten password by mail. It also needs mail set up and the public URL; turning it on without the public URL is refused. Default: off"
 		},
 		"password_set": {
 			"type": "boolean",
