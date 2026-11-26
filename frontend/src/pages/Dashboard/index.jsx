@@ -14,9 +14,8 @@ import { Link } from "react-router";
 import { ErrorAlert, EventFormatter, HasPermission, Loading, PageHeader, StatusBadge } from "src/components";
 import { Button } from "src/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "src/components/ui/card";
-import { useHostReport, useRecentAuditLogs, useUser } from "src/hooks";
+import { useHostReport, useRecentAuditLogs, useUser, useWarningDays } from "src/hooks";
 import { T } from "src/locale";
-import { EXPIRY_WARNING_DAYS } from "src/modules/Expiry";
 import {
 	ACCESS_LISTS,
 	ADMIN,
@@ -41,6 +40,7 @@ const ERROR_SECTIONS = [
 
 const Dashboard = () => {
 	const { data: hostReport } = useHostReport();
+	const warningDays = useWarningDays();
 	const { data: user } = useUser("me");
 	const isAdmin = Boolean(user?.roles?.includes("admin"));
 	const { data: recentLogs, error: recentError, isPending: recentPending } = useRecentAuditLogs(isAdmin);
@@ -116,17 +116,11 @@ const Dashboard = () => {
 								<div className="flex flex-col items-start gap-1">
 									{expiring > 0 ? (
 										<StatusBadge tone="warning" dot={false} className={wrap}>
-											<T
-												id="dashboard.expiring"
-												data={{ count: expiring, days: EXPIRY_WARNING_DAYS }}
-											/>
+											<T id="dashboard.expiring" data={{ count: expiring, days: warningDays }} />
 										</StatusBadge>
 									) : (
 										<span>
-											<T
-												id="dashboard.expiring"
-												data={{ count: expiring, days: EXPIRY_WARNING_DAYS }}
-											/>
+											<T id="dashboard.expiring" data={{ count: expiring, days: warningDays }} />
 										</span>
 									)}
 									{expired > 0 ? (

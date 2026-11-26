@@ -7,6 +7,21 @@ import { inflateRawSync } from "node:zlib";
 const run = promisify(execFile);
 
 /**
+ * What is wrong with the valid-from date of a certificate row made just now by makeCertificate, null when it is right
+ *
+ * @param   {Object}  row     a certificate row (npmpro_valid_from, expires_on)
+ * @param   {number}  [days]  validity of the certificate
+ * @returns {string|null}
+ */
+const validFromProblem = (row, days = 30) => {
+	if (!row.npmpro_valid_from) return "npmpro_valid_from is not stored";
+	const from = new Date(row.npmpro_valid_from).getTime();
+	if (Math.abs(Date.now() - from) >= 3600 * 1000) return `valid from is not about now: ${row.npmpro_valid_from}`;
+	const lifetime = new Date(row.expires_on).getTime() - from;
+	return Math.abs(lifetime - days * 86400000) < 2000 ? null : `lifetime is not ${days} days: ${lifetime}`;
+};
+
+/**
  * A key and certificate for a domain, made by the real openssl
  *
  * @param   {string}  dir     an existing folder
@@ -301,4 +316,5 @@ export {
 	normalizedCalls,
 	readZip,
 	seedAccount,
+	validFromProblem,
 };

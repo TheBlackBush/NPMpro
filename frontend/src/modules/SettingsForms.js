@@ -105,6 +105,7 @@ export const defaultSitePayload = (values, data) => {
 
 export const RENEWAL = { min: 1, max: 499 };
 export const ECH = { min: 1, max: 24 };
+export const WARNING_DAYS = { min: 1, max: 60 };
 const PROFILE = /^[A-Za-z0-9._-]{0,64}$/u;
 
 const rangeError = (rules, value, { min, max }) => {
@@ -118,6 +119,8 @@ export const certificatesValidate = (rules) => (values) => {
 	const errors = {};
 	const renewal = rangeError(rules, values.renewalInterval, RENEWAL);
 	if (renewal) errors.renewalInterval = renewal;
+	const warning = rangeError(rules, values.warningDays, WARNING_DAYS);
+	if (warning) errors.warningDays = warning;
 	const ech = rangeError(rules, values.echRotationInterval, ECH);
 	if (ech) errors.echRotationInterval = ech;
 	if (!PROFILE.test(values.profile.trim())) {

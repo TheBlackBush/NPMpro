@@ -10,6 +10,7 @@ import { effectiveEnv } from "../lib/runtime-config.js";
 import { global as logger } from "../logger.js";
 import internalAuditLog from "./audit-log.js";
 import internalDdnsRecord, { ddnsStore, recordLock } from "./ddns-record.js";
+import { notify } from "./notify.js";
 
 // The dynamic DNS service: the public IP detector, the engine and the timer, built on first use. The status and
 // the actions of the API (Check now, Update now) and the pause a restore or a database move takes.
@@ -26,6 +27,27 @@ const fetchEcho = async (url, family) => {
 };
 
 let parts = null;
+
+// the notification states of a record after a run's save: failed follows its state, stopped follows its meta; a patch
+// without the field leaves that state alone
+const reportRecordState = async (record, patch) => {
+	// a run that set the record aside (disabled) leaves no state: the save cleared them
+	if (patch.enabled === false) return;
+	const source = { record: { id: record.id, name: record.name, provider: record.provider } };
+	if (patch.state !== undefined) {
+		await notify.reportState("ddns.record_failed", String(record.id), {
+			state: patch.state === "failed" ? "bad" : "ok",
+			source: { ...source, error: patch.state === "failed" ? patch.error : undefined },
+		});
+	}
+	if (patch.meta !== undefined) {
+		const stopped = patch.meta.stopped === true;
+		await notify.reportState("ddns.record_stopped", String(record.id), {
+			state: stopped ? "bad" : "ok",
+			source: { ...source, error: stopped ? patch.error : undefined },
+		});
+	}
+};
 
 const build = () => {
 	const settings = ddnsSettings;
@@ -52,6 +74,7 @@ const build = () => {
 		log: logger,
 		recordLock,
 		runNow: timer.runNow,
+		onState: reportRecordState,
 	});
 	return { publicIp, timer, engine };
 };
@@ -192,6 +215,7 @@ export {
 	pauseDdns,
 	providers,
 	publicAddressOf,
+	reportRecordState,
 	restartDdnsTimer,
 	resumeDdns,
 	updateNow,

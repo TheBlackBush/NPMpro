@@ -7,6 +7,7 @@ const GROUP_KEYS = {
 		"mustStaple",
 		"serverTlsVerify",
 		"renewalInterval",
+		"warningDays",
 		"ocspStapling",
 		"customOcspStapling",
 		"defaultCertificateId",

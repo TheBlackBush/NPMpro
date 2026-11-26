@@ -34,6 +34,7 @@ Beide gelden na de nginx-herlaadactie die het opslaan uitvoert, en beide zetten 
 ### Verlenging
 
 - **Interval voor verlengingscontrole**: 1 tot 499 uur tussen de controles. Een certificaat wordt alleen verlengd als het aan de beurt is. Standaard: 3. Variabele: `CERTBOT_RUN_INTERVAL`. Geldt direct.
+- **Waarschuwen voor verloop**: 1 tot 60 dagen. Een certificaat wordt zoveel dagen voordat het verloopt getoond als binnenkort verlopend (de certificatenlijst, het dashboard), maar hooguit een derde van zijn levensduur, zodat een kortlevend certificaat niet vanaf de eerste dag wordt gemarkeerd. Meldingen gebruiken hetzelfde venster. Standaard: 14. Variabele: `CERT_WARNING_DAYS`. Geldt direct.
 
 ### ECH
 

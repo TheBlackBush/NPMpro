@@ -1,3 +1,4 @@
+import { useWarningDays } from "src/hooks";
 import { T } from "src/locale";
 import { expiryInfo } from "src/modules/Expiry";
 import { ExpiryFormatter } from "./ExpiryFormatter";
@@ -13,18 +14,26 @@ export function certificateProviderTranslation(provider) {
 }
 
 export function CertificateFormatter({ certificate }) {
+	const days = useWarningDays();
 	if (!certificate) {
 		return <T id="no-tls" />;
 	}
+	const validFrom = certificate.npmproValidFrom;
 	const showBadge =
-		certificate.provider !== "mtls" && certificate.expiresOn && expiryInfo(certificate.expiresOn).state !== "ok";
+		certificate.provider !== "mtls" &&
+		certificate.expiresOn &&
+		expiryInfo(certificate.expiresOn, { validFrom, days }).state !== "ok";
 	return (
 		<>
 			{certificate.niceName || <T id={certificateProviderTranslation(certificate.provider)} />}
 			{showBadge && (
 				<>
 					{" "}
-					<ExpiryFormatter value={certificate.expiresOn} provider={certificate.provider} />
+					<ExpiryFormatter
+						value={certificate.expiresOn}
+						provider={certificate.provider}
+						validFrom={validFrom}
+					/>
 				</>
 			)}
 		</>

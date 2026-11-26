@@ -13,6 +13,7 @@ import { rooted } from "../lib/paths.js";
 import { beautifierOn, effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
 import { nginx as logger } from "../logger.js";
+import { reportHostConfig } from "./host-notify.js";
 import internalProxyHostAccessList from "./proxy-host-access-list.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 
@@ -139,6 +140,7 @@ const internalNginx = {
 			status = { npmpro_nginx_online: true, npmpro_nginx_err: "" };
 
 			await model.query().where("id", host.id).patch(status);
+			reportHostConfig(host_type, host, status);
 		} catch (err) {
 			logger.error(err.message);
 
@@ -146,8 +148,13 @@ const internalNginx = {
 
 			await model.query().where("id", host.id).patch(status);
 
-			await internalNginx.renameConfigAsError(host_type, host);
-			if (!skipReload) await internalNginx.reloadOrRaise(host, { change });
+			try {
+				await internalNginx.renameConfigAsError(host_type, host);
+				if (!skipReload) await internalNginx.reloadOrRaise(host, { change });
+			} finally {
+				// after the reload, in the background
+				reportHostConfig(host_type, host, status);
+			}
 		}
 
 		return status;
@@ -201,6 +208,7 @@ const internalNginx = {
 			const ids = entries.filter((entry) => entry.model === model).map(({ host }) => host.id);
 			await model.query().whereIn("id", ids).patch(ok);
 		}
+		for (const { hostType, host } of entries) reportHostConfig(hostType, host, ok);
 	},
 
 	/** configureManyNow in the runtime settings queue, enabled hosts only; none, no nginx -t */

@@ -68,6 +68,44 @@ async function settingsSave({ admin }) {
 	}
 }
 
+const WARNING_DAYS = "#runtime-warningDays";
+const storedWarningDays = async (api) => (await api("GET", "/settings/runtime/certificates")).warning_days;
+
+// Settings, Certificates: "Warn before expiry" shows the stored 14, 30 is saved and shown again after a reload, 61 is
+// out of range: the field is marked invalid and the blocked Save refuses, nothing is stored; 14 is saved again.
+async function warningDaysSave({ admin }) {
+	const { page, api } = admin;
+	const before = await storedWarningDays(api);
+	try {
+		await page.goto("/settings/certificates");
+		const field = page.locator(WARNING_DAYS);
+		await field.waitFor();
+		if ((await field.inputValue()) !== String(before))
+			throw new Error("the page shows another value than the stored one");
+		const save = page.locator("form").getByRole("button", { name: "Save", exact: true });
+		await field.fill("30");
+		await withToast(page, "Setting has been saved", () => save.click());
+		if ((await storedWarningDays(api)) !== 30) throw new Error("30 days were not saved");
+		await page.reload();
+		await page.locator(WARNING_DAYS).waitFor();
+		if ((await page.locator(WARNING_DAYS).inputValue()) !== "30")
+			throw new Error("the page does not show 30 after a reload");
+		await page.locator(WARNING_DAYS).fill("61");
+		// the message shows once the field is left
+		await page.locator(WARNING_DAYS).press("Tab");
+		await page.locator(`${WARNING_DAYS}[aria-invalid="true"]`).waitFor({ timeout: 5000 });
+		await page.locator('form button[aria-disabled="true"]', { hasText: "Save" }).waitFor({ timeout: 5000 });
+		await save.click({ force: true });
+		if ((await storedWarningDays(api)) !== 30) throw new Error("the refused save changed the warning days");
+		await page.locator(WARNING_DAYS).fill(String(before));
+		await withToast(page, "Setting has been saved", () => save.click());
+		if ((await storedWarningDays(api)) !== before) throw new Error("the warning days were not set back");
+	} finally {
+		if ((await storedWarningDays(api)) !== before)
+			await api("PUT", "/settings/runtime/certificates", { warning_days: before });
+	}
+}
+
 const LOG_FORMAT = "#runtime-logFormat";
 
 const storedLogFormat = async (api) => (await api("GET", "/settings/runtime/logs")).log_format;
@@ -1462,6 +1500,7 @@ async function acmeAccount({ admin }) {
 export const appFlows = [
 	{ name: "api reference", run: apiReference },
 	{ name: "settings save", run: settingsSave },
+	{ name: "warning days", run: warningDaysSave },
 	{ name: "dns resolver", run: dnsResolver },
 	{ name: "acme account", run: acmeAccount },
 	{ name: "log format", run: logFormat },

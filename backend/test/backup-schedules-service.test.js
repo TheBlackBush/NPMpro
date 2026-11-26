@@ -19,6 +19,8 @@ const daily = {
 	keep: 2,
 };
 
+const TWELVE = /twelve chars/u;
+const quietNotify = { reportState: async () => true, emit: async () => {}, clearState: async () => true };
 const opened = [];
 after(() => Promise.all(opened.map((knex) => knex.destroy())));
 
@@ -38,6 +40,7 @@ const make = async ({
 	detach,
 	stringIds = false,
 	countFails = false,
+	notify = quietNotify,
 } = {}) => {
 	const knex = knexFactory({
 		client: "better-sqlite3",
@@ -62,6 +65,7 @@ const make = async ({
 	const service = createScheduleService({
 		knex,
 		box: sealer,
+		notify,
 		clock,
 		log,
 		audit: async (access, entry) => audits.push({ by: entry.user_id ?? access.token.getUserId(0), ...entry }),
@@ -904,4 +908,26 @@ it("the report's failed schedules are none, with a warning, when they cannot be 
 	assert.ok(warnings.some((message) => message.includes("no such table")));
 	const working = { failedSchedules: async () => [{ id: 1, name: "Nightly" }] };
 	assert.deepEqual(await failedSchedulesOrNone(working, log), [{ id: 1, name: "Nightly" }]);
+});
+
+it("the failed backup event never holds the passphrase, even when the error text does", async () => {
+	const calls = [];
+	const recorder = {
+		...quietNotify,
+		reportState: (event, id, options) => Promise.resolve(calls.push({ event, id, options })),
+	};
+	const { service } = await make({
+		notify: recorder,
+		run: () => Promise.reject(new Error("cannot encrypt with twelve chars!")),
+	});
+	const { id: scheduleId } = await service.create(admin(), {
+		...daily,
+		protection: "passphrase",
+		passphrase: "twelve chars!",
+	});
+	await service.runNow(admin(), scheduleId);
+	const [bad] = calls.filter((call) => call.options.state === "bad");
+	assert.deepEqual(bad.options.source.secrets, ["twelve chars!"]);
+	const { buildData } = await import("../lib/notify/catalogue.js");
+	assert.doesNotMatch(buildData("backup.failed", bad.options.source).error, TWELVE);
 });

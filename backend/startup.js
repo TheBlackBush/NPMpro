@@ -23,6 +23,7 @@ import {
 } from "./internal/monitoring-services.js";
 import { setMonitoringHooks } from "./internal/monitoring-setting.js";
 import internalNginx from "./internal/nginx.js";
+import { initNotify } from "./internal/notify.js";
 import { proxyHostsUsingDefault, renderRuntimeHosts } from "./internal/runtime-hosts.js";
 import { runtimeExclusive } from "./internal/runtime-queue.js";
 import { setRuntimeApply, setRuntimeApplyAll } from "./internal/runtime-setting.js";
@@ -135,6 +136,7 @@ const prepareApp = async ({ background = true } = {}) => {
 	// the first cycle runs a minute later; with no enabled record a cycle does nothing
 	if (background) initDdnsTimer();
 	if (background) startExpirySweep();
+	if (background) await initNotify();
 	if (background) void syncEnvEmail().catch((err) => logger.warn(`ACME email sync failed: ${err.message}`));
 
 	// the status line of Settings, CrowdSec reads the reader's last poll; a save asks for a new poll

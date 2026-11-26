@@ -8,7 +8,7 @@ import {
 	ListToolbar,
 	LoadingPage,
 } from "src/components";
-import { useCertificates, useListFilters, usePaging } from "src/hooks";
+import { useCertificates, useListFilters, usePaging, useWarningDays } from "src/hooks";
 import { formatDateTime, T } from "src/locale";
 import {
 	showChangeDnsCredentialModal,
@@ -33,6 +33,7 @@ export default function TableWrapper() {
 	const columns = useColumns();
 	const { isFetching, isPending, isError, error, data } = useCertificates(CERTIFICATE_LIST_EXPAND);
 	const { filters, setFilter, clear } = useListFilters();
+	const warningDays = useWarningDays();
 
 	const handleDownload = async (id) => {
 		try {
@@ -44,6 +45,7 @@ export default function TableWrapper() {
 
 	const displayed = filterCertificates(data ?? [], filters, {
 		searchText: (item) => `${item.domainNames.join(" ")} ${item.niceName}`,
+		days: warningDays,
 	});
 	const isFiltered = activeFilterCount(filters, ["expiry"]) > 0 && Boolean(data?.length);
 

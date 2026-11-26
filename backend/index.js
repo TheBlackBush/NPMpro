@@ -7,6 +7,7 @@ import { internalBackupSchedules } from "./internal/backup-service.js";
 import { registerMoveWriter } from "./internal/database-service.js";
 import { pauseDdns, resumeDdns } from "./internal/ddns.js";
 import { stopMonitoringServices } from "./internal/monitoring-services.js";
+import { pauseNotify, resumeNotify } from "./internal/notify.js";
 import { createBackupScheduler } from "./lib/backup/scheduler.js";
 import { startupRetryLog } from "./lib/config.js";
 import { workerGid } from "./lib/secret-file.js";
@@ -42,6 +43,7 @@ async function appStart() {
 				resume: () => backupScheduler.resume(),
 			});
 			registerMoveWriter({ name: "Dynamic DNS", pause: pauseDdns, resume: resumeDdns });
+			registerMoveWriter({ name: "Notifications", pause: pauseNotify, resume: resumeNotify });
 			moveWriterRegistered = true;
 		}
 		backupScheduler.start();

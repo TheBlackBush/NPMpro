@@ -45,4 +45,35 @@ const withoutStage = async (stageDir) => {
 	if (stageDir) await rm(stageDir, { recursive: true, force: true });
 };
 
-export { ALL_TYPES, chosenTypes, exists, invalid, isTypeList, unknownMigrations, withoutStage };
+/**
+ * Runs a restore or merge with the notification worker paused: pause, the silent clear of the states of the types a
+ * replace restores (replaced), the work, then the cleanup of the states of objects the restore removed (a clear or
+ * cleanup that throws is logged and never replaces the result or the error), then resume in the finally, so no pass
+ * runs between the cleanup and the resume.
+ */
+const withNotifyPaused = async (notify, log, work, { replaced = [] } = {}) => {
+	await notify.pause();
+	try {
+		if (replaced.length > 0) {
+			try {
+				await notify.clearReplaced(replaced);
+			} catch (error) {
+				log.warn(
+					`Clearing the notification states of the restored types failed: ${String(error?.message ?? error).slice(0, 200)}`,
+				);
+			}
+		}
+		return await work();
+	} finally {
+		try {
+			await notify.cleanup();
+		} catch (error) {
+			log.warn(
+				`The notification cleanup after a restore failed: ${String(error?.message ?? error).slice(0, 200)}`,
+			);
+		}
+		notify.resume();
+	}
+};
+
+export { ALL_TYPES, chosenTypes, exists, invalid, isTypeList, unknownMigrations, withNotifyPaused, withoutStage };

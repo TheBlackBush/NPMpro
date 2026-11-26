@@ -25,6 +25,7 @@ import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
 import { createMonitoring } from "./monitoring.js";
 import internalMonitoringSetting from "./monitoring-setting.js";
+import { notify, worker as notifyWorker } from "./notify.js";
 
 const STATE_ID = "traffic-state";
 const HOST_TABLES = [
@@ -106,7 +107,22 @@ const traffic = createTrafficService({
 		loadVisitorKey({ readMeta: stateMeta.readMeta, writeMeta: stateMeta.writeMeta, box: defaultSecretBox }),
 });
 
-const crowdsec = createCrowdsecService({ geoLookup: (ip) => geoip.lookup(ip)?.country ?? null });
+// the unreachable state of CrowdSec: off (not configured) removes it, no event. A state that was not stored throws, so
+// the service tells it again at the next poll. While a restore or a database move pauses the notifications nothing is
+// written (false: the service tells it again after). The data holds the error text only, never the key.
+const reportCrowdsecState = async ({ state, error, secrets }) => {
+	if (notifyWorker.paused()) return false;
+	const stored =
+		state === "off"
+			? await notify.clearState("crowdsec.unreachable", "crowdsec")
+			: await notify.reportState("crowdsec.unreachable", "crowdsec", { state, source: { error, secrets } });
+	if (stored === false) throw new Error("the CrowdSec state was not stored");
+};
+
+const crowdsec = createCrowdsecService({
+	geoLookup: (ip) => geoip.lookup(ip)?.country ?? null,
+	onState: reportCrowdsecState,
+});
 
 const geoipService = createGeoipService({ geoip, runUpdate: runGeoipUpdate, getConfig: getGeoipConfig });
 
@@ -152,7 +168,8 @@ const stopMonitoringServices = async () => {
  * A database move: the monitoring writes stop. The GeoIP checks skip and an update that is going on (also one
  * started by saving the GeoIP settings) records its result first; the traffic counts and reader position read so far
  * are written, then the flushes and roll-ups skip (the access log is still read). The timers keep running and the
- * CrowdSec poll goes on (it writes no database rows). With a writer still busy after timeoutMs it rejects with
+ * CrowdSec poll goes on (its notification state waits while the notifications are paused, a move writer of its own).
+ * With a writer still busy after timeoutMs it rejects with
  * "writer-running" and leaves everything as it was.
  *
  * @param {{ timeoutMs?: number }} [options]
@@ -179,6 +196,7 @@ export {
 	crowdsec as crowdsecService,
 	internalMonitoring,
 	pauseMonitoringWriters,
+	reportCrowdsecState,
 	resumeMonitoringWriters,
 	runGeoipUpdate,
 	startMonitoringServices,

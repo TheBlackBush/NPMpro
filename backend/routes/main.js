@@ -5,6 +5,7 @@ import internalRedirectionHost from "../internal/redirection-host.js";
 import internalStream from "../internal/stream.js";
 import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
+import { warningDays } from "../lib/expiry.js";
 import hostRouter from "../lib/express/host-router.js";
 import requireLogin from "../lib/express/require-login.js";
 import sessionOnly from "../lib/express/session-only.js";
@@ -65,6 +66,7 @@ router.get(["/api", "/api/"], async (_, res /*, next*/) => {
 		status: "OK",
 		setup: await isSetup(),
 		password: !(cfg.active && cfg.values.disable_password),
+		cert_warning_days: warningDays(),
 		oidc: oidcHealth(cfg),
 		// every page polls this: the banner, and the move window's sign that the new process answers
 		...(maintenance.active() ? { maintenance: "database-move" } : {}),

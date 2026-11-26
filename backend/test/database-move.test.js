@@ -21,6 +21,7 @@ const LEFT_FILE = /The new database file .*database-\d{8}-\d{6}\.sqlite was left
 const LOCAL_TIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/u;
 const SQLITE_VERSION = /^3\./u;
 const SEALED = /^v1:/u;
+const SQLITE_LABEL = /^sqlite \//u;
 const LOST_LOGOUTS = /^2 logouts during the database move could not be saved in the new database/u;
 const CLOSE_FAILED = /^Logouts could not be closed before the restart: cannot close$/u;
 const LEFT_TARGET = /The target database npmpro_test_unit on .* was left as it is/u;
@@ -406,6 +407,8 @@ for (const [step, options] of [
 			assert.equal(ctx.released(), 1);
 			assert.ok(ctx.calls.includes(`audit move-failed ${step}`), ctx.calls.join(", "));
 			assert.equal(ctx.calls.audit.object_type, "database");
+			assert.equal(ctx.calls.audit.meta.from, `sqlite ${source.file}`);
+			assert.match(ctx.calls.audit.meta.name, SQLITE_LABEL);
 			assert.equal(ctx.calls.includes("exit"), false);
 			const paused = ctx.calls.filter((call) => call.startsWith("pause ")).map((call) => call.slice(6));
 			const resumed = ctx.calls.filter((call) => call.startsWith("resume ")).map((call) => call.slice(7));

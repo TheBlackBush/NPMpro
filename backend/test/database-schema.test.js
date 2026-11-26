@@ -27,6 +27,8 @@ const KNOWN = [
 	"npmpro_dns_credential",
 	"npmpro_dns_domain",
 	"npmpro_location",
+	"npmpro_notification_delivery",
+	"npmpro_notification_state",
 	"npmpro_proxy_host_access_list",
 	"proxy_host",
 	"session_revocation",

@@ -99,6 +99,15 @@
 		"owner": {
 			"$ref": "./user-object.json"
 		},
+		"npmpro_valid_from": {
+			"description": "Date and time the certificate becomes valid, null until it is read from the certificate file",
+			"readOnly": true,
+			"type": [
+				"string",
+				"null"
+			],
+			"example": "2025-07-30T04:17:54.000Z"
+		},
 		"npmpro_reuse_key": {
 			"description": "Reuse the private key on renewal",
 			"type": "boolean",

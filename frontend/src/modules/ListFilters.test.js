@@ -74,6 +74,21 @@ it("filters certificates by expiry", () => {
 	);
 });
 
+it("filters certificates by the lifetime window", () => {
+	const now = new Date("2026-10-23T12:00:00Z");
+	const certs = [
+		// a 6 day certificate with 4 days left: outside its 2 day window
+		{ id: 1, provider: "letsencrypt", expiresOn: "2026-10-27T12:00:00Z", npmproValidFrom: "2026-10-21T12:00:00Z" },
+		{ id: 2, provider: "letsencrypt", expiresOn: "2026-10-24T12:00:00Z", npmproValidFrom: "2026-10-18T12:00:00Z" },
+		{ id: 3, provider: "letsencrypt", expiresOn: "2026-11-01T12:00:00Z", npmproValidFrom: "2026-08-03T12:00:00Z" },
+	];
+	const options = { searchText: () => "", now };
+	assert.deepEqual(ids(filterCertificates(certs, parse("expiry=soon"), options)), [2, 3]);
+	// cert 3 has 9 days left: ok with 7 warning days, soon with 10
+	assert.deepEqual(ids(filterCertificates(certs, parse("expiry=soon"), { ...options, days: 7 })), [2]);
+	assert.deepEqual(ids(filterCertificates(certs, parse("expiry=soon"), { ...options, days: 10 })), [2, 3]);
+});
+
 it("counts active filters", () => {
 	const hostKinds = ["status", "tls", "group"];
 	assert.equal(activeFilterCount(parse(""), hostKinds), 0);

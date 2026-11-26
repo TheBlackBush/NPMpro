@@ -156,6 +156,38 @@ it("counts the hosts, lists, certificates, errors and expiring certificates the 
 	assert.equal((await admin.get("/reports/hosts")).body.errors.proxy, 0);
 });
 
+it("counts expiring certificates with the warning days and the lifetime window", async () => {
+	await api.db("certificate").delete();
+	const lived = (left, lifetime) =>
+		certificate({ expires_on: stamp(left * DAY), npmpro_valid_from: stamp((left - lifetime) * DAY) });
+	// 90 days: 10 left is soon, 20 left is not
+	await lived(10, 90);
+	await lived(20, 90);
+	// 6 days: the window is 2 days
+	await lived(2.5, 6);
+	await lived(1.9, 6);
+	// no valid-from date: the days alone
+	await certificate({ expires_on: stamp(13 * DAY) });
+	const counts = async () => (await admin.get("/reports/hosts")).body;
+	assert.equal((await counts()).certificates_expiring, 3);
+	assert.equal((await counts()).certificates_expired, 0);
+
+	assert.equal((await admin.put("/settings/runtime/certificates", { warning_days: 30 })).status, 200);
+	assert.equal((await counts()).certificates_expiring, 4);
+	await admin.put("/settings/runtime/certificates", { warning_days: 14 });
+	await api.db("certificate").delete();
+});
+
+it("answers the warning days on the health check and follows a runtime save", async () => {
+	const health = await api.client().get("");
+	assert.equal(health.status, 200);
+	assert.equal(health.body.cert_warning_days, 14);
+	assert.equal((await admin.put("/settings/runtime/certificates", { warning_days: 21 })).status, 200);
+	assert.equal((await api.client().get("")).body.cert_warning_days, 21);
+	await admin.put("/settings/runtime/certificates", { warning_days: 14 });
+	assert.equal((await api.client().get("")).body.cert_warning_days, 14);
+});
+
 it("names the enabled schedules whose last run failed, to administrators only", async () => {
 	const created = await admin.post("/backups/schedules", {
 		name: "Failing",

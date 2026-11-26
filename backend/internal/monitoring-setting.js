@@ -12,6 +12,7 @@ import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
 import { createMonitoringUpdater, pickEditable } from "./monitoring-update.js";
+import { notify } from "./notify.js";
 
 const noop = async () => {};
 
@@ -181,6 +182,15 @@ const internalMonitoringSetting = {
 		const next = { ...stored, last_error: ok ? null : String(error ?? "Unknown error") };
 		if (ok || updated?.length > 0) next.last_update = new Date().toISOString();
 		await saveStored("geoip", "GeoIP", next);
+		// the notification layer never fails the update's result
+		try {
+			await notify.reportState("geoip.failed", "geoip", {
+				state: ok ? "ok" : "bad",
+				source: { error: ok ? undefined : next.last_error },
+			});
+		} catch (caught) {
+			logger.warn(`GeoIP notification failed: ${String(caught?.message ?? caught).slice(0, 200)}`);
+		}
 	},
 };
 

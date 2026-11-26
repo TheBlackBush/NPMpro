@@ -99,7 +99,7 @@
 	"get /settings/landing-pages/preview/dead-host/{id}": "0c7e23a51d5a7ae783eb7cc850ba5b0b7f2ff26796807570fbe43eef4ed897ab",
 	"get /settings/landing-pages/preview/access-list/{id}": "0c7e23a51d5a7ae783eb7cc850ba5b0b7f2ff26796807570fbe43eef4ed897ab",
 	"get /settings/crowdsec/preview/{page}": "199a3fe4b2167c290be67989e84eef2fb7ecbf817dd28bcf5e2368501f75c0b0",
-	"put /settings/runtime/certificates": "ee6d8b9b38366eaeab98d5610af99834645cf4f3019f4227e00d6c634f79edab",
+	"put /settings/runtime/certificates": "9e283f05c4d0eaae042ab474ef9a9bcb4537d3b0827163ad4f0adb1812053bdc",
 	"put /settings/runtime/network": "0bb0e38d226368dd7654447e47799234559d9a47deb7f99084d4fad5d42f53ce",
 	"put /settings/runtime/nginx": "33d61a380c8e5e290020bb3cd37bf190f9651995e91d5891ac0ea5692503d64f",
 	"put /settings/runtime/forward-auth": "0ba747efd1836cee2b987c89fb1befb6fa321c67fcacfda1be343b030ca4d7d6",

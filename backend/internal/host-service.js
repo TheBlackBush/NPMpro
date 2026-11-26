@@ -9,6 +9,7 @@ import internalAuditLog from "./audit-log.js";
 import internalCertificate from "./certificate.js";
 import internalHost from "./host.js";
 import internalHostDnsRecord from "./host-dns-record.js";
+import { clearHostConfig } from "./host-notify.js";
 import internalNginx from "./nginx.js";
 
 const DNS_RECORDS = "dns_records";
@@ -230,6 +231,7 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 
 			await flow.deleteRow(row);
 			hostCheckCache.clearHost(hostType, row.id);
+			clearHostConfig(hostType, row.id);
 
 			let states = null;
 			try {
@@ -276,6 +278,8 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 
 			await model.query().where("id", row.id).patch({ enabled: 0 });
 			hostCheckCache.clearHost(hostType, row.id);
+			// a disabled host is no problem any more: its config state goes without an event, enabling records it again
+			clearHostConfig(hostType, row.id);
 
 			const savedRow = await auditAfter(access, "disabled", row.id, () =>
 				internalNginx.removeConfig(hostType, row, { saved: row }),

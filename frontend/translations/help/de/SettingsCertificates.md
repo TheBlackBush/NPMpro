@@ -34,6 +34,7 @@ Beide gelten nach dem nginx-Reload, den das Speichern auslöst, und beide schalt
 ### Erneuerung
 
 - **Intervall der Erneuerungsprüfung**: 1 bis 499 Stunden zwischen den Prüfungen. Ein Zertifikat wird nur erneuert, wenn es fällig ist. Standard: 3. Variable: `CERTBOT_RUN_INTERVAL`. Gilt sofort.
+- **Vor Ablauf warnen**: 1 bis 60 Tage. Ein Zertifikat wird so viele Tage vor seinem Ablauf als bald ablaufend angezeigt (Zertifikateliste, Dashboard), höchstens jedoch ein Drittel seiner Laufzeit, damit ein kurzlebiges Zertifikat nicht schon ab dem ersten Tag markiert wird. Benachrichtigungen nutzen denselben Zeitraum. Standard: 14. Variable: `CERT_WARNING_DAYS`. Gilt sofort.
 
 ### ECH
 

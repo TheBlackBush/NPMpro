@@ -13,7 +13,17 @@ const ALL_TYPES = CATEGORIES.flatMap((category) => category.types);
 
 const errorText = (error) => String(error.message).slice(0, MAX_ERROR);
 
-const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, log = console, zone = localZone }) => {
+const createScheduleService = ({
+	knex,
+	box,
+	backup,
+	store,
+	audit,
+	notify,
+	clock = Date,
+	log = console,
+	zone = localZone,
+}) => {
 	const client = clientOf(knex);
 	const now = () => new Date(clock.now());
 	const db = (date) => toDbDate(date, client);
@@ -70,6 +80,46 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 
 	const nextAfter = (row, after) => (row.enabled ? nextRun(row, after, zone) : null);
 
+	// the notification of a run and the end of a schedule's state; a failure of the layer never reaches the schedule. A
+	// disabled schedule (Run now) keeps no state: disabling cleared it, enabling lets the next run record it again
+	const notifyRun = async ({ id, name, protection, passphrase, enabled }, { result, error }) => {
+		try {
+			const schedule = { id, name };
+			if (!enabled) {
+				if (result) await notify.emit("backup.succeeded", { schedule, file: result.name, size: result.size });
+				return;
+			}
+			// the passphrase never reaches an event, whatever an error text holds
+			const secrets = [];
+			if (!result && protection === "passphrase") {
+				try {
+					secrets.push(box.decrypt(passphrase).passphrase);
+				} catch {
+					// an unreadable passphrase cannot be in the text
+				}
+			}
+			await notify.reportState("backup.failed", String(id), {
+				state: result ? "ok" : "bad",
+				source: { schedule, error: result ? undefined : errorText(error), secrets },
+			});
+			if (result) await notify.emit("backup.succeeded", { schedule, file: result.name, size: result.size });
+		} catch (caught) {
+			log.warn(
+				`Scheduled backup "${name}": the notification failed, ${String(caught?.message ?? caught).slice(0, 200)}`,
+			);
+		}
+	};
+
+	const clearNotifyState = async (id) => {
+		try {
+			await notify.clearState("backup.failed", String(id));
+		} catch (caught) {
+			log.warn(
+				`Backup schedule ${id}: could not clear its notification state, ${String(caught?.message ?? caught).slice(0, 200)}`,
+			);
+		}
+	};
+
 	const stored = (fields) => ({ ...fields, types: JSON.stringify(fields.types) });
 
 	// the status after a run; the row is read again, so an edit made during the run stays
@@ -109,6 +159,7 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 					last_duration_ms: duration,
 					next_run_at: db(next),
 				});
+			await notifyRun(current, { result, error });
 		} else {
 			log.info(`The schedule "${row.name}" was deleted during its run`);
 			// the new file loses -s<id>: a later schedule with the same id never counts or prunes it
@@ -223,6 +274,8 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 					next_run_at: db(nextAfter({ ...fields, last_run_at: current.last_run_at }, at)),
 				});
 			const row = await mustRead(current.id);
+			// a disabled schedule never runs by itself: its failed state goes without an event
+			if (!row.enabled) await clearNotifyState(row.id);
 			const toggled = Object.keys(body).length === 1 && Object.hasOwn(body, "enabled");
 			let action = "updated";
 			if (toggled) action = row.enabled ? "enabled" : "disabled";
@@ -237,6 +290,7 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 			let detachedFiles = [];
 			const drop = async () => {
 				await knex(TABLE).where({ id: row.id }).del();
+				await clearNotifyState(row.id);
 				try {
 					if (files) await removeFiles(row.id, removedFiles);
 					// kept files lose -s<id>: a later schedule with the same id never counts or prunes them

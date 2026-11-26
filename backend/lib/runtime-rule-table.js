@@ -365,6 +365,15 @@ const RUNTIME_RULES = [
 		fallback: 3,
 		applies: "immediately",
 	}),
+	rangeRule({
+		group: "certificates",
+		key: "warning_days",
+		env: "CERT_WARNING_DAYS",
+		min: 1,
+		max: 60,
+		fallback: 14,
+		applies: "immediately",
+	}),
 	boolRule({
 		group: "certificates",
 		key: "ocsp_stapling",

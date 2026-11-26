@@ -12,6 +12,7 @@ const run = promisify(execFile);
 const CERTIFICATE_KEYS = [
 	"addCreatedAuditLog",
 	"allowedSslFiles",
+	"checkCertificateExpiry",
 	"checkPrivateKey",
 	"create",
 	"createQuickCertificate",

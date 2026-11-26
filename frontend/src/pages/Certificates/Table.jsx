@@ -176,7 +176,13 @@ export function useColumns() {
 				id: "expiresOn",
 				meta: { mobile: "title-below" },
 				header: intl.formatMessage({ id: "column.expires" }),
-				cell: (info) => <ExpiryFormatter value={info.getValue()} provider={info.row.original.provider} />,
+				cell: (info) => (
+					<ExpiryFormatter
+						value={info.getValue()}
+						provider={info.row.original.provider}
+						validFrom={info.row.original.npmproValidFrom}
+					/>
+				),
 			}),
 			columnHelper.accessor(isInUse, {
 				id: "inUse",

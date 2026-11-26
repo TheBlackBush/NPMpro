@@ -1178,3 +1178,21 @@ it("finishes a merge with a custom nginx file when an added host is offline for 
 		await cleanup();
 	}
 });
+
+it("a merge pauses the notifications, cleans up, then resumes, also when the merge fails", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		const { token, manifest } = await openOn(b, await backupOf(a));
+		const types = manifest.types;
+		const plan = await b.service.plan(admin, token, { mode: "merge", types });
+		await assert.rejects(
+			b.service.restore(admin, token, { mode: "merge", types, planHash: "stale" }),
+			hasCode("plan-changed"),
+		);
+		assert.deepEqual(b.calls.notify, ["pause", "cleanup", "resume"]);
+		await b.service.restore(admin, token, { mode: "merge", types, planHash: plan.hash });
+		assert.deepEqual(b.calls.notify, ["pause", "cleanup", "resume", "pause", "cleanup", "resume"]);
+	} finally {
+		await cleanup();
+	}
+});

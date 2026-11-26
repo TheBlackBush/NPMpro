@@ -3,7 +3,14 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { startApi } from "./support/api.js";
-import { acmeDirectory, certbotSucceeds, makeCertificate, normalizedCalls, seedAccount } from "./support/certbot.js";
+import {
+	acmeDirectory,
+	certbotSucceeds,
+	makeCertificate,
+	normalizedCalls,
+	seedAccount,
+	validFromProblem,
+} from "./support/certbot.js";
 import { reloads } from "./support/hosts.js";
 
 const CERTS = "/nginx/certificates";
@@ -16,6 +23,7 @@ const WILDCARD_DOMAINS = /--domains \*\.dns\.example\.com,dns\.example\.com /u;
 const DNS_AUTHENTICATOR = /--authenticator \S*cloudflare/u;
 const DNS_CREDENTIALS = /-credentials \/tmp\/certbot-credentials\/credentials-\d+/u;
 const FAILED = /^The CA did not issue the certificate: Challenge failed/u;
+const LOCAL_TIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/u;
 
 let api;
 let admin;
@@ -301,11 +309,23 @@ it("takes the expiry of the new certificate", async () => {
 	const created = await issued();
 	const longer = await makeCertificate(path.join(api.root, "fake"), "b.example.com", 90);
 	await certbotSucceeds(api, longer);
+	await api.db("certificate").where({ id: created.id }).update({ npmpro_valid_from: null });
 	const done = await put(created.id, ["b.example.com"]);
 	assert.equal(done.status, 200, done.text);
 	const issuedAt = new Date(created.expires_on).getTime();
 	assert.ok(new Date((await row(created.id)).expires_on).getTime() - issuedAt > 50 * 86400000);
 	assert.notEqual(done.body.expires_on, created.expires_on);
+	assert.equal(validFromProblem(await row(created.id), 90), null);
+});
+
+it("answers npmpro_valid_from as an ISO date, the same instant as the stored local time, like expires_on", async () => {
+	const created = await issued();
+	const stored = await row(created.id);
+	assert.match(stored.npmpro_valid_from, LOCAL_TIME);
+	const got = await admin.get(`${CERTS}/${created.id}`);
+	assert.equal(got.status, 200, got.text);
+	assert.equal(got.body.npmpro_valid_from, new Date(stored.npmpro_valid_from.replace(" ", "T")).toISOString());
+	assert.equal(got.body.expires_on, new Date(stored.expires_on.replace(" ", "T")).toISOString());
 });
 
 it("a failure after certbot succeeded keeps the row on the new files, reloads nginx, writes the audit entry and answers the error", async () => {

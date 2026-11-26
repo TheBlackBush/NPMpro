@@ -34,6 +34,7 @@ Ambos se aplican tras la recarga de nginx que ejecuta el guardado, y ambos desac
 ### Renovación
 
 - **Intervalo de comprobación de renovación**: de 1 a 499 horas entre comprobaciones. Un certificado solo se renueva cuando toca. Por defecto: 3. Variable: `CERTBOT_RUN_INTERVAL`. Se aplica de inmediato.
+- **Avisar antes de que caduque**: de 1 a 60 días. Un certificado aparece como próximo a caducar (la lista de certificados, el panel) este número de días antes de que caduque, pero como máximo un tercio de su vida útil, para que un certificado de corta duración no se marque desde su primer día. Las notificaciones usan la misma ventana. Por defecto: 14. Variable: `CERT_WARNING_DAYS`. Se aplica de inmediato.
 
 ### ECH
 

@@ -26,6 +26,7 @@
 								"must_staple": false,
 								"server_tls_verify": true,
 								"renewal_interval": 3,
+								"warning_days": 14,
 								"ocsp_stapling": false,
 								"custom_ocsp_stapling": false,
 								"default_certificate_id": 0,
@@ -40,6 +41,7 @@
 									"must_staple": "next-certificate",
 									"server_tls_verify": "next-certificate",
 									"renewal_interval": "immediately",
+									"warning_days": "immediately",
 									"ocsp_stapling": "reload",
 									"custom_ocsp_stapling": "reload",
 									"default_certificate_id": "reload",
@@ -57,6 +59,7 @@
 								"must_staple": false,
 								"server_tls_verify": true,
 								"renewal_interval": 3,
+								"warning_days": 14,
 								"ocsp_stapling": false,
 								"custom_ocsp_stapling": false,
 								"default_certificate_id": 0,
@@ -79,6 +82,7 @@
 									"must_staple": "next-certificate",
 									"server_tls_verify": "next-certificate",
 									"renewal_interval": "immediately",
+									"warning_days": "immediately",
 									"ocsp_stapling": "reload",
 									"custom_ocsp_stapling": "reload",
 									"default_certificate_id": "reload",
@@ -95,5 +99,5 @@
 			}
 		}
 	},
-	"description": "Returns the certificate and TLS settings: the key type and size, ACME profile, must-staple, ACME server TLS check, renewal interval, OCSP stapling, the default certificate and the ECH key rotation interval. A value an environment variable sets is shown as locked.\n\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Returns the certificate and TLS settings: the key type and size, ACME profile, must-staple, ACME server TLS check, renewal interval, warning days, OCSP stapling, the default certificate and the ECH key rotation interval. A value an environment variable sets is shown as locked.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

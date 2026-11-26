@@ -108,15 +108,20 @@ it("default site: sends the chosen option with its fields and keeps the others' 
 
 it("certificates: the same errors as the Formik validate", () => {
 	const validate = certificatesValidate(rules);
-	const ok = { renewalInterval: "24", echRotationInterval: "1", profile: " tlsserver " };
+	const ok = { renewalInterval: "24", warningDays: "14", echRotationInterval: "1", profile: " tlsserver " };
 	assert.deepEqual(validate(ok), {});
-	assert.deepEqual(validate({ renewalInterval: "0", echRotationInterval: "25", profile: "a b" }), {
+	assert.deepEqual(validate({ renewalInterval: "0", warningDays: "61", echRotationInterval: "25", profile: "a b" }), {
 		renewalInterval: RANGE(1, 499),
+		warningDays: RANGE(1, 60),
 		echRotationInterval: RANGE(1, 24),
 		profile: "Up to 64 letters, digits, dots, dashes or underscores",
 	});
 	assert.deepEqual(validate({ ...ok, renewalInterval: "1.5" }), { renewalInterval: RANGE(1, 499) });
 	assert.deepEqual(validate({ ...ok, renewalInterval: "" }), { renewalInterval: RANGE(1, 499) });
+	for (const warningDays of ["1", "60"]) assert.deepEqual(validate({ ...ok, warningDays }), {});
+	for (const warningDays of ["0", "61", "", "1.5"]) {
+		assert.deepEqual(validate({ ...ok, warningDays }), { warningDays: RANGE(1, 60) });
+	}
 	assert.deepEqual(validate({ ...ok, profile: "x".repeat(65) }), {
 		profile: "Up to 64 letters, digits, dots, dashes or underscores",
 	});

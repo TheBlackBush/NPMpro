@@ -199,7 +199,7 @@ const createDatabaseService = ({
 	};
 
 	// everything back as it was before the move, the database in use stays in use
-	const fail = async (error, { move, target, access, lock, paused, targetKnex, created, touched }) => {
+	const fail = async (error, { move, target, source, access, lock, paused, targetKnex, created, touched }) => {
 		const failure = errorOf(error, {
 			step: move.step,
 			target,
@@ -228,6 +228,7 @@ const createDatabaseService = ({
 				object_id: 0,
 				meta: {
 					name: labelOf(target),
+					...(source ? { from: labelOf(source) } : {}),
 					step: failure.step,
 					error: failure.message,
 					...(failure.details ? { details: failure.details } : {}),
@@ -377,7 +378,7 @@ const createDatabaseService = ({
 				}),
 			);
 		} catch (error) {
-			await fail(error, { move, target, access, lock, ...state });
+			await fail(error, { move, target, source, access, lock, ...state });
 			return;
 		}
 		move.state = "restarting";

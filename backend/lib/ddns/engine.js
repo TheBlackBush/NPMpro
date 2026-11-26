@@ -110,6 +110,7 @@ const storedMeta = (meta) => {
  * @param   {Function} [deps.recordLock]   (id, fn) one run at a time per record
  * @param   {Function} [deps.makeFetch]    (secrets) -> the guarded fetch handed to a provider
  * @param   {Function} [deps.runNow]       (fn) runs fn under the timer's lock (Update now)
+ * @param   {Function} [deps.onState]      async (record, patch) after each save of a run (notifications); a failure is logged
  */
 const createDdnsEngine = ({
 	store,
@@ -122,8 +123,20 @@ const createDdnsEngine = ({
 	recordLock = createKeyedLock(),
 	makeFetch = defaultMakeFetch,
 	runNow = (fn) => fn(),
+	onState = null,
 }) => {
 	const now = () => clock.now();
+
+	// a run's save, then the state callback: its failure never changes the run's result
+	const saveRun = async (record, patch) => {
+		await store.saveRecord(record.id, patch);
+		if (!onState) return;
+		try {
+			await onState(record, patch);
+		} catch (err) {
+			log?.error?.(`Dynamic DNS record ${record.id}: the state notification failed: ${err?.message ?? err}`);
+		}
+	};
 	const isDue = (record) => {
 		const next = toMs(record.next_try_on);
 		return next === null || next <= now();
@@ -456,7 +469,7 @@ const createDdnsEngine = ({
 				if (err?.cooldown) {
 					const partial = { last_checked_on: new Date(now()) };
 					const rows = changesOf(done, partial);
-					await store.saveRecord(id, partial);
+					await saveRun(record, partial);
 					await writeHistory(id, rows);
 					throw err;
 				}
@@ -464,14 +477,14 @@ const createDdnsEngine = ({
 					const patch = appearedPatch(record, err, done);
 					const rows = changesOf(done, patch);
 					rows.push({ kind: "failed", message: err.message });
-					await store.saveRecord(id, patch);
+					await saveRun(record, patch);
 					await writeHistory(id, rows);
 					return { failed: true };
 				}
 				const patch = failurePatch(record, err, secrets, { countTry });
 				const rows = changesOf(done, patch);
 				if (record.state !== "failed") rows.push({ kind: "failed", message: patch.error });
-				await store.saveRecord(id, patch);
+				await saveRun(record, patch);
 				await writeHistory(id, rows);
 				return { failed: true };
 			}
@@ -492,7 +505,7 @@ const createDdnsEngine = ({
 				if (values !== undefined) patch.meta.error_values = values;
 				patch.next_try_on = new Date(waitUntil);
 			}
-			await store.saveRecord(id, patch);
+			await saveRun(record, patch);
 			await writeHistory(id, rows);
 			return { ok: true, changed: done.some(({ result }) => Boolean(result.change)) };
 		});

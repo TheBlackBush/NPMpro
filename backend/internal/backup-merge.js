@@ -12,7 +12,7 @@ import { loadStageData } from "../lib/backup/restore-db.js";
 import { relinkCertbotLive } from "../lib/backup/restore-files.js";
 import { RESTORE_ORDER, TYPES } from "../lib/backup/types.js";
 import { LINKED_KINDS, PAGE_KINDS, pageScope, permissionOf } from "./backup-pages.js";
-import { chosenTypes, exists, withoutStage } from "./backup-shared.js";
+import { chosenTypes, exists, withNotifyPaused, withoutStage } from "./backup-shared.js";
 
 const FILES_PREFIX = "files/";
 const FILE_KEY = "file:";
@@ -53,7 +53,7 @@ const hashFiles = async (base, rel, allow, out) => {
 
 // the merge of a backup's items into the instance: session, plan and apply
 const createMerge = (
-	{ knex, box, dataDir, store, renewals, ddns, dnsCredentials, exclusive, clock },
+	{ knex, box, dataDir, store, renewals, ddns, notify, dnsCredentials, exclusive, clock, log },
 	{ needsRestart, applyWithRollback },
 ) => {
 	// the restore session of the token and the scope its owner merges in: a Settings session is the admin's, a page
@@ -244,22 +244,24 @@ const createMerge = (
 			try {
 				await ddns.pause();
 				try {
-					return await exclusive(async () => {
-						// planned again inside the queue: what is applied is what the user confirmed, or nothing
-						const { plan, data } = await buildPlan({ entry, scope, types, items, choices });
-						if (plan.hash !== planHash) {
-							throw Object.assign(
-								new BackupError("plan-changed", "The instance changed since the plan was made"),
-								{ status: 409, payload: { plan } },
-							);
-						}
-						store.takeToken(token, { keep: false, owner: userId });
-						try {
-							return await runMerge({ access, userId, entry, scope, plan, data });
-						} finally {
-							await withoutStage(entry.stageDir);
-						}
-					});
+					return await withNotifyPaused(notify, log, () =>
+						exclusive(async () => {
+							// planned again inside the queue: what is applied is what the user confirmed, or nothing
+							const { plan, data } = await buildPlan({ entry, scope, types, items, choices });
+							if (plan.hash !== planHash) {
+								throw Object.assign(
+									new BackupError("plan-changed", "The instance changed since the plan was made"),
+									{ status: 409, payload: { plan } },
+								);
+							}
+							store.takeToken(token, { keep: false, owner: userId });
+							try {
+								return await runMerge({ access, userId, entry, scope, plan, data });
+							} finally {
+								await withoutStage(entry.stageDir);
+							}
+						}),
+					);
 				} finally {
 					ddns.resume();
 				}

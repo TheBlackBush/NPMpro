@@ -11,6 +11,7 @@ import {
 	makeCertificate,
 	normalizedCalls,
 	seedAccount,
+	validFromProblem,
 } from "./support/certbot.js";
 import { countRows, fileExists, reloads } from "./support/hosts.js";
 
@@ -122,6 +123,7 @@ it("requests a certificate over HTTP: certbot gets the config file, server, name
 	// the expiry comes from the certificate certbot wrote
 	assert.ok(Date.parse(created.expires_on) > Date.now() + 25 * 86400000);
 	const stored = await row(created.id);
+	assert.equal(validFromProblem(stored), null);
 	assert.equal(stored.provider, "letsencrypt");
 	assert.equal(
 		await api.read(`data/tls/certbot/live/npm-${created.id}/fullchain.pem`),
@@ -323,7 +325,10 @@ it("refuses a DNS certificate with a wrong credential, provider or user, before 
 
 it("renews a certificate: certbot renews with a new key, revokes the old one, nginx reloads, the expiry is read again", async () => {
 	const created = await requested(["renew.example.com"]);
-	await api.db("certificate").where({ id: created.id }).update({ expires_on: "2020-01-01 00:00:00" });
+	await api
+		.db("certificate")
+		.where({ id: created.id })
+		.update({ expires_on: "2020-01-01 00:00:00", npmpro_valid_from: null });
 	await api.outside.clearCalls();
 	const renewal = path.join(api.root, `data/tls/certbot/renewal/npm-${created.id}.conf`);
 	const old = "https://old-acme.test/directory";
@@ -342,6 +347,7 @@ it("renews a certificate: certbot renews with a new key, revokes the old one, ng
 	assert.ok(reloads(api) > before);
 	assert.ok(Date.parse(done.body.expires_on) > Date.now() + 25 * 86400000);
 	assert.ok(Date.parse((await row(created.id)).expires_on) > Date.now());
+	assert.equal(validFromProblem(await row(created.id)), null);
 	const audit = await api
 		.db("audit_log")
 		.where({ object_type: "certificate", object_id: created.id, action: "updated" })

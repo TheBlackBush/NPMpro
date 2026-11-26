@@ -418,6 +418,52 @@ it("a backup of DNS credentials and DDNS records restores the records, checked a
 	assert.equal((await api.db("npmpro_ddns_history")).length, 0);
 });
 
+it("a restore that replaces the DDNS records clears their notification states, another type keeps its own", async () => {
+	const created = await admin.post("/nginx/dns-credentials", {
+		name: "Notified DDNS",
+		provider: "cloudflare",
+		fields: [{ key: "dns_cloudflare_api_token", value: "t".repeat(40) }],
+		domains: ["ddns-nt.example"],
+	});
+	const record = await admin.post("/nginx/ddns-records", {
+		name: "home.ddns-nt.example",
+		dns_credential_id: created.body.id,
+		enabled: false,
+	});
+	assert.equal(record.status, 201, record.text);
+	const entry = await keep({ types: ["dns_credentials", "ddns"] });
+	assert.equal((await admin.delete(`/nginx/ddns-records/${record.body.id}`)).status, 200);
+	const stateOf = (objectId) => ({
+		key: `ddns.record_failed:${objectId}`,
+		event: "ddns.record_failed",
+		object_id: String(objectId),
+		state: "bad",
+		since: new Date(),
+		data: "{}",
+	});
+	await api
+		.db("npmpro_notification_state")
+		.insert([
+			stateOf(record.body.id),
+			stateOf(987_654),
+			{ ...stateOf("geoip"), key: "geoip.failed:geoip", event: "geoip.failed" },
+		]);
+	const { token } = await inspect(entry.name);
+	const done = await admin.post(`${BASE}/restore/${token}`, { types: ["dns_credentials", "ddns"], confirm: true });
+	assert.equal(done.status, 200, done.text);
+	const [restored] = await api.db("npmpro_ddns_record").where({ name: "home.ddns-nt.example" });
+	// the hosts the restore regenerates write their own ok states: only the DDNS ones are compared. The restored
+	// record under its old id starts afresh, the state of a record that is gone goes too
+	const keys = (
+		await api.db("npmpro_notification_state").where({ event: "ddns.record_failed" }).pluck("object_id")
+	).sort();
+	assert.equal(restored.id, record.body.id);
+	assert.deepEqual(keys, []);
+	const geoip = api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" });
+	assert.equal((await geoip.clone().first()).state, "bad");
+	await geoip.delete();
+});
+
 it("cancels a restore session, after which its token has expired", async () => {
 	const entry = await keep();
 	const { token } = await inspect(entry.name);

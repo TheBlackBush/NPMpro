@@ -7,10 +7,11 @@ import dayjs from "dayjs";
 import { LETSENCRYPT_STAGING_SERVER, sameServer } from "../lib/acme-server.js";
 import { assertProviderForNew, runCertbot } from "../lib/certbot.js";
 import { CERTBOT_INI } from "../lib/certbot-ini.js";
+import { cleanCertbotMessage } from "../lib/certbot-message.js";
 import { assertCertificateUse, customCertPath, liveCertPath, mtlsCertFile } from "../lib/certificate-files.js";
 import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
-import { expiryBounds } from "../lib/expiry.js";
+import { expiryState } from "../lib/expiry.js";
 import { pickCertificateFields } from "../lib/helpers.js";
 import { withoutPageHtml } from "../lib/landing-pages/types.js";
 import { rooted } from "../lib/paths.js";
@@ -30,8 +31,16 @@ import certificateAcme, { keyFileOf, renewalParamsOf, revokeBestEffort, runCerto
 import certificateCaa from "./certificate-caa.js";
 import certificateCustom, { ALLOWED_SSL_FILES } from "./certificate-custom.js";
 import certificateInfo from "./certificate-info.js";
+import {
+	checkCertificateExpiry,
+	clearCertificateStates,
+	emitRenewedWhenLater,
+	reportRenewalRun,
+	snapshotBeforeRenewal,
+} from "./certificate-notify.js";
 import internalDnsCredential from "./dns-credential.js";
 import internalNginx from "./nginx.js";
+import { registerSweepCheck } from "./notify.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 import { recoverStapling } from "./stapling-recovery.js";
 
@@ -97,14 +106,19 @@ const followRenewalConf = async (id, target) => {
  * The timer's renewal: one `certbot renew` for every due certificate, run while the lock of every CA is held
  * (withRenewalLocks), so a Replace account never runs while certbot may write a renewal conf back. The confs are made
  * to name usable accounts first (prepareRenewals); a failure is logged.
+ *
+ * @returns {Promise<{error: ?string}>}  the certbot error text of the run, null when certbot exited 0
  */
 const renewDue = () =>
 	withRenewalLocks(async () => {
 		try {
 			const result = await runCertbot(["--config", CERTBOT_INI, "renew", "--quiet"]);
 			if (result) logger.info(`Renew Result: ${result}`);
+			return { error: null };
 		} catch (err) {
-			logger.warn(`Certbot completed with errors: ${err}`);
+			// the text is logged by the renewal report, once credential values are scrubbed from it
+			logger.warn("Certbot completed with errors");
+			return { error: cleanCertbotMessage(err?.message ?? String(err)) };
 		}
 	});
 
@@ -114,6 +128,12 @@ const renewalTimer = createRenewalTimer({
 	hours: Number.parseInt(process.env.CERTBOT_RUN_INTERVAL, 10),
 	busy: () => internalCertificate.intervalProcessing,
 	log: logger,
+});
+
+// the certificate's validity columns from its parsed dates
+const validityColumns = (dates) => ({
+	expires_on: dayjs.unix(dates.to).format("YYYY-MM-DD HH:mm:ss"),
+	npmpro_valid_from: dayjs.unix(dates.from).format("YYYY-MM-DD HH:mm:ss"),
 });
 
 const internalCertificate = {
@@ -151,6 +171,9 @@ const internalCertificate = {
 		void internalCertificate.processExpiringHosts();
 	},
 
+	/** Reports the expiry state of every certificate but mTLS ones (the hourly sweep and every renewal run) */
+	checkCertificateExpiry,
+
 	/** Timer run: renews the certificates of expiring hosts */
 	processExpiringHosts: async () => {
 		if (internalCertificate.intervalProcessing) {
@@ -161,7 +184,8 @@ const internalCertificate = {
 		logger.info("Renewing Certbot TLS certs close to expiry...");
 
 		try {
-			await renewDue();
+			const before = await snapshotBeforeRenewal();
+			const renewal = await renewDue();
 
 			try {
 				await internalNginx.reload();
@@ -172,6 +196,7 @@ const internalCertificate = {
 			await recoverStapling();
 
 			const certificates = await certificateModel.query().where("provider", "letsencrypt");
+			const refreshed = [];
 
 			if (certificates && certificates.length > 0) {
 				const updatePromises = certificates.map(async (certificate) => {
@@ -186,8 +211,9 @@ const internalCertificate = {
 							.andWhere("provider", "letsencrypt")
 							.patch({
 								nice_name: getNiceName(certificate.domain_names),
-								expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
+								...validityColumns(certInfo.dates),
 							});
+						refreshed.push({ id: certificate.id, ...validityColumns(certInfo.dates) });
 					} catch (err) {
 						// one failure must not stop the others
 						logger.error(err);
@@ -197,6 +223,9 @@ const internalCertificate = {
 				await Promise.all(updatePromises);
 				logger.info("Renew Complete");
 			}
+
+			await reportRenewalRun({ ...before, refreshed, error: renewal.error });
+			await internalCertificate.checkCertificateExpiry();
 		} catch (err) {
 			logger.error(err);
 		} finally {
@@ -252,7 +281,7 @@ const internalCertificate = {
 					`${internalCertificate.getLiveCertPath(certificate.id)}/fullchain.pem`,
 				);
 				const savedRow = await certificateModel.query().patchAndFetchById(certificate.id, {
-					expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
+					...validityColumns(certInfo.dates),
 				});
 
 				await internalCertificate.addCreatedAuditLog(access, certificate.id, savedRow);
@@ -426,6 +455,7 @@ const internalCertificate = {
 
 				await certificateModel.query().deleteById(row.id);
 			});
+			await clearCertificateStates(row.id);
 
 			await internalAuditLog.add(access, {
 				action: "deleted",
@@ -501,20 +531,22 @@ const internalCertificate = {
 	 * @returns {Promise<{expiring: Number, expired: Number}>}
 	 */
 	getExpiryCounts: async (userId, visibility) => {
-		const { now, soon } = expiryBounds();
-		const format = (date) => dayjs(date).format("YYYY-MM-DD HH:mm:ss");
-		const base = () => {
-			const query = certificateModel.query().whereIn("provider", ["letsencrypt", "other"]);
-			if (visibility !== "all") {
-				query.andWhere("owner_user_id", userId);
-			}
-			return query;
-		};
+		const query = certificateModel
+			.query()
+			.select("id", "expires_on", "npmpro_valid_from")
+			.whereIn("provider", ["letsencrypt", "other"]);
+		if (visibility !== "all") {
+			query.andWhere("owner_user_id", userId);
+		}
 
-		const [expired, expiring] = await Promise.all([
-			base().where("expires_on", "<", format(now)).resultSize(),
-			base().where("expires_on", ">=", format(now)).andWhere("expires_on", "<", format(soon)).resultSize(),
-		]);
+		const now = new Date();
+		let expiring = 0;
+		let expired = 0;
+		for (const row of await query) {
+			const state = expiryState(row, now);
+			if (state === "expired") expired += 1;
+			else if (state === "soon") expiring += 1;
+		}
 
 		return { expiring, expired };
 	},
@@ -551,7 +583,7 @@ const internalCertificate = {
 
 		const certificate = await internalCertificate.update(access, {
 			id: data.id,
-			expires_on: dayjs.unix(validations.certificate.dates.to).format("YYYY-MM-DD HH:mm:ss"),
+			...validityColumns(validations.certificate.dates),
 			domain_names: validations.certificate.cn,
 		});
 
@@ -606,8 +638,9 @@ const internalCertificate = {
 
 				const updatedCertificate = await certificateModel.query().patchAndFetchById(certificate.id, {
 					nice_name: getNiceName(certificate.domain_names),
-					expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
+					...validityColumns(certInfo.dates),
 				});
+				await emitRenewedWhenLater(certificate, updatedCertificate);
 
 				try {
 					await internalNginx.reload();
@@ -679,7 +712,7 @@ const internalCertificate = {
 				const certInfo = await internalCertificate.getCertificateInfoFromFile(
 					`${internalCertificate.getLiveCertPath(certificate.id)}/fullchain.pem`,
 				);
-				patch.expires_on = dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss");
+				Object.assign(patch, validityColumns(certInfo.dates));
 			} catch (err) {
 				failure = err;
 			}
@@ -795,8 +828,9 @@ const internalCertificate = {
 				updatedCertificate = await certificateModel.query().patchAndFetchById(certificate.id, {
 					npmpro_acme_server: target,
 					nice_name: getNiceName(certificate.domain_names),
-					expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
+					...validityColumns(certInfo.dates),
 				});
+				await emitRenewedWhenLater(certificate, updatedCertificate);
 			} catch (err) {
 				await followRenewalConf(certificate.id, target);
 				throw err;
@@ -855,6 +889,9 @@ const internalCertificate = {
 		});
 	},
 };
+
+// the hourly sweep runs the expiry check first
+registerSweepCheck(() => internalCertificate.checkCertificateExpiry());
 
 // a save, re-issue, renewal or delete forgets the certificate's CAA result, also when it failed
 for (const name of ["update", "setDomains", "setDnsCredential", "renew", "reissue", "delete"]) {

@@ -34,6 +34,7 @@ Entrambi si applicano dopo il reload di nginx eseguito dal salvataggio ed entram
 ### Rinnovo
 
 - **Intervallo di controllo del rinnovo**: da 1 a 499 ore tra i controlli. Un certificato viene rinnovato solo alla scadenza. Predefinito: 3. Variabile: `CERTBOT_RUN_INTERVAL`. Si applica subito.
+- **Avvisa prima della scadenza**: da 1 a 60 giorni. Un certificato risulta in scadenza (l'elenco dei certificati, la dashboard) questo numero di giorni prima della scadenza, ma al massimo un terzo della sua durata, così un certificato di breve durata non viene segnalato dal primo giorno. Le notifiche usano la stessa finestra. Predefinito: 14. Variabile: `CERT_WARNING_DAYS`. Si applica subito.
 
 ### ECH
 

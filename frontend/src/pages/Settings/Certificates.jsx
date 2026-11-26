@@ -3,7 +3,7 @@ import { useAcmeProfiles, useAcmeSettings, useCertificates } from "src/hooks";
 import { intl, T } from "src/locale";
 import { profileChoices } from "src/modules/AcmeAccount";
 import { defaultKeySize, isServableCertificate, keySizeOptions } from "src/modules/RuntimeSettings";
-import { certificatesValidate, ECH, RENEWAL } from "src/modules/SettingsForms";
+import { certificatesValidate, ECH, RENEWAL, WARNING_DAYS } from "src/modules/SettingsForms";
 import { validations } from "src/modules/Validations";
 import AcmeAccountCard from "./AcmeAccountCard";
 import { RuntimeNumber, RuntimeSelect, RuntimeSwitch, RuntimeText } from "./Runtime/fields";
@@ -16,6 +16,7 @@ const toForm = (data) => ({
 	mustStaple: Boolean(data.mustStaple),
 	serverTlsVerify: Boolean(data.serverTlsVerify),
 	renewalInterval: String(data.renewalInterval),
+	warningDays: String(data.warningDays),
 	ocspStapling: Boolean(data.ocspStapling),
 	customOcspStapling: Boolean(data.customOcspStapling),
 	defaultCertificateId: String(data.defaultCertificateId ?? 0),
@@ -26,6 +27,7 @@ const toApi = (values) => ({
 	...values,
 	profile: values.profile.trim(),
 	renewalInterval: Number(values.renewalInterval),
+	warningDays: Number(values.warningDays),
 	// must-staple certificates need OCSP stapling (the backend forces it on as well)
 	ocspStapling: values.mustStaple || values.ocspStapling,
 	defaultCertificateId: Number(values.defaultCertificateId),
@@ -214,6 +216,13 @@ function Fields() {
 					hint={<T id="settings.certificates.renewal-interval.hint" data={RENEWAL} />}
 					unit={<T id="settings.runtime.hours" />}
 					{...RENEWAL}
+				/>
+				<RuntimeNumber
+					name="warningDays"
+					label={<T id="settings.certificates.warning-days" />}
+					hint={<T id="settings.certificates.warning-days.hint" />}
+					unit={<T id="settings.runtime.days" />}
+					{...WARNING_DAYS}
 				/>
 			</Part>
 			<StaplingFields />

@@ -37,3 +37,27 @@ GoAccess builds a web log report from the access log. Turn on GoAccess report un
 - The GoAccess options are fields in the same block, all applied after a restart: keep report data (1 to 366 days, default 30), anonymize visitor IPs (off or level 1 to 3, default level 1), drop query strings (default on), full operating system versions (default on) and resolve host names (default on, this sends DNS queries for visitor IPs). `--agent-list --double-decode` are always used.
 - `GOACLA` replaces these fields with your own GoAccess options and locks them. Its default matches the default fields: `--agent-list --real-os --double-decode --anonymize-ip --anonymize-level=1 --keep-last=30 --with-output-resolver --no-query-string`.
 - When GeoLite2 databases are in `/opt/npmpro/goaccess/geoip` (downloaded by NPMpro, see Settings, GeoIP), GoAccess uses them automatically after a restart, unless `GOACLA` sets its own `--geoip-database`.
+
+## Events
+
+NPMpro watches for problems and changes and records each one as an event. Sending events by mail and to webhooks is part of Notifications, which comes in a later release.
+
+State events describe a problem that lasts. Each one is sent when it starts or changes and once more when it recovers. While it stays bad, a reminder comes every 24 hours. A restart repeats nothing. The first time NPMpro sees an object that is healthy, nothing is sent.
+
+Disabling a host, a dynamic DNS record or a backup schedule ends its problems without a recovery message, and no reminders follow. When it is enabled again, NPMpro checks it afresh. A restore that replaces hosts, certificates, dynamic DNS records or backup schedules does the same for them: their states are checked again after the restore.
+
+- **Certificate expiring:** a certificate is inside its warning window (see [Configuration](Configuration), `CERT_WARNING_DAYS`) or has expired.
+- **Certificate renewal failed:** a renewal run ended with an error for a certificate that is due, or a due certificate expired. One run can cover several certificates, and certbot gives one error text for the whole run, so each of them shows that text.
+- **Host config error:** the nginx config of a host fails the nginx test.
+- **Backup failed:** a backup failed. A scheduled run that was skipped counts as failed, like its last status.
+- **GeoIP update failed:** the GeoLite2 databases could not be downloaded.
+- **CrowdSec unreachable:** the CrowdSec LAPI has been unreachable for 5 minutes.
+- **Dynamic DNS record failed:** a dynamic DNS record could not be updated.
+- **Dynamic DNS record stopped:** the provider stopped a dynamic DNS record. NPMpro does not try it again until you act.
+
+Action events mark something that was done. They are sent to webhooks only, in a later release, and each happens once:
+
+- **Host created, updated, enabled, disabled and deleted.**
+- **Certificate issued, renewed and deleted.**
+- **Backup succeeded** (a scheduled run) and **backup restored.**
+- **Database moved** and **database move failed.** A move is reported at the first start on the new database.

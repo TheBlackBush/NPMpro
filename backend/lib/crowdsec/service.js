@@ -3,6 +3,8 @@ import { isCrowdsecConfigured, parseCrowdsecConf, readCrowdsecConf } from "./con
 import { fetchDecisions, summariseDecisions } from "./decisions.js";
 
 const POLL_MS = 60000;
+// how long CrowdSec stays unreachable before the state goes bad
+const UNREACHABLE_MS = 5 * 60 * 1000;
 // first seen time for the decisions of the first poll: they existed before, so they never count as added
 const SEEDED = 0;
 
@@ -42,6 +44,9 @@ const defaultTimers = {
  * @param   {Function}  [deps.geoLookup]  (ip) => country code | null
  * @param   {Function}  [deps.now]
  * @param   {Object}    [deps.timers]
+ * @param   {Function}  [deps.onState]    ({ state: "bad" | "ok" | "off", error?, secrets? }) after a poll: bad once CrowdSec has
+ *                                        been unreachable for 5 minutes in a row, ok when reachable, off when not configured
+ *                                        (false: not written now, told again at the next poll)
  * @returns {Object}
  */
 const createCrowdsecService = ({
@@ -51,12 +56,16 @@ const createCrowdsecService = ({
 	now = Date.now,
 	timers = defaultTimers,
 	log = logger,
+	onState = null,
 } = {}) => {
 	const firstSeen = new Map();
 	let seeded = false;
 	let polling = null;
 	let timer = null;
 	let loggedError = null;
+	let unreachableSince = null;
+	// the last ok or off told, so a quiet minute does not write the state again
+	let told = null;
 	let state = { configured: false, reachable: false, error: null, fetched_at: null, ...emptySummary() };
 
 	const reset = (fields) => {
@@ -80,16 +89,34 @@ const createCrowdsecService = ({
 		seeded = true;
 	};
 
+	// the state callback never breaks a poll
+	const tell = async (change) => {
+		if (!onState) return;
+		const quiet = change.state !== "bad";
+		if (quiet && told === change.state) return;
+		try {
+			// told only after the write worked: a failed or skipped ok or off is tried again at the next poll
+			if ((await onState(change)) === false) return;
+			told = quiet ? change.state : null;
+		} catch (err) {
+			log.warn(`CrowdSec state: ${err?.message ?? err}`);
+		}
+	};
+
 	const pollOnce = async () => {
 		let conf;
 		try {
 			conf = parseCrowdsecConf(await readConf());
 		} catch (err) {
 			reset({ configured: false, error: `Could not read the CrowdSec config: ${err.message}` });
+			unreachableSince = null;
+			await tell({ state: "off" });
 			return;
 		}
 		if (!isCrowdsecConfigured(conf)) {
 			reset({ configured: false });
+			unreachableSince = null;
+			await tell({ state: "off" });
 			return;
 		}
 		try {
@@ -104,12 +131,17 @@ const createCrowdsecService = ({
 				...withCompleteNewest(summariseDecisions(list, time, geoLookup, firstSeen)),
 			};
 			loggedError = null;
+			unreachableSince = null;
+			await tell({ state: "ok" });
 		} catch (err) {
 			const error = err?.message || String(err);
 			// keep the last list, so the page still shows it with its fetched_at
 			state = { ...state, configured: true, reachable: false, error };
 			if (error !== loggedError) log.warn(`CrowdSec decisions: ${error}`);
 			loggedError = error;
+			unreachableSince ??= now();
+			if (now() - unreachableSince >= UNREACHABLE_MS)
+				await tell({ state: "bad", error, secrets: [conf.apiKey].filter(Boolean) });
 		}
 	};
 
