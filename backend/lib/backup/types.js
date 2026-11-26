@@ -22,6 +22,7 @@ const CATEGORIES = [
 			"settings_default_site",
 			"settings_landing_pages",
 			"settings_oidc",
+			"settings_notifications",
 			"settings_monitoring",
 			"settings_crowdsec",
 			SCHEDULE_TYPE,
@@ -45,6 +46,7 @@ const RESTORE_ORDER = [
 	"settings_default_site",
 	"settings_landing_pages",
 	"settings_oidc",
+	"settings_notifications",
 	"settings_monitoring",
 	"settings_crowdsec",
 	SCHEDULE_TYPE,
@@ -380,6 +382,12 @@ const TYPES = {
 		tables: settingRows(["oidc"]),
 		files: NO_FILES,
 		secrets: settingMetaSecret("oidc", "client_secret"),
+	},
+	// the mail server and the notification rules; the mail password is the one secret
+	settings_notifications: {
+		tables: settingRows(["email", "notifications"]),
+		files: NO_FILES,
+		secrets: settingMetaSecret("email", "password"),
 	},
 	settings_monitoring: {
 		tables: settingRows(["monitoring", "geoip"]),

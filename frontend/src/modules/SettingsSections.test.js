@@ -53,7 +53,7 @@ it("gives every section in sections.js one of the categories, in the menu's orde
 		[
 			["sites", ["landing-pages", "network", "nginx", "dynamic-dns"]],
 			["security", ["authentication", "forward-auth", "crowdsec", "certificates"]],
-			["monitoring", ["monitoring", "geoip"]],
+			["monitoring", ["monitoring", "geoip", "notifications"]],
 			["data", ["backup", "database"]],
 			["system", ["advanced", "environment"]],
 			["administration", ["users", "audit-log", "api-access"]],

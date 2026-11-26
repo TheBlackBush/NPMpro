@@ -82,6 +82,12 @@
 			"readOnly": true,
 			"example": "2026-11-12 12:00:00"
 		},
+		"npmpro_language": {
+			"type": ["string", "null"],
+			"description": "The UI language of the user (one of the 13 codes), set by the UI after sign-in; mails go out in it. Null until then",
+			"readOnly": true,
+			"example": "de"
+		},
 		"npmpro_has_password": {
 			"type": "boolean",
 			"description": "Whether the user has a password (users list only)",

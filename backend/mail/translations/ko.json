@@ -1,0 +1,6 @@
+{
+	"test.subject": "테스트 이메일",
+	"test.intro": "{instance}의 NPMpro에서 보낸 테스트 이메일입니다.",
+	"test.works": "이 이메일을 받으셨다면 이메일 발송이 정상적으로 작동하는 것입니다.",
+	"footer.sent": "{instance}의 NPMpro에서 보냈습니다."
+}

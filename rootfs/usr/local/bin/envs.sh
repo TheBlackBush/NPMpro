@@ -77,7 +77,7 @@ mv -f "$env_sum" /etc/npmpro/env.sha512sum
 # NAME_FILE too) and before NPMPRO_USER_ENV and the checks below, so a value from a file counts as set by the user and
 # goes through the same checks. Nothing before this line reads these names. See secret-files.sh; the list is checked by
 # test/secret-files.test.js and .github/scripts/check-compose-envs.sh.
-NPMPRO_SECRET_ENVS="DB_MYSQL_USER DB_MYSQL_PASSWORD DB_POSTGRES_USER DB_POSTGRES_PASSWORD INITIAL_ADMIN_EMAIL INITIAL_ADMIN_PASSWORD ACME_EMAIL ACME_EAB_KID ACME_EAB_HMAC_KEY COOKIE_SECRET OIDC_CLIENT_ID OIDC_CLIENT_SECRET GEOIP_ACCOUNT_ID GEOIP_LICENSE_KEY CROWDSEC_API_KEY"
+NPMPRO_SECRET_ENVS="DB_MYSQL_USER DB_MYSQL_PASSWORD DB_POSTGRES_USER DB_POSTGRES_PASSWORD INITIAL_ADMIN_EMAIL INITIAL_ADMIN_PASSWORD ACME_EMAIL ACME_EAB_KID ACME_EAB_HMAC_KEY COOKIE_SECRET OIDC_CLIENT_ID OIDC_CLIENT_SECRET GEOIP_ACCOUNT_ID GEOIP_LICENSE_KEY CROWDSEC_API_KEY SMTP_USERNAME SMTP_PASSWORD"
 # shellcheck source=/dev/null
 . /usr/local/bin/secret-files.sh
 if ! secret_files_read /data "$NPMPRO_SECRET_ENVS"; then
@@ -1000,6 +1000,63 @@ fi
 
 if [ -n "$OIDC_SKIP_MFA" ] && ! echo "$OIDC_SKIP_MFA" | grep -q "^true$\|^false$"; then
     echo "OIDC_SKIP_MFA needs to be true or false."
+    sleep inf
+fi
+
+if [ -n "$SMTP_PORT" ] && { ! echo "$SMTP_PORT" | grep -q "^[0-9]\{1,5\}$" || [ "$SMTP_PORT" -lt 1 ] || [ "$SMTP_PORT" -gt 65535 ]; }; then
+    echo "SMTP_PORT needs to be a number from 1 to 65535."
+    sleep inf
+fi
+
+if [ -n "$SMTP_SECURITY" ] && ! echo "$SMTP_SECURITY" | grep -q "^starttls$\|^tls$\|^none$"; then
+    echo "SMTP_SECURITY needs to be starttls, tls or none."
+    sleep inf
+fi
+
+if [ -n "$SMTP_VERIFY_TLS" ] && ! echo "$SMTP_VERIFY_TLS" | grep -q "^true$\|^false$"; then
+    echo "SMTP_VERIFY_TLS needs to be true or false."
+    sleep inf
+fi
+
+# the characters of $1 that are in the tr set $2 (a set of tr -cd), counted
+mail_count_chars() {
+    printf '%s' "$1" | LC_ALL=C tr -cd "$2" | wc -c
+}
+
+# one plain address: printable ASCII only (no space, CR or LF), no quote, comma, colon, semicolon, angle bracket,
+# parenthesis or backslash, no =?, at most 254 characters (the same rule as backend/lib/mail/settings-rules.js)
+mail_address_ok() {
+    [ "${#1}" -le 254 ] &&
+        [ "$(mail_count_chars "$1" '\041-\176')" -eq "${#1}" ] &&
+        printf '%s\n' "$1" | grep -qE '^[^@<>(),;:"\\]+@[^@<>(),;:"\\]+$' &&
+        ! printf '%s' "$1" | grep -qF '=?'
+}
+
+for name in SMTP_FROM SMTP_REPLY_TO; do
+    value="$(printenv "$name")"
+    if [ -n "$value" ] && ! mail_address_ok "$value"; then
+        echo "$name needs to be one plain address (printable ASCII, no name, no quotes, comma or angle brackets, at most 254 characters)."
+        sleep inf
+    fi
+done
+
+if [ -n "$SMTP_FROM_NAME" ] && { [ "${#SMTP_FROM_NAME}" -gt 100 ] || [ "$(mail_count_chars "$SMTP_FROM_NAME" '\r\n"')" -gt 0 ]; }; then
+    echo "SMTP_FROM_NAME needs to be at most 100 characters without quotes or line breaks."
+    sleep inf
+fi
+
+if [ -n "$SMTP_USERNAME" ] && { [ "${#SMTP_USERNAME}" -gt 254 ] || [ "$(mail_count_chars "$SMTP_USERNAME" '\r\n')" -gt 0 ]; }; then
+    echo "SMTP_USERNAME needs to be at most 254 characters without line breaks."
+    sleep inf
+fi
+
+if [ -n "$PUBLIC_URL" ] && { ! echo "$PUBLIC_URL" | grep -qiE '^https://[^/?#@\\]+/?$' || [ "$(mail_count_chars "$PUBLIC_URL" '\041-\176')" -ne "${#PUBLIC_URL}" ]; }; then
+    echo "PUBLIC_URL needs to be an https:// address without a path, query, fragment or user info."
+    sleep inf
+fi
+
+if [ -n "$MAIL_LANGUAGE" ] && ! echo "$MAIL_LANGUAGE" | grep -q "^\(en\|de\|zh\|fr\|es\|pt\|ru\|it\|nl\|pl\|ja\|ko\|uk\)$"; then
+    echo "MAIL_LANGUAGE needs to be one of en, de, zh, fr, es, pt, ru, it, nl, pl, ja, ko, uk."
     sleep inf
 fi
 

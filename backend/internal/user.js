@@ -2,6 +2,7 @@ import { rm, writeFile } from "node:fs/promises";
 import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
 import { avatarExt, AVATAR_EXTS as avatarExts, fetchGravatar } from "../lib/gravatar.js";
+import { MAIL_LANGUAGES } from "../lib/mail/settings-rules.js";
 import { validateDefaultPermissions } from "../lib/oidc-rules.js";
 import { rooted } from "../lib/paths.js";
 import { withPasswordFlag } from "../lib/user-json.js";
@@ -116,6 +117,20 @@ const internalUser = {
 		});
 
 		return savedUser;
+	},
+
+	/**
+	 * The UI language of the signed-in user, for the language of their mails. A preference: no audit row.
+	 *
+	 * @param   {Access}  access
+	 * @param   {String}  language  one of the 13 UI codes
+	 * @returns {Promise}
+	 */
+	setLanguage: async (access, language) => {
+		if (!MAIL_LANGUAGES.includes(language)) throw new errs.ValidationError("Unknown language");
+		const id = access.token.getUserId(0);
+		if (!id) throw new errs.PermissionError();
+		await userModel.query().findById(id).patch({ npmpro_language: language });
 	},
 
 	deleteAvatar: async (access, id) => {

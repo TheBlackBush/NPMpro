@@ -25,6 +25,7 @@ const ALL_TYPES = [
 	"settings_default_site",
 	"settings_landing_pages",
 	"settings_oidc",
+	"settings_notifications",
 	"settings_monitoring",
 	"settings_crowdsec",
 	"custom_nginx",

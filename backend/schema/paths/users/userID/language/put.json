@@ -1,0 +1,57 @@
+{
+	"operationId": "setMyLanguage",
+	"summary": "Set the UI language of the signed-in user",
+	"description": "The UI sends it after a sign-in when its language differs from the stored one. Mails to the user go out in this language. No audit entry is written.\n\nNeeds: a signed-in session (API tokens are refused)",
+	"tags": [
+		"users"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"additionalProperties": false,
+					"properties": {
+						"language": {
+							"type": "string",
+							"minLength": 2,
+							"maxLength": 8,
+							"example": "de",
+							"description": "One of the UI language codes: en, de, zh, fr, es, pt, ru, it, nl, pl, ja, ko, uk. Another value is answered with 400"
+						}
+					},
+					"required": [
+						"language"
+					],
+					"type": "object"
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"language": "de"
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"204": {
+			"description": "The language was stored"
+		},
+		"400": {
+			"description": "Not one of the language codes"
+		},
+		"401": {
+			"description": "Not signed in"
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
+		}
+	}
+}

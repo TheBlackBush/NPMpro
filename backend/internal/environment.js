@@ -5,6 +5,7 @@ import { getOidcConfig } from "../lib/oidc-config.js";
 import { getRuntimeConfig } from "../lib/runtime-config.js";
 import { RUNTIME_GROUPS } from "../lib/runtime-rules.js";
 import { lockedKeys as acmeLockedKeys } from "./acme-account.js";
+import { getEmailConfig, getNotificationsConfig } from "./mail-setting.js";
 
 const internalEnvironment = {
 	/**
@@ -26,6 +27,8 @@ const internalEnvironment = {
 		locked.push(
 			...settingLocksOf({
 				oidc: (await getOidcConfig()).locked,
+				email: (await getEmailConfig()).locked,
+				notifications: (await getNotificationsConfig()).locked,
 				acme: acmeLockedKeys(),
 				monitoring: (await getMonitoringConfig()).locked,
 				geoip: (await getGeoipConfig()).locked,

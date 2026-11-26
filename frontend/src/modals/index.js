@@ -29,5 +29,6 @@ export * from "./ReplaceAcmeAccountModal";
 export * from "./RestoreBackupModal";
 export * from "./SetPasswordModal";
 export * from "./StreamModal";
+export * from "./TestMailModal";
 export * from "./UserModal";
 export * from "./UserSignInActions";

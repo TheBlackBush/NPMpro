@@ -39,6 +39,7 @@ const SECRET_SETTING_KEYS = {
 	oidc: ["client_secret"],
 	geoip: ["license_key"],
 	crowdsec: ["api_key", "captcha_secret_key"],
+	email: ["password"],
 };
 // the table each link column points to, and the value for "none" (null: the link row is not written)
 const LINKS = {

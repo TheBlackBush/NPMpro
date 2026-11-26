@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # Fails when the npmpro service in compose.yaml misses a supported environment variable or lists one that envs.sh
-# refuses. Supported: NPMPRO_RUNTIME_ENVS and NPMPRO_STARTUP_ENVS in envs.sh, the OIDC_*, TRAFFIC_* and GEOIP_* names
-# the backend reads, and COOKIE_SECRET. Refused: the names envs.sh stops on with "not supported" or "replaced by".
+# refuses. Supported: NPMPRO_RUNTIME_ENVS and NPMPRO_STARTUP_ENVS in envs.sh, the OIDC_*, TRAFFIC_*, GEOIP_* and SMTP_* names,
+# PUBLIC_URL and MAIL_LANGUAGE the backend reads, and COOKIE_SECRET. Refused: the names envs.sh stops on with "not supported" or "replaced by".
 # Every NPMPRO_SECRET_ENVS name the service lists also needs its commented NAME_FILE=/run/secrets/ line, and a
 # NAME_FILE line must belong to one of them.
 # POSIX sh, sed, awk and grep -E -q only.
@@ -26,16 +26,16 @@ if [ -z "$secret" ]; then
     exit 1
 fi
 
-# every quoted OIDC_*, TRAFFIC_* and GEOIP_* name in the backend rule files
+# every quoted OIDC_*, TRAFFIC_*, GEOIP_* and SMTP_* name, PUBLIC_URL and MAIL_LANGUAGE in the backend rule files
 backend="$(awk '{
     line = $0
-    while (match(line, /"(OIDC|TRAFFIC|GEOIP)_[A-Z0-9_]+"/)) {
+    while (match(line, /"((OIDC|TRAFFIC|GEOIP|SMTP)_[A-Z0-9_]+|PUBLIC_URL|MAIL_LANGUAGE)"/)) {
         print substr(line, RSTART + 1, RLENGTH - 2)
         line = substr(line, RSTART + RLENGTH)
     }
-}' backend/lib/oidc-rules.js backend/lib/monitoring-rules.js | sort -u)"
+}' backend/lib/oidc-rules.js backend/lib/monitoring-rules.js backend/lib/mail/settings-rules.js | sort -u)"
 if [ -z "$backend" ]; then
-    echo "Could not read the OIDC, TRAFFIC and GEOIP names from backend/lib"
+    echo "Could not read the OIDC, TRAFFIC, GEOIP, SMTP, PUBLIC_URL and MAIL_LANGUAGE names from backend/lib"
     exit 1
 fi
 

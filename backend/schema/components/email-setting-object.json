@@ -1,0 +1,95 @@
+{
+	"type": "object",
+	"description": "Effective mail settings (the password is never returned)",
+	"additionalProperties": false,
+	"required": [
+		"host",
+		"port",
+		"security",
+		"verify_tls",
+		"username",
+		"from_address",
+		"from_name",
+		"reply_to",
+		"password_set",
+		"secret_error",
+		"locked",
+		"locked_by",
+		"configured",
+		"config_errors"
+	],
+	"properties": {
+		"host": {
+			"type": "string",
+			"description": "The mail server (SMTP host name or IP address); empty when not set"
+		},
+		"port": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 65535,
+			"description": "The SMTP port. Default: 587"
+		},
+		"security": {
+			"type": "string",
+			"enum": [
+				"starttls",
+				"tls",
+				"none"
+			],
+			"description": "How the connection is secured: starttls, tls (implicit TLS) or none. Default: starttls"
+		},
+		"verify_tls": {
+			"type": "boolean",
+			"description": "Whether the server's certificate must be valid. Default: on"
+		},
+		"username": {
+			"type": "string",
+			"description": "The login name; empty sends no login"
+		},
+		"from_address": {
+			"type": "string",
+			"description": "The sender address of every mail; empty when not set"
+		},
+		"from_name": {
+			"type": "string",
+			"description": "The sender name shown with the address; may be empty"
+		},
+		"reply_to": {
+			"type": "string",
+			"description": "The address replies go to; may be empty"
+		},
+		"password_set": {
+			"type": "boolean",
+			"description": "Whether a password is saved or set by the environment. The password itself is never returned"
+		},
+		"secret_error": {
+			"type": "boolean",
+			"description": "Whether the saved password cannot be decrypted (the encryption key changed); enter it again"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "string"
+			},
+			"description": "For each locked field, the name of the environment variable that sets it. The name for password comes back blank (the API blanks every value under a key named password); locked is the source of truth and the variable is SMTP_PASSWORD"
+		},
+		"configured": {
+			"type": "boolean",
+			"description": "Whether mail can be sent: the server and the sender address are set"
+		},
+		"config_errors": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"description": "Fields whose effective value the sender refuses (a restored row or an env value); mail is not sent until they are corrected"
+		}
+	}
+}

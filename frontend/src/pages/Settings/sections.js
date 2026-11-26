@@ -1,5 +1,6 @@
 import {
 	BadgeCheck,
+	Bell,
 	ChartColumn,
 	DatabaseBackup,
 	Database as DatabaseIcon,
@@ -34,6 +35,7 @@ import LandingPages from "./LandingPages";
 import Monitoring from "./Monitoring";
 import Network from "./Network";
 import Nginx from "./Nginx";
+import Notifications from "./Notifications";
 
 // each section names its category (modules/SettingsSections.js); the menu shows them category by category, in
 // this order. The URLs are the ids and do not change with the category.
@@ -85,6 +87,13 @@ export const SECTIONS = [
 		element: Monitoring,
 	},
 	{ id: "geoip", category: "monitoring", labelKey: "settings.geoip", icon: MapPin, element: Geoip },
+	{
+		id: "notifications",
+		category: "monitoring",
+		labelKey: "settings.notifications",
+		icon: Bell,
+		element: Notifications,
+	},
 	{ id: "backup", category: "data", labelKey: "settings.backup", icon: DatabaseBackup, element: Backup },
 	{ id: "database", category: "data", labelKey: "settings.database", icon: DatabaseIcon, element: Database },
 	{ id: "advanced", category: "system", labelKey: "settings.advanced", icon: SlidersHorizontal, element: Advanced },

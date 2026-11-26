@@ -1,0 +1,68 @@
+{
+	"operationId": "testEmailSettings",
+	"summary": "Send a test mail",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"description": "Sends a test mail with the saved settings, at once and outside the queue, to the given address or to the signed-in user, in that user's language. At most 5 requests a minute. A failed send answers 400 with the (scrubbed) reply of the server in message_values.error.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"requestBody": {
+		"description": "Optional recipient",
+		"required": false,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"to": {
+							"type": "string",
+							"maxLength": 254,
+							"description": "The recipient, one address; defaults to the signed-in user's address",
+							"example": "admin@example.com"
+						}
+					}
+				},
+				"example": {
+					"to": "admin@example.com"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "The mail was handed to the server",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"sent": true
+							}
+						}
+					},
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"sent"
+						],
+						"properties": {
+							"sent": {
+								"type": "boolean",
+								"description": "Always true; a failure answers 400"
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -284,3 +284,23 @@ it("knows which addresses are blocked", () => {
 	}
 	assert.equal(isBlockedAddress("example.com"), true);
 });
+
+it("blocks the IPv4-compatible and IPv4-translated forms of a blocked IPv4 address, and passes a private one", () => {
+	for (const ip of [
+		"::127.0.0.1",
+		"::7f00:1",
+		"::ffff:0:127.0.0.1",
+		"::ffff:0:7f00:1",
+		"::ffff:7f00:1",
+		"::169.254.169.254",
+		"::a9fe:a9fe",
+		"::ffff:0:224.0.0.1",
+		"0:0:0:0:0:0:7f00:1",
+		"::127.0.0.1%eth0",
+	]) {
+		assert.equal(isBlockedAddress(ip), true, ip);
+	}
+	for (const ip of ["::10.0.0.5", "::ffff:0:10.0.0.5", "::ffff:10.0.0.5", "1:2:3:4:5:6:7f00:1", "2001:db8::7f00:1"]) {
+		assert.equal(isBlockedAddress(ip), false, ip);
+	}
+});

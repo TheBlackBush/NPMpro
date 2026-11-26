@@ -271,7 +271,7 @@ describe("certificate emit points", () => {
 		await stale(one.id);
 		await cp(expired.certificate, live(one.id));
 		const original = stateStore.report;
-		const targets = notify.channels()[0].targets;
+		const targets = notify.channels().find((channel) => channel.id === "fake").targets;
 		stateStore.report = () => {
 			throw new Error("store broke");
 		};

@@ -1,0 +1,6 @@
+{
+	"test.subject": "Тестовий лист",
+	"test.intro": "Це тестовий лист від NPMpro на {instance}.",
+	"test.works": "Якщо ви його отримали, надсилання пошти працює.",
+	"footer.sent": "Надіслано NPMpro на {instance}."
+}

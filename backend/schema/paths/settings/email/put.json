@@ -1,0 +1,119 @@
+{
+	"operationId": "updateEmailSettings",
+	"summary": "Update the mail settings",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"description": "Saves the mail settings; send only what changes. Fields set by environment variables are ignored. An empty or omitted password keeps the saved one, password_clear removes it. A changed host, port, security or username is checked first: the host must resolve and must not be an address outbound requests may not reach (400 otherwise), and security none with a login is only allowed to a private network address. The settings decide where mail and its login go, so a session is required.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
+	"requestBody": {
+		"description": "The mail settings to change",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"minProperties": 1,
+					"properties": {
+						"host": {
+							"type": "string",
+							"description": "The mail server (SMTP host name or IP address); empty when not set",
+							"maxLength": 253
+						},
+						"port": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 65535,
+							"description": "The SMTP port. Default: 587"
+						},
+						"security": {
+							"type": "string",
+							"enum": [
+								"starttls",
+								"tls",
+								"none"
+							],
+							"description": "How the connection is secured: starttls, tls (implicit TLS) or none. Default: starttls"
+						},
+						"verify_tls": {
+							"type": "boolean",
+							"description": "Whether the server's certificate must be valid. Default: on"
+						},
+						"username": {
+							"type": "string",
+							"description": "The login name; empty sends no login",
+							"maxLength": 254
+						},
+						"from_address": {
+							"type": "string",
+							"description": "The sender address of every mail; empty when not set",
+							"maxLength": 254
+						},
+						"from_name": {
+							"type": "string",
+							"description": "The sender name shown with the address; may be empty",
+							"maxLength": 100
+						},
+						"reply_to": {
+							"type": "string",
+							"description": "The address replies go to; may be empty",
+							"maxLength": 254
+						},
+						"password": {
+							"type": "string",
+							"maxLength": 1024,
+							"description": "The password, empty keeps the saved one",
+							"example": "YOUR_PASSWORD"
+						},
+						"password_clear": {
+							"type": "boolean",
+							"description": "Remove the saved password (ignored when password is sent)"
+						}
+					}
+				},
+				"example": {
+					"host": "smtp.example.com",
+					"port": 587,
+					"from_address": "npmpro@example.com"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "The mail settings as they are now",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"host": "smtp.example.com",
+								"port": 587,
+								"security": "starttls",
+								"verify_tls": true,
+								"username": "npmpro",
+								"from_address": "npmpro@example.com",
+								"from_name": "NPMpro",
+								"reply_to": "",
+								"password_set": true,
+								"secret_error": false,
+								"locked": [],
+								"locked_by": {},
+								"configured": true,
+								"config_errors": []
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/email-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}

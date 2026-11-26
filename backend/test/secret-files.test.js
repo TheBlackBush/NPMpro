@@ -27,6 +27,8 @@ const SECRET_NAMES = [
 	"GEOIP_ACCOUNT_ID",
 	"GEOIP_LICENSE_KEY",
 	"CROWDSEC_API_KEY",
+	"SMTP_USERNAME",
+	"SMTP_PASSWORD",
 ];
 // every secret of these tests contains it, so a leak shows in any output; no file name contains it
 const MARK = "s3cret-MARK";
@@ -234,7 +236,7 @@ it("takes the data folder from the caller and never echoes the value", async () 
 	assert.equal(ECHO_VALUE.test(helper), false);
 });
 
-it("lists exactly the 15 secret names once in envs.sh", () => {
+it("lists exactly the 17 secret names once in envs.sh", () => {
 	const text = readFileSync(ENVS_SH, "utf8");
 	assert.deepEqual(SECRET_LINE.exec(text)?.groups.names.split(" "), SECRET_NAMES);
 	assert.equal(text.split("\nNPMPRO_SECRET_ENVS=").length, 2);

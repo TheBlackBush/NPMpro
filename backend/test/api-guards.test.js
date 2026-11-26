@@ -17,6 +17,8 @@ const ROUTERS = [
 	["GET", "/reports/hosts"],
 	["GET", "/monitoring/traffic"],
 	["GET", "/settings"],
+	["GET", "/settings/email"],
+	["GET", "/settings/notifications"],
 	["GET", "/version/check"],
 	["GET", "/nginx/proxy-hosts"],
 	["GET", "/nginx/redirection-hosts"],

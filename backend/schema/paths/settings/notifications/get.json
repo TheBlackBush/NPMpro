@@ -1,0 +1,39 @@
+{
+	"operationId": "getNotificationSettings",
+	"summary": "Get the notification settings",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The notification settings as they are now",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"public_url": "https://npm.example.com",
+								"default_language": "en",
+								"locked": [],
+								"locked_by": {},
+								"config_errors": []
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/notifications-setting-object.json"
+					}
+				}
+			}
+		}
+	},
+	"description": "Returns the effective notification settings: the saved values with the ones set by environment variables on top (listed in locked and locked_by). public_url is answered as the origin; config_errors lists the fields whose effective value is not valid.\n\nNeeds: an administrator (a token needs its Administrator switch)"
+}

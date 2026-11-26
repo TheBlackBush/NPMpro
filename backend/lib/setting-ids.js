@@ -9,11 +9,13 @@ const DEDICATED_IDS = [
 	"landing_pages",
 	"traffic-state",
 	"acme",
+	"email",
+	"notifications",
 	...RUNTIME_GROUPS,
 ];
 // Not listed or returned by the generic API: the reader position is internal, the runtime groups and crowdsec (sealed
-// secrets) have their own GET
-const HIDDEN_IDS = ["traffic-state", "crowdsec", "landing_pages", "acme", ...RUNTIME_GROUPS];
+// secrets), email (a sealed password) and notifications have their own GET
+const HIDDEN_IDS = ["traffic-state", "crowdsec", "landing_pages", "acme", "email", "notifications", ...RUNTIME_GROUPS];
 
 /**
  * @param   {string}  id

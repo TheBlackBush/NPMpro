@@ -7,6 +7,7 @@ const SESSION_ONLY = new Set([
 	"delete /settings/acme/accounts/{accountID}",
 	"get /tokens",
 	"put /users/{userID}/auth",
+	"put /users/me/language",
 	"get /users/{userID}/mfa",
 	"delete /users/{userID}/mfa",
 	"post /users/{userID}/mfa/totp",
@@ -30,6 +31,9 @@ const SESSION_ONLY = new Set([
 	"put /users/{userID}/permissions",
 	// the settings that decide who can sign in (Administrator switch included)
 	"put /settings/oidc",
+	// where mail and its login go
+	"put /settings/email",
+	"put /settings/notifications",
 	"post /settings/oidc/test",
 	"post /settings/oidc/icon",
 	"delete /settings/oidc/icon",

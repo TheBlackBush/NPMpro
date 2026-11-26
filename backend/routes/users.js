@@ -385,6 +385,21 @@ router
 	});
 
 /**
+ * /api/users/me/language: the UI language of the signed-in user (never with a token)
+ */
+router
+	.route("/me/language")
+	.all(jwtdecode())
+	.all(sessionOnly())
+
+	/** PUT /api/users/me/language */
+	.put(async (req, res) => {
+		const { language } = apiValidator(getValidationSchema("/users/me/language", "put"), req.body);
+		await internalUser.setLanguage(res.locals.access, language);
+		res.status(204).end();
+	});
+
+/**
  * /api/users/123/avatar
  */
 router

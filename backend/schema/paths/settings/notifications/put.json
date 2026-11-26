@@ -1,0 +1,80 @@
+{
+	"operationId": "updateNotificationSettings",
+	"summary": "Update the notification settings",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"description": "Saves the notification settings; send only what changes. Fields set by environment variables are ignored. public_url is stored without a trailing slash. The public URL is the address of the links in mails (password reset links among them), so a session is required.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
+	"requestBody": {
+		"description": "The settings to change",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"minProperties": 1,
+					"properties": {
+						"public_url": {
+							"type": "string",
+							"description": "The https address of this instance (https://host, no path), empty to clear",
+							"maxLength": 253,
+							"example": "https://npm.example.com"
+						},
+						"default_language": {
+							"type": "string",
+							"enum": [
+								"en",
+								"de",
+								"zh",
+								"fr",
+								"es",
+								"pt",
+								"ru",
+								"it",
+								"nl",
+								"pl",
+								"ja",
+								"ko",
+								"uk"
+							],
+							"description": "The language of mails to people without a language of their own. Default: en"
+						}
+					}
+				},
+				"example": {
+					"public_url": "https://npm.example.com",
+					"default_language": "en"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "The notification settings as they are now",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"public_url": "https://npm.example.com",
+								"default_language": "en",
+								"locked": [],
+								"locked_by": {},
+								"config_errors": []
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/notifications-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}

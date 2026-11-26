@@ -99,7 +99,8 @@ jobs:
             test/rename-migration-servers.test.js \
             test/servers-mysql.test.js \
             test/servers-postgres.test.js \
-            test/traffic-totals-servers.test.js | tee "$RUNNER_TEMP/servers.tap"
+            test/traffic-totals-servers.test.js \
+            test/user-language-servers.test.js | tee "$RUNNER_TEMP/servers.tap"
           if grep '# SKIP' "$RUNNER_TEMP/servers.tap" | grep -v 'rename migration on mariadb'; then
             echo "::error::a real-server test was skipped"
             exit 1
@@ -194,5 +195,5 @@ jobs:
         with:
           check_filenames: true
           check_hidden: true
-          skip: pnpm-lock.yaml,./frontend/translations,./frontend/patches,./backend/landing-pages/texts,./rootfs/usr/local/nginx/html/npmpro
+          skip: pnpm-lock.yaml,./frontend/translations,./frontend/patches,./backend/landing-pages/texts,./backend/mail/translations,./rootfs/usr/local/nginx/html/npmpro
           ignore_words_list: afterAll,alog,clen,Nd,hasTable,MapPin,statics

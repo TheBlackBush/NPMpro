@@ -163,6 +163,12 @@ The DNS checks only read. The credential Test, the host check and the CAA check 
 
 The host record option (see [DNS records for a host](DNS#dns-records-for-a-host)) is off by default and writes at a provider only for a name you ticked, with a credential you can see and the Certificates manage permission. It never overwrites a record it did not create: a name that holds another value is only changed after you press **Adopt and update**. It deletes only what NPMpro created, and only the exact address it wrote; a record that holds another value by then stays. Its reach test sends one request to the public address this instance found (never to a typed or resolved address) with the host name as Host header, for a one-time file in the challenge folder that is removed afterwards, and only a public address is used. A save never waits for the provider, and the provider calls go through the outbound check as above.
 
+## Outbound mail
+
+The mail server is an outbound connection, so it goes through the same check as the other admin-set addresses: no loopback, link-local, multicast or reserved address, and private LAN addresses are allowed. The connection goes to the address that was checked, and every address of the name must pass. A login (user and password) is never sent in plain text to an address outside your private LAN: with **Security** set to **None**, NPMpro refuses it. See [Notifications](Notifications#how-the-mail-server-is-reached).
+
+The mail password is encrypted in the database. It is never returned by the API or shown in the UI (the form shows only that one is set), and it goes into a backup only with secrets, where the whole file is encrypted. Saving the mail server settings needs a signed-in session, so an API token cannot change where mail goes.
+
 ## Notes on Cloudflare
 - Using cloudflare proxy/tunnel before NPMpro (so between the users and NPMpro `users <=> cloudflare <=> NPMpro`) is strongly discouraged
 - Why?

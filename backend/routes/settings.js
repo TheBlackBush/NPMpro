@@ -6,9 +6,11 @@ import validator from "../lib/validator/index.js";
 import { getValidationSchema } from "../schema/index.js";
 import acmeRouter from "./settings-acme.js";
 import crowdsecRouter from "./settings-crowdsec.js";
+import emailRouter from "./settings-email.js";
 import environmentRouter from "./settings-environment.js";
 import landingPagesRouter from "./settings-landing-pages.js";
 import { geoipRouter, monitoringRouter } from "./settings-monitoring.js";
+import notificationsRouter from "./settings-notifications.js";
 import settingsOidcRoutes from "./settings-oidc.js";
 import runtimeRouter from "./settings-runtime.js";
 
@@ -54,6 +56,8 @@ router.use("/crowdsec", crowdsecRouter);
 router.use("/landing-pages", landingPagesRouter);
 router.use("/runtime", runtimeRouter);
 router.use("/environment", environmentRouter);
+router.use("/email", emailRouter);
+router.use("/notifications", notificationsRouter);
 
 /**
  * /api/settings/something

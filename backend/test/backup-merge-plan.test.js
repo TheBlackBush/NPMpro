@@ -327,6 +327,27 @@ it("lists a setting only when it differs outside its secrets", () => {
 	assert.equal(find(taken, "setting:oidc").action, "take");
 });
 
+it("lists the email and notifications settings as two items of the one type", () => {
+	const instance = {
+		setting: [
+			{ id: "email", name: "Email", meta: { host: "old", password: "x" } },
+			{ id: "notifications", name: "Notifications", meta: { default_language: "en" } },
+		],
+	};
+	const data = {
+		settings_notifications: {
+			setting: [
+				{ id: "email", name: "Email", meta: { host: "new" } },
+				{ id: "notifications", name: "Notifications", meta: { default_language: "de" } },
+			],
+		},
+	};
+	const result = plan({ data, instance, types: ["settings_notifications"] });
+	assert.equal(find(result, "setting:email").reason, "differs");
+	assert.equal(find(result, "setting:notifications").reason, "differs");
+	assert.equal(find(result, "setting:email").type, "settings_notifications");
+});
+
 it("lists the default site when its value differs", () => {
 	const instance = { setting: [{ id: "default-site", name: "Default Site", value: "congratulations", meta: {} }] };
 	const data = {

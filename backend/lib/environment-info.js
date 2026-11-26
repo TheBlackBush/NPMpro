@@ -1,4 +1,5 @@
 import { CROWDSEC_ENV_KEYS } from "./crowdsec/settings.js";
+import { EMAIL_ENV_KEYS, NOTIFICATION_ENV_KEYS } from "./mail/settings-rules.js";
 import { GEOIP_ENV_KEYS, MONITORING_ENV_KEYS } from "./monitoring-rules.js";
 import { ENV_KEYS as OIDC_ENV_KEYS } from "./oidc-rules.js";
 import { RUNTIME_RULES, SETTING_LOCK_REASONS, userSetNames } from "./runtime-rules.js";
@@ -88,6 +89,8 @@ const ENVIRONMENT_NAMES = ENVIRONMENT_ITEMS.map((entry) => entry.name);
 
 const LOCK_GROUP_ORDER = [
 	"oidc",
+	"email",
+	"notifications",
 	"acme",
 	"certificates",
 	"network",
@@ -142,17 +145,27 @@ const lockedRuntimeOf = (runtimeLocked) =>
 		.map(({ entry }) => entry);
 
 /**
- * The OIDC, ACME account, monitoring, GeoIP and CrowdSec settings an env var locks, in the form of the runtime ones (each by its own variable)
+ * The OIDC, mail, notification, ACME account, monitoring, GeoIP and CrowdSec settings an env var locks, in the form of the runtime ones (each by its own variable)
  *
  * @param   {Object}  locked
  * @param   {string[]}  [locked.oidc]
+ * @param   {string[]}  [locked.email]
+ * @param   {string[]}  [locked.notifications]
  * @param   {string[]}  [locked.acme]
  * @param   {string[]}  [locked.monitoring]
  * @param   {string[]}  [locked.geoip]
  * @param   {string[]}  [locked.crowdsec]
  * @returns {{group: string, key: string, env: string, reason: string|null}[]}
  */
-const settingLocksOf = ({ oidc = [], acme = [], monitoring = [], geoip = [], crowdsec = [] } = {}) => {
+const settingLocksOf = ({
+	oidc = [],
+	email = [],
+	notifications = [],
+	acme = [],
+	monitoring = [],
+	geoip = [],
+	crowdsec = [],
+} = {}) => {
 	const entries = [];
 	const add = (group, keys, names) => {
 		for (const key of keys) {
@@ -160,6 +173,8 @@ const settingLocksOf = ({ oidc = [], acme = [], monitoring = [], geoip = [], cro
 		}
 	};
 	add("oidc", oidc, OIDC_ENV_KEYS);
+	add("email", email, EMAIL_ENV_KEYS);
+	add("notifications", notifications, NOTIFICATION_ENV_KEYS);
 	add("acme", acme, ACME_ENV_KEYS);
 	add("monitoring", monitoring, MONITORING_ENV_KEYS);
 	add("geoip", geoip, GEOIP_ENV_KEYS);
@@ -169,6 +184,8 @@ const settingLocksOf = ({ oidc = [], acme = [], monitoring = [], geoip = [], cro
 
 const SETTING_ENV_KEYS = {
 	oidc: OIDC_ENV_KEYS,
+	email: EMAIL_ENV_KEYS,
+	notifications: NOTIFICATION_ENV_KEYS,
 	monitoring: MONITORING_ENV_KEYS,
 	geoip: GEOIP_ENV_KEYS,
 	crowdsec: CROWDSEC_ENV_KEYS,
@@ -178,7 +195,7 @@ const SETTING_ENV_KEYS = {
  * The variable that locks each locked key of the OIDC, monitoring, GeoIP or CrowdSec setting (locked_by in the response): key to
  * variable NAME, never a value. A key without a name in the map has no entry.
  *
- * @param   {"oidc"|"monitoring"|"geoip"|"crowdsec"}  group
+ * @param   {"oidc"|"email"|"notifications"|"monitoring"|"geoip"|"crowdsec"}  group
  * @param   {string[]}  [locked]  the locked keys
  * @returns {Object<string, string>}
  */

@@ -744,6 +744,27 @@
 				"$ref": "./paths/settings/environment/get.json"
 			}
 		},
+		"/settings/email": {
+			"get": {
+				"$ref": "./paths/settings/email/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/email/put.json"
+			}
+		},
+		"/settings/email/test": {
+			"post": {
+				"$ref": "./paths/settings/email/test/post.json"
+			}
+		},
+		"/settings/notifications": {
+			"get": {
+				"$ref": "./paths/settings/notifications/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/notifications/put.json"
+			}
+		},
 		"/settings/{settingID}": {
 			"get": {
 				"$ref": "./paths/settings/settingID/get.json"
@@ -795,6 +816,11 @@
 			},
 			"delete": {
 				"$ref": "./paths/users/userID/delete.json"
+			}
+		},
+		"/users/me/language": {
+			"put": {
+				"$ref": "./paths/users/userID/language/put.json"
 			}
 		},
 		"/users/{userID}/avatar": {

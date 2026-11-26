@@ -11,7 +11,9 @@ const uiFiles = import.meta.glob(["../../translations/ui/*.json", "!../../transl
 const localeOptions = ["en", ...Object.keys(localeList).filter((locale) => locale !== "en" && !localeList[locale].rtl)];
 
 const storedLocale = window.localStorage.getItem("locale");
-const currentLocale = localeOptions.includes(storedLocale) ? storedLocale : "en";
+// the language the user picked (the language switch stores it), null while they never picked one
+const chosenLocale = localeOptions.includes(storedLocale) ? storedLocale : null;
+const currentLocale = chosenLocale ?? "en";
 
 document.documentElement.lang = currentLocale;
 
@@ -61,4 +63,4 @@ const T = ({ id, data, tData }) => {
 	);
 };
 
-export { changeLocale, currentLocale, intl, localeOptions, T };
+export { changeLocale, chosenLocale, currentLocale, intl, localeOptions, T };

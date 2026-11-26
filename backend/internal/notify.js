@@ -1,8 +1,11 @@
 import db from "../db.js";
+import { createMailChannel } from "../lib/mail/channel.js";
+import { sendMail } from "../lib/mail/transport.js";
 import { dbTimeOf, msOfDbTime } from "../lib/notify/db-time.js";
 import { createNotifyService } from "../lib/notify/service.js";
 import { MOVED_WATERMARK_KEY } from "../lib/notify/state-store.js";
 import { global as logger } from "../logger.js";
+import { renderMail } from "../mail/render.js";
 
 // The notification layer of the running app, over the real database. Before initNotify() the worker runs no pass and
 // arms no timer, but emit() still queues: initNotify() resets the rows a stopped process left sending, then the worker's
@@ -11,6 +14,7 @@ import { global as logger } from "../logger.js";
 const service = createNotifyService({ knex: db(), log: logger });
 const {
 	notify,
+	queue,
 	sweep,
 	stateStore,
 	worker,
@@ -21,6 +25,17 @@ const {
 	cleanupAfterRestore,
 	clearReplacedStates,
 } = service;
+
+// The mail channel. mail.js and audit-log.js import this module, so they are loaded when a mail goes out, not now.
+notify.registerChannel(
+	createMailChannel({
+		settings: async () => (await import("./mail.js")).default.settings(),
+		send: sendMail,
+		render: renderMail,
+		audit: async (entry) => (await import("./audit-log.js")).default.add(null, entry),
+		log: logger,
+	}),
+);
 
 // the layer starts, then a database move since the last start is told
 const initNotify = async () => {
@@ -149,6 +164,7 @@ export {
 	initNotify,
 	notify,
 	pauseNotify,
+	queue,
 	registerSweepCheck,
 	resumeNotify,
 	stateStore,
