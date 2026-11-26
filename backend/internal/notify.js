@@ -30,9 +30,22 @@ const {
 	clearReplacedStates,
 } = service;
 
+const parseRoles = (text) => {
+	try {
+		return JSON.parse(text);
+	} catch {
+		return [];
+	}
+};
+
 // The mail channel. mail.js and audit-log.js import this module, so they are loaded when a mail goes out, not now.
 notify.registerChannel(
 	createMailChannel({
+		admins: async () =>
+			(await db()("user").select("email", "roles", "is_disabled", "npmpro_language")).map((user) => ({
+				...user,
+				roles: typeof user.roles === "string" ? parseRoles(user.roles) : user.roles,
+			})),
 		settings: async () => (await import("./mail.js")).default.settings(),
 		send: sendMail,
 		render: renderMail,

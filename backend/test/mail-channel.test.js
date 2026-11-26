@@ -133,9 +133,9 @@ describe("the mail channel on the worker", () => {
 
 	after(() => worker?.stop());
 
-	it("is the mail channel, takes no event in PR 2a and waits 1 min, 5 min, 30 min, 2 h, 6 h", () => {
+	it("is the mail channel, takes no event that is not ticked and waits 1 min, 5 min, 30 min, 2 h, 6 h", async () => {
 		assert.equal(channel.id, "mail");
-		assert.equal(channel.accepts("host.created"), false);
+		assert.equal(await channel.accepts("host.created"), false);
 		assert.deepEqual(channel.retryDelays, [60e3, 300e3, 1_800e3, 7_200e3, 21_600e3]);
 	});
 

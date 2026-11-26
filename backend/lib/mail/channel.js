@@ -1,6 +1,7 @@
 import { hostname } from "node:os";
 import { safeError } from "../notify/queue.js";
-import { ehloNameOf, publicHostOf, validateEmailValues } from "./settings-rules.js";
+import { alertRecipients } from "./recipients.js";
+import { ehloNameOf, isConfigured, publicHostOf, validateEmailValues } from "./settings-rules.js";
 import { MailError } from "./transport.js";
 
 // The mail channel of the notification worker. A row holds { to, template, language, data } as its payload; one row is
@@ -10,6 +11,13 @@ import { MailError } from "./transport.js";
 const RETRY_DELAYS = [60_000, 300_000, 1_800_000, 7_200_000, 21_600_000];
 const MASK = "***";
 const MIN_PART = 3;
+// rows that wait this long for the rest of their group before the first try (the grouping window of the alert mail)
+const GROUP_DELAY_MS = 60_000;
+const ALERT_TEMPLATE = "alerts";
+const RESOLVED = ".resolved";
+
+// ticking `x` covers `x.resolved` (the contract of alerts_events in settings-rules.js)
+const baseOf = (type) => (type.endsWith(RESOLVED) ? type.slice(0, -RESOLVED.length) : type);
 
 const recipientsOf = (to) => (Array.isArray(to) ? to : [to]).filter((one) => typeof one === "string" && one !== "");
 
@@ -42,13 +50,14 @@ const safeText = (raw, to) => cutPartial(safeError(maskRecipients(String(raw ?? 
 /**
  * @param   {Object}    options
  * @param   {Function}  options.settings  async () => { email, notifications } (the merged values, password in clear)
+ * @param   {Function}  [options.admins]  async () => users { email, roles, is_disabled, npmpro_language } (alert mail)
  * @param   {Function}  options.send      sendMail(values, message, { ehloName })  (ehloName may be undefined)
  * @param   {Function}  options.render    renderMail(template, { language, data, instance })
  * @param   {Function}  options.audit     async (entry) => the audit row is written (never throws into the worker)
  * @param   {Object}    [options.log]
  * @param   {Object}    [options.clock]   { now() } in ms
  */
-const createMailChannel = ({ settings, send, render, audit, log, clock = { now: () => Date.now() } }) => {
+const createMailChannel = ({ settings, admins, send, render, audit, log, clock = { now: () => Date.now() } }) => {
 	const sendRow = async (row, values) => {
 		const input = row.payload;
 		if (!input || typeof input !== "object") throw new MailError("The mail has no content", { code: "ECONFIG" });
@@ -99,12 +108,68 @@ const createMailChannel = ({ settings, send, render, audit, log, clock = { now: 
 		}
 	};
 
+	// an alert group: every row of one group_key is one mail to its address, the events oldest first. The rows share
+	// one fate (all sent, all retried, all failed), and a final failure is audited once.
+	const sendGroup = async (rows, values) => {
+		const first = rows[0];
+		const last = rows.at(-1);
+		const to = first.recipient;
+		const started = clock.now();
+		try {
+			const { errors } = validateEmailValues(values.email);
+			if (Object.keys(errors).length > 0) {
+				throw new MailError("The mail settings are not valid", { code: "ECONFIG" });
+			}
+			if (typeof to !== "string" || to === "")
+				throw new MailError("The mail has no recipient", { code: "ECONFIG" });
+			const instance = publicHostOf(values.notifications) ?? hostname();
+			const events = rows.map((row) => row.payload.envelope);
+			const mail = render(ALERT_TEMPLATE, { language: last.payload.language, data: { events }, instance });
+			await send(values.email, { to, ...mail }, { ehloName: ehloNameOf(values.notifications) });
+			const duration_ms = clock.now() - started;
+			return rows.map((row) => ({ id: row.id, ok: true, duration_ms }));
+		} catch (error) {
+			const retry = error instanceof MailError && error.retry === true;
+			const text = safeText(error?.message ?? String(error), to);
+			const final = !retry || rows.some((row) => Number(row.attempts) >= RETRY_DELAYS.length);
+			if (final) await recordFailure({ ...first, event: ALERT_TEMPLATE, payload: { to } }, text);
+			const duration_ms = clock.now() - started;
+			return rows.map((row) => ({ id: row.id, ok: false, retry, error: text, duration_ms }));
+		}
+	};
+
+	const isAlertRow = (row) => Boolean(row.payload?.envelope);
+
+	const alertGroups = (rows) => {
+		const groups = new Map();
+		for (const row of rows) {
+			const key = row.group_key ?? `row:${row.id}`;
+			if (!groups.has(key)) groups.set(key, []);
+			groups.get(key).push(row);
+		}
+		return [...groups.values()];
+	};
+
 	return {
 		id: "mail",
 		retryDelays: RETRY_DELAYS,
-		// PR 2a: nothing but account mails, which are queued by internalMail.queueMail and not by an event
-		accepts: () => false,
-		targets: async () => [],
+		// an alert: mail is set up and the event (or, for a recovery, its base event) is ticked; account mails are queued
+		// by internalMail.queueMail and not by an event
+		accepts: async (type) => {
+			const { email, notifications } = await settings();
+			return isConfigured(email) && (notifications?.alerts_events ?? []).includes(baseOf(type));
+		},
+		// one row per recipient, resolved now: they all wait for their group's window
+		targets: async (envelope) => {
+			const { notifications } = await settings();
+			const users = admins ? await admins() : [];
+			return alertRecipients({ admins: users, settings: notifications }).map(({ address, language }) => ({
+				recipient: address,
+				group_key: `alerts:${address.toLowerCase()}`,
+				delay_ms: GROUP_DELAY_MS,
+				payload: { language, envelope },
+			}));
+		},
 		send: async (rows) => {
 			let values;
 			try {
@@ -114,10 +179,11 @@ const createMailChannel = ({ settings, send, render, audit, log, clock = { now: 
 				return Promise.all(rows.map((row) => failed(row, "The mail settings could not be read", true)));
 			}
 			const results = [];
-			for (const row of rows) results.push(await sendOne(row, values));
+			for (const row of rows.filter((one) => !isAlertRow(one))) results.push(await sendOne(row, values));
+			for (const group of alertGroups(rows.filter(isAlertRow))) results.push(...(await sendGroup(group, values)));
 			return results;
 		},
 	};
 };
 
-export { createMailChannel, RETRY_DELAYS };
+export { createMailChannel, GROUP_DELAY_MS, RETRY_DELAYS };

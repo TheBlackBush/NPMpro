@@ -45,7 +45,7 @@ const createNotify = ({
 				recipient: target.recipient ?? null,
 				group_key: target.group_key ?? null,
 				delay_ms: target.delay_ms ?? 0,
-				payload,
+				payload: target.payload === undefined ? payload : target.payload,
 			}));
 		} catch (error) {
 			fail(`${channel.id} for ${type}`, error);

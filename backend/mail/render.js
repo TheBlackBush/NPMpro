@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { MAIL_LANGUAGES } from "../lib/mail/settings-rules.js";
+import alerts from "./templates/alerts.js";
 import passwordReset from "./templates/password-reset.js";
 import resetLink from "./templates/reset-link.js";
 import test from "./templates/test.js";
 
-const TEMPLATES = { "password-reset": passwordReset, "reset-link": resetLink, test };
+const TEMPLATES = { alerts, "password-reset": passwordReset, "reset-link": resetLink, test };
 const FALLBACK = "en";
 const PLACEHOLDER = /\{(?<name>\w+)\}/gu;
 const SUBJECT_STRIP = /[\p{Cc}\u2028\u2029\u0085]+/gu;
