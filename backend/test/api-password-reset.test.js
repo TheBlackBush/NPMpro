@@ -489,6 +489,85 @@ it("keeps the audit and the notice when the audit write fails, and renders the n
 	assert.equal(none.text.includes("API token"), false);
 });
 
+// check and confirm both answer the invalid text for the token
+const refusesToken = async (token) => {
+	const check = await api.client().post("/password-reset/check", { token });
+	const confirm = await api.client().post("/password-reset/confirm", { token, password: NEW_PASSWORD });
+	for (const [route, answer] of [
+		["check", check],
+		["confirm", confirm],
+	]) {
+		if (answer.status !== 400 || answer.body?.error?.message_i18n !== INVALID) {
+			throw new Error(`${route} answered ${answer.status}: ${answer.text}`);
+		}
+	}
+};
+
+it("an email change by the user or by an administrator ends an open link", async () => {
+	const own = await newUser();
+	const token = await issue(own);
+	const session = api.client();
+	must(await session.post("/tokens", { identity: own.email, secret: PASSWORD }));
+	must(await session.put(`/users/${own.id}`, { email: `moved-${own.email}` }));
+	await refusesToken(token);
+	assert.equal(await api.db("npmpro_password_token").where({ user_id: own.id }).first(), undefined);
+
+	const other = await newUser();
+	const second = await issue(other);
+	must(await admin.put(`/users/${other.id}`, { email: `moved-${other.email}` }));
+	await refusesToken(second);
+
+	// a save that keeps the address keeps the link
+	const kept = await newUser();
+	const third = await issue(kept);
+	must(await admin.put(`/users/${kept.id}`, { name: "Renamed", email: kept.email.toUpperCase() }));
+	assert.deepEqual(must(await api.client().post("/password-reset/check", { token: third })).body, {
+		purpose: "reset",
+	});
+});
+
+it("a disable ends an open link, so enabling the user again brings none back", async () => {
+	const user = await newUser();
+	const token = await issue(user);
+	must(await admin.put(`/users/${user.id}`, { is_disabled: true }));
+	must(await admin.put(`/users/${user.id}`, { is_disabled: false }));
+	await refusesToken(token);
+	assert.equal(await api.db("npmpro_password_token").where({ user_id: user.id }).first(), undefined);
+});
+
+it("switching reset off ends every open link, and switching it on again brings none back", async () => {
+	const one = await newUser();
+	const two = await newUser();
+	const first = await issue(one);
+	const second = await issue(two);
+	must(await admin.put("/settings/email", { allow_password_reset: false }));
+	try {
+		assert.equal((await api.db("npmpro_password_token").where({ purpose: "reset" })).length, 0);
+	} finally {
+		must(await admin.put("/settings/email", { allow_password_reset: true }));
+	}
+	await refusesToken(first);
+	await refusesToken(second);
+	// a save that leaves the switch on keeps the links
+	const three = await newUser();
+	const third = await issue(three);
+	must(await admin.put("/settings/email", { allow_password_reset: true }));
+	must(await api.client().post("/password-reset/check", { token: third }));
+});
+
+it("mails the enabled user when a disabled row shares the address, with the same answer", async () => {
+	const disabled = await newUser({ disabled: true });
+	const enabled = await newUser();
+	// an old install can hold two rows with one address; the disabled one has the lower id
+	await api.db("user").where({ id: enabled.id }).update({ email: disabled.email });
+	const answer = await asked(disabled.email);
+	assert.equal(answer.status, 202);
+	assert.equal(answer.text, "");
+	assert.equal(mailedTo(disabled.email).length, 1);
+	assert.equal(await api.db("npmpro_password_token").where({ user_id: disabled.id }).first(), undefined);
+	assert.ok(await api.db("npmpro_password_token").where({ user_id: enabled.id }).first());
+});
+
 // last: the reset ends every session of the administrator
 it("lets the only administrator reset by mail", async () => {
 	const admins = await api.db("user").where({ is_disabled: false }).select("id", "email", "roles");

@@ -194,3 +194,28 @@ it("the sweep removes used and expired tokens and keeps live ones", async () => 
 		[hashOf(live)],
 	);
 });
+
+it("an expiry that cannot be read counts as expired", async () => {
+	const token = await tokens.create(userId, "reset");
+	assert.ok(await tokens.find(token));
+	await api.db("npmpro_password_token").update({ expires_on: "not a time" });
+	assert.equal(await tokens.find(token), null);
+	assert.equal(await tokens.consume(token, () => "x"), null);
+});
+
+it("removes every token of one purpose and leaves the other purpose", async () => {
+	const other = await ctx.admin.post("/users", {
+		name: "Purpose",
+		email: "purpose@example.com",
+		roles: [],
+		auth: { type: "password", secret: PASSWORD },
+	});
+	assert.equal(other.status, 201, other.text);
+	const mine = await tokens.create(userId, "reset");
+	const theirs = await tokens.create(other.body.id, "reset");
+	const invite = await tokens.create(userId, "invite", { lifetimeMs: 10 * MINUTE });
+	await tokens.removePurpose("reset");
+	assert.equal(await tokens.find(mine), null);
+	assert.equal(await tokens.find(theirs), null);
+	assert.ok(await tokens.find(invite));
+});
