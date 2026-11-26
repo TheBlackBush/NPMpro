@@ -6,6 +6,7 @@ import { createNotifyService } from "../lib/notify/service.js";
 import { MOVED_WATERMARK_KEY } from "../lib/notify/state-store.js";
 import { global as logger } from "../logger.js";
 import { renderMail } from "../mail/render.js";
+import internalPasswordToken from "./password-token.js";
 
 // The notification layer of the running app, over the real database. Before initNotify() the worker runs no pass and
 // arms no timer, but emit() still queues: initNotify() resets the rows a stopped process left sending, then the worker's
@@ -36,6 +37,9 @@ notify.registerChannel(
 		log: logger,
 	}),
 );
+
+// the hourly sweep also removes the used and expired password tokens
+registerSweepCheck(() => internalPasswordToken.sweep());
 
 // the layer starts, then a database move since the last start is told
 const initNotify = async () => {

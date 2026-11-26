@@ -13,6 +13,7 @@ import userPermissionModel from "../models/user_permission.js";
 import internalApiToken from "./api-token.js";
 import internalAuditLog from "./audit-log.js";
 import { createOidcIdentity } from "./oidc-identity.js";
+import internalPasswordToken from "./password-token.js";
 import internalToken from "./token.js";
 
 const oidcIdentity = createOidcIdentity({
@@ -252,6 +253,7 @@ const internalUser = {
 			await authModel.query(trx).where("user_id", user.id).delete();
 			await userPermissionModel.query(trx).where("user_id", user.id).delete();
 			await internalApiToken.deleteForUser(trx, user.id);
+			await internalPasswordToken.removeForUser(trx, user.id);
 			await userModel.query(trx).deleteById(user.id);
 		});
 		await internalUser.deleteAvatarFiles(user.id);
@@ -339,6 +341,8 @@ const internalUser = {
 				.query(trx)
 				.where("id", user.id)
 				.patch({ npmpro_token_valid_after: Math.floor(Date.now() / 1000) });
+			// any password change ends the reset links and invitations that are still out
+			await internalPasswordToken.removeForUser(trx, user.id);
 		});
 
 		await internalAuditLog.add(access, {

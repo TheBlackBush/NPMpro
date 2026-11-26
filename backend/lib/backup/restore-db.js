@@ -384,6 +384,7 @@ const deleteType = async (trx, typeId, adminUserId, kept = {}) => {
 		const rows = await trx("npmpro_api_token").whereNot("user_id", adminUserId).select("id", "name", "user_id");
 		revokedTokens.push(...rows);
 		await trx("npmpro_api_token").whereNot("user_id", adminUserId).del();
+		await trx("npmpro_password_token").whereNot("user_id", adminUserId).del();
 	}
 	for (const { table, where } of [...typeOf(typeId).tables].reverse()) {
 		if (table === kept.table) continue;
