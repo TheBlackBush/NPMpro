@@ -2,5 +2,15 @@
 	"test.subject": "Test-e-mail",
 	"test.intro": "Dit is een test-e-mail van NPMpro op {instance}.",
 	"test.works": "Als je deze hebt ontvangen, werkt e-mail.",
-	"footer.sent": "Verzonden door NPMpro op {instance}."
+	"footer.sent": "Verzonden door NPMpro op {instance}.",
+	"reset-link.subject": "Stel je NPMpro-wachtwoord opnieuw in",
+	"reset-link.intro": "Iemand heeft gevraagd het wachtwoord van je NPMpro-account op {instance} opnieuw in te stellen.",
+	"reset-link.expires": "Gebruik de knop hieronder om een nieuw wachtwoord te kiezen. De link werkt maar één keer en verloopt na 30 minuten.",
+	"reset-link.ignore": "Heb je dit niet gevraagd, negeer dan deze mail: je wachtwoord blijft zoals het is.",
+	"reset-link.button": "Nieuw wachtwoord kiezen",
+	"password-reset.subject": "Je NPMpro-wachtwoord is opnieuw ingesteld",
+	"password-reset.done": "Het wachtwoord van je account op {instance} is op {time} (UTC) opnieuw ingesteld vanaf het adres {ip}.",
+	"password-reset.sessions": "Alle sessies zijn afgemeld. Aanmelden met twee factoren is ongewijzigd.",
+	"password-reset.tokens.one": "{count} API-token blijft actief; trek het in via Instellingen, API-toegang als jij dit niet was.",
+	"password-reset.tokens.other": "{count} API-tokens blijven actief; trek ze in via Instellingen, API-toegang als jij dit niet was."
 }

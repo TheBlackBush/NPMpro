@@ -22,6 +22,27 @@ const oidcIdentity = createOidcIdentity({
 	tryBeginWrite: maintenance.tryBeginWrite,
 });
 
+// The one write of a password: the auth row, the end of every older session, and the end of the reset links and
+// invitations that are still out. setPassword and setPasswordByReset share it.
+const writePassword = async (trx, userId, type, secret) => {
+	const existing_auth = await authModel.query(trx).where("user_id", userId).andWhere("type", type).first();
+
+	if (existing_auth) {
+		await authModel.query(trx).where("user_id", userId).andWhere("type", type).patch({
+			type, // This is required for the model to encrypt on save
+			secret,
+		});
+	} else {
+		await authModel.query(trx).insert({ user_id: userId, type, secret, meta: {} });
+	}
+
+	await userModel
+		.query(trx)
+		.where("id", userId)
+		.patch({ npmpro_token_valid_after: Math.floor(Date.now() / 1000) });
+	await internalPasswordToken.removeForUser(trx, userId);
+};
+
 const internalUser = {
 	/**
 	 * Unauthenticated only once, and only while no active user exists; otherwise a valid auth method is required.
@@ -294,6 +315,20 @@ const internalUser = {
 	},
 
 	/**
+	 * The password write of a reset link: the same transaction body as setPassword, without the current-password check
+	 * (the link is the proof). Run it inside the transaction of the token's use, so a failed write leaves the link valid.
+	 *
+	 * @param  {Number}  userId
+	 * @param  {String}  secret
+	 * @param  {Object}  [trx]  the open transaction; without it the write has its own
+	 * @return {Promise}
+	 */
+	setPasswordByReset: (userId, secret, trx) =>
+		trx
+			? writePassword(trx, userId, "password", secret)
+			: userModel.transaction((own) => writePassword(own, userId, "password", secret)),
+
+	/**
 	 * @param  {Access}  access
 	 * @param  {Object}  data
 	 * @param  {Integer} data.id
@@ -316,34 +351,7 @@ const internalUser = {
 			});
 		}
 
-		await userModel.transaction(async (trx) => {
-			const existing_auth = await authModel
-				.query(trx)
-				.where("user_id", user.id)
-				.andWhere("type", data.type)
-				.first();
-
-			if (existing_auth) {
-				await authModel.query(trx).where("user_id", user.id).andWhere("type", data.type).patch({
-					type: data.type, // This is required for the model to encrypt on save
-					secret: data.secret,
-				});
-			} else {
-				await authModel.query(trx).insert({
-					user_id: user.id,
-					type: data.type,
-					secret: data.secret,
-					meta: {},
-				});
-			}
-
-			await userModel
-				.query(trx)
-				.where("id", user.id)
-				.patch({ npmpro_token_valid_after: Math.floor(Date.now() / 1000) });
-			// any password change ends the reset links and invitations that are still out
-			await internalPasswordToken.removeForUser(trx, user.id);
-		});
+		await userModel.transaction((trx) => writePassword(trx, user.id, data.type, data.secret));
 
 		await internalAuditLog.add(access, {
 			action: "updated",

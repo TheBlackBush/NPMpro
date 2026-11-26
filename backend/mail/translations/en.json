@@ -2,5 +2,15 @@
 	"test.subject": "Test mail",
 	"test.intro": "This is a test mail from NPMpro at {instance}.",
 	"test.works": "If you got it, mail works.",
-	"footer.sent": "Sent by NPMpro at {instance}."
+	"footer.sent": "Sent by NPMpro at {instance}.",
+	"reset-link.subject": "Reset your NPMpro password",
+	"reset-link.intro": "Someone asked to reset the password of your NPMpro account at {instance}.",
+	"reset-link.expires": "Use the button below to choose a new password. The link works once and expires in 30 minutes.",
+	"reset-link.ignore": "If you did not ask for this, ignore this mail: your password stays as it is.",
+	"reset-link.button": "Choose a new password",
+	"password-reset.subject": "Your NPMpro password was reset",
+	"password-reset.done": "The password of your account at {instance} was reset on {time} (UTC) from the address {ip}.",
+	"password-reset.sessions": "Every session was signed out. Two-factor sign-in is unchanged.",
+	"password-reset.tokens.one": "{count} API token stays active; revoke it under Settings, API access if you did not do this.",
+	"password-reset.tokens.other": "{count} API tokens stay active; revoke them under Settings, API access if you did not do this."
 }

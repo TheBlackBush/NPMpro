@@ -773,6 +773,21 @@
 				"$ref": "./paths/settings/settingID/put.json"
 			}
 		},
+		"/password-reset": {
+			"post": {
+				"$ref": "./paths/password-reset/post.json"
+			}
+		},
+		"/password-reset/check": {
+			"post": {
+				"$ref": "./paths/password-reset/check/post.json"
+			}
+		},
+		"/password-reset/confirm": {
+			"post": {
+				"$ref": "./paths/password-reset/confirm/post.json"
+			}
+		},
 		"/tokens": {
 			"get": {
 				"$ref": "./paths/tokens/get.json"

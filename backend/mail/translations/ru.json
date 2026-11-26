@@ -2,5 +2,15 @@
 	"test.subject": "Тестовое письмо",
 	"test.intro": "Это тестовое письмо от NPMpro на {instance}.",
 	"test.works": "Если вы его получили, отправка почты работает.",
-	"footer.sent": "Отправлено NPMpro на {instance}."
+	"footer.sent": "Отправлено NPMpro на {instance}.",
+	"reset-link.subject": "Сброс пароля NPMpro",
+	"reset-link.intro": "Кто-то запросил сброс пароля вашей учётной записи NPMpro на {instance}.",
+	"reset-link.expires": "Нажмите кнопку ниже, чтобы выбрать новый пароль. Ссылка действует один раз и истекает через 30 минут.",
+	"reset-link.ignore": "Если вы этого не запрашивали, проигнорируйте письмо: ваш пароль останется прежним.",
+	"reset-link.button": "Выбрать новый пароль",
+	"password-reset.subject": "Ваш пароль NPMpro был сброшен",
+	"password-reset.done": "Пароль вашей учётной записи на {instance} был сброшен {time} (UTC) с адреса {ip}.",
+	"password-reset.sessions": "Все сеансы завершены. Двухфакторный вход не изменился.",
+	"password-reset.tokens.one": "{count} API-токен остаётся активным; если это были не вы, отзовите его в разделе «Настройки», «Доступ к API».",
+	"password-reset.tokens.other": "Активными остаются API-токены: {count}; если это были не вы, отзовите их в разделе «Настройки», «Доступ к API»."
 }

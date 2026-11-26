@@ -1,0 +1,71 @@
+{
+	"operationId": "confirmPasswordReset",
+	"summary": "Set a new password with a reset link",
+	"tags": [
+		"public"
+	],
+	"requestBody": {
+		"description": "Payload",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"token",
+						"password"
+					],
+					"properties": {
+						"token": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 255,
+							"example": "Abc123-_abc123Abc123-_abc123Abc123-_abc123A",
+							"description": "The token from the link of the mail (the part after #token=)"
+						},
+						"password": {
+							"type": "string",
+							"minLength": 8,
+							"maxLength": 255,
+							"example": "your-new-password",
+							"description": "The new password, 8 to 255 characters"
+						}
+					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"token": "Abc123-_abc123Abc123-_abc123Abc123-_abc123A",
+							"password": "your-new-password"
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "true when the password was set",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "boolean"
+					},
+					"examples": {
+						"default": {
+							"value": true
+						}
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "The link is invalid or has expired, or the password is not valid"
+		},
+		"429": {
+			"description": "Too many requests from this address"
+		}
+	},
+	"description": "Sets the password of the user the token belongs to and uses the token up. Every session of the user ends; two-factor sign-in and API tokens stay. The action is audited as `password-reset` and a notice is mailed to the user. A bad token answers 400 `error.reset-invalid`. Shares the limit of POST /password-reset.\n\nNeeds: nothing (public)"
+}

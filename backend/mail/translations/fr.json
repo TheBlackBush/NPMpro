@@ -2,5 +2,15 @@
 	"test.subject": "E-mail de test",
 	"test.intro": "Ceci est un e-mail de test envoyé par NPMpro sur {instance}.",
 	"test.works": "Si vous l'avez reçu, l'envoi d'e-mails fonctionne.",
-	"footer.sent": "Envoyé par NPMpro sur {instance}."
+	"footer.sent": "Envoyé par NPMpro sur {instance}.",
+	"reset-link.subject": "Réinitialisez votre mot de passe NPMpro",
+	"reset-link.intro": "Quelqu'un a demandé la réinitialisation du mot de passe de votre compte NPMpro sur {instance}.",
+	"reset-link.expires": "Utilisez le bouton ci-dessous pour choisir un nouveau mot de passe. Le lien ne fonctionne qu'une fois et expire dans 30 minutes.",
+	"reset-link.ignore": "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.",
+	"reset-link.button": "Choisir un nouveau mot de passe",
+	"password-reset.subject": "Votre mot de passe NPMpro a été réinitialisé",
+	"password-reset.done": "Le mot de passe de votre compte sur {instance} a été réinitialisé le {time} (UTC) depuis l'adresse {ip}.",
+	"password-reset.sessions": "Toutes les sessions ont été fermées. La connexion à deux facteurs reste inchangée.",
+	"password-reset.tokens.one": "{count} jeton d'API reste actif ; révoquez-le dans Paramètres, Accès API si vous n'êtes pas à l'origine de cette action.",
+	"password-reset.tokens.other": "{count} jetons d'API restent actifs ; révoquez-les dans Paramètres, Accès API si vous n'êtes pas à l'origine de cette action."
 }
