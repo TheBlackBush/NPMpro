@@ -10,7 +10,9 @@ import { notify } from "./notify.js";
 
 const EVENT = "host.config_error";
 const USERINFO = /^(?<userinfo>[^@/\s]+)@/u;
-const CREDENTIAL_VALUE = /(?:password|passwd|secret|token|api[_-]?key)\s*[=:\s]\s*["']?(?<value>[^\s"';]+)/giu;
+// a named credential (password=..., an Authorization header) or a Basic or Bearer value, the scheme word left out
+const CREDENTIAL_VALUE =
+	/(?:(?:password|passwd|secret|token|api[_-]?key|authorization)\s*[=:\s]\s*["']?(?:(?:basic|bearer)\s+)?|\b(?:basic|bearer)\s+)(?<value>[^\s"';]+)/giu;
 
 let tail = Promise.resolve();
 
