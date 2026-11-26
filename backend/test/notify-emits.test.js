@@ -316,6 +316,8 @@ const makeProxy = async (name, extra = {}) => {
 const ADVANCED_LEAK = /secret-advanced-config-text|advanced_config/u;
 const settle = async () => (await import("../internal/host-notify.js")).settledHostReports();
 const URL_SECRETS = /pw123|abc9876/u;
+const HEADER_SECRETS = /bearer-tok-1122|dXNlcjpiYXNpYy0zMzQ0|plain-auth-5566/u;
+const INVALID_HEADER = /invalid header \*\*\*/u;
 const SECRET_META = /secret-advanced-config-text|advanced_config|locations|"meta"|@/u;
 const PASSPHRASE = /secret-pass-1/u;
 const LAPI_KEY = /lapi-key-9/u;
@@ -467,6 +469,26 @@ describe("host config state emit points", () => {
 		} finally {
 			restore();
 		}
+	});
+
+	it("an Authorization header value and a Basic or Bearer value in the advanced config never reach the event", async () => {
+		const host = await makeProxy("auth.example.com", {
+			advanced_config: [
+				'proxy_set_header Authorization "Bearer bearer-tok-1122";',
+				"proxy_set_header X-Upstream-Auth Basic dXNlcjpiYXNpYy0zMzQ0;",
+				"proxy_set_header Authorization plain-auth-5566;",
+			].join("\n"),
+		});
+		api.outside.control.failNext =
+			"nginx: [emerg] invalid header bearer-tok-1122 dXNlcjpiYXNpYy0zMzQ0 plain-auth-5566 in /data/nginx/proxy_host/1.conf";
+		await admin.put(`/nginx/proxy-hosts/${host.id}`, { forward_port: 81 });
+		await settle();
+		const [event] = hostEvents("host.config_error", host.id);
+		assert.ok(event, "an event");
+		assert.doesNotMatch(JSON.stringify(event), HEADER_SECRETS);
+		assert.match(event.data.error, INVALID_HEADER);
+		assert.equal((await admin.delete(`/nginx/proxy-hosts/${host.id}`)).status, 200);
+		await settle();
 	});
 
 	it("a slow state report does not delay the configure result", async () => {
