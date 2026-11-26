@@ -10,6 +10,8 @@ import { startFakeSmtp } from "./support/fake-smtp.js";
 
 const NEW_PASSWORD = "a-brand-new-password-7";
 const LINK = /https:\/\/npm\.example\.test\/reset-password#token=(?<token>[A-Za-z0-9_-]{43})/u;
+const ADDRESS_SHAPE = /^[0-9a-f.:]+$/u;
+const TIME_SHAPE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/u;
 const INVALID = "error.reset-invalid";
 const logs = [];
 const realLog = console.log;
@@ -465,8 +467,8 @@ it("keeps the audit and the notice when the audit write fails, and renders the n
 	const payload = JSON.parse(queued.payload);
 	assert.equal(payload.language, "de");
 	assert.equal(payload.data.count, 2);
-	assert.match(payload.data.ip, /^[0-9a-f.:]+$/u);
-	assert.match(payload.data.time, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/u);
+	assert.match(payload.data.ip, ADDRESS_SHAPE);
+	assert.match(payload.data.time, TIME_SHAPE);
 	const german = renderMail("password-reset", { language: "de", data: payload.data, instance: "box.example" });
 	for (const part of [payload.data.time, payload.data.ip, "2 API-Token bleiben aktiv"])
 		assert.ok(german.text.includes(part), part);
