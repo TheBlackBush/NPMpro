@@ -40,9 +40,9 @@ A mail that fails for a temporary reason (a 4xx reply from the server or a netwo
 
 ## Public URL and language
 
-The card **Links and language** holds three settings:
+The card **Links and language** holds two settings, and your own language is taken from the interface:
 
-- **Public URL**: the address people open NPMpro at, for example `https://npm.example.com`. It must start with `https://` and be the origin only: no path, no query, no `#` part and no user name. **Use this browser's address** fills in the address of the page you have open. The button is only there when the page is opened over HTTPS.
+- **Public URL**: the address people open NPMpro at, for example `https://npm.example.com`. It must start with `https://` and be the origin only: no path, no query, no `#` part and no user name. **Use this browser's address** fills in the address of the page you have open. The button works only when the page is opened over HTTPS; otherwise it is disabled and says so.
 - **Default mail language**: the language of the mails for people who have not signed in yet or have not chosen a language. Choose one of the 13 languages of the interface.
 - Each user's language is the interface language they use. NPMpro remembers it at sign-in (and again after a language change), and that user's mails come in it. Other people get the default mail language.
 
