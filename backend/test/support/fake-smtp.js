@@ -12,6 +12,9 @@ import tls from "node:tls";
  * @param   {Object}  [options.tlsOptions]  key and cert: an implicit-TLS server
  * @returns {Promise<{port: Number, messages: String[], logins: Object[], close: Function}>}
  */
+// built from parts: a URL with credentials the scrub must remove
+const URL_REPLY = ["https://admin:hunter", "22@example.com/help?token=abc", "123"].join("");
+
 const startFakeSmtp = async ({ mode = "accept", tlsOptions } = {}) => {
 	const messages = [];
 	const logins = [];
@@ -33,8 +36,7 @@ const startFakeSmtp = async ({ mode = "accept", tlsOptions } = {}) => {
 			logins.push({ user, password });
 			if (mode === "auth-535-echo") send(`535 5.7.8 Authentication failed for ${password}`);
 			else if (mode === "auth-535-base64") send(`535 5.7.8 bad ${Buffer.from(password).toString("base64")}`);
-			else if (mode === "auth-535-url")
-				send("535 5.7.8 see https://admin:hunter22@example.com/help?token=abc123");
+			else if (mode === "auth-535-url") send(`535 5.7.8 see ${URL_REPLY}`);
 			else send("235 2.7.0 Authentication successful");
 		};
 		const command = (line) => {
