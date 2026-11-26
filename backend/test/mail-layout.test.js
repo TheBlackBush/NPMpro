@@ -5,7 +5,9 @@ import { MAIL_LANGUAGES } from "../lib/mail/settings-rules.js";
 import { renderMail, TEMPLATES } from "../mail/render.js";
 
 const GOLDEN = JSON.parse(fs.readFileSync(new URL("./fixtures/mail-text-parts.json", import.meta.url), "utf8"));
+// biome-ignore lint/security/noSecrets: a made-up reset link of the tests, not a secret
 const LINK = "https://box.example/reset-password#token=abc";
+const NAVY = "#0b1020";
 const HTML_LIMIT = 30 * 1024;
 const REMOTE = /(?:src|url\(|href)\s*=?\s*["']?\s*(?:https?:)?\/\//iu;
 const HOSTILE = `<script>alert("x")</script> 'q' & "d"`;
@@ -27,7 +29,7 @@ describe("the branded mail layout", () => {
 	it("has the header, the logo, the gradient line, the heading, the preheader, the button, the fallback and the footer", () => {
 		const { html } = reset;
 		// the header colour also as a gradient, which the Gmail app keeps in dark mode
-		assert.ok(html.includes("background:#0b1020;background-image:linear-gradient(#0b1020,#0b1020);"));
+		assert.ok(html.includes(`background:${NAVY};background-image:linear-gradient(${NAVY},${NAVY});`));
 		assert.ok(html.includes('<img src="cid:logo@npmpro" width="168" height="69" alt="NPMpro"'));
 		assert.ok(
 			html.includes(
@@ -79,7 +81,7 @@ describe("the branded mail layout", () => {
 			assert.ok(!mail.html.includes("@import"));
 			assert.ok(!mail.html.includes("<link"));
 		}
-		const urls = reset.html.match(URLS).filter((url) => url !== "https://box.example/reset-password#token=abc");
+		const urls = reset.html.match(URLS).filter((url) => url !== LINK);
 		assert.deepEqual(urls, []);
 		assert.equal(renderMail("test", { instance: "box.example" }).html.match(URLS), null);
 	});
@@ -98,10 +100,10 @@ describe("the branded mail layout", () => {
 		assert.ok(!html.includes("<script"));
 		assert.ok(!html.includes('"x"'));
 		assert.equal(html.split(ESCAPED).length - 1, 8);
-		assert.ok(html.includes("<title>" + ESCAPED + "</title>"));
+		assert.ok(html.includes(`<title>${ESCAPED}</title>`));
 		assert.ok(
 			html.includes(
-				'opacity:0;color:transparent;mso-hide:all;font-size:1px;line-height:1px;">' + ESCAPED + "&zwnj;&nbsp;",
+				`opacity:0;color:transparent;mso-hide:all;font-size:1px;line-height:1px;">${ESCAPED}&zwnj;&nbsp;`,
 			),
 		);
 		assert.ok(html.includes("https://npm.example/a?b=&quot;1&quot;&amp;c=&#39;2&#39;"));

@@ -20,7 +20,8 @@ const LOGO_FILE = new URL("./logo.png", import.meta.url);
 const FONT = "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
 // the header colour also as a one-colour gradient: the Gmail app in dark mode recolours background colours but leaves
 // gradients alone, so the white logo keeps its dark band (clients without gradients use the background colour)
-const HEADER_FILL = "linear-gradient(#0b1020,#0b1020)";
+const NAVY = "#0b1020";
+const HEADER_FILL = `linear-gradient(${NAVY},${NAVY})`;
 const GRADIENT = "linear-gradient(90deg,#ff8a00,#ff2d55 30%,#d91aff 60%,#7a3bff 85%,#00d1ff)";
 // dark mode and phone rules: the one style block, the rest of the layout is inline
 const DARK_RULES = [
