@@ -40,6 +40,7 @@ import {
 	refusedAddressOf,
 	sampleFailureOf,
 	sendsPlainLogin,
+	stillRefused,
 } from "src/modules/NotificationForms";
 import { lockedIn } from "src/modules/SettingsForms";
 import { validations } from "src/modules/Validations";
@@ -362,8 +363,9 @@ function AlertEvents({ events }) {
 }
 
 // hidden until a mail server is set up (the caller): alerts are never queued without one
-function MailAlertsCard({ locks, events, onError }) {
+function MailAlertsCard({ locks, events, onError, refused }) {
 	const { register } = useFormContext();
+	const addresses = useWatch({ name: "alertsAddresses" });
 	return (
 		<SettingsCard
 			id="notifications-alerts"
@@ -389,6 +391,7 @@ function MailAlertsCard({ locks, events, onError }) {
 				badges={locks.badge("alertsAddresses")}
 				disabled={locks.isLocked("alertsAddresses")}
 				placeholder={label("settings.notifications.alerts-addresses.placeholder")}
+				refused={stillRefused(refused, addresses)}
 			/>
 			<AlertEvents events={events} />
 			<TextField
@@ -481,6 +484,7 @@ function NotificationsForm({ email, notifications }) {
 	const { data: me } = useUser("me");
 	const events = useNotificationEvents({ enabled: email.configured });
 	const [errorMsg, setErrorMsg] = useState(null);
+	const [refusedAddress, setRefusedAddress] = useState(null);
 	const errorRef = useRef(null);
 	const emailLocks = useLocks(email, { password: PASSWORD_ENV });
 	const notificationLocks = useLocks(notifications);
@@ -504,6 +508,7 @@ function NotificationsForm({ email, notifications }) {
 
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
+		setRefusedAddress(null);
 		try {
 			const emailBody = emailPayload(values, email);
 			if (emailBody) await saveEmail(emailBody);
@@ -526,6 +531,7 @@ function NotificationsForm({ email, notifications }) {
 			showObjectSuccess("setting", "saved");
 		} catch (err) {
 			const refused = refusedAddressOf(err, values.alertsAddresses);
+			setRefusedAddress(refused);
 			setErrorMsg(
 				refused ? (
 					<T id="settings.notifications.alerts-addresses.refused" data={{ address: refused }} />
@@ -549,7 +555,12 @@ function NotificationsForm({ email, notifications }) {
 			<ConfigErrors email={email} notifications={notifications} />
 			<MailServerCard data={email} locks={emailLocks} defaultTo={me?.email} />
 			{email.configured ? (
-				<MailAlertsCard locks={notificationLocks} events={events} onError={setErrorMsg} />
+				<MailAlertsCard
+					locks={notificationLocks}
+					events={events}
+					onError={setErrorMsg}
+					refused={refusedAddress}
+				/>
 			) : null}
 			<LinksCard locks={notificationLocks} />
 			<SaveBar labels={FIELD_LABELS} />

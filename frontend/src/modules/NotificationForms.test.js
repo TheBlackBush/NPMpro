@@ -19,6 +19,7 @@ import {
 	reminderHoursValidate,
 	sampleFailureOf,
 	sendsPlainLogin,
+	stillRefused,
 	testMailValidate,
 } from "./NotificationForms.js";
 import { createValidations } from "./ValidationRules.js";
@@ -402,4 +403,11 @@ it("names the alert settings the sender refuses", () => {
 			error: "settings.notifications.reminder-hours.invalid",
 		},
 	]);
+});
+
+it("keeps the refused address marked only while it is in the list", () => {
+	assert.equal(stillRefused("bad", ["a@b.example", "bad"]), "bad");
+	assert.equal(stillRefused("bad", ["a@b.example"]), null);
+	assert.equal(stillRefused(null, ["bad"]), null);
+	assert.equal(stillRefused("bad", undefined), null);
 });

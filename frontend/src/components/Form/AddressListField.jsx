@@ -24,8 +24,9 @@ const refusedMessage = (refused) =>
  * @param {*}       [props.badges]
  * @param {boolean} [props.disabled]
  * @param {string}  [props.placeholder]
+ * @param {string|null} [props.refused]  an address the server refused: its chip is marked
  */
-export function AddressListField({ name, id, label, hint, badges, disabled = false, placeholder }) {
+export function AddressListField({ name, id, label, hint, badges, disabled = false, placeholder, refused = null }) {
 	const { field, fieldState } = useController({ name });
 	const pending = usePendingEntry(name, refusedMessage);
 	const readOnly = useReadOnly();
@@ -55,9 +56,9 @@ export function AddressListField({ name, id, label, hint, badges, disabled = fal
 					emptyText={() => intl.formatMessage({ id: "settings.notifications.alerts-addresses.empty" })}
 					commitRef={pending.ref}
 					onQueryChange={(text) => pending.setPending(text.trim() !== "")}
-					chipClassName={(entry) => (isSingleAddress(entry) ? undefined : REFUSED_CHIP)}
+					chipClassName={(entry) => (isSingleAddress(entry) && entry !== refused ? undefined : REFUSED_CHIP)}
 					chipProps={(entry) =>
-						isSingleAddress(entry)
+						isSingleAddress(entry) && entry !== refused
 							? {}
 							: {
 									"data-address-refused": "",

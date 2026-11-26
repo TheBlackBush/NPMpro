@@ -441,3 +441,13 @@ export const sampleFailureOf = (err) => {
 	const count = (key) => (Number.isInteger(values[key]) ? values[key] : 0);
 	return { address: values.address, sent: count("sent"), failed: count("failed"), skipped: count("skipped") };
 };
+
+/**
+ * The address a refused save marked, while it is still in the list: removing it (or a new save) ends the mark
+ *
+ * @param   {string|null}  refused    refusedAddressOf of the last refused save
+ * @param   {string[]}     addresses  the list now
+ * @returns {string|null}
+ */
+export const stillRefused = (refused, addresses) =>
+	refused !== null && (addresses ?? []).includes(refused) ? refused : null;
