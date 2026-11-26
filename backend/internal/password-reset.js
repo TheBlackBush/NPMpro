@@ -102,8 +102,9 @@ const internalPasswordReset = {
 				logger.warn(`password reset: a request could not be handled (${err?.name ?? "error"})`);
 			}
 		};
+		const before = pending;
 		pending = new Promise((resolve) => {
-			setImmediate(() => resolve(run()));
+			setImmediate(() => resolve(Promise.all([before, run()])));
 		});
 	},
 
@@ -134,19 +135,27 @@ const internalPasswordReset = {
 		const user = await internalPasswordToken.consume(
 			token,
 			async (found, _row, trx) => {
+				// the account may have lost its password since the link was made: no password is created by a link (the
+				// link is still spent, the transaction commits its use and nothing else)
+				if (!(await authModel.query(trx).where({ user_id: found.id, type: "password" }).first())) return null;
 				await internalUser.setPasswordByReset(found.id, password, trx);
 				return found;
 			},
 			"reset",
 		);
 		if (!user) throw invalid();
-		await internalAuditLog.add(null, {
-			user_id: user.id,
-			action: "password-reset",
-			object_type: "user",
-			object_id: user.id,
-			meta: { ip },
-		});
+		try {
+			await internalAuditLog.add(null, {
+				user_id: user.id,
+				action: "password-reset",
+				object_type: "user",
+				object_id: user.id,
+				meta: { ip },
+			});
+		} catch (err) {
+			// the password is set: the notice still goes out and the answer stays 200
+			logger.warn(`password reset: the audit row could not be written (${err?.name ?? "error"})`);
+		}
 		try {
 			const now = Math.floor(Date.now() / 1000);
 			const { count } = await apiTokenModel

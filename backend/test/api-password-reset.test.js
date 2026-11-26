@@ -72,12 +72,12 @@ const shape = (answer) => ({
 });
 
 before(async () => {
-	console.log = (...args) => {
-		logs.push(args.join(" "));
-		realLog(...args);
-	};
 	api = await startApi({ env: { NPMPRO_TEST_SMTP: "loopback" } });
 	admin = await api.admin();
+	// startApi silences console.log, which is what the backend logger writes through: capture after it
+	console.log = (...args) => {
+		logs.push(args.join(" "));
+	};
 	({ default: internalPasswordReset, allowAddress } = await import("../internal/password-reset.js"));
 	({ generateApiToken } = await import("../lib/api-token.js"));
 	smtp = await startFakeSmtp();
@@ -317,9 +317,177 @@ it("a password change through the user window ends an open link", async () => {
 	must(await own.put(`/users/${user.id}/auth`, { type: "password", current: PASSWORD, secret: NEW_PASSWORD }));
 	const check = await api.client().post("/password-reset/check", { token });
 	assert.equal(check.status, 400);
+	const confirm = await api.client().post("/password-reset/confirm", { token, password: "another-password-55" });
+	assert.equal(confirm.status, 400);
+	assert.equal(confirm.body.error.message_i18n, INVALID);
+	assert.equal((await api.client().post("/tokens", { identity: user.email, secret: NEW_PASSWORD })).status, 200);
 	assert.equal(await api.db("npmpro_password_token").where({ user_id: user.id }).first(), undefined);
 });
 
+it("a failing mail server: 202, a warn line and one mail-failed row, the token nowhere", async () => {
+	const refusing = await startFakeSmtp({ mode: "rcpt-550" });
+	const user = await newUser();
+	must(await admin.put("/settings/email", { host: "127.0.0.1", port: refusing.port }));
+	try {
+		const answer = await asked(user.email);
+		assert.equal(answer.status, 202);
+		assert.equal(answer.text, "");
+	} finally {
+		must(await admin.put("/settings/email", { host: "127.0.0.1", port: smtp.port }));
+		await refusing.close();
+	}
+	const stored = await api.db("npmpro_password_token").where({ user_id: user.id }).first();
+	assert.ok(stored, "a token was made before the send failed");
+	const rows = await api.db("audit_log").where({ action: "mail-failed", object_id: user.id });
+	assert.equal(rows.length, 1);
+	assert.deepEqual(typeof rows[0].meta === "string" ? JSON.parse(rows[0].meta) : rows[0].meta, {
+		template: "reset-link",
+	});
+	const everything = JSON.stringify([
+		...(await api.db("audit_log")),
+		...(await api.db("npmpro_notification_delivery")),
+	]);
+	assert.equal(everything.includes("reset-password#token"), false);
+	assert.equal(
+		logs.some((line) => line.includes("reset-password#token")),
+		false,
+	);
+	assert.ok(
+		logs.some((line) => line.includes("the reset mail could not be sent")),
+		logs.slice(-5).join("|"),
+	);
+});
+
+it("check and confirm refuse the token of a disabled user, and of a user who lost the password row", async () => {
+	const user = await newUser();
+	const token = await issue(user);
+	await api.db("user").where({ id: user.id }).update({ is_disabled: true });
+	const client = api.client();
+	assert.equal((await client.post("/password-reset/check", { token })).status, 400);
+	const refused = await client.post("/password-reset/confirm", { token, password: NEW_PASSWORD });
+	assert.equal(refused.status, 400);
+	assert.equal(refused.body.error.message_i18n, INVALID);
+
+	const other = await newUser();
+	const second = await issue(other);
+	await api.db("auth").where({ user_id: other.id }).delete();
+	const none = await api.client().post("/password-reset/confirm", { token: second, password: NEW_PASSWORD });
+	assert.equal(none.status, 400);
+	assert.equal(none.body.error.message_i18n, INVALID);
+	assert.equal(await api.db("auth").where({ user_id: other.id }).first(), undefined, "no password was created");
+});
+
+it("answers the validator for a missing or invalid email and never echoes the value", async () => {
+	const missing = await api.client().post("/password-reset", {});
+	assert.equal(missing.status, 400);
+	assert.ok(missing.text.includes("email"));
+	const marker = `marker-${"x".repeat(300)}`;
+	const long = await api.client().post("/password-reset", { email: marker });
+	assert.equal(long.status, 400);
+	assert.equal(long.text.includes("marker-"), false);
+	assert.equal(
+		logs.some((line) => line.includes("marker-")),
+		false,
+	);
+});
+
+it("shares the request budget inside one IPv6 /48 and keeps at most 10 000 address keys", async () => {
+	const client = api.client();
+	for (let step = 0; step < 5; step += 1) {
+		const headers = { "x-forwarded-for": `2001:db8:77:${step}::1` };
+		const answer = await client.send("POST", "/password-reset", { body: { email: "nobody@example.com" }, headers });
+		assert.equal(answer.status, 202, `request ${step}`);
+	}
+	const sixth = await client.send("POST", "/password-reset", {
+		body: { email: "nobody@example.com" },
+		headers: { "x-forwarded-for": "2001:db8:77:ffff::9" },
+	});
+	assert.equal(sixth.status, 429);
+	const outside = await client.send("POST", "/password-reset", {
+		body: { email: "nobody@example.com" },
+		headers: { "x-forwarded-for": "2001:db8:78::1" },
+	});
+	assert.equal(outside.status, 202);
+
+	for (let step = 0; step < 3; step += 1) assert.equal(allowAddress("first-key@example.com"), true);
+	assert.equal(allowAddress("first-key@example.com"), false);
+	for (let step = 0; step < 10_000; step += 1) allowAddress(`key${step}@example.com`);
+	assert.equal(allowAddress("first-key@example.com"), true, "the oldest key was dropped at the cap");
+});
+
+it("two confirms of one link at once: one 200 and one 400", async () => {
+	const user = await newUser();
+	const token = await issue(user);
+	const answers = await Promise.all([
+		api.client().post("/password-reset/confirm", { token, password: NEW_PASSWORD }),
+		api.client().post("/password-reset/confirm", { token, password: "the-other-password-3" }),
+	]);
+	assert.deepEqual(answers.map((answer) => answer.status).sort(), [200, 400]);
+});
+
+it("keeps the audit and the notice when the audit write fails, and renders the notice with time, address and count", async () => {
+	const { renderMail } = await import("../mail/render.js");
+	const user = await newUser();
+	await api.db("user").where({ id: user.id }).update({ npmpro_language: "de" });
+	const made = generateApiToken();
+	const stamp = Math.floor(Date.now() / 1000);
+	const row = { user_id: user.id, visibility: "user", is_admin: false, created_on: stamp, expires_on: stamp + 3600 };
+	for (const section of [
+		"proxy_hosts",
+		"redirection_hosts",
+		"dead_hosts",
+		"streams",
+		"access_lists",
+		"certificates",
+	]) {
+		row[section] = "view";
+	}
+	await api
+		.db("npmpro_api_token")
+		.insert({ ...row, name: "one", lookup_id: made.lookupId, secret_hash: made.secretHash });
+	const second = generateApiToken();
+	await api
+		.db("npmpro_api_token")
+		.insert({ ...row, name: "two", lookup_id: second.lookupId, secret_hash: second.secretHash });
+	const token = await issue(user);
+	const { default: internalAuditLog } = await import("../internal/audit-log.js");
+	const original = internalAuditLog.add;
+	internalAuditLog.add = () => Promise.reject(new Error("audit down"));
+	try {
+		must(await api.client().post("/password-reset/confirm", { token, password: NEW_PASSWORD }));
+	} finally {
+		internalAuditLog.add = original;
+	}
+	const queued = (await api.db("npmpro_notification_delivery").where({ event: "mail.password-reset" })).find(
+		(entry) => String(entry.payload).includes(user.email),
+	);
+	assert.ok(queued, "the notice is queued although the audit failed");
+	const payload = JSON.parse(queued.payload);
+	assert.equal(payload.language, "de");
+	assert.equal(payload.data.count, 2);
+	assert.match(payload.data.ip, /^[0-9a-f.:]+$/u);
+	assert.match(payload.data.time, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/u);
+	const german = renderMail("password-reset", { language: "de", data: payload.data, instance: "box.example" });
+	for (const part of [payload.data.time, payload.data.ip, "2 API-Token bleiben aktiv"])
+		assert.ok(german.text.includes(part), part);
+	const english = renderMail("password-reset", { language: "en", data: payload.data, instance: "box.example" });
+	assert.ok(english.text.includes("2 API tokens stay active"));
+	assert.ok(english.html.includes(payload.data.ip));
+	const one = renderMail("password-reset", {
+		language: "en",
+		data: { ...payload.data, count: 1 },
+		instance: "box.example",
+	});
+	assert.ok(one.text.includes("1 API token stays active"));
+	const none = renderMail("password-reset", {
+		language: "en",
+		data: { ...payload.data, count: 0 },
+		instance: "box.example",
+	});
+	assert.equal(none.text.includes("API token"), false);
+});
+
+// last: the reset ends every session of the administrator
 it("lets the only administrator reset by mail", async () => {
 	const admins = await api.db("user").where({ is_disabled: false }).select("id", "email", "roles");
 	const sole = admins.find((row) => row.email === "admin@example.com");
