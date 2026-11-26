@@ -24,6 +24,7 @@ before(async () => {
 });
 afterEach(() => {
 	delete process.env.SMTP_HOST;
+	delete process.env.SMTP_PASSWORD;
 });
 after(async () => {
 	await smtp?.close();
@@ -95,4 +96,17 @@ it("the env lock holds after a restore", async () => {
 	const got = (await admin.get("/settings/email")).body;
 	assert.equal(got.host, "env-smtp.example.com");
 	assert.ok(got.locked.includes("host"));
+});
+
+it("an env password still wins after a restore with secrets", async () => {
+	await save({ password: "mail-pass-3" });
+	const entry = await keep({ secrets: true, passphrase: PASSPHRASE });
+	await admin.put("/settings/email", { password_clear: true });
+	process.env.SMTP_PASSWORD = "env-pass";
+	await restore(entry, { passphrase: PASSPHRASE });
+	const got = (await admin.get("/settings/email")).body;
+	assert.equal(got.password_set, true);
+	assert.ok(got.locked.includes("password"));
+	// the restored row still holds the backup's password under the env one
+	assert.equal(secretBox.decrypt((await metaOf("email")).password), "mail-pass-3");
 });

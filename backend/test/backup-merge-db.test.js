@@ -586,6 +586,35 @@ it("takes an oidc setting without secrets and keeps the instance client secret",
 	}
 });
 
+it("takes the email setting without secrets and keeps the instance mail password", async () => {
+	const knex = await open();
+	await knex("setting").insert({
+		id: "email",
+		name: "Email",
+		meta: JSON.stringify({ host: "old", password: box.encrypt("kept") }),
+	});
+	try {
+		const data = { settings_notifications: { setting: [{ id: "email", name: "Email", meta: { host: "new" } }] } };
+		const choices = { "setting:email": "take" };
+		await merge(knex, { data, types: ["settings_notifications"], choices, secrets: false });
+		assert.deepEqual(json((await knex("setting").where({ id: "email" }).first()).meta), {
+			host: "new",
+			password: box.encrypt("kept"),
+		});
+
+		const withSecret = {
+			settings_notifications: { setting: [{ id: "email", meta: { host: "newer", password: "fresh" } }] },
+		};
+		await merge(knex, { data: withSecret, types: ["settings_notifications"], choices });
+		assert.deepEqual(json((await knex("setting").where({ id: "email" }).first()).meta), {
+			host: "newer",
+			password: box.encrypt("fresh"),
+		});
+	} finally {
+		await knex.destroy();
+	}
+});
+
 it("rolls everything back when an insert fails", async () => {
 	const knex = await open();
 	try {
