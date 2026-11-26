@@ -75,7 +75,7 @@ const serverOf = (fake, extra = {}) => ({
 	...extra,
 });
 
-it("answers the permissions: a user 403, no session 401, an admin token reads but cannot save", async () => {
+it("answers the permissions: a user 403, no session 401, an admin token reads but saves neither area", async () => {
 	const user = await api.limited({ visibility: "user", ...Object.fromEntries(SECTIONS.map((s) => [s, "manage"])) });
 	for (const [method, url, body] of [
 		["get", "/settings/email"],
@@ -93,7 +93,8 @@ it("answers the permissions: a user 403, no session 401, an admin token reads bu
 	assert.equal((await token.get("/settings/email")).status, 200);
 	assert.equal((await token.get("/settings/notifications")).status, 200);
 	assert.equal((await token.put("/settings/email", { port: 25 })).status, 403);
-	assert.equal((await token.put("/settings/notifications", { default_language: "de" })).status, 200);
+	// the public URL is the address of reset links: a token cannot move it (D13)
+	assert.equal((await token.put("/settings/notifications", { default_language: "de" })).status, 403);
 	assert.equal((await admin.put("/settings/notifications", { default_language: "en" })).status, 200);
 });
 

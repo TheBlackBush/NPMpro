@@ -7,12 +7,9 @@
 	"security": [
 		{
 			"cookieAuth": []
-		},
-		{
-			"bearerAuth": []
 		}
 	],
-	"description": "Saves the notification settings; send only what changes. Fields set by environment variables are ignored. public_url is stored without a trailing slash.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Saves the notification settings; send only what changes. Fields set by environment variables are ignored. public_url is stored without a trailing slash. The public URL is the address of the links in mails (password reset links among them), so a session is required.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"requestBody": {
 		"description": "The settings to change",
 		"required": true,

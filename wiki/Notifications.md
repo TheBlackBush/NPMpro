@@ -54,4 +54,4 @@ Every mail has a plain text part and a simple HTML part with the same text. It h
 
 ## Who can change it
 
-Saving the mail server settings needs a signed-in session. An [API token](API-tokens-and-MCP) is refused, because a token could otherwise send mail through a server you choose. The same goes for restoring the Notifications part of a backup, see [Backup and restore](Backup-and-restore#good-to-know). The password is sealed, never returned and only part of a backup made with secrets. See [Security](Security#outbound-mail).
+Saving the mail server settings needs a signed-in session. An [API token](API-tokens-and-MCP) is refused, because a token could otherwise send mail through a server you choose. The public URL and the default mail language also need a signed-in session, because the public URL is the address in password reset links. A token can still read both cards. The same goes for restoring the Notifications part of a backup, see [Backup and restore](Backup-and-restore#good-to-know). The password is sealed, never returned and only part of a backup made with secrets. See [Security](Security#outbound-mail).

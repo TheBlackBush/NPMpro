@@ -33,6 +33,7 @@ const SESSION_ONLY = new Set([
 	"put /settings/oidc",
 	// where mail and its login go
 	"put /settings/email",
+	"put /settings/notifications",
 	"post /settings/oidc/test",
 	"post /settings/oidc/icon",
 	"delete /settings/oidc/icon",
