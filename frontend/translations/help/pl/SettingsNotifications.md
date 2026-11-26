@@ -17,6 +17,17 @@ Przy zabezpieczeniach **Brak** i użytkowniku hasło byłoby przesyłane bez szy
 
 **Wyślij wiadomość testową** wysyła wiadomość z zapisanymi ustawieniami na wpisany adres (domyślnie Twój) i pokazuje odpowiedź serwera, jeśli się nie uda. Najpierw zapisz: przycisk jest wyłączony, dopóki formularz ma niezapisane zmiany, i ukryty, dopóki poczta nie jest skonfigurowana.
 
+### Alerty e-mail
+
+Widoczne po skonfigurowaniu serwera poczty. Wiadomości o problemach wykrytych przez NPMpro i o tym, kiedy zostały rozwiązane; problem, który pozostaje otwarty, jest powtarzany.
+
+- **Wysyłaj do administratorów**: każdy włączony administrator z prawidłowym adresem otrzymuje alerty.
+- **Wysyłaj także do**: więcej adresów, najwyżej 20, na przykład lista zespołu. Odrzucony adres jest oznaczony na swojej etykiecie. Zmienna: `ALERT_ADDRESSES` (oddzielone przecinkami).
+- **Zdarzenia**: zaznacz problemy, o których chcesz dostawać wiadomości, pogrupowane według obszarów. Zaznaczenie zdarzenia obejmuje też jego rozwiązanie.
+- **Przypominaj co (godzin)**: jak długo problem pozostaje cichy, zanim zostanie wysłany ponownie; 0 nigdy go nie powtarza, najwyżej 168.
+
+**Wyślij przykład** od razu wysyła przykładowy alert, z zapisanymi ustawieniami, do wszystkich, którzy otrzymywaliby alerty. Najpierw zapisz: przycisk jest wyłączony, dopóki formularz ma niezapisane zmiany. Jeśli wysyłanie się nie powiedzie, komunikat wskazuje adres.
+
 ### Linki i język
 
 - **Publiczny URL**: adres, pod którym osoby otwierają NPMpro, używany w linkach w wiadomościach, na przykład `https://npm.example.com`. Tylko HTTPS, bez ścieżki. **Użyj adresu tej przeglądarki** wypełnia go adresem tej strony, gdy jest otwarta przez HTTPS. Zmienna: `PUBLIC_URL`.

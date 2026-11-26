@@ -17,6 +17,17 @@ Bei Sicherheit **Keine** und einem Benutzer würde das Passwort unverschlüsselt
 
 **Testmail senden** sendet eine Mail mit den gespeicherten Einstellungen an die eingegebene Adresse (standardmäßig Ihre) und zeigt die Antwort des Servers, wenn es fehlschlägt. Speichern Sie zuerst: Die Schaltfläche ist deaktiviert, solange das Formular ungespeicherte Änderungen hat, und ausgeblendet, bis Mail eingerichtet ist.
 
+### Alarmmails
+
+Wird angezeigt, sobald ein Mailserver eingerichtet ist. Mails über Probleme, die NPMpro erkennt, und darüber, wann sie behoben sind; ein Problem, das offen bleibt, wird wiederholt.
+
+- **An Administratoren senden**: Jeder aktivierte Administrator mit einer gültigen Adresse erhält die Alarme.
+- **Zusätzlich senden an**: weitere Adressen, höchstens 20, zum Beispiel eine Team-Liste. Eine abgelehnte Adresse wird an ihrem Chip markiert. Variable: `ALERT_ADDRESSES` (durch Kommas getrennt).
+- **Ereignisse**: Haken Sie die Probleme an, über die Sie Mails möchten, nach Bereichen gruppiert. Wer eines anhakt, erhält auch die Mail zu seiner Behebung.
+- **Erinnern alle (Stunden)**: wie lange ein Problem ruhig bleibt, bevor es erneut gemailt wird; 0 wiederholt es nie, höchstens 168.
+
+**Beispiel senden** schickt sofort einen Beispielalarm mit den gespeicherten Einstellungen an alle, die Alarme erhalten würden. Speichern Sie zuerst: Die Schaltfläche ist deaktiviert, solange das Formular ungespeicherte Änderungen hat. Schlägt ein Versand fehl, nennt die Meldung die Adresse.
+
 ### Links und Sprache
 
 - **Öffentliche URL**: die Adresse, unter der Personen NPMpro öffnen, für die Links in Mails, zum Beispiel `https://npm.example.com`. Nur HTTPS, kein Pfad. **Adresse dieses Browsers verwenden** trägt die Adresse dieser Seite ein, wenn sie über HTTPS geöffnet ist. Variable: `PUBLIC_URL`.
