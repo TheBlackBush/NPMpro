@@ -77,7 +77,7 @@ mv -f "$env_sum" /etc/npmpro/env.sha512sum
 # NAME_FILE too) and before NPMPRO_USER_ENV and the checks below, so a value from a file counts as set by the user and
 # goes through the same checks. Nothing before this line reads these names. See secret-files.sh; the list is checked by
 # test/secret-files.test.js and .github/scripts/check-compose-envs.sh.
-NPMPRO_SECRET_ENVS="DB_MYSQL_USER DB_MYSQL_PASSWORD DB_POSTGRES_USER DB_POSTGRES_PASSWORD INITIAL_ADMIN_EMAIL INITIAL_ADMIN_PASSWORD ACME_EMAIL ACME_EAB_KID ACME_EAB_HMAC_KEY COOKIE_SECRET OIDC_CLIENT_ID OIDC_CLIENT_SECRET GEOIP_ACCOUNT_ID GEOIP_LICENSE_KEY CROWDSEC_API_KEY"
+NPMPRO_SECRET_ENVS="DB_MYSQL_USER DB_MYSQL_PASSWORD DB_POSTGRES_USER DB_POSTGRES_PASSWORD INITIAL_ADMIN_EMAIL INITIAL_ADMIN_PASSWORD ACME_EMAIL ACME_EAB_KID ACME_EAB_HMAC_KEY COOKIE_SECRET OIDC_CLIENT_ID OIDC_CLIENT_SECRET GEOIP_ACCOUNT_ID GEOIP_LICENSE_KEY CROWDSEC_API_KEY SMTP_USERNAME SMTP_PASSWORD"
 # shellcheck source=/dev/null
 . /usr/local/bin/secret-files.sh
 if ! secret_files_read /data "$NPMPRO_SECRET_ENVS"; then
@@ -1000,6 +1000,31 @@ fi
 
 if [ -n "$OIDC_SKIP_MFA" ] && ! echo "$OIDC_SKIP_MFA" | grep -q "^true$\|^false$"; then
     echo "OIDC_SKIP_MFA needs to be true or false."
+    sleep inf
+fi
+
+if [ -n "$SMTP_PORT" ] && { ! echo "$SMTP_PORT" | grep -q "^[0-9]\{1,5\}$" || [ "$SMTP_PORT" -lt 1 ] || [ "$SMTP_PORT" -gt 65535 ]; }; then
+    echo "SMTP_PORT needs to be a number from 1 to 65535."
+    sleep inf
+fi
+
+if [ -n "$SMTP_SECURITY" ] && ! echo "$SMTP_SECURITY" | grep -q "^starttls$\|^tls$\|^none$"; then
+    echo "SMTP_SECURITY needs to be starttls, tls or none."
+    sleep inf
+fi
+
+if [ -n "$SMTP_VERIFY_TLS" ] && ! echo "$SMTP_VERIFY_TLS" | grep -q "^true$\|^false$"; then
+    echo "SMTP_VERIFY_TLS needs to be true or false."
+    sleep inf
+fi
+
+if [ -n "$PUBLIC_URL" ] && ! echo "$PUBLIC_URL" | grep -q "^https://"; then
+    echo "PUBLIC_URL needs to start with https://."
+    sleep inf
+fi
+
+if [ -n "$MAIL_LANGUAGE" ] && ! echo "$MAIL_LANGUAGE" | grep -q "^\(en\|de\|zh\|fr\|es\|pt\|ru\|it\|nl\|pl\|ja\|ko\|uk\)$"; then
+    echo "MAIL_LANGUAGE needs to be one of en, de, zh, fr, es, pt, ru, it, nl, pl, ja, ko, uk."
     sleep inf
 fi
 

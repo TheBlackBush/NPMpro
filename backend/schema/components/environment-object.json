@@ -103,6 +103,8 @@
 						"type": "string",
 						"enum": [
 							"oidc",
+							"email",
+							"notifications",
 							"acme",
 							"certificates",
 							"network",

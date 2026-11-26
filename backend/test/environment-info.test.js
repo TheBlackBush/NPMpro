@@ -12,6 +12,7 @@ import {
 	LOCK_GROUP_ORDER,
 	settingLocksOf,
 } from "../lib/environment-info.js";
+import { EMAIL_ENV_KEYS, NOTIFICATION_ENV_KEYS } from "../lib/mail/settings-rules.js";
 import { mergeMonitoringConfig } from "../lib/monitoring-rules.js";
 import { isResolverAddress } from "../lib/resolver-address.js";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
@@ -563,4 +564,35 @@ it("gives the updater the stored value an invalid DDNS_ env value leaves in plac
 	assert.deepEqual(warnings, [
 		"Runtime setting ddns.cooldown: the env value cannot be used, the stored value or the default applies",
 	]);
+});
+
+it("lists the mail and notification env locks, the mail credentials are secret envs, none is a startup env", async () => {
+	const { lockedByOf } = await import("../lib/environment-info.js");
+	const envs = readFileSync(ENVS_SH, "utf8");
+	const secrets = SECRET_LINE.exec(envs).groups.names.split(" ");
+	const startup = STARTUP_LINE.exec(envs).groups.names.split(" ");
+	const runtime = RUNTIME_LINE.exec(envs).groups.names.split(" ");
+	assert.ok(secrets.includes("SMTP_USERNAME"));
+	assert.ok(secrets.includes("SMTP_PASSWORD"));
+	for (const name of [...Object.values(EMAIL_ENV_KEYS), ...Object.values(NOTIFICATION_ENV_KEYS)]) {
+		assert.equal(startup.includes(name) || runtime.includes(name), false, name);
+		assert.equal(
+			ENVIRONMENT_ITEMS.some((entry) => entry.name === name),
+			false,
+			name,
+		);
+		assert.equal(secrets.includes(name), name === "SMTP_USERNAME" || name === "SMTP_PASSWORD", name);
+	}
+	const locks = settingLocksOf({ email: ["host", "password"], notifications: ["public_url"], oidc: ["skip_mfa"] });
+	assert.deepEqual(
+		environmentInfo({ NPMPRO_USER_ENV: "" }, locks).locked_runtime.map((lock) => [lock.group, lock.key, lock.env]),
+		[
+			["oidc", "skip_mfa", "OIDC_SKIP_MFA"],
+			["email", "host", "SMTP_HOST"],
+			["email", "password", "SMTP_PASSWORD"],
+			["notifications", "public_url", "PUBLIC_URL"],
+		],
+	);
+	assert.deepEqual(lockedByOf("email", ["port", "nope"]), { port: "SMTP_PORT" });
+	assert.deepEqual(lockedByOf("notifications", ["default_language"]), { default_language: "MAIL_LANGUAGE" });
 });

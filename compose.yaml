@@ -191,6 +191,21 @@ services:
 #      - "OIDC_DISABLE_PASSWORD=true" # turns off email/password sign-in, set it to false to restore password sign-in, default false
 #      - "OIDC_SKIP_MFA=true" # skip the second factor after an OIDC sign-in, default false
 
+      # Mail (SMTP server for notifications and test mails); mail counts as configured with SMTP_HOST and SMTP_FROM set
+#      - "SMTP_HOST=smtp.example.com" # SMTP server name or address
+#      - "SMTP_PORT=587" # 1 to 65535, default 587
+#      - "SMTP_SECURITY=starttls" # starttls, tls or none, default starttls
+#      - "SMTP_VERIFY_TLS=false" # check the server certificate, default true
+#      - "SMTP_USERNAME=..." # sign-in user, leave empty for a server without sign-in
+#      - "SMTP_USERNAME_FILE=/run/secrets/smtp_username" # SMTP_USERNAME from a file instead (a Docker secret, see secrets: below)
+#      - "SMTP_PASSWORD=..." # sign-in password
+#      - "SMTP_PASSWORD_FILE=/run/secrets/smtp_password" # SMTP_PASSWORD from a file instead (a Docker secret, see secrets: below)
+#      - "SMTP_FROM=npmpro@example.com" # sender address, one plain address
+#      - "SMTP_FROM_NAME=NPMpro" # sender name, no quotes or line breaks
+#      - "SMTP_REPLY_TO=admin@example.com" # reply address, one plain address
+#      - "PUBLIC_URL=https://npm.example.com" # address you open NPMpro with, https:// only, no path; used in links of mails
+#      - "MAIL_LANGUAGE=en" # language of mails without a known recipient language: en, de, zh, fr, es, pt, ru, it, nl, pl, ja, ko or uk, default en
+
       # Advanced (Time zone: TZ at the top)
 #      - "DISABLE_NGINX_BEAUTIFIER=true" # do not format the configs NPMpro writes, useful when nginxbeautifier fails on non-standard custom/advanced configs, default false
 #      - "DISABLE_GRAVATAR=true" # no Gravatar profile pictures, applies to a user at their next profile save, default false
