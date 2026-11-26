@@ -355,3 +355,70 @@ it("counts the mail as configured only with a host and a sender", async () => {
 	assert.equal((await admin.put("/settings/email", { from_address: "npmpro@example.com" })).body.configured, true);
 	assert.equal((await admin.put("/settings/email", { host: "" })).body.configured, false);
 });
+
+it("answers a guard-blocked host with the translated key and the configured name, on save and on the test mail", async () => {
+	const hook = process.env.NPMPRO_TEST_SMTP;
+	delete process.env.NPMPRO_TEST_SMTP;
+	try {
+		const refused = await admin.put("/settings/email", { host: "127.0.0.1", port: 2525 });
+		assert.equal(refused.status, 400);
+		assert.equal(refused.body.error.message_i18n, "error.mail-host-blocked");
+		assert.deepEqual(refused.body.error.message_values, { host: "127.0.0.1" });
+	} finally {
+		process.env.NPMPRO_TEST_SMTP = hook;
+	}
+	// a saved host that now resolves to a blocked address (the hook off at send time)
+	assert.equal(
+		(
+			await admin.put("/settings/email", {
+				host: "127.0.0.1",
+				port: accept.port,
+				from_address: "npmpro@example.com",
+			})
+		).status,
+		200,
+	);
+	delete process.env.NPMPRO_TEST_SMTP;
+	try {
+		const blocked = await (await bearer(true)).post("/settings/email/test", {});
+		assert.equal(blocked.status, 400);
+		assert.equal(blocked.body.error.message_i18n, "error.mail-host-blocked");
+		assert.deepEqual(blocked.body.error.message_values, { host: "127.0.0.1" });
+	} finally {
+		process.env.NPMPRO_TEST_SMTP = hook;
+	}
+});
+
+it("never answers the password a server echoes in its 535 reply, nor its base64", async () => {
+	const echo = await startFakeSmtp({ mode: "auth-535-echo" });
+	try {
+		assert.equal(
+			(await admin.put("/settings/email", { port: echo.port, username: "mailer", password: PASSWORD_VALUE }))
+				.status,
+			200,
+		);
+		const failed = await (await bearer(true)).post("/settings/email/test", {});
+		assert.equal(failed.status, 400);
+		assert.equal(failed.body.error.message_i18n, "error.mail-test-failed");
+		assert.equal(echo.logins.length > 0, true);
+		assert.equal(failed.text.includes(PASSWORD_VALUE), false);
+		assert.equal(failed.text.includes(Buffer.from(PASSWORD_VALUE).toString("base64")), false);
+	} finally {
+		await echo.close();
+	}
+});
+
+it("answers an unexpected error of the sender with a generic text, never its message", async () => {
+	const { default: internalMail } = await import("../internal/mail.js");
+	const original = internalMail.sendNow;
+	internalMail.sendNow = () => Promise.reject(new TypeError("internal detail /data/secret-path"));
+	try {
+		const failed = await (await bearer(true)).post("/settings/email/test", {});
+		assert.equal(failed.status, 400);
+		assert.equal(failed.body.error.message_i18n, "error.mail-test-failed");
+		assert.equal(failed.text.includes("secret-path"), false);
+		assert.equal(typeof failed.body.error.message_values.error, "string");
+	} finally {
+		internalMail.sendNow = original;
+	}
+});

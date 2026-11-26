@@ -11,6 +11,7 @@ import {
 	validateNotificationsPatch,
 } from "../lib/mail/settings-rules.js";
 import { checkSmtpTarget } from "../lib/mail/smtp-target.js";
+import { MailError } from "../lib/mail/transport.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
@@ -95,8 +96,18 @@ const notificationsAnswer = (config) => ({
 	locked_by: lockedByOf("notifications", config.locked),
 });
 
-// the guard's refusals are public messages of the settings form (the blocked address has no translated key)
-const targetError = (err) => new errs.ValidationError(err.message, err.message_i18n);
+// the guard's refusals are public messages of the settings form; a blocked host has a translated key with the host name
+// as configured (never a resolved address)
+const blockedHost = (host) =>
+	new errs.ValidationError(
+		"The mail server resolves to an address outbound requests may not reach",
+		"error.mail-host-blocked",
+		{
+			values: { host },
+		},
+	);
+const targetError = (err, host) =>
+	err.code === "EBLOCKED" ? blockedHost(host) : new errs.ValidationError(err.message, err.message_i18n);
 
 const audit = (access, action, meta) => internalAuditLog.add(access, { action, object_type: "setting", meta });
 
@@ -144,7 +155,7 @@ const internalMailSetting = {
 				try {
 					await checkSmtpTarget(target);
 				} catch (err) {
-					throw targetError(err);
+					throw targetError(err, target.host);
 				}
 			}
 		}
@@ -173,8 +184,11 @@ const internalMailSetting = {
 			await internalMail.sendNow({ to, template: "test", language, data: {} });
 		} catch (err) {
 			if (err instanceof errs.ValidationError) throw err;
+			if (err?.code === "EBLOCKED") throw blockedHost((await getEmailConfig()).values.host);
+			// only a MailError carries a scrubbed text; anything else gets a generic one
+			const text = err instanceof MailError ? err.message : "The mail could not be sent";
 			throw new errs.ValidationError("The test mail could not be sent", "error.mail-test-failed", {
-				values: { error: String(err?.message ?? err).slice(0, TEST_ERROR_MAX) },
+				values: { error: text.slice(0, TEST_ERROR_MAX) },
 			});
 		}
 		await audit(access, "test-sent", { id: "email" });

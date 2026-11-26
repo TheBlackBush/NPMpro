@@ -77,7 +77,7 @@
 			"additionalProperties": {
 				"type": "string"
 			},
-			"description": "For each locked field, the name of the environment variable that sets it"
+			"description": "For each locked field, the name of the environment variable that sets it. The name for password comes back blank (the API blanks every value under a key named password); locked is the source of truth and the variable is SMTP_PASSWORD"
 		},
 		"configured": {
 			"type": "boolean",

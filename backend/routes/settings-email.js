@@ -12,7 +12,7 @@ const router = express.Router({
 	mergeParams: true,
 });
 
-// a test mail reaches a real mail server: 5 per minute per address
+// a test mail reaches a real mail server: 5 per minute per IP address
 const testLimiter = rateLimit({
 	windowMs: 60 * 1000,
 	limit: 5,
