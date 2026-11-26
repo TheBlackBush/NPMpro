@@ -1,5 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import queryString from "query-string";
+import { readPayload } from "src/modules/ApiResponse";
 import AuthStore from "src/modules/AuthStore";
 import { camelizeKeys, decamelizeKeys } from "./caseConvert";
 
@@ -44,13 +45,8 @@ function logoutOnUnauthorized(reload) {
 }
 
 async function processResponse(response, reload = true) {
-	if (response.status === 204) return null;
-	let payload = {};
-	try {
-		payload = await response.json();
-	} catch (err) {
-		if (response.ok) throw err;
-	}
+	const payload = await readPayload(response);
+	if (payload === null) return null;
 	if (!response.ok) {
 		if (response.status === 401) logoutOnUnauthorized(reload);
 		const error = new Error(payload.error?.message_i18n ?? payload.error?.message ?? `HTTP ${response.status}`);

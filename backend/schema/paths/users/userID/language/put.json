@@ -47,6 +47,9 @@
 		"400": {
 			"description": "Not one of the language codes"
 		},
+		"401": {
+			"description": "Not signed in"
+		},
 		"403": {
 			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
 		}

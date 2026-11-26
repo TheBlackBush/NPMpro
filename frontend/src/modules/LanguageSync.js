@@ -8,4 +8,21 @@
  */
 const languageNeedsSync = (user, locale) => Boolean(user) && user.npmproLanguage !== locale;
 
-export { languageNeedsSync };
+/**
+ * One sync per page load: the returned function sends the language at most once, when the user is loaded and the
+ * stored language differs. A failed send is not repeated (the next page load tries again) and shows nothing.
+ *
+ * @param   {string}                         locale  the UI language code
+ * @param   {(language: string) => Promise}  send    the PUT of the language
+ * @returns {(user: Object|undefined) => void}
+ */
+const createLanguageSync = (locale, send) => {
+	let sent = false;
+	return (user) => {
+		if (sent || !languageNeedsSync(user, locale)) return;
+		sent = true;
+		send(locale).catch(() => undefined);
+	};
+};
+
+export { createLanguageSync, languageNeedsSync };

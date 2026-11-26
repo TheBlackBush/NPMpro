@@ -4,6 +4,8 @@ import { startApi } from "./support/api.js";
 import { newAdmin } from "./support/auth.js";
 
 let api;
+// /users/<id>/language is no route: the router answers 404
+const STATUS_OTHER_ID = 404;
 
 before(async () => {
 	api = await startApi();
@@ -39,7 +41,7 @@ it("reaches only the own user: another id is no route, nobody else changes", asy
 	const user = await api.limited({ visibility: "user" });
 	const other = await api.limited({ visibility: "user" });
 	const response = await user.put(`/users/${other.user.id}/language`, { language: "fr" });
-	assert.notEqual(response.status, 204);
+	assert.equal(response.status, STATUS_OTHER_ID);
 	assert.equal(await languageOf(other.user.id), null);
 });
 
