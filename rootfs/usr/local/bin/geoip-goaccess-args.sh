@@ -13,7 +13,7 @@ case "$provider" in
     *)
         provider=dbip
         for f in $maxmind; do
-            [ -s "$dir/$f" ] && provider=maxmind
+            if [ -s "$dir/$f" ]; then provider=maxmind; fi
         done
         ;;
 esac
@@ -24,6 +24,6 @@ else
 fi
 out=""
 for f in $files; do
-    [ -s "$dir/$f" ] && out="$out --geoip-database=$dir/$f"
+    if [ -s "$dir/$f" ]; then out="$out --geoip-database=$dir/$f"; fi
 done
 echo "${out# }"
