@@ -37,7 +37,10 @@ router
 	.route("/test-alert")
 	.all(jwtdecode())
 
-	/** POST /api/settings/notifications/test-alert: like the test mail it carries no link, so an API token may send it */
+	/**
+	 * POST /api/settings/notifications/test-alert: its only link is the saved public URL (the Open NPMpro button), which
+	 * only a session can change (PUT /settings/notifications is session only), so an API token may send it
+	 */
 	.post(
 		testMailLimiter,
 		oneAtATime(async (_, res) => {

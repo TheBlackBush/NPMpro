@@ -56,13 +56,13 @@ The card **Mail alerts** shows once mail is set up. It mails the problems of the
 - **Also send to**: more addresses, for example a team list. Up to 20 plain addresses. `ALERT_ADDRESSES` sets the list and locks the field (see [Configuration](Configuration)).
 - **Events**: the problems the mail channel offers, grouped by area: certificates that are about to expire or could not be renewed, hosts whose nginx configuration is refused, failed backups, a GeoIP update or a CrowdSec connection that fails, dynamic DNS records that fail or are stopped, and a webhook turned off after repeated failures. Ticking an event also sends its recovery. Action events (a host created, a backup succeeded and the like) are never mailed; they go to webhooks only.
 - **Remind every** (hours, default 24): while a problem stays open, its alert is repeated after this many hours. `0` never repeats it; the maximum is 168.
-- **Send a sample**: sends a sample alert, marked **Sample**, at once to every current recipient. Nothing is wrong in it; it only shows what an alert looks like. The button shares the limit of 5 test mails a minute and runs one sample at a time. A server error stops the sample: the window says how many addresses got it and which one failed, and the rest are not tried.
+- **Send a sample**: sends a sample alert, marked **Sample**, at once to every current recipient. Nothing is wrong in it; it only shows what an alert looks like. The button shares the limit of 5 test mails a minute and runs one sample at a time. A server error stops the sample: the message at the top of the page says how many addresses got it and which one failed, and the rest are not tried.
 
 How the alert mails go out:
 
 - Each recipient gets one mail. Alerts that come within about a minute are grouped into it, so a single mail can say "3 problems, 1 resolved": the subject counts them and the body lists each one, problems first, with the error text where there is one.
 - A reminder says since when the problem is open, and a recovery says when it was resolved.
-- Recipients are chosen when the alert happens and checked again before the mail is sent. An administrator who was disabled, or an address that was removed from the list, gets nothing after that.
+- Recipients are chosen when the alert happens and checked again before the mail is sent. An administrator who was disabled, or an address that was removed from the list, gets nothing after that. The same check drops a queued alert whose event was unticked in the meantime, and every queued alert once mail is no longer set up: no mail goes out and nothing is written to the audit log.
 - Each recipient gets the mail in their own language: an administrator in the language they chose (see [Public URL and language](#public-url-and-language)), an address from the list in the default mail language.
 - A group that fails is tried again as a whole, on the schedule described in [How the mail server is reached](#how-the-mail-server-is-reached).
 - Ticking an event sends nothing about the problems that are already open when you tick it. Their recovery and reminders follow the normal rules from then on.
