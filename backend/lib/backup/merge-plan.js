@@ -25,6 +25,8 @@ const MATCH_CHOICES = {
 	dead_hosts: ["skip", "replace"],
 	streams: ["skip", "replace"],
 	ddns: ["skip", "replace"],
+	// a webhook with the name of an instance webhook is skipped: the instance keeps its URL and secret
+	webhooks: ["skip"],
 	certificates: ["existing", "add"],
 	access_lists: ["existing", "add"],
 	dns_credentials: ["existing", "add"],
@@ -37,6 +39,7 @@ const INSTANCE_TABLES = [
 	"access_list",
 	"npmpro_dns_credential",
 	"npmpro_ddns_record",
+	"npmpro_webhook",
 	"proxy_host",
 	"redirection_host",
 	"dead_host",
@@ -142,7 +145,7 @@ const candidatesFor = (typeId, { instance, scope }) => {
 const findTargets = (typeId, row, ctx) => {
 	if (DOMAIN_HOST_TYPES.includes(typeId)) return hostClashes(row, ctx.instance);
 	if (typeId === "streams") return streamClashes(row, ctx.instance);
-	if (typeId === "ddns")
+	if (typeId === "ddns" || typeId === "webhooks")
 		return nameMatch(row, instanceRows(ctx.instance, typeId)).map((other) => ({ type: typeId, row: other }));
 	if (typeId === "users")
 		return userMatch(row, instanceRows(ctx.instance, "users")).map((other) => ({ type: typeId, row: other }));
@@ -499,7 +502,7 @@ const planHash = (plan) => {
 const planMerge = ({ data, instance, stageFiles, types, items, choices, scope, secrets }) => {
 	// users, settings and custom files are never part of a page import
 	const chosen = scope.page
-		? types.filter((typeId) => typeId !== "users" && Object.hasOwn(ITEM_TYPES, typeId))
+		? types.filter((typeId) => typeId !== "users" && typeId !== "webhooks" && Object.hasOwn(ITEM_TYPES, typeId))
 		: types;
 	const ctx = {
 		data: data ?? {},
@@ -513,6 +516,7 @@ const planMerge = ({ data, instance, stageFiles, types, items, choices, scope, s
 	const planned = HOST_TYPES.flatMap((typeId) => planRows(typeId, selectedRows(typeId, ctx), ctx));
 	const hostLinks = linkedOf(activeData(planned, ctx.data));
 	planned.push(...planRows("ddns", selectedRows("ddns", ctx), ctx));
+	planned.push(...planRows("webhooks", selectedRows("webhooks", ctx), ctx));
 	planned.push(...planLinked("certificates", hostLinks.certificates, ctx));
 	planned.push(...planLinked("access_lists", hostLinks.access_lists, ctx));
 	planned.push(...planLinked("dns_credentials", linkedOf(activeData(planned, ctx.data)).dns_credentials, ctx));

@@ -58,6 +58,7 @@ const SECRET_TYPES = new Set([
 	"dns_credentials",
 	"ddns",
 	"users",
+	"webhooks",
 	"settings_oidc",
 	"settings_notifications",
 	"settings_monitoring",
@@ -378,6 +379,8 @@ const reattachRecords = async (trx, detached) => {
 const deleteType = async (trx, typeId, adminUserId, kept = {}) => {
 	// the update history of the records goes with them (it is never part of a backup)
 	if (typeId === "ddns") await trx("npmpro_ddns_history").del();
+	// pending and old deliveries of the replaced webhooks go with them (deliveries are never part of a backup)
+	if (typeId === "webhooks") await trx("npmpro_notification_delivery").where({ channel: "webhook" }).del();
 	// the restored users replace these rows, and an id may now name someone else: their API tokens go too
 	const revokedTokens = [];
 	if (typeId === "users") {

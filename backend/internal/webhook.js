@@ -2,6 +2,7 @@ import db from "../db.js";
 import errs from "../lib/error.js";
 import { isSelectable } from "../lib/notify/catalogue.js";
 import { dbTimeOf, msOfDbTime } from "../lib/notify/db-time.js";
+import { sealWebhookText } from "../lib/notify/webhook-seal.js";
 import { newSecret } from "../lib/notify/webhook-sign.js";
 import { checkWebhookTarget, urlHint, validateWebhookUrl } from "../lib/notify/webhook-url.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
@@ -34,8 +35,8 @@ const DELIVERY_COLUMNS = [
 	"modified_on",
 ];
 
-// the one place that seals a URL or a secret for the database
-const seal = (text) => defaultSecretBox.encrypt(String(text));
+// a URL or a secret becomes a database value only through sealWebhookText (a backup restore uses it too)
+const seal = (text) => sealWebhookText(text);
 
 // the clear value of a sealed column, or null when it is empty or cannot be opened
 const openOrNull = (sealed) => {

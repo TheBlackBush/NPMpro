@@ -95,7 +95,8 @@
 									"settings_crowdsec",
 									"custom_nginx",
 									"crowdsec_files",
-									"backup_schedules"
+									"backup_schedules",
+									"webhooks"
 								]
 							},
 							"minItems": 1,

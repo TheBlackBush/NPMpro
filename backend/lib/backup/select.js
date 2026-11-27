@@ -24,6 +24,7 @@ const ITEM_TYPES = {
 		children: [["npmpro_dns_domain", "dns_credential_id"]],
 	},
 	ddns: { table: "npmpro_ddns_record", children: [] },
+	webhooks: { table: "npmpro_webhook", children: [] },
 	users: {
 		table: "user",
 		children: [
@@ -64,7 +65,8 @@ const itemLabel = (typeId, row) => {
 	if (HOST_TYPES.includes(typeId) && typeId !== "streams") label = domainsOf(row).join(", ");
 	else if (typeId === "certificates") label = domainsOf(row).join(", ") || row.nice_name || "";
 	else if (typeId === "streams") label = row.incoming_port ? streamLabel(row) : "";
-	else if (typeId === "access_lists" || typeId === "dns_credentials" || typeId === "ddns") label = row.name || "";
+	else if (typeId === "access_lists" || typeId === "dns_credentials" || typeId === "ddns" || typeId === "webhooks")
+		label = row.name || "";
 	else if (typeId === "users") label = row.name && row.email ? `${row.name} (${row.email})` : "";
 	return label || `#${row.id}`;
 };

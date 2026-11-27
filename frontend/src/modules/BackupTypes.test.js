@@ -154,14 +154,23 @@ it("arrangeRows pairs boxes of a similar size and leaves missing categories out"
 		[["hosts"], ["users"], ["other"]],
 	);
 	assert.deepEqual(arrangeRows([]), []);
-	// the Dynamic DNS category has no box of its own in the grid: it is placed after the known ones
+	// Dynamic DNS and Webhooks share the last row; a missing one leaves the other alone
 	assert.deepEqual(
-		arrangeRows([...all, cat("ddns")]).map((row) => row.map((category) => category.id)),
+		arrangeRows([...all, cat("ddns"), cat("webhooks")]).map((row) => row.map((category) => category.id)),
 		[
 			["hosts", "settings"],
 			["custom_files", "certificates"],
 			["access_lists", "dns_credentials", "users"],
-			["ddns"],
+			["ddns", "webhooks"],
+		],
+	);
+	assert.deepEqual(
+		arrangeRows([...all, cat("webhooks")]).map((row) => row.map((category) => category.id)),
+		[
+			["hosts", "settings"],
+			["custom_files", "certificates"],
+			["access_lists", "dns_credentials", "users"],
+			["webhooks"],
 		],
 	);
 });

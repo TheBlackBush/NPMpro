@@ -31,6 +31,7 @@ const ALL_TYPES = [
 	"custom_nginx",
 	"crowdsec_files",
 	"backup_schedules",
+	"webhooks",
 ];
 
 let api;
@@ -73,7 +74,17 @@ it("answers the backup types with the categories, the counts of what exists and 
 	assert.deepEqual(empty.body.categories.flatMap((category) => category.types).sort(), [...ALL_TYPES].sort());
 	assert.deepEqual(
 		empty.body.categories.map((category) => category.id),
-		["hosts", "certificates", "access_lists", "dns_credentials", "ddns", "users", "settings", "custom_files"],
+		[
+			"hosts",
+			"certificates",
+			"access_lists",
+			"dns_credentials",
+			"ddns",
+			"users",
+			"settings",
+			"webhooks",
+			"custom_files",
+		],
 	);
 	assert.equal(empty.body.counts.proxy_hosts, 0);
 	assert.equal(empty.body.counts.users, 1);
