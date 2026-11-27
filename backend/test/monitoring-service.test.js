@@ -1528,7 +1528,7 @@ describe("monitoring API", () => {
 						...crowdsec,
 					},
 			},
-			geoip: { available: () => available },
+			geoip: { available: () => available, provider: () => "dbip" },
 			store: {
 				queryTraffic: (args) => {
 					queries.push(args);
@@ -1947,6 +1947,7 @@ describe("monitoring API", () => {
 		assert.deepEqual(out.status, {
 			enabled: true,
 			geoip: true,
+			geoip_provider: "dbip",
 			skipped_lines: 0,
 			dropped_requests: 0,
 			last_read: null,

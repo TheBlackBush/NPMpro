@@ -19,6 +19,7 @@ const ALOG = "access_log /data/nginx/logs/access.log alog;\n";
 const AJSON = "access_log /data/nginx/logs/access.log ajson;\n";
 const MAXMIND = "https://download.maxmind.com";
 const COUNTRY_DOWNLOAD = "/geoip/databases/GeoLite2-Country/download?suffix=tar.gz";
+const HTTP_401 = /HTTP 401/u;
 const KEY = "maxmind-license-SECRET-4711";
 const MINUTE = Math.floor(Date.now() / 60000);
 const HOUR = Math.floor(Date.now() / 3600000);
@@ -561,7 +562,7 @@ it("reports geoip.failed with the reason download and resolves it with the next 
 	await waitFor(async () => (await geoipState())?.state === "bad", "the failed state");
 	const bad = await geoipState();
 	assert.equal(JSON.parse(bad.data).reason, "download");
-	assert.match(JSON.parse(bad.data).error, /HTTP 401/u);
+	assert.match(JSON.parse(bad.data).error, HTTP_401);
 
 	const archive = await countryArchive();
 	api.outside.http.get(MAXMIND).intercept({ path: COUNTRY_DOWNLOAD, method: "GET" }).reply(200, archive);

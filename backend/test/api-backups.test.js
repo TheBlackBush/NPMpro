@@ -355,8 +355,8 @@ it("replaces whole parts on a restore that is confirmed, and refuses one that is
 
 it("restores the GeoIP provider and the DB-IP editions, and applies the effective-provider rule to an old backup", async () => {
 	const GEOIP = "/settings/geoip";
-	const restoreMonitoring = async (entry) => {
-		const { token } = await inspect(entry.name);
+	const restoreMonitoring = async (backup) => {
+		const { token } = await inspect(backup.name);
 		const done = await admin.post(`${BASE}/restore/${token}`, { types: ["settings_monitoring"], confirm: true });
 		assert.equal(done.status, 200, done.text);
 	};
@@ -369,13 +369,13 @@ it("restores the GeoIP provider and the DB-IP editions, and applies the effectiv
 	assert.deepEqual(back.dbip_editions, ["ASN"]);
 
 	// a backup from before the provider existed: no stored provider, no credentials
-	const row = await api.db("setting").where({ id: "geoip" }).first();
+	const stored = await api.db("setting").where({ id: "geoip" }).first();
 	await api
 		.db("setting")
 		.where({ id: "geoip" })
 		.update({ meta: JSON.stringify({ account_id: "" }) });
 	const old = await keep({ types: ["settings_monitoring"] });
-	await api.db("setting").where({ id: "geoip" }).update({ meta: row.meta });
+	await api.db("setting").where({ id: "geoip" }).update({ meta: stored.meta });
 	await restoreMonitoring(old);
 	const legacy = (await admin.get(GEOIP)).body;
 	assert.equal(legacy.provider, "dbip");
