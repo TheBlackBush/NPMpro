@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import errs from "../lib/error.js";
 import { normalizePublicUrl } from "../lib/mail/settings-rules.js";
 import { global as logger } from "../logger.js";
+import { utcMinute } from "../mail/time.js";
 import apiTokenModel from "../models/api_token.js";
 import authModel from "../models/auth.js";
 import userModel from "../models/user.js";
@@ -90,8 +91,6 @@ const work = async (email, ip) => {
 	}
 };
 
-const when = (date) => date.toISOString().slice(0, 16).replace("T", " ");
-
 const internalPasswordReset = {
 	/**
 	 * Starts a reset for an address. Returns at once; the work runs after the answer was sent and never throws.
@@ -174,7 +173,7 @@ const internalPasswordReset = {
 				to: user.email,
 				template: "password-reset",
 				language: await internalMail.languageOf(user),
-				data: { time: when(new Date()), ip: ip ?? "", count: Number(count) },
+				data: { time: utcMinute(new Date()), ip: ip ?? "", count: Number(count) },
 			});
 		} catch (err) {
 			logger.warn(`password reset: the notice could not be queued (${err?.name ?? "error"})`);

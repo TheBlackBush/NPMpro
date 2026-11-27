@@ -12,6 +12,7 @@ const URL_OF = "https://npm.example.com";
 const LONG = 500;
 const CUT = 300;
 const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u;
+const MONTH_OR_DOT_DAY = /Nov|24\./u;
 const NAME = "<script>x</script>";
 
 const SOURCES = {
@@ -119,11 +120,8 @@ describe("alert mail template", () => {
 		assert.equal(lines.length, 4);
 		assert.ok(lines[0].startsWith("- The GeoIP database update failed: download failed"));
 		assert.ok(lines[1].startsWith("- CrowdSec cannot be reached"));
-		assert.equal(
-			lines[2],
-			"- Certificate example.com expires in 5 days (Still open since Nov 24, 2026, 08:30 AM UTC)",
-		);
-		assert.equal(lines[3], "- Backup nightly succeeded again (Resolved on Nov 26, 2026, 10:00 AM UTC)");
+		assert.equal(lines[2], "- Certificate example.com expires in 5 days (Still open since 2026-11-24 08:30 UTC)");
+		assert.equal(lines[3], "- Backup nightly succeeded again (Resolved on 2026-11-26 10:00 UTC)");
 		const html = group.html;
 		assert.ok(html.indexOf("GeoIP database update failed") < html.indexOf("Backup nightly succeeded again"));
 	});
@@ -144,13 +142,21 @@ describe("alert mail template", () => {
 		assert.ok(reminder.text.includes("(Still open)"));
 	});
 
-	it("formats the time in the recipient's language, in UTC with the zone named", () => {
+	it("writes the time as YYYY-MM-DD HH:MM UTC in every language, without a month name", () => {
 		const german = renderMail("alerts", {
 			language: "de",
 			instance: INSTANCE,
 			data: { events: [event("geoip.failed", { reminder: true, since: "2026-11-24T08:30:00.000Z" })] },
 		});
 		assert.ok(german.text.includes(GERMAN.reminder), german.text);
+		assert.ok(german.text.includes("Weiterhin offen seit 2026-11-24 08:30 UTC"), german.text);
+		assert.ok(!MONTH_OR_DOT_DAY.test(german.text), german.text);
+		const japanese = renderMail("alerts", {
+			language: "ja",
+			instance: INSTANCE,
+			data: { events: [event("backup.failed.resolved", {}, "2026-11-26T10:00:30.000Z")] },
+		});
+		assert.ok(japanese.text.includes("2026-11-26 10:00 UTC に解決"), japanese.text);
 	});
 
 	it("cuts the error to 300 characters with an ellipsis and keeps it on one line", () => {

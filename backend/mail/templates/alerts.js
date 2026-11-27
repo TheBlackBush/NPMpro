@@ -1,35 +1,16 @@
+import { utcMinute } from "../time.js";
+
 const ELLIPSIS = "…";
 const ERROR_MAX = 300;
 const RESOLVED = ".resolved";
 const SPACES = /\s+/gu;
-const FALLBACK_LANGUAGE = "en";
 const NAMES_SHOWN = 3;
 
-const formatters = new Map();
-
-// a time as the language writes it, always in UTC with the zone named (as the notice of a password reset does)
-const dateText = (iso, language) => {
+// a time in one format every language reads, always UTC and written by hand (the container has English-only ICU data,
+// so no Intl date locale); the same minute text as the password reset notice, with the zone named
+const dateText = (iso) => {
 	const date = new Date(iso);
-	if (Number.isNaN(date.getTime())) return String(iso);
-	let format = formatters.get(language);
-	if (!format) {
-		const options = {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-			hour: "2-digit",
-			minute: "2-digit",
-			timeZone: "UTC",
-			timeZoneName: "short",
-		};
-		try {
-			format = new Intl.DateTimeFormat(language, options);
-		} catch {
-			format = new Intl.DateTimeFormat(FALLBACK_LANGUAGE, options);
-		}
-		formatters.set(language, format);
-	}
-	return format.format(date);
+	return Number.isNaN(date.getTime()) ? String(iso) : `${utcMinute(date)} UTC`;
 };
 
 // the short error: one line, cut to 300 characters with an ellipsis (the event data is already cleaned)
@@ -134,10 +115,9 @@ const itemOf = (event, t) => {
 };
 
 const noteOf = (item, t) => {
-	if (item.resolved)
-		return item.timestamp ? t("alerts.resolved", { date: dateText(item.timestamp, t.language) }) : undefined;
+	if (item.resolved) return item.timestamp ? t("alerts.resolved", { date: dateText(item.timestamp) }) : undefined;
 	if (!item.reminder) return;
-	return item.since ? t("alerts.reminder", { date: dateText(item.since, t.language) }) : t("alerts.reminder.undated");
+	return item.since ? t("alerts.reminder", { date: dateText(item.since) }) : t("alerts.reminder.undated");
 };
 
 const subjectOf = (items, t) => {

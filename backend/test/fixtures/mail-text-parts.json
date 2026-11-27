@@ -59,7 +59,7 @@
 			"ddns.record_failed": "Dynamic-DNS-Eintrag home.example.com wird wieder",
 			"ddns.record_stopped": "Dynamic-DNS-Eintrag home.example.com läuft wieder"
 		},
-		"reminder": "Weiterhin offen seit 24. Nov. 2026, 08:30 UTC",
+		"reminder": "Weiterhin offen seit 2026-11-24 08:30 UTC",
 		"problems": "3 Probleme"
 	}
 }
