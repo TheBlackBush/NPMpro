@@ -15,6 +15,7 @@ import { hostDnsFlows } from "./hostdns.js";
 import { hostFlows } from "./hosts.js";
 import { ADMIN_EMAIL, removeFlowData, signIn, VIEWER_EMAIL } from "./lib.js";
 import { notificationsFlows } from "./notifications.js";
+import { webhookFlows } from "./webhooks.js";
 import { windowFlows } from "./windows.js";
 
 const [base = "https://127.0.0.1:81", engine = "chromium", ...only] = process.argv.slice(2);
@@ -41,6 +42,7 @@ const flows = [
 	...hostDnsFlows,
 	...ddnsFlows,
 	...notificationsFlows,
+	...webhookFlows,
 ].filter((flow) => only.length === 0 || only.includes(flow.name));
 // FLOWS_CDP (a remote Chromium's DevTools WebSocket URL, for machines that cannot launch one) is for local runs only;
 // the smoke test launches Chromium itself. The URL holds a token: no message prints it.

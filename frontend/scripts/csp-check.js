@@ -15,7 +15,8 @@
 // flow-csp.example is created through the API and removed when the action ends), emptyProviderDomains (true: the zone
 // list a provider answers is stubbed as empty, so no provider is called), routeChallenges (true: the challenge list of
 // a credential is stubbed with three records and a zone that failed, so the cleanup window shows its list, notes and
-// confirm step without a provider call; a delete is never sent) or reload (the page is reloaded).
+// confirm step without a provider call; a delete is never sent), seedWebhook (true: a webhook flow-csp-hook is created
+// through the API and removed when the action ends) or reload (the page is reloaded).
 // Usage: node scripts/csp-check.js <base URL> [chromium|webkit]
 // The browser flows (scripts/flows/run.js) run after it on the same instance.
 // A fresh instance gets its first user through the setup page (a random password); for an instance that is already
@@ -65,6 +66,8 @@ const seeded = [];
 const seededCredentials = [];
 // the proxy hosts an action made with seedProxyHost
 const seededHosts = [];
+// the webhooks an action made with seedWebhook
+const seededWebhooks = [];
 // FLOWS_WEBKIT_WS (a remote Playwright WebKit server's WebSocket URL, local runs only) connects instead of launching
 // biome-ignore lint/style/noProcessEnv: the same switch as in flows/run.js
 const webkitWs = process.env.FLOWS_WEBKIT_WS;
@@ -143,7 +146,23 @@ async function seedProxyHost() {
 	seededHosts.push((await answer.json()).id);
 }
 
+async function seedWebhook() {
+	const answer = await apiOf("POST", "/webhooks", {
+		name: "flow-csp-hook",
+		url: "https://192.0.2.10/csp",
+		events: ["*"],
+		enabled: true,
+		verify_tls: true,
+	});
+	if (!answer.ok()) throw new Error(`seeding a webhook failed: ${answer.status()}`);
+	seededWebhooks.push((await answer.json()).id);
+}
+
 async function removeSeeded() {
+	for (const id of seededWebhooks.splice(0)) {
+		// biome-ignore lint/performance/noAwaitInLoops: one request after another
+		await apiOf("DELETE", `/webhooks/${id}`).catch(() => undefined);
+	}
 	for (const id of seededHosts.splice(0)) {
 		// biome-ignore lint/performance/noAwaitInLoops: one request after another
 		await apiOf("DELETE", `/nginx/proxy-hosts/${id}`).catch(() => undefined);
@@ -260,6 +279,7 @@ try {
 				if (step.seedAccessLists) await seedAccessLists(step.seedAccessLists);
 				if (step.seedDnsCredential) await seedDnsCredential();
 				if (step.seedProxyHost) await seedProxyHost();
+				if (step.seedWebhook) await seedWebhook();
 				if (step.emptyProviderDomains)
 					await page.route("**/api/nginx/dns-credentials/*/provider-domains", (route) =>
 						route.fulfill({
