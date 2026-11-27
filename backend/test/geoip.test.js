@@ -293,7 +293,7 @@ describe("runConfiguredGeoipUpdate", () => {
 		};
 	};
 
-	it("MaxMind refuses without credentials and does not fetch", async () => {
+	it("MaxMind refuses without credentials, does not fetch and records nothing", async () => {
 		const { args, events } = make({ ...MAXMIND, account_id: "" }, { ok: true, updated: [] });
 		const result = await runConfiguredGeoipUpdate(args);
 		assert.deepEqual(result, {
@@ -302,8 +302,8 @@ describe("runConfiguredGeoipUpdate", () => {
 			error: "MaxMind account ID and license key are required",
 			provider: "maxmind",
 		});
-		// no fetch, but the failed run is recorded like any other
-		assert.deepEqual(events, [["record", false, "maxmind"]]);
+		// no fetch and nothing recorded: missing credentials are an incomplete setup, not a failed download
+		assert.deepEqual(events, []);
 	});
 
 	it("DB-IP needs no credentials and calls the DB-IP updater", async () => {

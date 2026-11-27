@@ -39,9 +39,10 @@ const guardedFetch = createGuardedFetch();
 
 /**
  * Updates the databases of the active provider, records the outcome and reloads the readers when any file was replaced
- * (`ok` means every requested edition succeeded, `updated` can be non-empty without it). Runs of either provider never
- * overlap: a call while a run is in progress queues one follow-up run (shared by all such calls) that reads the
- * configuration when it starts, so newly saved credentials and a switched provider are always used.
+ * (`ok` means every requested edition succeeded, `updated` can be non-empty without it; MaxMind without credentials is
+ * answered, not recorded). Runs of either provider never overlap: a call while a run is in progress queues one
+ * follow-up run (shared by all such calls) that reads the configuration when it starts, so newly saved credentials and
+ * a switched provider are always used.
  *
  * @param   {Object}    options
  * @param   {Object}    options.geoip           createGeoip() instance
@@ -94,8 +95,9 @@ const runOnce = async ({
 		await recordResult({ ...outcome, provider });
 		return { ...outcome, provider };
 	};
+	// an incomplete setup, not a failed download: answered, never recorded (no last_error, no geoip.failed)
 	if (provider === "maxmind" && (!values.account_id || !values.license_key)) {
-		return finish({ ok: false, updated: [], error: "MaxMind account ID and license key are required" });
+		return { ok: false, updated: [], error: "MaxMind account ID and license key are required", provider };
 	}
 	const editions = selectedEditions(values);
 	// no databases selected: nothing to download, the files already downloaded stay

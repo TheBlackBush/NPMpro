@@ -9,7 +9,6 @@ import { startApi } from "./support/api.js";
 const GEOIP = "/settings/geoip";
 const MAXMIND = "https://download.maxmind.com";
 const COUNTRY_DOWNLOAD = "/geoip/databases/GeoLite2-Country/download?suffix=tar.gz";
-const MISSING_CREDENTIALS = /MaxMind account ID and license key are required/u;
 const KEY = "maxmind-license-SECRET-4711";
 
 let api;
@@ -104,17 +103,18 @@ it("a save that leaves the effective provider alone keeps the last error", async
 it("a failing swap of the readers does not fail the save, and the download still starts", async () => {
 	const original = geoip.reload;
 	geoip.reload = () => Promise.reject(new Error("reload broke"));
+	const checked = (await storedMeta()).last_check;
 	try {
-		// maxmind without credentials: the hook's run records the missing credentials, proving it started
-		const done = await admin.put(GEOIP, { provider: "maxmind", account_id: "", license_key: "", editions: [] });
+		// maxmind with credentials and no edition: the hook's run records a check without a download, proving it started
+		const done = await admin.put(GEOIP, { provider: "maxmind", account_id: "42", license_key: KEY, editions: [] });
 		assert.equal(done.status, 200, done.text);
 		assert.equal(done.body.provider, "maxmind");
 		assert.equal((await storedMeta()).provider, "maxmind");
-		await waitFor(async () => (await storedMeta()).last_error, "the download after the switch");
+		await waitFor(async () => (await storedMeta()).last_check !== checked, "the download after the switch");
 	} finally {
 		geoip.reload = original;
 	}
-	assert.match((await storedMeta()).last_error, MISSING_CREDENTIALS);
+	assert.equal((await storedMeta()).last_error, null);
 });
 
 it("a DB-IP check that downloads nothing moves Last check, not Last update; MaxMind's schedule field is unchanged", async () => {

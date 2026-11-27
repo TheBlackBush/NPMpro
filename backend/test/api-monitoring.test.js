@@ -20,6 +20,7 @@ const AJSON = "access_log /data/nginx/logs/access.log ajson;\n";
 const MAXMIND = "https://download.maxmind.com";
 const COUNTRY_DOWNLOAD = "/geoip/databases/GeoLite2-Country/download?suffix=tar.gz";
 const HTTP_401 = /HTTP 401/u;
+const MISSING_CREDENTIALS = /MaxMind account ID and license key are required/u;
 const KEY = "maxmind-license-SECRET-4711";
 const MINUTE = Math.floor(Date.now() / 60000);
 const HOUR = Math.floor(Date.now() / 3600000);
@@ -472,6 +473,8 @@ it("answers the update now with the missing credentials", async () => {
 		error: "MaxMind account ID and license key are required",
 		provider: "maxmind",
 	});
+	// as before the provider choice: the answer names the missing credentials, nothing is stored
+	assert.equal(await storedMeta("geoip"), null);
 });
 
 const withEnv = async (name, value, run) => {
@@ -557,6 +560,46 @@ it("clears the last error on a provider switch and re-evaluates the failed state
 	assert.equal((await geoipState()).state, "ok");
 	// the download of the switch starts in the background (no network in the tests): let it end before the next case
 	await waitFor(async () => (await storedMeta("geoip")).last_check, "the download after the switch");
+});
+
+it("a switch to MaxMind without credentials is an incomplete setup: no last error, no geoip.failed alert", async () => {
+	await api.db("setting").where({ id: "geoip" }).del();
+	await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+	await api.db("setting").insert({
+		id: "geoip",
+		name: "GeoIP",
+		description: "GeoIP",
+		value: "geoip",
+		meta: JSON.stringify({ provider: "dbip", dbip_editions: [], last_error: "DB-IP returned HTTP 503" }),
+	});
+	await api.db("npmpro_notification_state").insert({
+		key: "geoip.failed:geoip",
+		event: "geoip.failed",
+		object_id: "geoip",
+		state: "bad",
+		since: new Date(),
+		data: JSON.stringify({ reason: "download", error: "DB-IP returned HTTP 503" }),
+	});
+	const deliveries = async () =>
+		(await api.db("npmpro_notification_delivery").where({ event: "geoip.failed" })).length;
+	const sent = await deliveries();
+
+	const switched = await admin.put(GEOIP, { provider: "maxmind" });
+	assert.equal(switched.status, 200, switched.text);
+	assert.equal(switched.body.provider, "maxmind");
+	assert.equal(switched.body.account_id, "");
+	assert.equal(switched.body.license_key_set, false);
+	// "Update now" queues behind the run the switch started, so its answer comes after that run ended
+	const now = await admin.post(`${GEOIP}/update`);
+	assert.equal(now.body.ok, false);
+	assert.match(now.body.error, MISSING_CREDENTIALS);
+
+	const meta = await storedMeta("geoip");
+	assert.equal(meta.last_error, null);
+	assert.equal(meta.last_check ?? null, null);
+	assert.equal((await admin.get(GEOIP)).body.last_error, null);
+	assert.equal((await geoipState()).state, "ok");
+	assert.equal(await deliveries(), sent);
 });
 
 it("reports geoip.failed with the reason download and resolves it with the next good run", async () => {
