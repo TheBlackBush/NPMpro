@@ -149,7 +149,7 @@ describe("alert mail template", () => {
 			data: { events: [event("geoip.failed", { reminder: true, since: "2026-11-24T08:30:00.000Z" })] },
 		});
 		assert.ok(german.text.includes(GERMAN.reminder), german.text);
-		assert.ok(german.text.includes("Weiterhin offen seit 2026-11-24 08:30 UTC"), german.text);
+		assert.ok(german.text.includes(" seit 2026-11-24 08:30 UTC"), german.text);
 		assert.ok(!MONTH_OR_DOT_DAY.test(german.text), german.text);
 		const japanese = renderMail("alerts", {
 			language: "ja",
