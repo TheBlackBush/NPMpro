@@ -1,12 +1,13 @@
 import { TapTooltip } from "src/components/TapTooltip";
 import { Badge } from "src/components/ui/badge";
 import { formatDateTime, T } from "src/locale";
+import { signInLabels } from "src/modules/Invitations";
 import { signInMethods } from "src/modules/SignInMethods";
 
-// Invited: no sign-in method yet, an invitation is out; Local: the user has a password; OIDC: linked to an OIDC identity, the tooltip gives the link date
+// Invited: no sign-in method yet while invitations are offered (the list clears the flag otherwise); Local: the user has a password; OIDC: linked to an OIDC identity, the tooltip gives the link date
 export function SignInFormatter({ user }) {
 	const methods = signInMethods(user);
-	if (methods.length === 0 && user.invited === true) {
+	if (signInLabels(user)[0] === "user.invited") {
 		return (
 			<Badge variant="outline">
 				<T id="user.invited" />

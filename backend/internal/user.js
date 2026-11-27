@@ -155,7 +155,7 @@ const internalUser = {
 			action: "created",
 			object_type: "user",
 			object_id: user.id,
-			meta: user,
+			meta: invite ? { ...user, invited: true } : user,
 		});
 
 		if (invite) return { ...user, invited: true, invitation: await sendInvitation(user) };
@@ -175,7 +175,15 @@ const internalUser = {
 		const user = await internalUser.get(access, { id });
 		if (!(await invitationsOffered())) throw notOffered();
 		if (!(await internalUser.isInvited(user.id))) throw notAllowed();
-		return { ...user, invited: true, invitation: await sendInvitation(user) };
+		const invitation = await sendInvitation(user);
+		// who sent a link that sets the first password, and when: never the token or the link
+		await internalAuditLog.add(access, {
+			action: "updated",
+			object_type: "user",
+			object_id: user.id,
+			meta: { name: user.name, invitation_sent: invitation.sent },
+		});
+		return { ...user, invited: true, invitation };
 	},
 
 	// Gravatar on or off is read per call (advanced.gravatar)
@@ -383,15 +391,14 @@ const internalUser = {
 			});
 		}
 
-		const [users, passwords] = await Promise.all([
-			query,
-			authModel.query().select("user_id").where("type", "password"),
-		]);
+		// one row per user and auth type: the password flag reads the password rows, invited any row (like isInvited)
+		const [users, auths] = await Promise.all([query, authModel.query().distinct("user_id", "type")]);
 		const linked = users.filter((user) => user.npmpro_oidc_subject).map((user) => user.id);
 		return withPasswordFlag(
 			users.map((user) => user.toJSON()),
-			passwords.map((row) => row.user_id),
+			auths.filter((row) => row.type === "password").map((row) => row.user_id),
 			linked,
+			auths.map((row) => row.user_id),
 		);
 	},
 

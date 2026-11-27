@@ -108,7 +108,10 @@
 					"expired",
 					"first-used",
 					"secret-rotated",
-					"test-sent"
+					"test-sent",
+					"password-reset",
+					"invitation-accepted",
+					"mail-failed"
 				]
 			}
 		},

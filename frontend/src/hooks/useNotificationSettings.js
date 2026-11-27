@@ -9,6 +9,7 @@ import {
 	updateNotificationSettings,
 } from "src/api/backend";
 import { invitationsOffered } from "src/modules/Invitations";
+import { useHealth } from "./useHealth";
 
 // options: a page that only reads the settings on the side passes { retry: false } so a failure ends at once
 const useEmailSettings = (options = {}) =>
@@ -27,12 +28,13 @@ const useNotificationSettings = (options = {}) =>
 		...options,
 	});
 
-// Whether invitations are offered (mail, the switch, a public URL). Only an administrator can read the settings, so a
-// caller that is not one passes enabled: false and gets false without a request.
+// Whether invitations are offered (mail, the switch, a public URL, password sign-in on). Only an administrator can read
+// the settings, so a caller that is not one passes enabled: false and gets false without a request.
 const useInvitationsOffered = (enabled) => {
 	const email = useEmailSettings({ enabled, retry: false });
 	const notifications = useNotificationSettings({ enabled, retry: false });
-	return enabled && invitationsOffered(email.data, notifications.data);
+	const health = useHealth();
+	return enabled && invitationsOffered(email.data, notifications.data, health.data);
 };
 
 // a save changes the Environment page's locks and the audit log; the mail server also what the other sections offer

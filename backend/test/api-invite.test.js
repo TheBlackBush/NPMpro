@@ -460,6 +460,125 @@ it("turning invitations off ends the pending links for good; a missing mail serv
 	assert.equal(await api.db("auth").where({ user_id: user.id }).first(), undefined);
 });
 
+it("with password sign-in turned off by OIDC: no invitation is made or sent, and a pending link pauses", async () => {
+	const user = await invite();
+	const oidcEnv = {
+		OIDC_ISSUER_URL: "https://idp.example.com",
+		OIDC_CLIENT_ID: "client",
+		OIDC_CLIENT_SECRET: "secret-value-1",
+		OIDC_REDIRECT_DOMAIN: "npm.example.com",
+		OIDC_DISABLE_PASSWORD: "true",
+	};
+	Object.assign(process.env, oidcEnv);
+	try {
+		const body = invitedBody();
+		const refused = await admin.post("/users", body);
+		assert.equal(refused.status, 400);
+		assert.equal(refused.body.error.message_i18n, "error.invite-not-offered");
+		assert.equal(await api.db("user").where({ email: body.email }).first(), undefined);
+		const again = await admin.post(`/users/${user.id}/invite`);
+		assert.equal(again.status, 400);
+		assert.equal(again.body.error.message_i18n, "error.invite-not-offered");
+		const client = api.client();
+		const check = await client.post("/password-reset/check", { token: user.token });
+		assert.equal(check.status, 400);
+		assert.equal(check.body.error.message_i18n, INVALID);
+		const confirm = await client.post("/password-reset/confirm", { token: user.token, password: NEW_PASSWORD });
+		assert.equal(confirm.status, 400);
+		assert.equal(confirm.body.error.message_i18n, INVALID);
+	} finally {
+		for (const name of Object.keys(oidcEnv)) delete process.env[name];
+	}
+	assert.equal(await api.db("auth").where({ user_id: user.id }).first(), undefined);
+	assert.equal(mailedTo(user.email).length, 1);
+	// password sign-in back on: the link works again
+	assert.equal(must(await api.client().post("/password-reset/check", { token: user.token })).body.purpose, "invite");
+});
+
+it("audits the create with invited and the resend with whether it was sent, never the token", async () => {
+	const user = await invite();
+	const created = await api.db("audit_log").where({ action: "created", object_type: "user", object_id: user.id });
+	assert.equal(created.length, 1);
+	assert.equal(parsed(created[0].meta).invited, true);
+	const plain = must(
+		await admin.post("/users", {
+			name: "Not invited",
+			email: "not-invited-audit@example.com",
+			roles: [],
+			auth: { type: "password", secret: PASSWORD },
+		}),
+		201,
+	);
+	const plainRow = await api
+		.db("audit_log")
+		.where({ action: "created", object_type: "user", object_id: plain.body.id })
+		.first();
+	assert.equal("invited" in parsed(plainRow.meta), false);
+
+	must(await admin.post(`/users/${user.id}/invite`));
+	must(await serverSettings(refusing.port));
+	try {
+		must(await admin.post(`/users/${user.id}/invite`));
+	} finally {
+		must(await serverSettings(smtp.port));
+	}
+	const resends = await api
+		.db("audit_log")
+		.where({ action: "updated", object_type: "user", object_id: user.id })
+		.orderBy("id");
+	assert.deepEqual(
+		resends.map((row) => parsed(row.meta)),
+		[
+			{ name: user.created.body.name, invitation_sent: true },
+			{ name: user.created.body.name, invitation_sent: false },
+		],
+	);
+	// a refused resend writes no row
+	const adminId = must(await admin.get("/users/me")).body.id;
+	assert.equal((await admin.post(`/users/${adminId}/invite`)).status, 400);
+	assert.equal(
+		(await api.db("audit_log").where({ action: "updated", object_type: "user", object_id: adminId })).length,
+		0,
+	);
+});
+
+it("a user with any sign-in row (TOTP and backup codes, no password, no OIDC link) is not invited", async () => {
+	const user = await invite();
+	for (const type of ["totp", "backup_code"]) {
+		await api.db("auth").insert({
+			user_id: user.id,
+			type,
+			secret: "not-a-secret",
+			meta: "{}",
+			created_on: "2026-11-01 10:00:00",
+			modified_on: "2026-11-01 10:00:00",
+		});
+	}
+	const listed = must(await admin.get("/users")).body.find((one) => one.id === user.id);
+	assert.equal(listed.invited, false);
+	assert.equal(listed.npmpro_has_password, false);
+	const refused = await admin.post(`/users/${user.id}/invite`);
+	assert.equal(refused.status, 400);
+	assert.equal(refused.body.error.message_i18n, "error.invite-not-allowed");
+});
+
+it("MAIL_INVITATIONS=false ends the pending links at startup; removing it brings none back", async () => {
+	const { prepareApp } = await import("../startup.js");
+	const user = await invite();
+	await prepareApp({ background: false });
+	assert.equal((await rowOf(user.id, "invite")).length, 1, "on: the links stay");
+	process.env.MAIL_INVITATIONS = "false";
+	try {
+		await prepareApp({ background: false });
+	} finally {
+		delete process.env.MAIL_INVITATIONS;
+	}
+	assert.equal((await rowOf(user.id, "invite")).length, 0);
+	const check = await api.client().post("/password-reset/check", { token: user.token });
+	assert.equal(check.status, 400);
+	assert.equal(check.body.error.message_i18n, INVALID);
+});
+
 it("an email change and a delete of an invited user end the invite token", async () => {
 	const changed = await invite();
 	must(await admin.put(`/users/${changed.id}`, { email: `moved-${changed.email}` }));

@@ -26,8 +26,7 @@ import { TableLayout } from "src/components/Table/TableLayout";
 import { useAppTable } from "src/components/Table/useAppTable";
 import { intl, T } from "src/locale";
 import { signInActions } from "src/modules/AccountWindow";
-import { resendShown } from "src/modules/Invitations";
-import { signInMethods } from "src/modules/SignInMethods";
+import { resendShown, signInLabels } from "src/modules/Invitations";
 
 const columnHelper = createColumnHelper();
 
@@ -37,11 +36,9 @@ const rolesSummary = (row) =>
 		.join(", ");
 
 const signInSummary = (row) =>
-	row.invited === true && signInMethods(row).length === 0
-		? intl.formatMessage({ id: "user.invited" })
-		: signInMethods(row)
-				.map((method) => intl.formatMessage({ id: `user.sign-in.${method}` }))
-				.join(", ");
+	signInLabels(row)
+		.map((id) => intl.formatMessage({ id }))
+		.join(", ");
 
 function UserActions({
 	user,
@@ -190,7 +187,7 @@ export function useColumns() {
 				header: intl.formatMessage({ id: "column.roles" }),
 				cell: (info) => <RolesFormatter roles={info.row.original.roles} />,
 			}),
-			columnHelper.accessor((row) => signInMethods(row).join(","), {
+			columnHelper.accessor((row) => signInLabels(row).join(","), {
 				id: "signIn",
 				meta: { mobile: "summary", summaryText: signInSummary },
 				header: intl.formatMessage({ id: "column.sign-in" }),

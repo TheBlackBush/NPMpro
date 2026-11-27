@@ -51,6 +51,9 @@ export const AUDIT_ACTIONS = Object.freeze([
 	"domains-changed",
 	"secret-rotated",
 	"test-sent",
+	"password-reset",
+	"invitation-accepted",
+	"mail-failed",
 ]);
 
 /**

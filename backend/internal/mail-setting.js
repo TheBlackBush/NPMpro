@@ -74,9 +74,26 @@ const mailValues = async () => ({
 /** Plugs the stored settings into the mail sender (startup); without it only the env counts */
 const useMailSettings = () => internalMail.useSettings(mailValues);
 
-/** After a restore: the settings are read from the database on every send, only the decrypt warning starts over */
-const reloadMailSettings = () => {
+/**
+ * Invitations off (the stored switch or MAIL_INVITATIONS) end the invitation links that are still out, so a later
+ * switch-on brings none back: the switch in the UI does it at the save, startup and a restore of the settings call this.
+ * The password is not decrypted.
+ *
+ * @returns {Promise<void>}
+ */
+const endInvitationsWhenOff = async () => {
+	const { password: _sealed, ...stored } = await readStored("email");
+	if (mergeEmail(stored, process.env).values.invitations !== true)
+		await internalPasswordToken.removePurpose("invite");
+};
+
+/**
+ * After a restore: the settings are read from the database on every send, only the decrypt warning starts over;
+ * restored invitations off end the pending links
+ */
+const reloadMailSettings = async () => {
 	warnedSecret = false;
+	await endInvitationsWhenOff();
 };
 
 const invalid = (errors) => {
@@ -343,17 +360,20 @@ const resetOffered = async (oidc) => {
 };
 
 /**
- * Whether an invitation mail is offered: the switch on, a valid public URL (the link's address) and mail configured.
- * The cheap checks come first and the switch is read from the row or the env, so no password is decrypted while it is
- * off.
+ * Whether an invitation mail is offered: the switch on, a valid public URL (the link's address), password sign-in not
+ * turned off by OIDC (the invited user sets a password) and mail configured. The cheap checks come first and the switch
+ * is read from the row or the env, so no password is decrypted while it is off.
  *
+ * @param   {Object}  [oidc]  the result of getOidcConfig() when the caller has it already
  * @returns {Promise<boolean>}
  */
-const invitationsOffered = async () => {
+const invitationsOffered = async (oidc) => {
 	const { password: _sealed, ...stored } = await readStored("email");
 	const { values: email } = mergeEmail(stored, process.env);
 	if (email.invitations !== true) return false;
 	if (!normalizePublicUrl((await getNotificationsConfig()).values.public_url)) return false;
+	const cfg = oidc ?? (await getOidcConfig());
+	if (cfg.active && cfg.values.disable_password) return false;
 	return isConfigured(email);
 };
 
@@ -370,6 +390,7 @@ const accountNoticesOn = async () => {
 
 export {
 	accountNoticesOn,
+	endInvitationsWhenOff,
 	getEmailConfig,
 	getNotificationsConfig,
 	invitationsOffered,

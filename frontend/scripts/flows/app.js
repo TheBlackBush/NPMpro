@@ -964,14 +964,16 @@ async function usersSignIn({ admin }) {
 	await inviteOption(admin);
 }
 
-// The invite option of the new user window follows what the backend offers: mail configured, Invitations on and a valid
-// public URL. The smoke test has no PUBLIC_URL, so there the option is absent (logged); an instance with all three
-// shows it. The flow reads the stored settings and asserts the matching state, and creates nothing.
+// The invite option of the new user window follows what the backend offers: mail configured, Invitations on, a valid
+// public URL and password sign-in on. The smoke test has no PUBLIC_URL, so there the option is absent (logged); an
+// instance with all of them shows it. The flow reads the stored settings and asserts the matching state, and creates
+// nothing.
 async function inviteOption({ page, api }) {
 	const email = await api("GET", "/settings/email");
 	const notifications = await api("GET", "/settings/notifications");
+	const health = await api("GET", "");
 	const publicUrl = String(notifications.public_url ?? "").startsWith("https://");
-	const offered = email.configured === true && email.invitations === true && publicUrl;
+	const offered = email.configured === true && email.invitations === true && publicUrl && health.password === true;
 	await page.goto("/settings/users");
 	await page.getByRole("button", { name: "Add User", exact: true }).filter({ visible: true }).click();
 	const dialog = page.getByRole("dialog");
@@ -979,12 +981,12 @@ async function inviteOption({ page, api }) {
 	const shown = (await dialog.locator("#invite").count()) > 0;
 	if (shown !== offered)
 		throw new Error(
-			`the invite option is ${shown ? "shown" : "absent"} but invitations are ${offered ? "" : "not "}offered (mail ${email.configured}, switch ${email.invitations}, public URL ${publicUrl})`,
+			`the invite option is ${shown ? "shown" : "absent"} but invitations are ${offered ? "" : "not "}offered (mail ${email.configured}, switch ${email.invitations}, public URL ${publicUrl}, password sign-in ${health.password})`,
 		);
 	console.log(
 		offered
 			? "users: the invite option is shown (mail configured, Invitations on, public URL set)"
-			: `users: the invite option is absent (${publicUrl ? "mail or the Invitations switch is off" : "no public URL"})`,
+			: `users: the invite option is absent (${publicUrl ? "mail, the Invitations switch or password sign-in is off" : "no public URL"})`,
 	);
 	await page.keyboard.press("Escape");
 	await windowClosed(page);

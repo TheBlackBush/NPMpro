@@ -23,4 +23,9 @@ it("marks the users that have a password and the invited ones (enabled, no passw
 		{ id: 4, is_disabled: true, npmpro_has_password: false, invited: false },
 	]);
 	assert.equal(withPasswordFlag([{ id: 1 }], [])[0].invited, true);
+	// any auth row (TOTP and backup codes without a password) means not invited, like isInvited
+	assert.deepEqual(withPasswordFlag([{ id: 5 }, { id: 6 }], [], [], [5]), [
+		{ id: 5, npmpro_has_password: false, invited: false },
+		{ id: 6, npmpro_has_password: false, invited: true },
+	]);
 });

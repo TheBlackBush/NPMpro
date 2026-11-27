@@ -234,6 +234,12 @@ it("filters by the token object type and the token actions", async () => {
 	}
 });
 
+it("filters by the password reset and invitation actions", async () => {
+	for (const action of ["password-reset", "invitation-accepted", "mail-failed"]) {
+		assert.deepEqual((await list(`?object_type=user&action=${action}`)).body, [], action);
+	}
+});
+
 it("opens one entry with the user expanded, and answers 404 for an unknown one", async () => {
 	const host = await writeHost();
 	const row = (await list("?object_type=proxy-host&limit=1")).body[0];

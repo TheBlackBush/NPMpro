@@ -666,6 +666,14 @@ it("offers an invitation only with the switch, the public URL and mail configure
 	assert.equal(await invitationsOffered(), false, "no public URL");
 	assert.equal((await admin.put("/settings/notifications", { public_url: "https://npm.example.test" })).status, 200);
 	assert.equal(await invitationsOffered(), true);
+	// password sign-in turned off by OIDC: the invited user could not use the password they set
+	Object.assign(process.env, OIDC_ENV);
+	try {
+		assert.equal(await invitationsOffered(), false, "OIDC only");
+	} finally {
+		for (const name of Object.keys(OIDC_ENV)) delete process.env[name];
+	}
+	assert.equal(await invitationsOffered(), true);
 });
 
 it("reads no sealed password and no mail server check while the switch is off", async () => {

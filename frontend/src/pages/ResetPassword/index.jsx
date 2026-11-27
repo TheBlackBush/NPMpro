@@ -46,6 +46,10 @@ function InvalidLink() {
 	return (
 		<CardContent className="flex flex-col gap-4">
 			<ErrorAlert error={intl.formatMessage({ id: "error.reset-invalid" })} />
+			{/* the purpose of an invalid link is never told, so the line for an invited user is always there */}
+			<p className="text-center text-sm text-muted-foreground">
+				<T id="reset-password.invalid.invited" />
+			</p>
 			<a href="/forgot-password" className="text-center text-sm underline underline-offset-4">
 				<T id="reset-password.request-new" />
 			</a>

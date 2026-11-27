@@ -1,20 +1,24 @@
 import { normalizePublicUrl } from "./NotificationForms.js";
+import { signInMethods } from "./SignInMethods.js";
 
 /**
  * The pure parts of the invitations in the Users list and the user window, and of the reset page's wording
  */
 
 /**
- * Whether invitations are offered: mail configured, the switch on and a valid public URL (what the backend checks
- * before it sends one). false while a setting is not loaded.
+ * Whether invitations are offered: mail configured, the switch on, a valid public URL and password sign-in on (OIDC
+ * can turn it off, and the invited user sets a password): what the backend checks before it sends one. false while a
+ * setting or the health answer is not loaded.
  *
  * @param   {Object|undefined}  email          GET /settings/email (camelized)
  * @param   {Object|undefined}  notifications  GET /settings/notifications (camelized)
+ * @param   {Object|undefined}  health         GET /api (its password flag)
  * @returns {boolean}
  */
-export const invitationsOffered = (email, notifications) =>
+export const invitationsOffered = (email, notifications, health) =>
 	email?.configured === true &&
 	email.invitations === true &&
+	health?.password === true &&
 	normalizePublicUrl(String(notifications?.publicUrl ?? "").trim()) !== null;
 
 /**
@@ -34,6 +38,29 @@ export const inviteOptionShown = ({ offered, isAdmin, isNew }) => offered && isA
  * @returns {boolean}
  */
 export const resendShown = (user, offered) => offered && user?.invited === true;
+
+/**
+ * The users of the list as it shows them: a user is marked invited only while invitations are offered, else the
+ * sign-in column shows "-" as for any user without a sign-in method (no invitation can be out or accepted)
+ *
+ * @param   {Object[]|undefined}  users    the users list
+ * @param   {boolean}             offered  invitationsOffered()
+ * @returns {Object[]}
+ */
+export const listedUsers = (users, offered) =>
+	offered ? (users ?? []) : (users ?? []).map((user) => (user.invited ? { ...user, invited: false } : user));
+
+/**
+ * The sign-in column's text of a user: "Invited" for an invited user (listedUsers() says while offered), else the
+ * sign-in methods
+ *
+ * @param   {Object}  user  a users list item
+ * @returns {string[]}  translation ids, none for a user without a sign-in method
+ */
+export const signInLabels = (user) =>
+	user?.invited === true && signInMethods(user).length === 0
+		? ["user.invited"]
+		: signInMethods(user).map((method) => `user.sign-in.${method}`);
 
 /**
  * The request body of a new user: the invite flag only when the option is shown and ticked

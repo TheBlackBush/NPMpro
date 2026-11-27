@@ -15,7 +15,7 @@ import {
 } from "src/modals";
 import { rowUser } from "src/modules/AccountWindow";
 import { invitationFailureText } from "src/modules/InvitationMessages";
-import { invitationOutcome } from "src/modules/Invitations";
+import { invitationOutcome, listedUsers } from "src/modules/Invitations";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { showApiError, showError, showObjectSuccess, showSuccess } from "src/notifications";
 import { SettingsHeading } from "../Settings/SettingsHeading";
@@ -66,7 +66,7 @@ export default function TableWrapper() {
 	};
 
 	const needle = filters.q.trim().toLowerCase();
-	const displayed = (data ?? []).filter(
+	const displayed = listedUsers(data, invitationsOffered).filter(
 		(item) =>
 			needle === "" || item.name.toLowerCase().includes(needle) || item.email.toLowerCase().includes(needle),
 	);
