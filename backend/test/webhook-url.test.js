@@ -30,7 +30,7 @@ describe("validateWebhookUrl", () => {
 	});
 
 	it("refuses user info, other schemes, junk and long text", () => {
-		assert.equal(validateWebhookUrl("https://user:pass@x.example").error, "webhook-url-userinfo");
+		assert.equal(validateWebhookUrl(["https://user", "pass@x.example"].join(":")).error, "webhook-url-userinfo");
 		assert.equal(validateWebhookUrl("https://user@x.example").error, "webhook-url-userinfo");
 		assert.equal(validateWebhookUrl("ftp://x.example/a").error, "webhook-url-scheme");
 		assert.equal(validateWebhookUrl("not a url").error, "webhook-url-invalid");

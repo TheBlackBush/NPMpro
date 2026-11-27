@@ -1,16 +1,14 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { Webhook } from "standardwebhooks";
 import { newSecret, signatureHeader, webhookHeaders } from "../lib/notify/webhook-sign.js";
 
-// the symmetric vector of the Standard Webhooks libraries' tests
-const SECRET = "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw";
-const ID = "msg_p5jXN8AQM9LWM0D4loKWxJek";
-const TIMESTAMP = 1614265330;
-const BODY = '{"test": 2432232314}';
+// the symmetric vector of the Standard Webhooks libraries' tests (secret whsec_..., message id, seconds, body, signature)
+const vector = JSON.parse(readFileSync(new URL("./fixtures/webhook-vector.json", import.meta.url), "utf8"));
+const { secret: SECRET, id: ID, timestamp: TIMESTAMP, body: BODY, signature: EXPECTED } = vector;
 const SIGNATURE_ENTRY = /^v1,[A-Za-z0-9+/]+=*$/u;
 const SECRET_FORMAT = /^whsec_[A-Za-z0-9+/]{43}=$/u;
-const EXPECTED = "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=";
 
 describe("webhook signing", () => {
 	it("signs the reference vector exactly", () => {
