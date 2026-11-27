@@ -25,6 +25,8 @@ const PROVIDERS = Object.freeze({
 });
 
 const providerOf = (id) => PROVIDERS[id] ?? PROVIDERS.dbip;
+/** @returns {string}  the id of the provider (an unknown id is dbip, as providerOf) */
+const normalizeProvider = (id) => (PROVIDERS[id] ? id : "dbip");
 const countryFileOf = (id) => providerOf(id).file(providerOf(id).country);
 const asnFileOf = (id) => providerOf(id).file(providerOf(id).asn);
 
@@ -75,6 +77,7 @@ export {
 	DBIP_EDITIONS,
 	effectiveProvider,
 	MAXMIND_EDITIONS,
+	normalizeProvider,
 	PROVIDER_IDS,
 	PROVIDERS,
 	parseProvider,

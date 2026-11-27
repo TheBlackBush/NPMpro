@@ -2,7 +2,7 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import maxmind from "maxmind";
 import { rooted } from "../paths.js";
-import { asnFileOf, countryFileOf } from "./providers.js";
+import { asnFileOf, countryFileOf, normalizeProvider } from "./providers.js";
 
 /**
  * Opens a database only when its file changed since the last load
@@ -45,7 +45,7 @@ const createGeoip = ({ dir = rooted("/data/goaccess/geoip"), cacheSize = 50000, 
 	const country = { reader: null, mtimeMs: null };
 	const asn = { reader: null, mtimeMs: null };
 	let reloading = Promise.resolve();
-	let current = provider;
+	let current = normalizeProvider(provider);
 	let generation = 0;
 	let countryFile = countryFileOf(current);
 	let asnFile = asnFileOf(current);
@@ -58,7 +58,8 @@ const createGeoip = ({ dir = rooted("/data/goaccess/geoip"), cacheSize = 50000, 
 	return {
 		provider: () => current,
 		/** Opens the files of another provider: both readers are cleared until the next reload() */
-		setProvider: (id) => {
+		setProvider: (requested) => {
+			const id = normalizeProvider(requested);
 			const nextCountry = countryFileOf(id);
 			const nextAsn = asnFileOf(id);
 			current = id;

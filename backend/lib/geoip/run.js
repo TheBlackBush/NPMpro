@@ -1,5 +1,5 @@
 import { fetch as undiciFetch } from "undici";
-import { guardedAgent, isTestOutbound } from "../outbound-guard.js";
+import { guardedAgent } from "../outbound-guard.js";
 import { updateDbip } from "./dbip.js";
 import { selectedEditions } from "./providers.js";
 import { updateGeoip } from "./update.js";
@@ -7,20 +7,33 @@ import { updateGeoip } from "./update.js";
 let inFlight = null;
 let queued = null;
 
+// the guarded agent is the only one production uses; test code may swap it (setGeoipAgent), like the webhook channel's
+let agent = guardedAgent;
+
 /**
- * A fetch whose every connection, also after a redirect, goes through the outbound guard. Tests with a mocked outbound
- * (isTestOutbound) read through the global dispatcher.
+ * Test seam: the dispatcher of the GeoIP downloads (undefined: the global dispatcher, an undici MockAgent in tests)
+ *
+ * @param {Object|undefined}  next
+ */
+const setGeoipAgent = (next) => {
+	agent = next;
+};
+
+/**
+ * A fetch whose every connection, also after a redirect, goes through the dispatcher given by getAgent (by default the
+ * agent of this module, the outbound guard).
  *
  * @param   {Object}    [seams]
- * @param   {Function}  [seams.fetchFn]  undici's fetch
- * @param   {Object}    [seams.agent]    the guarded agent
- * @param   {Function}  [seams.mocked]   () => Boolean
+ * @param   {Function}  [seams.fetchFn]   undici's fetch
+ * @param   {Function}  [seams.getAgent]  () => the dispatcher
  * @returns {Function}
  */
 const createGuardedFetch =
-	({ fetchFn = undiciFetch, agent = guardedAgent, mocked = isTestOutbound } = {}) =>
-	(url, init = {}) =>
-		fetchFn(url, mocked() ? init : { ...init, dispatcher: agent });
+	({ fetchFn = undiciFetch, getAgent = () => agent } = {}) =>
+	(url, init = {}) => {
+		const dispatcher = getAgent();
+		return fetchFn(url, dispatcher ? { ...init, dispatcher } : init);
+	};
 
 const guardedFetch = createGuardedFetch();
 
@@ -96,4 +109,4 @@ const runOnce = async ({
 	return { ...result, provider };
 };
 
-export { createGuardedFetch, geoipUpdateSettled, guardedFetch, runConfiguredGeoipUpdate };
+export { createGuardedFetch, geoipUpdateSettled, guardedFetch, runConfiguredGeoipUpdate, setGeoipAgent };

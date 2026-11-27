@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import dns from "node:dns";
 import { copyFile, mkdir, mkdtemp, readdir, readFile, stat, symlink, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, it } from "node:test";
+import { describe, it, mock } from "node:test";
 import { c as createArchive } from "tar";
 import { createGeoip } from "../lib/geoip/lookup.js";
 import { PROVIDER_MARKER, writeProviderMarker } from "../lib/geoip/marker.js";
@@ -14,6 +16,8 @@ const fixtures = path.join(import.meta.dirname, "fixtures");
 const COUNTRY = "GeoLite2-Country.mmdb";
 const ASN = "GeoLite2-ASN.mmdb";
 const HTTP_401 = /HTTP 401/u;
+const FETCH_FAILED = /fetch failed/u;
+const MARKER_CONTENT = /^(?:dbip|maxmind)\n$/u;
 const KEY = "secret-license-key-123";
 
 const tempDir = () => mkdtemp(path.join(tmpdir(), "geoip-"));
@@ -417,14 +421,14 @@ describe("runConfiguredGeoipUpdate", () => {
 });
 
 describe("createGuardedFetch", () => {
-	it("sends every request through the guarded agent", async () => {
+	it("sends every request through the dispatcher it is given", async () => {
 		const agent = {};
 		const calls = [];
 		const fetchFn = (url, init) => {
 			calls.push({ url, init });
 			return Promise.resolve("response");
 		};
-		const guarded = createGuardedFetch({ fetchFn, agent, mocked: () => false });
+		const guarded = createGuardedFetch({ fetchFn, getAgent: () => agent });
 		assert.equal(await guarded("https://example.test/x", { method: "HEAD" }), "response");
 		assert.equal(calls[0].init.dispatcher, agent);
 		assert.equal(calls[0].init.method, "HEAD");
@@ -432,18 +436,64 @@ describe("createGuardedFetch", () => {
 		assert.equal(calls[1].init.dispatcher, agent);
 	});
 
-	it("reads through the global dispatcher when the tests mock the outbound", async () => {
+	it("reads through the global dispatcher when the test code removes the agent", async () => {
 		const calls = [];
 		const guarded = createGuardedFetch({
 			fetchFn: (_url, init) => {
 				calls.push(init);
 				return Promise.resolve(null);
 			},
-			agent: {},
-			mocked: () => true,
+			getAgent: () => undefined,
 		});
 		await guarded("https://example.test/x", { method: "GET" });
 		assert.deepEqual(calls, [{ method: "GET" }]);
+	});
+
+	it("is not switched by the test outbound env: the production runner still refuses a blocked address", async () => {
+		const hits = [];
+		const server = createServer((_req, res) => {
+			hits.push(1);
+			res.end("x");
+		});
+		await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+		const { port } = server.address();
+		const saved = { root: process.env.NPMPRO_TEST_ROOT, outbound: process.env.NPMPRO_TEST_OUTBOUND };
+		const lookup = mock.method(dns, "lookup", (_host, options, callback) =>
+			callback(null, options?.all ? [{ address: "127.0.0.1", family: 4 }] : "127.0.0.1", 4),
+		);
+		process.env.NPMPRO_TEST_ROOT = "/tmp/x";
+		process.env.NPMPRO_TEST_OUTBOUND = "mock";
+		try {
+			// the runner as monitoring-services.js calls it: no fetch option, the default updaters
+			const recorded = [];
+			const result = await runConfiguredGeoipUpdate({
+				geoip: { reload: () => Promise.resolve() },
+				dir: await tempDir(),
+				recordResult: (r) => {
+					recorded.push(r);
+					return Promise.resolve();
+				},
+				getConfig: async () => ({
+					values: { provider: "maxmind", account_id: "1", license_key: KEY, editions: ["GeoLite2-ASN"] },
+				}),
+			});
+			assert.equal(result.ok, false);
+			assert.equal(result.error, "GeoLite2-ASN: Download failed (network error)");
+			assert.equal(recorded.length, 1);
+			// the target of a request that is allowed would answer on this port: nothing connected
+			await assert.rejects(guardedFetch(`http://127.0.0.1:${port}/`), FETCH_FAILED);
+			assert.deepEqual(hits, []);
+		} finally {
+			lookup.mock.restore();
+			for (const [key, value] of [
+				["NPMPRO_TEST_ROOT", saved.root],
+				["NPMPRO_TEST_OUTBOUND", saved.outbound],
+			]) {
+				if (value === undefined) delete process.env[key];
+				else process.env[key] = value;
+			}
+			await new Promise((resolve) => server.close(resolve));
+		}
 	});
 });
 
@@ -479,6 +529,14 @@ describe("createGeoip providers", () => {
 		assert.deepEqual(geoip.available(), { country: true, asn: true });
 	});
 
+	it("an unknown provider id is DB-IP and never leaks", async () => {
+		const geoip = createGeoip({ dir: await dbipFixtures(), provider: "maxmind" });
+		geoip.setProvider("bogus");
+		assert.equal(geoip.provider(), "dbip");
+		await geoip.reload();
+		assert.deepEqual(geoip.available(), { country: true, asn: true });
+	});
+
 	it("starts on DB-IP and keeps the readers when the same provider is set again", async () => {
 		const geoip = createGeoip({ dir: await dbipFixtures() });
 		assert.equal(geoip.provider(), "dbip");
@@ -509,5 +567,12 @@ describe("writeProviderMarker", () => {
 		await writeProviderMarker(dir, "maxmind");
 		assert.equal(await readFile(path.join(dir, PROVIDER_MARKER), "utf8"), "maxmind\n");
 		assert.deepEqual(await readdir(dir), ["provider"]);
+	});
+
+	it("overlapping writes use their own temporary file and all succeed", async () => {
+		const dir = await tempDir();
+		await Promise.all(["dbip", "maxmind", "dbip", "maxmind"].map((id) => writeProviderMarker(dir, id)));
+		assert.deepEqual(await readdir(dir), ["provider"]);
+		assert.match(await readFile(path.join(dir, PROVIDER_MARKER), "utf8"), MARKER_CONTENT);
 	});
 });
