@@ -68,6 +68,171 @@ How the alert mails go out:
 - Ticking an event sends nothing about the problems that are already open when you tick it. Their recovery and reminders follow the normal rules from then on.
 - Each mail ends with the reason you get it: you are an administrator of NPMpro, or your address is listed for alerts. With a public URL set, the mail has an **Open NPMpro** button.
 
+## Webhooks
+
+A webhook is an address of your own that NPMpro calls with a signed HTTP request when something happens: a certificate was renewed, a host was created, a backup failed. Use it to copy a renewed certificate to another machine, to post to a chat or to start a script. You add webhooks under Settings, Notifications, in the card **Webhooks**. The requests follow the [Standard Webhooks](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md) signature scheme, so any of its libraries verifies them.
+
+Only administrators see the card. Creating and editing a webhook, and rotating its secret, need a signed-in session; see [Who can change webhooks](#who-can-change-webhooks).
+
+### Adding a webhook
+
+- **Name**: a name that is not used by another webhook (upper and lower case do not count).
+- **URL**: where the requests go. `https://` to any public host. `http://` only to an address on your private LAN (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`), because plain HTTP over the internet would show the event to everyone on the way. No user name or password in the URL (the signature is the credential), at most 2048 characters. Redirects are never followed: an answer 3xx counts as a failure, so enter the final address.
+- **Events**: tick the events to send, or **All events**, which also covers the events that later versions add. The `.resolved` recovery of a problem event is its own entry, so a webhook can choose to get only the problems.
+- **Verify TLS**: on by default. Turn it off only for a receiver with a self-signed certificate on your own network.
+- **Enabled**.
+
+The URL is checked when you save it (see [Security](Security#webhooks)), and again before every request. After saving, the **signing secret** is shown once, with a copy button. It starts with `whsec_`. NPMpro keeps it encrypted and cannot show it again: store it where your receiver reads it. If you lose it, rotate it.
+
+**Send test** sends an event of the type `notification.test` at once and shows the status code and how long it took, or the error. A test is not queued and not retried, it is not recorded in the deliveries, and it does not touch the webhook's state (it can neither turn a webhook off nor count as a failure or a success). At most 5 tests per minute from one IP address, one at a time. It works also for a webhook that is turned off. **All events** never includes `notification.test`: only the button sends it.
+
+### What is sent
+
+A request is a `POST` with a JSON body of at most 20 KB:
+
+```json
+{
+  "type": "certificate.renewed",
+  "timestamp": "2026-11-27T04:00:12.345Z",
+  "data": { "id": 12, "nice_name": "example.com", "domain_names": ["example.com"], "provider": "letsencrypt", "expires_on": "2027-02-25T04:00:10.000Z" }
+}
+```
+
+- `type`: the event, with dots (below).
+- `timestamp`: when the event happened (ISO 8601, UTC), not when it was delivered.
+- `data`: the fields of the event. A field without a value is left out. Texts are cut to 300 characters, and any secret in an error text is replaced by `***`.
+- When an event is larger than 20 KB, its longest list is cut until it fits and `data.truncated` is `true`.
+
+The request has five headers:
+
+| Header | Content |
+|---|---|
+| `content-type` | `application/json` |
+| `user-agent` | `NPMpro-Webhooks/<version>` |
+| `webhook-id` | The id of the message, for example `msg_k3j5vq2x7bnw4ztd6hy2mfa7ce`. The same on every retry and redelivery of the event. Use it as the idempotency key. |
+| `webhook-timestamp` | When this attempt was made, in whole seconds since 1970. New on every retry. |
+| `webhook-signature` | `v1,` and the base64 HMAC-SHA256 signature. While a rotated secret is still valid, there are two, separated by a space. |
+
+#### Events
+
+Problem events are sent when a problem starts, and each has a `.resolved` event with the same data when the problem is over. They are the events of [Monitoring](Monitoring#events).
+
+| Event | Data |
+|---|---|
+| `certificate.expiring`, `certificate.renewal_failed` (and `.resolved`) | `id`, `nice_name`, `domain_names`, `provider`, `expires_on`; `state` and `days_left` for `expiring`; `error` for `renewal_failed` |
+| `host.config_error` (and `.resolved`) | `type` (`proxy`, `redirection`, `dead` or `stream`), `id`, `domain_names` (a stream has `incoming_port` instead), `enabled`, `error` |
+| `backup.failed` (and `.resolved`) | `schedule` (`id`, `name`), `error` |
+| `geoip.failed`, `crowdsec.unreachable` (and `.resolved`) | `error` |
+| `ddns.record_failed`, `ddns.record_stopped` (and `.resolved`) | `record` (`id`, `name`, `provider`), `error` |
+
+Action events happen once, when something was done:
+
+| Event | Data |
+|---|---|
+| `host.created`, `host.updated`, `host.deleted`, `host.enabled`, `host.disabled` | `type`, `id`, `domain_names` (a stream has `incoming_port`), `enabled`, `user` (`id`, `name`) |
+| `certificate.issued`, `certificate.renewed`, `certificate.deleted` | `id`, `nice_name`, `domain_names`, `provider`, `expires_on` |
+| `backup.succeeded` | `schedule` (`id`, `name`), `file`, `size` |
+| `backup.restored` | `types` |
+| `database.moved`, `database.move_failed` | `from`, `to`, `error` |
+| `webhook.disabled` | `webhook` (`id`, `name`), `reason` (`gone` or `failing`) |
+| `notification.test` | `version` (only sent by **Send test**) |
+
+### Verifying a request
+
+Always verify the signature before you act on a request, and verify the raw body, the exact bytes NPMpro sent: a body that was parsed and written again no longer matches. Libraries for many languages are listed at [standard-webhooks](https://github.com/standard-webhooks/standard-webhooks). Rules to follow in your receiver:
+
+- Use the `webhook-id` as the idempotency key: a retry or a redelivery has the same id, so a receiver that saw it already answers 2xx and does nothing.
+- Allow 5 minutes of clock difference. That is the default of the libraries, not a rule of the specification, so a receiver whose clock is off by more refuses every request.
+- Answer with a 2xx status as soon as the request is stored, and do the work afterwards. NPMpro waits at most 15 seconds.
+- Do not rely on the order. Events can arrive out of order (a retry of an older event can come after a newer one), so use the `timestamp` of the event when order matters.
+
+Node.js (`npm install standardwebhooks`), here with Express. The route reads the body as it is:
+
+```js
+import express from "express";
+import { Webhook } from "standardwebhooks";
+
+const wh = new Webhook(process.env.WEBHOOK_SECRET); // the whsec_ text, as shown once
+const app = express();
+
+app.post("/hook", express.raw({ type: "application/json" }), (req, res) => {
+	let event;
+	try {
+		event = wh.verify(req.body.toString("utf8"), req.headers);
+	} catch {
+		return res.sendStatus(400);
+	}
+	// event.type, event.timestamp, event.data; remember req.headers["webhook-id"] against repeats
+	res.sendStatus(204);
+});
+
+app.listen(8080);
+```
+
+Python (`pip install standardwebhooks`), here with Flask:
+
+```python
+import os
+from flask import Flask, request
+from standardwebhooks import Webhook
+from standardwebhooks.webhooks import WebhookVerificationError
+
+wh = Webhook(os.environ["WEBHOOK_SECRET"])  # the whsec_ text, as shown once
+app = Flask(__name__)
+
+@app.post("/hook")
+def hook():
+    try:
+        event = wh.verify(request.get_data(), dict(request.headers))
+    except WebhookVerificationError:
+        return "", 400
+    # event["type"], event["timestamp"], event["data"]; remember request.headers["webhook-id"]
+    return "", 204
+```
+
+To check without a library: the signature is `base64(HMAC-SHA256(key, id + "." + timestamp + "." + body))`, where `key` is the bytes you get by decoding the base64 part after `whsec_`, and the header holds `v1,` and that value. With the secret `whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw`, the id `msg_p5jXN8AQM9LWM0D4loKWxJek`, the timestamp `1614265330` and the body `{"test": 2432232314}`, the signature is `v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=` (a test vector of the libraries).
+
+### Copy a renewed certificate
+
+To keep a certificate on another machine up to date, make a webhook for `certificate.renewed`, and let the receiver fetch the files with an [API token](API-tokens-and-MCP). The token needs view permission on certificates. The event holds the certificate `id`:
+
+```sh
+curl -H "Authorization: Bearer npmpro_..." -o cert.zip \
+  https://npm.example.com:81/api/nginx/certificates/<id>/download
+unzip -o cert.zip fullchain.pem privkey.pem
+```
+
+The zip holds `fullchain.pem` and `privkey.pem` and every download is written to the audit log. The event itself never holds a key or a certificate.
+
+### Retries
+
+A request succeeds when the receiver answers 2xx. Anything else is a failure and is tried again, up to 8 attempts in all: the first one at once, then after about 5 seconds, 5 minutes, 30 minutes, 2 hours, 5 hours, 10 hours and 24 hours, each with up to 10 % added at random. That is a bit over 41 hours in all. This is NPMpro's own schedule, shorter than the example in the Standard Webhooks specification. After the last attempt the delivery is marked failed.
+
+- A request that gets no answer within 15 seconds counts as a failure. A connection error does too.
+- A redirect (3xx) is a failure and is not followed.
+- An answer with a `Retry-After` header (a number of seconds or an HTTP date) delays the next attempt at least that long, at most 24 hours. Any other value is ignored.
+- **410 Gone** means the receiver is gone for good: the webhook is turned off at once, and its waiting deliveries are dropped.
+- A webhook that keeps failing is turned off. NPMpro notes when the failures started (the first failure after a success). The next failure that comes after 3 days without any success turns the webhook off. Plainly: a webhook whose last event failed days ago and has had no success since is turned off by the next failure, even a single one; it is not turned off by the passing of time alone.
+- A webhook that is turned off sends nothing and its waiting deliveries are dropped. It is shown with its reason (answered 410 Gone, failing for 3 days, restored without its URL). Turn it on in its window; that clears the reason and the failing period.
+- A receiver that is down costs one attempt per pass: when a request to a webhook fails, its other waiting events wait for the retry too. One pass spends at most one minute on one webhook, and a slower receiver gets the rest in the next pass.
+- A delivery fails at once, without a retry, when the stored address or secret cannot be opened (for example after the encryption key changed). Save the webhook again with its URL, or rotate the secret.
+
+When a webhook is turned off by 410 or by repeated failure, NPMpro raises the event `webhook.disabled` and mails the alert if you ticked it under [Mail alerts](#mail-alerts).
+
+### Deliveries and redelivery
+
+**Deliveries** on a webhook lists its newest first: the event, when it was made, the state (waiting, sending, delivered, failed, dropped), the number of attempts, the status code, the time it took, the error and the first 2 KB of the answer. The address and the secret are removed from the error and the answer. NPMpro keeps the newest 100 rows of a webhook for at most 30 days.
+
+**Redeliver** sends a failed delivery again at once, with the same `webhook-id` (and a new `webhook-timestamp`). It is offered only for a failed delivery whose content is still kept, which is for 7 days after the failure, and only while the webhook is turned on. A delivered row keeps no content. The content is never shown in the list.
+
+### Changing the secret
+
+**Rotate secret** makes a new secret and shows it once. For the next 24 hours NPMpro signs every request with both, so the header holds two signatures (`v1,<new> v1,<old>`) and either secret verifies it. Switch your receiver to the new secret within that time, then the old one stops working. Rotating again within 24 hours keeps only the secret that was in use just before.
+
+### Who can change webhooks
+
+The card is for administrators. Creating a webhook, editing it and rotating its secret need a signed-in session: an [API token](API-tokens-and-MCP) is refused, because a token could otherwise point a webhook at a server of its own and read the events and the secret. An administrator's token can list the webhooks, see their deliveries, send a test, redeliver and delete (delete needs the token's Allow delete switch). Restoring the Webhooks part of a backup needs a session too, see [Backup and restore](Backup-and-restore#good-to-know). See [Security](Security#webhooks).
+
 ## Account mails
 
 Besides the events of [Monitoring](Monitoring#events), NPMpro sends two mails about a user's own account, to that user:

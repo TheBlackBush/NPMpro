@@ -55,7 +55,7 @@ Disabling a host, a dynamic DNS record or a backup schedule ends its problems wi
 - **Dynamic DNS record failed:** a dynamic DNS record could not be updated.
 - **Dynamic DNS record stopped:** the provider stopped a dynamic DNS record. NPMpro does not try it again until you act.
 
-Action events mark something that was done. They are sent to webhooks only, in a later release, and each happens once:
+Action events mark something that was done. They are sent to [webhooks](Notifications#webhooks) only, never mailed, and each happens once:
 
 - **Host created, updated, enabled, disabled and deleted.**
 - **Certificate issued, renewed and deleted.**
