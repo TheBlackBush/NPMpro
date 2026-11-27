@@ -33,4 +33,16 @@ Apresentados quando um servidor de correio está configurado. Correios sobre os 
 - **URL público**: o endereço com que as pessoas abrem o NPMpro, usado para as ligações dos correios, por exemplo `https://npm.example.com`. Apenas HTTPS, sem caminho. **Usar o endereço deste navegador** preenche-o com o endereço desta página quando é aberta por HTTPS. Variável: `PUBLIC_URL`.
 - **Idioma do correio por omissão**: o idioma dos correios para as pessoas que não escolheram um. O idioma de interface de cada utilizador é memorizado e usado para os seus correios. Variável: `MAIL_LANGUAGE`.
 
+### Webhooks
+
+Um webhook é um endereço seu que o NPMpro chama com um pedido HTTP assinado quando algo acontece, por exemplo quando um certificado foi renovado. Apenas os administradores veem este cartão.
+
+- **URL**: `https://` para qualquer anfitrião público, ou `http://` para um endereço da sua rede local. Os redirecionamentos não são seguidos. O endereço é guardado cifrado e nunca mais é mostrado; deixe o campo vazio ao editar para o manter.
+- **Eventos**: escolha os eventos a enviar, ou **Todos os eventos**.
+- **Segredo de assinatura**: mostrado uma só vez depois de guardar. Guarde-o onde o seu recetor o lê. **Renovar segredo** cria um novo; o anterior continua a assinar durante 24 horas para que o seu recetor possa mudar.
+- **Enviar teste**: envia de imediato um evento de teste e mostra o estado e o tempo que demorou. Não aparece em Entregas.
+- **Entregas**: os eventos mais recentes do webhook com o estado, as tentativas e a resposta do recetor. **Entregar novamente** volta a enviar uma entrega falhada, até 7 dias depois da falha.
+- Um pedido falhado é repetido até 8 vezes ao longo de cerca de 41 horas. Um webhook é desativado quando o recetor responde 410 Gone, ou quando volta a falhar após 3 dias de falhas sem qualquer sucesso. Um webhook desativado mostra o motivo; ative-o para o voltar a usar.
+- Verifique cada pedido com qualquer biblioteca Standard Webhooks, com o corpo original e o `webhook-id` como chave de idempotência.
+
 Mais na wiki: Configuration.

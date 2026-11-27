@@ -33,4 +33,16 @@ Affichées une fois un serveur de messagerie configuré. Des e-mails sur les pro
 - **URL publique** : l'adresse à laquelle les personnes ouvrent NPMpro, utilisée pour les liens des messages, par exemple `https://npm.example.com`. HTTPS uniquement, sans chemin. **Utiliser l'adresse de ce navigateur** la remplit avec l'adresse de cette page lorsqu'elle est ouverte en HTTPS. Variable : `PUBLIC_URL`.
 - **Langue des messages par défaut** : la langue des messages pour les personnes qui n'en ont pas choisi. La langue d'interface de chaque utilisateur est mémorisée et utilisée pour ses messages. Variable : `MAIL_LANGUAGE`.
 
+### Webhooks
+
+Un webhook est une adresse à vous que NPMpro appelle avec une requête HTTP signée quand quelque chose se produit, par exemple quand un certificat a été renouvelé. Seuls les administrateurs voient cette carte.
+
+- **URL** : `https://` vers n'importe quel hôte public, ou `http://` vers une adresse de votre réseau local. Les redirections ne sont pas suivies. L'adresse est stockée chiffrée et n'est plus jamais affichée ; laissez le champ vide lors d'une modification pour la conserver.
+- **Événements** : choisissez les événements à envoyer, ou **Tous les événements**.
+- **Secret de signature** : affiché une seule fois après l'enregistrement. Conservez-le là où votre récepteur le lit. **Renouveler le secret** en crée un nouveau ; l'ancien continue de signer pendant 24 heures pour que votre récepteur puisse changer.
+- **Envoyer un test** : envoie aussitôt un événement de test et affiche le statut et la durée. Il n'apparaît pas dans Livraisons.
+- **Livraisons** : les derniers événements du webhook avec leur statut, leurs tentatives et la réponse du récepteur. **Relivrer** renvoie une livraison échouée, jusqu'à 7 jours après l'échec.
+- Une requête échouée est retentée jusqu'à 8 fois sur environ 41 heures. Un webhook est désactivé quand le récepteur répond 410 Gone, ou quand il échoue de nouveau après 3 jours d'échecs sans succès. Un webhook désactivé affiche la raison ; activez-le pour le réutiliser.
+- Vérifiez chaque requête avec n'importe quelle bibliothèque Standard Webhooks, avec le corps brut et le `webhook-id` comme clé d'idempotence.
+
 Plus d'informations dans le wiki : Configuration.
