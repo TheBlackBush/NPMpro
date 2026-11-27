@@ -1,16 +1,13 @@
 {
 	"operationId": "updateWebhook",
 	"summary": "Update a webhook",
-	"description": "Changes the fields sent. An empty or missing url keeps the stored one; a new one is checked like on create. Enabling a webhook clears its disabled reason and failing period; disabling it drops its waiting deliveries. A webhook restored from a backup without secrets needs its url and gets a new signing secret, shown once in the answer. Errors carry an error.<code> message id: webhook-name-taken, webhook-url-invalid, webhook-url-scheme, webhook-url-userinfo, webhook-url-required, webhook-host-unresolved, webhook-host-lookup-failed (a name lookup failed for now: try again), webhook-host-blocked (the host is, or resolves to, an address webhooks may not reach) and notify-event-not-for-webhook.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Changes the fields sent. An empty or missing url keeps the stored one; a new one is checked like on create. Enabling a webhook clears its disabled reason and failing period; disabling it drops its waiting deliveries. A webhook restored from a backup without secrets needs its url and gets a new signing secret, shown once in the answer. Errors carry an error.<code> message id: webhook-name-taken, webhook-url-invalid, webhook-url-scheme, webhook-url-userinfo, webhook-url-required, webhook-host-unresolved, webhook-host-lookup-failed (a name lookup failed for now: try again), webhook-host-blocked (the host is, or resolves to, an address webhooks may not reach) and notify-event-not-for-webhook.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
 		"settings"
 	],
 	"security": [
 		{
 			"cookieAuth": []
-		},
-		{
-			"bearerAuth": []
 		}
 	],
 	"parameters": [

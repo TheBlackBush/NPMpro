@@ -1,16 +1,13 @@
 {
 	"operationId": "createWebhook",
 	"summary": "Create a webhook",
-	"description": "Creates a webhook. The URL is checked: https:// or http:// to a private LAN address, no user info, and its host must resolve and must not be an address outbound requests may not reach (for a host that is written as a name, every address it resolves to). The answer holds the signing secret once. Errors carry an error.<code> message id: webhook-name-taken, webhook-url-invalid, webhook-url-scheme, webhook-url-userinfo, webhook-url-required, webhook-host-unresolved, webhook-host-lookup-failed (a name lookup failed for now: try again), webhook-host-blocked (the host is, or resolves to, an address webhooks may not reach) and notify-event-not-for-webhook.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Creates a webhook. The URL is checked: https:// or http:// to a private LAN address, no user info, and its host must resolve and must not be an address outbound requests may not reach (for a host that is written as a name, every address it resolves to). The answer holds the signing secret once. Errors carry an error.<code> message id: webhook-name-taken, webhook-url-invalid, webhook-url-scheme, webhook-url-userinfo, webhook-url-required, webhook-host-unresolved, webhook-host-lookup-failed (a name lookup failed for now: try again), webhook-host-blocked (the host is, or resolves to, an address webhooks may not reach) and notify-event-not-for-webhook.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
 		"settings"
 	],
 	"security": [
 		{
 			"cookieAuth": []
-		},
-		{
-			"bearerAuth": []
 		}
 	],
 	"requestBody": {

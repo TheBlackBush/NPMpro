@@ -1,16 +1,13 @@
 {
 	"operationId": "rotateWebhookSecret",
 	"summary": "Rotate the signing secret",
-	"description": "Makes a new signing secret, shown once in the answer. The old one signs too for 24 hours, so a receiver can switch over: each delivery then carries two signatures.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Makes a new signing secret, shown once in the answer. The old one signs too for 24 hours, so a receiver can switch over: each delivery then carries two signatures.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
 	"tags": [
 		"settings"
 	],
 	"security": [
 		{
 			"cookieAuth": []
-		},
-		{
-			"bearerAuth": []
 		}
 	],
 	"parameters": [

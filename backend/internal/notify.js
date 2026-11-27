@@ -5,7 +5,7 @@ import { dbTimeOf, msOfDbTime } from "../lib/notify/db-time.js";
 import { createNotifyService } from "../lib/notify/service.js";
 import { MOVED_WATERMARK_KEY } from "../lib/notify/state-store.js";
 import { createWebhookChannel, createWebhookStore } from "../lib/notify/webhook-channel.js";
-import { createGuardedAgent, isTestOutbound } from "../lib/outbound-guard.js";
+import { createGuardedAgent } from "../lib/outbound-guard.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { global as logger } from "../logger.js";
 import { renderMail } from "../mail/render.js";
@@ -59,13 +59,14 @@ notify.registerChannel(
 );
 
 // The webhook channel: signed deliveries to the admin's URLs (stored sealed, opened for each attempt)
-// (a test run reaches the receivers through the global dispatcher, a MockAgent, as the other outbound reads do)
+// the guarded agent is the only one production uses; test code may swap the factory (setWebhookAgentFactory)
+let agentFactory = createGuardedAgent;
 const webhookChannel = createWebhookChannel({
 	webhooks: createWebhookStore({ knex: db(), queue }),
 	open: (sealed) => defaultSecretBox.decrypt(sealed),
 	notify,
 	audit: async (entry) => (await import("./audit-log.js")).default.add(null, entry),
-	createAgent: (options) => (isTestOutbound() ? undefined : createGuardedAgent(options)),
+	createAgent: (options) => agentFactory(options),
 	log: logger,
 	version: pjson.version,
 });
@@ -193,6 +194,16 @@ const checkDatabaseMoved = async () => {
 	}
 };
 
+/**
+ * Tests only: replaces how an attempt gets its agent (undefined: the global dispatcher, a MockAgent). Nothing in the app
+ * calls it, and no environment value does.
+ *
+ * @param {Function} factory  (options) => an agent, or undefined
+ */
+const setWebhookAgentFactory = (factory) => {
+	agentFactory = factory;
+};
+
 export {
 	checkDatabaseMoved,
 	cleanupAfterRestore,
@@ -204,6 +215,7 @@ export {
 	queue,
 	registerSweepCheck,
 	resumeNotify,
+	setWebhookAgentFactory,
 	stateStore,
 	sweep,
 	webhookChannel,

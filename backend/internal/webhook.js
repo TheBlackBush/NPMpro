@@ -118,6 +118,12 @@ const checkedName = async (name, ownId) => {
 	return name;
 };
 
+// a webhook can be turned on only with a URL and a secret that open
+const usable = (row, { urlGiven, secretMade }) =>
+	(urlGiven || openOrNull(row.url) !== null) && (secretMade || openOrNull(row.secret) !== null);
+const unusable = () =>
+	refuse("Rotate the secret or save the URL again before enabling the webhook", "webhook-secret-unusable");
+
 const urlRequired = () => refuse("Enter the URL of the webhook", "webhook-url-required");
 
 const auditMeta = (row) => ({ name: row.name, id: row.id, events: row.events });
@@ -240,7 +246,11 @@ const internalWebhook = {
 				disabled_reason: null,
 			});
 		}
+		// entering the URL of a restored webhook again is what was missing: it is on again unless the save says off
 		if (data.enabled !== undefined) patch.enabled = data.enabled;
+		else if (restored) patch.enabled = true;
+		if (patch.enabled === true && !row.enabled && !usable(row, { urlGiven: newUrl !== null, secretMade: restored }))
+			throw unusable();
 		if (patch.enabled === true) Object.assign(patch, { disabled_reason: null, failing_since: null });
 		const updated = await Webhook.query().patchAndFetchById(row.id, patch);
 		if (patch.enabled === false) await queue.dropTarget("webhook", row.id);

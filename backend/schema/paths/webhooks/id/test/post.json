@@ -1,7 +1,7 @@
 {
 	"operationId": "testWebhook",
 	"summary": "Send a test delivery",
-	"description": "Sends a notification.test event to the receiver at once, signed like a delivery, and answers what came back. It is not queued, not retried and does not change the webhook's state; it can be sent to a disabled webhook that has a URL. A request that fails is answered 200 with ok false and the reason in error.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Sends a notification.test event to the receiver at once, signed like a delivery, and answers what came back. It is not queued, not retried and does not change the webhook's state; it can be sent to a disabled webhook that has a URL. A request that fails is answered 200 with ok false and the reason in error.\n\nNeeds: an administrator (a token needs its Administrator switch) At most 5 test mails and webhook tests a minute per address, one at a time (429).",
 	"tags": [
 		"settings"
 	],

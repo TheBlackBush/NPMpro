@@ -2,6 +2,8 @@ import express from "express";
 import internalWebhook from "../internal/webhook.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
 import pathId from "../lib/express/path-id.js";
+import sessionOnly from "../lib/express/session-only.js";
+import { oneAtATime, testMailLimiter } from "../lib/express/test-mail-limiter.js";
 import apiValidator from "../lib/validator/api.js";
 import validator from "../lib/validator/index.js";
 import { getQuerySchema, getValidationSchema } from "../schema/index.js";
@@ -37,7 +39,7 @@ router
 	})
 
 	/** POST /api/webhooks: the signing secret is in this answer only */
-	.post(async (req, res) => {
+	.post(sessionOnly(), async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/webhooks", "post"), req.body);
 		res.status(201).send(await internalWebhook.create(res.locals.access, payload));
 	});
@@ -55,7 +57,7 @@ router
 	})
 
 	/** PUT /api/webhooks/123 */
-	.put(async (req, res) => {
+	.put(sessionOnly(), async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/webhooks/{id}", "put"), req.body);
 		res.status(200).send(await internalWebhook.update(res.locals.access, Number(req.params.id), payload));
 	})
@@ -73,7 +75,7 @@ router
 	.all(jwtdecode(), adminOnly)
 
 	/** POST /api/webhooks/123/rotate-secret */
-	.post(async (req, res) => {
+	.post(sessionOnly(), async (req, res) => {
 		res.status(200).send(await internalWebhook.rotate(res.locals.access, Number(req.params.id)));
 	});
 
@@ -85,9 +87,12 @@ router
 	.all(jwtdecode(), adminOnly)
 
 	/** POST /api/webhooks/123/test */
-	.post(async (req, res) => {
-		res.status(200).send(await internalWebhook.test(res.locals.access, Number(req.params.id)));
-	});
+	.post(
+		testMailLimiter,
+		oneAtATime(async (req, res) => {
+			res.status(200).send(await internalWebhook.test(res.locals.access, Number(req.params.id)));
+		}),
+	);
 
 /**
  * /api/webhooks/123/deliveries

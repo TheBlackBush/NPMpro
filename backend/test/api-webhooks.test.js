@@ -3,6 +3,7 @@ import dns from "node:dns";
 import { after, before, it } from "node:test";
 import { Webhook as StandardWebhook } from "standardwebhooks";
 import { generateApiToken } from "../lib/api-token.js";
+import { createGuardedAgent } from "../lib/outbound-guard.js";
 import { startApi } from "./support/api.js";
 
 // The webhook routes of Settings, Notifications through the real app: the service, the sealed columns, the audit, the
@@ -16,6 +17,7 @@ const SECRET_TOKEN = "s3cr3t";
 const SEALED = /^v1:/u;
 const WHSEC = /^whsec_[A-Za-z0-9+/]+=*$/u;
 const TWO_SIGNATURES = /^v1,\S+ v1,\S+$/u;
+const MAY_NOT_REACH = /may not reach/u;
 const STATUS_500 = /500/u;
 const TOKEN_IN_QUERY = /s3cr3t/u;
 const HIDDEN = /\*\*\*/u;
@@ -28,7 +30,7 @@ const knex = api.db;
 const { defaultSecretBox } = await import("../lib/secret-box.js");
 const { isoToLocal } = await import("../lib/backup/rows.js");
 const { msOfDbTime } = await import("../lib/notify/db-time.js");
-const { sweep, worker } = await import("../internal/notify.js");
+const { setWebhookAgentFactory, sweep, webhookChannel, worker } = await import("../internal/notify.js");
 
 const logged = [];
 const originalLog = console.log;
@@ -39,6 +41,8 @@ before(() => {
 	console.log = (...args) => logged.push(args.map(String).join(" "));
 	api.outside.dns.set("hooks.example.com", "203.0.113.10");
 	api.outside.dns.set("loop.example.com", "127.0.0.1");
+	// the receivers are the MockAgent of startApi: no agent, the global dispatcher
+	setWebhookAgentFactory(() => undefined);
 	worker.start();
 });
 after(async () => {
@@ -103,6 +107,8 @@ const delivery = async (hookId, fields = {}) => {
 	return { id: Number(inserted?.id ?? inserted), message };
 };
 
+// every call from an address of its own: the test route is limited to 5 a minute per address
+const testCall = async (id) => (await bearer()).post(`/webhooks/${id}/test`, {});
 const bearer = async ({ isAdmin = true, allowDelete = false } = {}) => {
 	tokens += 1;
 	const made = generateApiToken();
@@ -337,7 +343,7 @@ it("disabling drops the pending deliveries, and deleting removes the webhook wit
 it("sends a test delivery: signed for the secret, 200 with the outcome, a 500 as ok false", async () => {
 	const created = await create();
 	const calls = receiver({ statusCode: 200, data: "received" });
-	const sent = await admin.post(`/webhooks/${created.body.id}/test`, {});
+	const sent = await testCall(created.body.id);
 	assert.equal(sent.status, 200);
 	assert.equal(sent.body.ok, true);
 	assert.equal(sent.body.http_status, 200);
@@ -350,7 +356,7 @@ it("sends a test delivery: signed for the secret, 200 with the outcome, a 500 as
 	new StandardWebhook(created.body.secret).verify(calls[0].body, calls[0].headers);
 	assert.equal((await knex("npmpro_notification_delivery").where({ target_id: created.body.id })).length, 0);
 	receiver({ statusCode: 500, data: "broke" });
-	const failed = await admin.post(`/webhooks/${created.body.id}/test`, {});
+	const failed = await testCall(created.body.id);
 	assert.equal(failed.status, 200);
 	assert.equal(failed.body.ok, false);
 	assert.equal(failed.body.http_status, 500);
@@ -364,7 +370,7 @@ it("sends a test delivery: signed for the secret, 200 with the outcome, a 500 as
 it("a test hides the URL, its query and the secret in what the receiver echoes", async () => {
 	const created = await create();
 	receiver((options) => ({ statusCode: 502, data: `bad gateway for ${BASE}${options.path} ${created.body.secret}` }));
-	const failed = await admin.post(`/webhooks/${created.body.id}/test`, {});
+	const failed = await testCall(created.body.id);
 	assert.equal(failed.body.ok, false);
 	assert.doesNotMatch(failed.text, TOKEN_IN_QUERY);
 	assert.equal(failed.text.includes(created.body.secret), false);
@@ -376,11 +382,11 @@ it("refuses a test of a webhook without a URL, and a receiver that is not reacha
 	await knex("npmpro_webhook")
 		.where({ id: created.body.id })
 		.update({ url: "", enabled: false, disabled_reason: "restore" });
-	const refused = await admin.post(`/webhooks/${created.body.id}/test`, {});
+	const refused = await testCall(created.body.id);
 	assert.equal(refused.status, 400);
 	assert.equal(refused.body.error.message_i18n, "error.webhook-url-required");
 	const unreachable = await create({ url: "https://hooks.example.com/no-mock" });
-	const failed = await admin.post(`/webhooks/${unreachable.body.id}/test`, {});
+	const failed = await testCall(unreachable.body.id);
 	assert.equal(failed.status, 200);
 	assert.equal(failed.body.ok, false);
 	assert.equal(failed.body.http_status, null);
@@ -391,7 +397,7 @@ it("rotating keeps the old secret for 24 hours: a test carries both signatures",
 	const created = await create();
 	const rotated = await admin.post(`/webhooks/${created.body.id}/rotate-secret`, {});
 	const calls = receiver();
-	assert.equal((await admin.post(`/webhooks/${created.body.id}/test`, {})).body.ok, true);
+	assert.equal((await testCall(created.body.id)).body.ok, true);
 	assert.match(calls[0].headers["webhook-signature"], TWO_SIGNATURES);
 	new StandardWebhook(rotated.body.secret).verify(calls[0].body, calls[0].headers);
 	new StandardWebhook(created.body.secret).verify(calls[0].body, calls[0].headers);
@@ -504,7 +510,7 @@ it("audits created, updated, secret-rotated, test-sent, deleted and a disable by
 	await admin.put(`/webhooks/${id}`, { name: "Audited too" });
 	await admin.post(`/webhooks/${id}/rotate-secret`, {});
 	receiver();
-	await admin.post(`/webhooks/${id}/test`, {});
+	await testCall(id);
 	// the receiver says 410: the channel disables the webhook (user 0)
 	await delivery(id, { status: "pending", attempts: 0, next_try_on: null });
 	receiver({ statusCode: 410, data: "gone" });
@@ -538,7 +544,7 @@ it("never shows the URL, its query or a secret in an answer, an audit row, a del
 	const answers = [];
 	answers.push((await admin.get("/webhooks")).text, (await admin.get(`/webhooks/${id}`)).text);
 	receiver({ statusCode: 500, data: `echo ${URL_WITH_TOKEN} ${created.body.secret}` });
-	answers.push((await admin.post(`/webhooks/${id}/test`, {})).text);
+	answers.push((await testCall(id)).text);
 	const rotated = await admin.post(`/webhooks/${id}/rotate-secret`, {});
 	secrets.push(rotated.body.secret);
 	answers.push((await admin.put(`/webhooks/${id}`, { events: ["*"] })).text);
@@ -581,15 +587,75 @@ it("holds to the permissions: an administrator session and token, no other user,
 	// an administrator's token works; DELETE needs its Allow delete switch
 	const token = await bearer();
 	assert.equal((await token.get("/webhooks")).status, 200);
-	const made = await token.post("/webhooks", { name: uniqueName(), url: URL_WITH_TOKEN, events: ["*"] });
-	assert.equal(made.status, 201);
-	assert.match(made.body.secret, WHSEC);
+	// create, update and rotate are session only: an administrator's token is refused
+	const denied = await token.post("/webhooks", { name: uniqueName(), url: URL_WITH_TOKEN, events: ["*"] });
+	assert.equal(denied.status, 403);
+	const made = await create();
+	assert.equal((await token.put(`/webhooks/${made.body.id}`, { enabled: false })).status, 403);
+	assert.equal((await token.post(`/webhooks/${made.body.id}/rotate-secret`, {})).status, 403);
+	assert.equal((await token.get(`/webhooks/${made.body.id}`)).status, 200);
 	assert.equal((await token.delete(`/webhooks/${made.body.id}`)).status, 403);
 	const deleter = await bearer({ allowDelete: true });
 	assert.equal((await deleter.delete(`/webhooks/${made.body.id}`)).status, 200);
-	// the audit row names the token that acted
+	// the audit row of the delete names the token that acted
 	const tokenRow = await knex("audit_log")
-		.where({ object_type: "webhook", object_id: made.body.id, action: "created" })
+		.where({ object_type: "webhook", object_id: made.body.id, action: "deleted" })
+		.orderBy("id", "desc")
 		.first();
-	assert.equal(tokenRow.npmpro_api_token_name, token.name);
+	assert.equal(tokenRow.npmpro_api_token_name, deleter.name);
+});
+
+it("limits the test route to 5 a minute per address and one at a time", async () => {
+	const { id } = (await create()).body;
+	const client = await bearer();
+	const statuses = [];
+	for (let at = 0; at < 6; at += 1) statuses.push((await client.post(`/webhooks/${id}/test`, {})).status);
+	assert.deepEqual(statuses.slice(0, 5), [200, 200, 200, 200, 200]);
+	assert.equal(statuses[5], 429);
+});
+
+it("refuses to enable a webhook whose secret or URL cannot be opened, until it is rotated or saved again", async () => {
+	const { id } = (await create()).body;
+	await admin.put(`/webhooks/${id}`, { enabled: false });
+	await knex("npmpro_webhook").where({ id }).update({ secret: "v1:bad:bad:bad" });
+	assert.equal((await admin.get(`/webhooks/${id}`)).body.secret_error, true);
+	const refused = await admin.put(`/webhooks/${id}`, { enabled: true });
+	assert.equal(refused.status, 400);
+	assert.equal(refused.body.error.message_i18n, "error.webhook-secret-unusable");
+	assert.equal((await admin.post(`/webhooks/${id}/rotate-secret`, {})).status, 200);
+	assert.equal((await admin.put(`/webhooks/${id}`, { enabled: true })).body.enabled, true);
+});
+
+it("a restored webhook saved with its URL and no enabled switch is on again, with an explicit false it stays off", async () => {
+	const restore = async () => {
+		const { id } = (await create()).body;
+		await knex("npmpro_webhook")
+			.where({ id })
+			.update({ url: "", secret: "", enabled: false, disabled_reason: "restore" });
+		return id;
+	};
+	const on = await admin.put(`/webhooks/${await restore()}`, { url: URL_WITH_TOKEN });
+	assert.equal(on.body.enabled, true);
+	assert.equal(on.body.disabled_reason, null);
+	const off = await admin.put(`/webhooks/${await restore()}`, { url: URL_WITH_TOKEN, enabled: false });
+	assert.equal(off.body.enabled, false);
+	assert.equal(off.body.disabled_reason, null);
+});
+
+it("the production agent still refuses a loopback target with the test environment values set", async () => {
+	assert.equal(process.env.NPMPRO_TEST_OUTBOUND, "mock");
+	assert.ok(process.env.NPMPRO_TEST_ROOT);
+	setWebhookAgentFactory(createGuardedAgent);
+	try {
+		const { id } = (await create()).body;
+		await knex("npmpro_webhook")
+			.where({ id })
+			.update({ url: defaultSecretBox.encrypt("http://127.0.0.1:9/x") });
+		const hook = await row(id);
+		const result = await webhookChannel.sendTest(hook);
+		assert.equal(result.ok, false);
+		assert.match(result.error, MAY_NOT_REACH);
+	} finally {
+		setWebhookAgentFactory(() => undefined);
+	}
 });
