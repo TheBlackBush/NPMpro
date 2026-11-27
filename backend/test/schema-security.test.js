@@ -34,6 +34,10 @@ const SESSION_ONLY = new Set([
 	// where mail and its login go
 	"put /settings/email",
 	"put /settings/notifications",
+	// where webhook events go and who may read their secrets
+	"post /webhooks",
+	"put /webhooks/{id}",
+	"post /webhooks/{id}/rotate-secret",
 	"post /settings/oidc/test",
 	"post /settings/oidc/icon",
 	"delete /settings/oidc/icon",

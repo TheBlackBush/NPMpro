@@ -31,6 +31,7 @@ const ROW_ACTIONS = {
 	link: new Set(["add", "existing", "skip"]),
 	host: new Set(["add", "replace", "skip"]),
 	record: new Set(["add", "replace", "skip"]),
+	webhook: new Set(["add", "skip"]),
 	setting: new Set(["take", "keep"]),
 	schedule: new Set(["add", "keep", "take"]),
 };
@@ -68,6 +69,7 @@ const kindOf = (typeId) => {
 	if (typeId === SCHEDULE_TYPE) return "schedule";
 	if (typeId === "users") return "users";
 	if (typeId === "ddns") return "record";
+	if (typeId === "webhooks") return "webhook";
 	if (LINK_TYPES.includes(typeId)) return "link";
 	return HOST_TYPES.includes(typeId) ? "host" : "setting";
 };
@@ -482,6 +484,19 @@ const mergeTypes = async ({
 			count(item.type);
 		};
 
+		// a webhook is added under a new id (the plan skips one whose name is taken). It comes back like a restored
+		// one: sealed again with this instance's box, and off when the backup held no URL or secret. It emits no
+		// webhook.disabled event (see restoredWebhook in types.js)
+		const writeWebhook = async (item) => {
+			if (item.action === "skip") return;
+			const { table } = ITEM_TYPES.webhooks;
+			const [row] = TYPES.webhooks.restoreRows(TYPES.webhooks.secrets.seal({ [table]: [rowOf(item)] }, box))[
+				table
+			];
+			await inserter.insertWithNewId(table, row);
+			count(item.type);
+		};
+
 		const settingIds = new Map();
 		const writeSetting = async (item) => {
 			if (item.action === "keep") return;
@@ -553,6 +568,7 @@ const mergeTypes = async ({
 			else if (kind === "host") await writeHost(item);
 			else if (kind === "record") await writeRecord(item);
 			else if (kind === "schedule") await writeSchedule(item);
+			else if (kind === "webhook") await writeWebhook(item);
 			else await writeSetting(item);
 		}
 		if (skippedDomains.length > 0) {

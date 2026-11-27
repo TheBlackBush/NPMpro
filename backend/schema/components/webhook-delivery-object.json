@@ -1,0 +1,101 @@
+{
+	"type": "object",
+	"description": "One delivery of an event to a webhook. The event's content is never returned",
+	"additionalProperties": false,
+	"required": [
+		"id",
+		"message_id",
+		"event",
+		"status",
+		"attempts",
+		"next_try_on",
+		"http_status",
+		"duration_ms",
+		"error",
+		"response",
+		"created_on",
+		"modified_on",
+		"redeliverable"
+	],
+	"properties": {
+		"id": {
+			"type": "integer",
+			"minimum": 1,
+			"description": "Delivery id",
+			"example": 41
+		},
+		"message_id": {
+			"type": "string",
+			"description": "The message id: sent as the webhook-id header on every try and redelivery",
+			"example": "msg_p7n3u2x5r4f6a1z9c8b2d3e4f5"
+		},
+		"event": {
+			"type": "string",
+			"description": "The event id",
+			"example": "backup.failed"
+		},
+		"status": {
+			"type": "string",
+			"enum": [
+				"pending",
+				"sending",
+				"sent",
+				"failed",
+				"dropped"
+			],
+			"description": "Where the delivery is: pending, sending, sent, failed (no more tries) or dropped (the webhook was disabled or deleted)"
+		},
+		"attempts": {
+			"type": "integer",
+			"minimum": 0,
+			"description": "Tries made so far"
+		},
+		"next_try_on": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "When the next try is due; null when none is waiting"
+		},
+		"http_status": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"description": "The HTTP status of the last try; null when there was none or the request did not get an answer"
+		},
+		"duration_ms": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"description": "How long the last try took in milliseconds"
+		},
+		"error": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "Why the last try failed, without the URL or any secret; null when it did not fail"
+		},
+		"response": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "The first 2 KB of the receiver's last answer, with the URL and secrets hidden"
+		},
+		"created_on": {
+			"type": "string",
+			"description": "When the delivery was queued"
+		},
+		"modified_on": {
+			"type": "string",
+			"description": "When the delivery last changed"
+		},
+		"redeliverable": {
+			"type": "boolean",
+			"description": "Whether the delivery can be redelivered now: it failed, its content is still kept (a failed delivery keeps it for 7 days) and the webhook is turned on"
+		}
+	}
+}

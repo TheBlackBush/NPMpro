@@ -321,7 +321,7 @@ export async function cleanUp(api) {
 export async function removeFlowData(api, withViewer = true) {
 	const isFlow = (text) => String(text ?? "").startsWith("flow-");
 	const isFlowRecord = (text) => FLOW_RECORD.test(String(text ?? ""));
-	const [proxy, redirection, dead, streams, lists, users, certificates, tokens, credentials, records] =
+	const [proxy, redirection, dead, streams, lists, users, certificates, tokens, credentials, records, webhooks] =
 		await Promise.all(
 			[
 				"/nginx/proxy-hosts",
@@ -334,6 +334,7 @@ export async function removeFlowData(api, withViewer = true) {
 				"/api-tokens",
 				"/nginx/dns-credentials",
 				"/nginx/ddns-records",
+				"/webhooks",
 			].map((path) => api("GET", path)),
 		);
 	const paths = [
@@ -349,6 +350,7 @@ export async function removeFlowData(api, withViewer = true) {
 			.map((row) => `/users/${row.id}`),
 		...certificates.filter((row) => isFlow(row.nice_name)).map((row) => `/nginx/certificates/${row.id}`),
 		...tokens.filter((row) => isFlow(row.name)).map((row) => `/api-tokens/${row.id}`),
+		...webhooks.filter((row) => isFlow(row.name)).map((row) => `/webhooks/${row.id}`),
 		// before the credentials they use
 		...records.filter((row) => isFlowRecord(row.name)).map((row) => `/nginx/ddns-records/${row.id}`),
 		// after the certificates that may use them; a credential takes its domains with it

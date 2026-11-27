@@ -169,6 +169,18 @@ The mail server is an outbound connection, so it goes through the same check as 
 
 The mail password is encrypted in the database. It is never returned by the API or shown in the UI (the form shows only that one is set), and it goes into a backup only with secrets, where the whole file is encrypted. Saving the mail server settings needs a signed-in session, so an API token cannot change where mail goes.
 
+## Webhooks
+
+Webhooks (see [Notifications](Notifications#webhooks)) make NPMpro send requests to addresses an administrator chooses, so they are guarded like the mail server and more:
+
+- Administrators only. Creating or editing a webhook and rotating its secret need a signed-in session, so an [API token](API-tokens-and-MCP) cannot point a webhook at a server of its own. A token with the Administrator switch can list, read the deliveries, send a test, redeliver and delete (delete needs Allow delete). A restore or merge of the Webhooks part of a backup needs a session too.
+- The URL and the signing secrets are encrypted in the database. An answer of the API holds only a short hint of the address (scheme, host and port, cut at 200 characters, and the first 40 characters of the path, never a query) and whether a secret is set. The secret is shown once, when it is made, and never again. The URL, the secrets and the content of an event never reach the log, the audit log or an error text; the audit log records the name, the id, the events and the reason of a change.
+- The outbound check runs on every attempt, not only when you save. Loopback, link-local (which includes the cloud metadata address), unspecified, multicast and reserved addresses are always refused, whatever the URL says. A host written as an IP address, also in the forms a browser accepts (a single number such as `2130706433`, hexadecimal or short forms), is read as the address it stands for and checked the same way. A name is resolved and every address of it must be allowed, and the connection goes to an address that was checked, so a name that changes its answer cannot slip through. A redirect is never followed.
+- `https://` may reach any public host. `http://` may reach only private LAN addresses (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`).
+- A request is signed, so a receiver can tell that it comes from your instance (see [Verifying a request](Notifications#verifying-a-request)). Each webhook has its own secret.
+- At most 20 KB is sent and at most 2 KB of the answer is kept, with the address and the secrets removed.
+- Backups: the URL and the secrets go into a backup only with secrets; without them a webhook is restored turned off, see [Backup and restore](Backup-and-restore#good-to-know).
+
 ## Password reset by mail
 
 The reset is off by default. Turning it on lets anyone who controls a user's mailbox set that user's password, so the account is only as safe as the mailbox. Use a mailbox with two-factor sign-in, and keep the switch off on an instance whose mail reaches people you do not trust. See [Authentication](Authentication#password-reset-by-mail) for how to turn it on.

@@ -1,0 +1,52 @@
+{
+	"operationId": "testWebhook",
+	"summary": "Send a test delivery",
+	"description": "Sends a notification.test event to the receiver at once, signed like a delivery, and answers what came back. It is not queued, not retried and does not change the webhook's state; it can be sent to a disabled webhook that has a URL. A request that fails is answered 200 with ok false and the reason in error.\n\nNeeds: an administrator (a token needs its Administrator switch) At most 5 test mails and webhook tests a minute per address, one test of a webhook at a time (429).",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "id",
+			"description": "Webhook id",
+			"required": true,
+			"schema": {
+				"type": "string",
+				"pattern": "^[1-9]\\d{0,9}$"
+			},
+			"example": "1"
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The outcome of the test",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/webhook-test-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"ok": true,
+								"http_status": 200,
+								"duration_ms": 118,
+								"response": "ok",
+								"error": null
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -6,7 +6,7 @@ import { createServer as createTlsServer } from "node:https";
 import os from "node:os";
 import path from "node:path";
 import { it } from "node:test";
-import { request as undiciRequest } from "undici";
+import { Agent, buildConnector, request as undiciRequest } from "undici";
 import { createRequest, isPublicAddress, probeReach } from "../lib/dns-check/reach-probe.js";
 import { createGuardedAgent } from "../lib/outbound-guard.js";
 
@@ -169,7 +169,9 @@ it("removes the token when the write throws, and ignores a failing removal", asy
 	assert.equal(out.result, "router-answered");
 });
 
-const local = () => createRequest({ isAllowed: () => true, timeoutMs: 300 });
+// the guarded agent refuses this host's own addresses: a local server is reached through a plain agent
+const plainAgent = ({ rejectUnauthorized, servername }) => new Agent({ connect: { rejectUnauthorized, servername } });
+const local = () => createRequest({ isAllowed: () => true, timeoutMs: 300, createAgent: plainAgent });
 const listen = (server) =>
 	new Promise((resolve) => {
 		server.listen(0, "127.0.0.1", () => resolve(server.address().port));
@@ -216,7 +218,7 @@ it("stops reading and destroys the stream at the size limit (a body that never e
 	});
 	const port = await listen(server);
 	try {
-		const answer = await createRequest({ isAllowed: () => true, timeoutMs: 5000 })({
+		const answer = await createRequest({ isAllowed: () => true, timeoutMs: 5000, createAgent: plainAgent })({
 			scheme: "http",
 			address: "127.0.0.1",
 			family: 4,
@@ -275,6 +277,31 @@ it("the default request refuses a loopback address before connecting", async () 
 	}
 });
 
+it("the guarded agent alone refuses a loopback address, even when the address check lets it through", async () => {
+	let hits = 0;
+	const server = createServer((_req, res) => {
+		hits += 1;
+		res.end("hit");
+	});
+	const port = await listen(server);
+	try {
+		await assert.rejects(
+			createRequest({ isAllowed: () => true })({
+				scheme: "http",
+				address: "127.0.0.1",
+				family: 4,
+				port,
+				name: "a.example.test",
+				path: "/",
+			}),
+			(err) => (err.cause ?? err).code === "EBLOCKED",
+		);
+		assert.equal(hits, 0);
+	} finally {
+		await close(server);
+	}
+});
+
 it("the guarded agent sends its servername as SNI to an IP address", async () => {
 	const dir = mkdtempSync(path.join(os.tmpdir(), "reach-tls-"));
 	let seenName = "unset";
@@ -307,9 +334,17 @@ it("the guarded agent sends its servername as SNI to an IP address", async () =>
 			seenName = socket.servername;
 		});
 		const port = await listen(server);
-		const agent = createGuardedAgent({ rejectUnauthorized: false, servername: "app.example.test" });
+		// a public address passes the guard; its connector then dials the local server instead
+		const toLocal = (options) => {
+			const connect = buildConnector(options);
+			return (opts, callback) => connect({ ...opts, hostname: "127.0.0.1" }, callback);
+		};
+		const agent = createGuardedAgent(
+			{ rejectUnauthorized: false, servername: "app.example.test" },
+			{ build: toLocal },
+		);
 		try {
-			const response = await undiciRequest(`https://127.0.0.1:${port}/`, { dispatcher: agent });
+			const response = await undiciRequest(`https://8.8.8.8:${port}/`, { dispatcher: agent });
 			await response.body.text();
 			assert.equal(seenName, "app.example.test");
 		} finally {

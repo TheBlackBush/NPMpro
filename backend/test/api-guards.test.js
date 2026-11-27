@@ -22,6 +22,7 @@ const ROUTERS = [
 	["GET", "/settings"],
 	["GET", "/settings/email"],
 	["GET", "/settings/notifications"],
+	["GET", "/webhooks"],
 	["GET", "/version/check"],
 	["GET", "/nginx/proxy-hosts"],
 	["GET", "/nginx/redirection-hosts"],

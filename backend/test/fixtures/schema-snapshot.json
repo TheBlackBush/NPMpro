@@ -133,6 +133,12 @@
 	},
 	{
 		"type": "index",
+		"name": "npmpro_webhook_name",
+		"table": "npmpro_webhook",
+		"sql": "CREATE UNIQUE INDEX `npmpro_webhook_name` on `npmpro_webhook` (`name`)"
+	},
+	{
+		"type": "index",
 		"name": "session_revocation_expires",
 		"table": "session_revocation",
 		"sql": "CREATE INDEX `session_revocation_expires` on `session_revocation` (`expires_at`)"
@@ -334,6 +340,12 @@
 		"name": "npmpro_proxy_host_access_list",
 		"table": "npmpro_proxy_host_access_list",
 		"sql": "CREATE TABLE \"npmpro_proxy_host_access_list\" (`proxy_host_id` integer not null, `location_id` integer not null default '0', `access_list_id` integer not null, `position` integer not null default '0', primary key (`proxy_host_id`, `location_id`, `access_list_id`))"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_webhook",
+		"table": "npmpro_webhook",
+		"sql": "CREATE TABLE `npmpro_webhook` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `name` varchar(100) not null, `url` text not null, `url_hint` varchar(253) not null, `secret` text not null, `previous_secret` text null, `previous_secret_until` datetime null, `events` text not null, `enabled` boolean not null default '1', `verify_tls` boolean not null default '1', `disabled_reason` varchar(16) null, `failing_since` datetime null, `last_success_on` datetime null)"
 	},
 	{
 		"type": "table",

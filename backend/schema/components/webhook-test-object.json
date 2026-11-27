@@ -1,0 +1,44 @@
+{
+	"type": "object",
+	"description": "The outcome of a test delivery",
+	"additionalProperties": false,
+	"required": [
+		"ok",
+		"http_status",
+		"duration_ms",
+		"response",
+		"error"
+	],
+	"properties": {
+		"ok": {
+			"type": "boolean",
+			"description": "Whether the receiver answered with a 2xx status"
+		},
+		"http_status": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"description": "The HTTP status of the answer; null when the request got none"
+		},
+		"duration_ms": {
+			"type": "integer",
+			"minimum": 0,
+			"description": "How long the request took in milliseconds"
+		},
+		"response": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "The first 2 KB of the receiver's answer, with the URL and secrets hidden; null when there was none"
+		},
+		"error": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "Why it failed, without the URL or any secret; null when it succeeded"
+		}
+	}
+}

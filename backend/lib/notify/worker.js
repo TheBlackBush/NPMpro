@@ -2,7 +2,8 @@ import { waitWithin } from "../database/pause.js";
 import { safeError } from "./queue.js";
 
 // The delivery worker: one pass at a time. A pass asks the queue for the due rows of every channel, sends them (one
-// target at a time, at most maxConcurrent units at once per channel) and settles the results. A failure of one send
+// target at a time, at most maxConcurrent units at once per channel; a channel with sendsTargetTogether gets the rows
+// of one target in one call) and settles the results. A failure of one send
 // never stops the rest, and an error of the pass is logged, never thrown.
 
 const POLL_MS = 5000;
@@ -58,6 +59,15 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 			log?.warn?.(`notify: ${channel.id} send failed: ${reason}`);
 			results = [];
 		}
+		// a together-call that threw tried its first row at most: that one counts an attempt, the others wait untried
+		if (results.length === 0 && reason !== undefined && channel.sendsTargetTogether) {
+			const [first, ...rest] = job.rows;
+			const wait = channel.retryDelays?.[0] ?? 0;
+			return [
+				{ id: first.id, ok: false, retry: true, error: reason },
+				...rest.map((row) => ({ id: row.id, ok: false, deferred: true, defer_ms: wait })),
+			];
+		}
 		const byId = new Map((results ?? []).map((result) => [result.id, result]));
 		// a row the channel did not answer for is retried like a failed send
 		return job.rows.map(
@@ -65,8 +75,12 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 		);
 	};
 
+	// a channel with sendsTargetTogether gets the whole unit (all claimed rows of one target) in one call
+	const jobsOf = (channel, unit) =>
+		channel.sendsTargetTogether ? [{ rows: unit.flatMap((job) => job.rows) }] : unit;
+
 	const runUnit = async (channel, unit) => {
-		for (const job of unit) {
+		for (const job of jobsOf(channel, unit)) {
 			try {
 				const results = await sendJob(channel, job);
 				await queue.settle(results, { retryDelays: channel.retryDelays ?? [] });

@@ -1,0 +1,7 @@
+{
+	"type": "array",
+	"description": "Deliveries, newest first",
+	"items": {
+		"$ref": "./webhook-delivery-object.json"
+	}
+}

@@ -33,4 +33,16 @@ Zichtbaar zodra een mailserver is ingesteld. Mails over problemen die NPMpro det
 - **Openbare URL**: het adres waarop mensen NPMpro openen, gebruikt voor de links in mails, bijvoorbeeld `https://npm.example.com`. Alleen HTTPS, geen pad. **Adres van deze browser gebruiken** vult het met het adres van deze pagina als die via HTTPS is geopend. Variabele: `PUBLIC_URL`.
 - **Standaardtaal van mails**: de taal van mails voor mensen die er geen hebben gekozen. De interfacetaal van elke gebruiker wordt onthouden en gebruikt voor zijn of haar mails. Variabele: `MAIL_LANGUAGE`.
 
+### Webhooks
+
+Een webhook is een eigen adres dat NPMpro aanroept met een ondertekend HTTP-verzoek wanneer er iets gebeurt, bijvoorbeeld wanneer een certificaat is vernieuwd. Alleen beheerders zien deze kaart.
+
+- **URL**: `https://` naar elke openbare host, of `http://` naar een adres op uw lokale netwerk. Doorverwijzingen worden niet gevolgd. Het adres wordt versleuteld opgeslagen en nooit meer getoond; laat het veld bij bewerken leeg om het te behouden.
+- **Gebeurtenissen**: kies de gebeurtenissen die worden verstuurd, of **Alle gebeurtenissen**.
+- **Ondertekeningsgeheim**: na het opslaan eenmaal getoond. Bewaar het waar uw ontvanger het leest. **Geheim vernieuwen** maakt een nieuw geheim; het oude blijft nog 24 uur ondertekenen, zodat uw ontvanger kan overstappen.
+- **Test versturen**: verstuurt direct een testgebeurtenis en toont de status en de duur. Hij staat niet bij Bezorgingen.
+- **Bezorgingen**: de nieuwste gebeurtenissen van de webhook met status, pogingen en het antwoord van de ontvanger. **Opnieuw bezorgen** verstuurt een mislukte bezorging nogmaals, tot 7 dagen na de mislukking.
+- Een mislukt verzoek wordt tot 8 keer herhaald in ongeveer 41 uur. Een webhook wordt uitgeschakeld wanneer de ontvanger 410 Gone antwoordt, of wanneer hij opnieuw mislukt na 3 dagen mislukkingen zonder succes. Een uitgeschakelde webhook toont de reden; schakel hem in om hem weer te gebruiken.
+- Controleer elk verzoek met een willekeurige Standard Webhooks-bibliotheek, met de ongewijzigde body en de `webhook-id` als idempotentiesleutel.
+
 Meer in de wiki: Configuration.

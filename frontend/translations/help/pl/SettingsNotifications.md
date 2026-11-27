@@ -33,4 +33,16 @@ Widoczne po skonfigurowaniu serwera poczty. Wiadomości o problemach wykrytych p
 - **Publiczny URL**: adres, pod którym osoby otwierają NPMpro, używany w linkach w wiadomościach, na przykład `https://npm.example.com`. Tylko HTTPS, bez ścieżki. **Użyj adresu tej przeglądarki** wypełnia go adresem tej strony, gdy jest otwarta przez HTTPS. Zmienna: `PUBLIC_URL`.
 - **Domyślny język poczty**: język wiadomości dla osób, które żadnego nie wybrały. Język interfejsu każdego użytkownika jest zapamiętywany i używany w jego wiadomościach. Zmienna: `MAIL_LANGUAGE`.
 
+### Webhooki
+
+Webhook to Twój własny adres, który NPMpro wywołuje podpisanym żądaniem HTTP, gdy coś się wydarzy, na przykład gdy certyfikat został odnowiony. Tę kartę widzą tylko administratorzy.
+
+- **URL**: `https://` do dowolnego publicznego hosta albo `http://` do adresu w Twojej sieci lokalnej. Przekierowania nie są śledzone. Adres jest przechowywany w postaci zaszyfrowanej i nigdy więcej nie jest pokazywany; podczas edycji zostaw pole puste, aby go zachować.
+- **Zdarzenia**: wybierz zdarzenia do wysyłania albo **Wszystkie zdarzenia**.
+- **Sekret podpisywania**: pokazany raz po zapisaniu. Zachowaj go tam, skąd czyta go Twój odbiorca. **Odnów sekret** tworzy nowy; stary podpisuje dalej przez 24 godziny, aby odbiorca zdążył się przełączyć.
+- **Wyślij test**: od razu wysyła zdarzenie testowe i pokazuje status oraz czas. Nie pojawia się w Dostarczeniach.
+- **Dostarczenia**: najnowsze zdarzenia webhooka ze statusem, próbami i odpowiedzią odbiorcy. **Dostarcz ponownie** wysyła nieudane dostarczenie jeszcze raz, do 7 dni po niepowodzeniu.
+- Nieudane żądanie jest ponawiane do 8 razy w ciągu około 41 godzin. Webhook jest wyłączany, gdy odbiorca odpowie 410 Gone albo gdy znów zawiedzie po 3 dniach niepowodzeń bez żadnego sukcesu. Wyłączony webhook pokazuje powód; włącz go, aby znów go używać.
+- Każde żądanie weryfikuj dowolną biblioteką Standard Webhooks, na niezmienionej treści, a `webhook-id` traktuj jako klucz idempotentności.
+
 Więcej w wiki: Configuration.

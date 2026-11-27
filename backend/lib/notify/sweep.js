@@ -8,6 +8,8 @@ const FIRST_MS = 2 * 60_000;
 const HOUR_MS = 3_600_000;
 const MAIL_DAYS = 30;
 const PAYLOAD_DAYS = 7;
+const WEBHOOK_KEEP = 100;
+const WEBHOOK_DAYS = 30;
 
 /**
  * @param   {Object}    options
@@ -44,6 +46,7 @@ const createSweep = ({ stateStore, queue, notify, checks = [], clock = globalThi
 		}
 		await step("prune", () => stateStore.prune());
 		await step("prune mail", () => queue.pruneMail(MAIL_DAYS));
+		await step("prune webhooks", () => queue.pruneWebhooks(WEBHOOK_KEEP, WEBHOOK_DAYS));
 		await step("prune payloads", () => queue.clearOldPayloads(PAYLOAD_DAYS));
 	};
 

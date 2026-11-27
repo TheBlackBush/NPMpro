@@ -23,11 +23,12 @@ export function toggleType(typeId, selected) {
 }
 
 // the rows of the selection grid, boxes of a similar size side by side: the two with most parts, the two with a
-// short second line, the three plain ones
+// short second line, the three plain ones, then Dynamic DNS and Webhooks
 const BOX_ROWS = [
 	["hosts", "settings"],
 	["custom_files", "certificates"],
 	["access_lists", "dns_credentials", "users"],
+	["ddns", "webhooks"],
 ];
 
 // the categories in grid rows, missing ones left out; a category not in BOX_ROWS goes into a last row

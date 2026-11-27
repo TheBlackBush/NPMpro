@@ -172,6 +172,39 @@ for (const [name, label] of [
 			assert.equal(Number((await knex("npmpro_password_token").count({ count: "*" }))[0].count), 0);
 		});
 
+		it("creates the webhook table: a unique 100 character name, defaults, long sealed text and a 253 character hint", async () => {
+			const { knex } = ctx;
+			const { up } = await import("../migrations/20261128120000_webhooks.js");
+			const row = {
+				created_on: NOW,
+				modified_on: NOW,
+				name: "n".repeat(100),
+				url: "u".repeat(5000),
+				url_hint: "h".repeat(253),
+				secret: "s".repeat(300),
+				events: '["*"]',
+			};
+			await knex("npmpro_webhook").insert(row);
+			await up(knex);
+			await assert.rejects(knex("npmpro_webhook").insert(row));
+			await assert.rejects(knex("npmpro_webhook").insert({ ...row, name: "n".repeat(101) }));
+			await assert.rejects(knex("npmpro_webhook").insert({ ...row, name: "x", url_hint: "h".repeat(254) }));
+			const stored = await knex("npmpro_webhook").first();
+			assert.equal(stored.url.length, 5000);
+			assert.equal(Boolean(Number(stored.enabled)), true);
+			assert.equal(Boolean(Number(stored.verify_tls)), true);
+			for (const key of [
+				"previous_secret",
+				"previous_secret_until",
+				"disabled_reason",
+				"failing_since",
+				"last_success_on",
+			]) {
+				assert.equal(stored[key], null, key);
+			}
+			await knex("npmpro_webhook").del();
+		});
+
 		it("joins a waiting alert group at its earliest time and leaves a group in a retry wait alone", async () => {
 			const { knex } = ctx;
 			const table = () => knex("npmpro_notification_delivery");

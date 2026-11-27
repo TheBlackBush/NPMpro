@@ -203,7 +203,7 @@ const downloadIcon = async (value, timeout = DOWNLOAD_TIMEOUT_MS, { allowLocal =
 	const signal = AbortSignal.timeout(timeout);
 	try {
 		for (let redirects = 0; ; redirects++) {
-			// a host that is an IP address is never looked up, so it is checked here; names are checked at connect
+			// a host that is an IP address is checked here first (the agent refuses it too); names are checked at connect
 			if (!allowLocal && isIP(url.hostname.replace(/^\[|\]$/gu, "")) !== 0 && isBlockedAddress(url.hostname)) {
 				throw blockedError(url.hostname);
 			}

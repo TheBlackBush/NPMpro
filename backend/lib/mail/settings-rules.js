@@ -23,7 +23,7 @@ const NOTIFICATION_DEFAULTS = {
 	default_language: "en",
 	alerts_admins: true,
 	alerts_addresses: [],
-	alerts_events: stateEvents().map((entry) => entry.id),
+	alerts_events: [...stateEvents().map((entry) => entry.id), "webhook.disabled"],
 	reminder_hours: 24,
 };
 

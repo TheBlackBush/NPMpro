@@ -74,7 +74,8 @@
 					"backup-schedule",
 					"backup",
 					"database",
-					"api-token"
+					"api-token",
+					"webhook"
 				]
 			}
 		},
@@ -105,7 +106,9 @@
 					"oidc-refused",
 					"revoked",
 					"expired",
-					"first-used"
+					"first-used",
+					"secret-rotated",
+					"test-sent"
 				]
 			}
 		},

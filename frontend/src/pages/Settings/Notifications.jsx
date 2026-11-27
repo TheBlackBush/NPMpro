@@ -1,5 +1,5 @@
 import { CircleAlert, Loader2, TriangleAlert } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
 import {
 	AddressListField,
@@ -7,6 +7,7 @@ import {
 	Button,
 	ErrorAlert,
 	HookForm,
+	Loading,
 	PasswordField,
 	SelectField,
 	SettingLineNote,
@@ -69,6 +70,9 @@ const FIELD_LABELS = {
 	alertsAddresses: "settings.notifications.alerts-addresses",
 	reminderHours: "settings.notifications.reminder-hours",
 };
+
+// the card and its table load after the page, so the startup stays small
+const WebhooksCard = lazy(() => import("./Notifications/WebhookTable"));
 
 const label = (id) => intl.formatMessage({ id });
 
@@ -567,6 +571,9 @@ function NotificationsForm({ email, notifications }) {
 					refused={refusedAddress}
 				/>
 			) : null}
+			<Suspense fallback={<Loading noLogo />}>
+				<WebhooksCard />
+			</Suspense>
 			<LinksCard locks={notificationLocks} />
 			<SaveBar labels={FIELD_LABELS} />
 		</HookForm>

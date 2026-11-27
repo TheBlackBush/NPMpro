@@ -94,9 +94,9 @@ const createBackupService = ({
 
 	// a token may not replace or add users, nor the settings that decide who can sign in (the OIDC settings with the
 	// password login switch, the mail settings that send the reset mail, and the runtime settings with forward-auth):
-	// their restore or merge stays in a session
+	// their restore or merge stays in a session (the webhooks hold URLs and signing secrets, and their writes are session only)
 	// (the routes require types, so "every part" is a list holding them)
-	const SESSION_ONLY_TYPES = ["users", "settings_oidc", "settings_notifications", "settings_runtime"];
+	const SESSION_ONLY_TYPES = ["users", "settings_oidc", "settings_notifications", "settings_runtime", "webhooks"];
 	const refuseTokenUsers = (access, types) => {
 		if (access.apiToken && Array.isArray(types) && types.some((type) => SESSION_ONLY_TYPES.includes(type))) {
 			throw new errs.PermissionError();

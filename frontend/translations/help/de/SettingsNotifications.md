@@ -33,4 +33,16 @@ Wird angezeigt, sobald ein Mailserver eingerichtet ist. Mails über Probleme, di
 - **Öffentliche URL**: die Adresse, unter der Personen NPMpro öffnen, für die Links in Mails, zum Beispiel `https://npm.example.com`. Nur HTTPS, kein Pfad. **Adresse dieses Browsers verwenden** trägt die Adresse dieser Seite ein, wenn sie über HTTPS geöffnet ist. Variable: `PUBLIC_URL`.
 - **Standardsprache für Mails**: die Sprache der Mails für Personen, die keine gewählt haben. Die Oberflächensprache jedes Benutzers wird gemerkt und für seine Mails verwendet. Variable: `MAIL_LANGUAGE`.
 
+### Webhooks
+
+Ein Webhook ist eine eigene Adresse, die NPMpro mit einer signierten HTTP-Anfrage aufruft, wenn etwas passiert, zum Beispiel wenn ein Zertifikat erneuert wurde. Nur Administratoren sehen diese Karte.
+
+- **URL**: `https://` zu jedem öffentlichen Host oder `http://` zu einer Adresse in Ihrem lokalen Netzwerk. Weiterleitungen werden nicht verfolgt. Die Adresse wird verschlüsselt gespeichert und nie wieder angezeigt; lassen Sie das Feld beim Bearbeiten leer, um sie zu behalten.
+- **Ereignisse**: Wählen Sie die zu sendenden Ereignisse oder **Alle Ereignisse**.
+- **Signaturgeheimnis**: wird nach dem Speichern einmal angezeigt. Bewahren Sie es dort auf, wo Ihr Empfänger es liest. **Geheimnis erneuern** erzeugt ein neues; das alte signiert noch 24 Stunden weiter, damit Ihr Empfänger umstellen kann.
+- **Test senden**: sendet sofort ein Testereignis und zeigt Status und Dauer. Es erscheint nicht unter Zustellungen.
+- **Zustellungen**: die neuesten Ereignisse des Webhooks mit Status, Versuchen und der Antwort des Empfängers. **Erneut zustellen** sendet eine fehlgeschlagene Zustellung noch einmal, bis 7 Tage nach dem Fehlschlag.
+- Eine fehlgeschlagene Anfrage wird bis zu 8 Mal in etwa 41 Stunden wiederholt. Ein Webhook wird ausgeschaltet, wenn der Empfänger mit 410 Gone antwortet oder wenn er nach 3 Tagen Fehlschlägen ohne Erfolg erneut fehlschlägt. Ein ausgeschalteter Webhook zeigt den Grund; schalten Sie ihn ein, um ihn wieder zu verwenden.
+- Prüfen Sie jede Anfrage mit einer beliebigen Standard-Webhooks-Bibliothek, mit dem unveränderten Body und der `webhook-id` als Schlüssel gegen doppelte Verarbeitung.
+
 Mehr im Wiki: Configuration.

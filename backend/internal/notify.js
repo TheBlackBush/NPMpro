@@ -4,8 +4,12 @@ import { sendMail } from "../lib/mail/transport.js";
 import { dbTimeOf, msOfDbTime } from "../lib/notify/db-time.js";
 import { createNotifyService } from "../lib/notify/service.js";
 import { MOVED_WATERMARK_KEY } from "../lib/notify/state-store.js";
+import { createWebhookChannel, createWebhookStore } from "../lib/notify/webhook-channel.js";
+import { createGuardedAgent } from "../lib/outbound-guard.js";
+import { defaultSecretBox } from "../lib/secret-box.js";
 import { global as logger } from "../logger.js";
 import { renderMail } from "../mail/render.js";
+import pjson from "../package.json" with { type: "json" };
 import internalPasswordToken from "./password-token.js";
 
 // The notification layer of the running app, over the real database. Before initNotify() the worker runs no pass and
@@ -53,6 +57,20 @@ notify.registerChannel(
 		log: logger,
 	}),
 );
+
+// The webhook channel: signed deliveries to the admin's URLs (stored sealed, opened for each attempt)
+// the guarded agent is the only one production uses; test code may swap the factory (setWebhookAgentFactory)
+let agentFactory = createGuardedAgent;
+const webhookChannel = createWebhookChannel({
+	webhooks: createWebhookStore({ knex: db(), queue }),
+	open: (sealed) => defaultSecretBox.decrypt(sealed),
+	notify,
+	audit: async (entry) => (await import("./audit-log.js")).default.add(null, entry),
+	createAgent: (options) => agentFactory(options),
+	log: logger,
+	version: pjson.version,
+});
+notify.registerChannel(webhookChannel);
 
 // the hourly sweep also removes the used and expired password tokens
 registerSweepCheck(() => internalPasswordToken.sweep());
@@ -176,6 +194,16 @@ const checkDatabaseMoved = async () => {
 	}
 };
 
+/**
+ * Tests only: replaces how an attempt gets its agent (undefined: the global dispatcher, a MockAgent). Nothing in the app
+ * calls it, and no environment value does.
+ *
+ * @param {Function} factory  (options) => an agent, or undefined
+ */
+const setWebhookAgentFactory = (factory) => {
+	agentFactory = factory;
+};
+
 export {
 	checkDatabaseMoved,
 	cleanupAfterRestore,
@@ -187,7 +215,9 @@ export {
 	queue,
 	registerSweepCheck,
 	resumeNotify,
+	setWebhookAgentFactory,
 	stateStore,
 	sweep,
+	webhookChannel,
 	worker,
 };

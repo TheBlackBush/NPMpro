@@ -1,0 +1,114 @@
+{
+	"operationId": "createWebhook",
+	"summary": "Create a webhook",
+	"description": "Creates a webhook. The URL is checked: https:// or http:// to a private LAN address, no user info, and its host must resolve and must not be an address outbound requests may not reach (for a host that is written as a name, every address it resolves to). The answer holds the signing secret once. Errors carry an error.<code> message id: webhook-name-taken, webhook-url-invalid, webhook-url-scheme, webhook-url-userinfo, webhook-url-required, webhook-host-unresolved, webhook-host-lookup-failed (a name lookup failed for now: try again), webhook-host-blocked (the host is, or resolves to, an address webhooks may not reach) and notify-event-not-for-webhook.\n\nNeeds: a signed-in session (API tokens are refused). Administrators only",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "The webhook",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"name",
+						"url",
+						"events"
+					],
+					"properties": {
+						"name": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 100,
+							"description": "Unique name (case insensitive)",
+							"example": "Chat bridge"
+						},
+						"url": {
+							"type": "string",
+							"maxLength": 2048,
+							"description": "The receiver's address: https:// to any public host, or http:// to a private LAN address only. No user name or password. It is stored sealed and never returned",
+							"example": "https://hooks.example.com/npmpro?token=abc"
+						},
+						"events": {
+							"type": "array",
+							"items": {
+								"type": "string",
+								"maxLength": 100
+							},
+							"minItems": 1,
+							"maxItems": 100,
+							"description": "Event ids as in GET /notifications/events (an event a webhook can carry), or [\"*\"] for every event, also the ones added later. notification.test is never selected by \"*\".",
+							"example": [
+								"certificate.expiring",
+								"backup.failed"
+							]
+						},
+						"enabled": {
+							"type": "boolean",
+							"description": "Whether events are sent to the webhook. Default true"
+						},
+						"verify_tls": {
+							"type": "boolean",
+							"description": "Whether the receiver's TLS certificate is verified (https only). Default true"
+						}
+					}
+				},
+				"example": {
+					"name": "Chat bridge",
+					"url": "https://hooks.example.com/npmpro?token=abc",
+					"events": [
+						"certificate.expiring",
+						"backup.failed"
+					],
+					"enabled": true,
+					"verify_tls": true
+				}
+			}
+		}
+	},
+	"responses": {
+		"201": {
+			"description": "The webhook with its secret, shown once",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../components/webhook-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"id": 1,
+								"created_on": "2026-11-27T09:30:00.000Z",
+								"modified_on": "2026-11-27T09:30:00.000Z",
+								"name": "Chat bridge",
+								"url_hint": "https://hooks.example.com/npmpro",
+								"url_set": true,
+								"secret_set": true,
+								"secret_error": false,
+								"events": [
+									"certificate.expiring",
+									"backup.failed"
+								],
+								"enabled": true,
+								"verify_tls": true,
+								"disabled_reason": null,
+								"failing_since": null,
+								"last_success_on": null,
+								"last_delivery": null,
+								"secret": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSwaGVsbG8gd29ybGQ="
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

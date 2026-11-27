@@ -57,6 +57,9 @@ const named = (key, pick) => (data, t) => {
 	return name ? t(key, { name }) : t(`${key}.unnamed`);
 };
 
+// the reasons the webhook channel and a restore give; any other code is never shown in a mail
+const WEBHOOK_REASONS = ["gone", "failing", "restore"];
+
 const SENTENCES = {
 	"certificate.expiring": {
 		problem: certificateExpiring,
@@ -92,9 +95,9 @@ const SENTENCES = {
 	},
 	"webhook.disabled": {
 		problem: (d, t) => {
-			const reason = ["gone", "failing"].includes(d.reason) ? `.${d.reason}` : "";
 			const name = nameOf(d.webhook) || (d.webhook?.id === undefined ? "" : `#${d.webhook.id}`);
-			return t(`alerts.webhook.disabled${reason}`, { name });
+			if (!WEBHOOK_REASONS.includes(d.reason)) return t("alerts.webhook.disabled.plain", { name });
+			return t("alerts.webhook.disabled", { name, reason: t(`alerts.webhook.reason.${d.reason}`) });
 		},
 	},
 };

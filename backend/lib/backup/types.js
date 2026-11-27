@@ -1,5 +1,8 @@
 import path from "node:path";
+import { global as logger } from "../../logger.js";
 import { isPreset } from "../ddns/presets.js";
+import { sealWebhookText } from "../notify/webhook-seal.js";
+import { urlHint, validateWebhookUrl } from "../notify/webhook-url.js";
 import { RUNTIME_GROUPS } from "../runtime-rules.js";
 import { TABLE as SCHEDULE_TABLE, SCHEDULE_TYPE } from "./schedule-rows.js";
 import { nextRun } from "./schedule-time.js";
@@ -28,6 +31,7 @@ const CATEGORIES = [
 			SCHEDULE_TYPE,
 		],
 	},
+	{ id: "webhooks", types: ["webhooks"] },
 	{ id: "custom_files", types: ["custom_nginx", "crowdsec_files"] },
 ];
 
@@ -50,6 +54,7 @@ const RESTORE_ORDER = [
 	"settings_monitoring",
 	"settings_crowdsec",
 	SCHEDULE_TYPE,
+	"webhooks",
 	"custom_nginx",
 	"crowdsec_files",
 ];
@@ -246,6 +251,101 @@ const ddnsSecrets = {
 		),
 };
 
+const WEBHOOK_TABLE = "npmpro_webhook";
+const WEBHOOK_SECRETS = ["url", "secret", "previous_secret"];
+
+// a sealed value opened for the archive; one this instance cannot open (saved with another key) leaves the archive as
+// an empty value (the columns are NOT NULL), so that webhook comes back off and the backup goes on
+const openedOrEmpty = (value, box, onFail) => {
+	if (!isSealed(value)) return value;
+	try {
+		return box.decrypt(value);
+	} catch {
+		onFail();
+		return "";
+	}
+};
+
+// the URL and the signing secrets are sealed text columns. An export holds them clear (inside the encrypted archive),
+// without secrets they are empty (the hint of the URL goes too); sealing writes them again through the one webhook
+// seal helper (the hint is made from the URL, not taken from the file)
+const webhookSecrets = {
+	export: (rowsByTable, box) =>
+		mapRows(rowsByTable, WEBHOOK_TABLE, (row) => {
+			// one warning per webhook (its id and name, never a value); the backup goes on
+			let unopenable = false;
+			const opened = Object.fromEntries(
+				Object.entries(row).map(([column, value]) => [
+					column,
+					WEBHOOK_SECRETS.includes(column)
+						? openedOrEmpty(value, box, () => {
+								unopenable = true;
+							})
+						: value,
+				]),
+			);
+			if (unopenable) {
+				logger.warn(
+					`Backup: a stored value of the webhook ${row.id} (${row.name}) cannot be opened with this key; it is left out and the webhook restores off`,
+				);
+			}
+			return opened;
+		}),
+	strip: (rowsByTable) =>
+		mapRows(rowsByTable, WEBHOOK_TABLE, (row) => ({
+			...row,
+			url: "",
+			url_hint: "",
+			secret: "",
+			previous_secret: null,
+			previous_secret_until: null,
+		})),
+	seal: (rowsByTable, box) =>
+		mapRows(rowsByTable, WEBHOOK_TABLE, (row) => {
+			const sealed = { ...row };
+			for (const column of WEBHOOK_SECRETS) {
+				if (hasText(sealed[column]) && !isSealed(sealed[column])) {
+					sealed[column] = sealWebhookText(sealed[column], box);
+				}
+			}
+			// a clear URL that is no URL has no hint (the webhook then comes back disabled, asking for the URL)
+			if (hasText(row.url) && !isSealed(row.url)) {
+				const checked = validateWebhookUrl(row.url);
+				sealed.url_hint = checked.url ? urlHint(checked.url) : "";
+			}
+			return sealed;
+		}),
+};
+
+// A restored webhook sends only when it came with its URL and its secret: one without (a backup without secrets, or
+// values this instance could not open) comes back off with the reason "restore", asks for its URL again and gets a new
+// secret on that save. No webhook.disabled event and no mail goes out for it: a restore is the administrator's own
+// action and notifications are paused while it runs. A restored webhook is not failing: its failing period starts over.
+// Runs after seal (a usable row then holds a sealed URL, a sealed secret and a hint made from a valid URL). Anything
+// less is unusable, whatever it was (empty, null, an unopenable value or an invalid URL): the whole row's secrets are
+// cleared so the NOT NULL columns hold "" and no half state stays.
+const restoredWebhook = (row) => {
+	const usable = hasText(row.url) && hasText(row.secret) && hasText(row.url_hint);
+	// an empty or unopenable previous secret is dropped with its date (a usable row then signs with its secret only)
+	const previous = hasText(row.previous_secret) ? {} : { previous_secret: null, previous_secret_until: null };
+	return {
+		...row,
+		failing_since: null,
+		...previous,
+		...(usable
+			? {}
+			: {
+					enabled: false,
+					disabled_reason: "restore",
+					url: "",
+					url_hint: "",
+					secret: "",
+					previous_secret: null,
+					previous_secret_until: null,
+				}),
+	};
+};
+
 const scheduleSecrets = {
 	export: (rowsByTable, box) =>
 		mapRows(withoutRunState(rowsByTable), SCHEDULE_TABLE, (row) =>
@@ -369,6 +469,13 @@ const TYPES = {
 						: row,
 				),
 		},
+	},
+	// the webhooks of Settings, Notifications; their deliveries are never part of a backup
+	webhooks: {
+		tables: [{ table: WEBHOOK_TABLE }],
+		files: NO_FILES,
+		secrets: webhookSecrets,
+		restoreRows: (rowsByTable) => mapRows(rowsByTable, WEBHOOK_TABLE, restoredWebhook),
 	},
 	settings_runtime: { tables: settingRows([...RUNTIME_GROUPS, "acme"]), files: NO_FILES, secrets: NO_SECRETS },
 	settings_default_site: {

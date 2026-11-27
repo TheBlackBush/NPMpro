@@ -138,9 +138,12 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 	 * Records the outcome of sends. A success is sent (payload cleared). A retry waits max(retryDelays[attempts],
 	 * retry_after_ms) while retryDelays has an entry for the attempt, else it is failed. A failure without retry is
 	 * failed at once. A dropped row was not tried (its setting changed since it was queued): dropped with the reason as
-	 * its error, payload cleared, attempts unchanged. attempts counts every try.
+	 * its error, payload cleared, attempts unchanged. A deferred row was not tried either (its target failed just
+	 * before, or the call ran out of time): pending again at next_try_ms (else defer_ms from now), attempts and the last
+	 * outcome unchanged. attempts counts every try.
 	 *
-	 * @param   {Object[]}  results  [{ id, ok, retry, dropped, retry_after_ms, http_status, duration_ms, error, response }]
+	 * @param   {Object[]}  results  [{ id, ok, retry, dropped, deferred, next_try_ms, defer_ms, retry_after_ms, http_status,
+	 *                                 duration_ms, error, response }]
 	 * @param   {Object}    options
 	 * @param   {Number[]}  options.retryDelays
 	 */
@@ -148,6 +151,16 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 		const nowMs = clock.now();
 		const now = dbTime(nowMs);
 		for (const result of results) {
+			if (result.deferred) {
+				await table()
+					.where({ id: result.id, status: "sending" })
+					.update({
+						status: "pending",
+						next_try_on: dbTime(result.next_try_ms ?? nowMs + (result.defer_ms ?? 0)),
+						modified_on: now,
+					});
+				continue;
+			}
 			const row = await table().select("attempts").where({ id: result.id, status: "sending" }).first();
 			if (!row) continue;
 			const attempts = Number(row.attempts) + (result.dropped ? 0 : 1);
@@ -211,6 +224,12 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 		await where().where("id", "<", kept.at(-1).id).delete();
 	};
 
+	/** Prunes the final rows of every webhook that has some (pruneTarget for each) */
+	const pruneWebhooks = async (keep, days) => {
+		const targets = await table().where({ channel: "webhook" }).whereIn("status", FINAL).distinct("target_id");
+		for (const { target_id } of targets) if (target_id !== null) await pruneTarget(target_id, keep, days);
+	};
+
 	/** Clears the payload of failed rows that failed more than `days` days ago */
 	const clearOldPayloads = async (days) => {
 		await table()
@@ -220,7 +239,7 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 			.update({ payload: null });
 	};
 
-	return { add, claimDue, clearOldPayloads, dropTarget, pruneMail, pruneTarget, resetSending, settle };
+	return { add, claimDue, clearOldPayloads, dropTarget, pruneMail, pruneTarget, pruneWebhooks, resetSending, settle };
 };
 
 export { createQueue, safeError };

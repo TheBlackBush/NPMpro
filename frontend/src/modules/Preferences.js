@@ -31,6 +31,7 @@ export const PAGED_LISTS = Object.freeze([
 	"backups",
 	"audit-log",
 	"api-tokens",
+	"webhook-deliveries",
 ]);
 
 /** @returns {string} the storage key of a list's rows per page */

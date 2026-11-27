@@ -33,4 +33,16 @@ Se muestran una vez configurado un servidor de correo. Correos sobre los problem
 - **URL pública**: la dirección con la que las personas abren NPMpro, usada para los enlaces de los correos, por ejemplo `https://npm.example.com`. Solo HTTPS, sin ruta. **Usar la dirección de este navegador** la rellena con la dirección de esta página cuando se abre por HTTPS. Variable: `PUBLIC_URL`.
 - **Idioma del correo por defecto**: el idioma de los correos para las personas que no han elegido uno. El idioma de interfaz de cada usuario se recuerda y se usa para sus correos. Variable: `MAIL_LANGUAGE`.
 
+### Webhooks
+
+Un webhook es una dirección tuya a la que NPMpro llama con una petición HTTP firmada cuando ocurre algo, por ejemplo cuando se renovó un certificado. Solo los administradores ven esta tarjeta.
+
+- **URL**: `https://` a cualquier host público, o `http://` a una dirección de tu red local. No se siguen las redirecciones. La dirección se guarda cifrada y no se vuelve a mostrar; deja el campo vacío al editar para conservarla.
+- **Eventos**: elige los eventos que enviar, o **Todos los eventos**.
+- **Secreto de firma**: se muestra una sola vez al guardar. Guárdalo donde lo lea tu receptor. **Renovar secreto** crea uno nuevo; el anterior sigue firmando durante 24 horas para que tu receptor pueda cambiar.
+- **Enviar prueba**: envía al instante un evento de prueba y muestra el estado y el tiempo que tardó. No aparece en Envíos.
+- **Envíos**: los últimos eventos del webhook con su estado, intentos y la respuesta del receptor. **Reenviar** vuelve a enviar uno fallido, hasta 7 días después del fallo.
+- Una petición fallida se reintenta hasta 8 veces durante unas 41 horas. Un webhook se desactiva cuando el receptor responde 410 Gone, o cuando falla de nuevo tras 3 días de fallos sin ningún éxito. Un webhook desactivado muestra el motivo; actívalo para volver a usarlo.
+- Verifica cada petición con cualquier biblioteca de Standard Webhooks, con el cuerpo sin modificar y el `webhook-id` como clave de idempotencia.
+
 Más en la wiki: Configuration.

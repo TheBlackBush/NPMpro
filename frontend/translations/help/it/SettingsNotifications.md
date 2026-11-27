@@ -33,4 +33,16 @@ Mostrati quando un server di posta è configurato. Mail sui problemi che NPMpro 
 - **URL pubblico**: l'indirizzo con cui le persone aprono NPMpro, usato per i link delle mail, ad esempio `https://npm.example.com`. Solo HTTPS, senza percorso. **Usa l'indirizzo di questo browser** lo compila con l'indirizzo di questa pagina quando è aperta tramite HTTPS. Variabile: `PUBLIC_URL`.
 - **Lingua predefinita delle mail**: la lingua delle mail per le persone che non ne hanno scelta una. La lingua dell'interfaccia di ogni utente viene ricordata e usata per le sue mail. Variabile: `MAIL_LANGUAGE`.
 
+### Webhook
+
+Un webhook è un indirizzo tuo che NPMpro chiama con una richiesta HTTP firmata quando succede qualcosa, per esempio quando un certificato è stato rinnovato. Solo gli amministratori vedono questa scheda.
+
+- **URL**: `https://` verso qualsiasi host pubblico, oppure `http://` verso un indirizzo della tua rete locale. I reindirizzamenti non vengono seguiti. L'indirizzo è salvato cifrato e non viene più mostrato; lascia il campo vuoto durante la modifica per mantenerlo.
+- **Eventi**: scegli gli eventi da inviare, oppure **Tutti gli eventi**.
+- **Segreto di firma**: mostrato una sola volta dopo il salvataggio. Conservalo dove lo legge il tuo ricevente. **Rinnova segreto** ne crea uno nuovo; il vecchio continua a firmare per 24 ore, così il ricevente può passare al nuovo.
+- **Invia test**: invia subito un evento di prova e mostra lo stato e il tempo impiegato. Non compare in Invii.
+- **Invii**: gli eventi più recenti del webhook con stato, tentativi e risposta del ricevente. **Invia di nuovo** rimanda un invio fallito, fino a 7 giorni dopo il fallimento.
+- Una richiesta fallita viene ritentata fino a 8 volte in circa 41 ore. Un webhook viene disattivato quando il ricevente risponde 410 Gone, oppure quando fallisce di nuovo dopo 3 giorni di fallimenti senza alcun successo. Un webhook disattivato mostra il motivo; attivalo per usarlo di nuovo.
+- Verifica ogni richiesta con una qualsiasi libreria Standard Webhooks, usando il corpo originale e il `webhook-id` come chiave di idempotenza.
+
 Altro nel wiki: Configuration.

@@ -17,6 +17,7 @@ const STATE_EVENTS = [
 	"ddns.record_failed",
 	"ddns.record_stopped",
 ];
+const DEFAULT_EVENTS = [...STATE_EVENTS, "webhook.disabled"];
 const SECTIONS = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams", "access_lists", "certificates"];
 const NOT_FOR_MAIL = "error.notify-event-not-for-mail";
 const ADDRESSES_INVALID = "settings.notifications.alerts-addresses.invalid";
@@ -50,7 +51,7 @@ it("starts with the defaults: admins, no extra address, every state event, a rem
 	assert.equal(got.status, 200);
 	assert.equal(got.body.alerts_admins, true);
 	assert.deepEqual(got.body.alerts_addresses, []);
-	assert.deepEqual(got.body.alerts_events, STATE_EVENTS);
+	assert.deepEqual(got.body.alerts_events, DEFAULT_EVENTS);
 	assert.equal(got.body.reminder_hours, 24);
 	assert.deepEqual(got.body.config_errors, []);
 });
@@ -69,7 +70,7 @@ it("saves the four keys and answers them back", async () => {
 	const restored = await admin.put("/settings/notifications", {
 		alerts_admins: true,
 		alerts_addresses: [],
-		alerts_events: STATE_EVENTS,
+		alerts_events: DEFAULT_EVENTS,
 		reminder_hours: 168,
 	});
 	assert.equal(restored.status, 200);
@@ -91,7 +92,7 @@ it("refuses an action event, a wildcard and an unknown id in alerts_events", asy
 	const refused = await admin.put("/settings/notifications", { alerts_events: ["host.created"] });
 	assert.equal(refused.body.error.message_values.event, "host.created");
 	// nothing was saved
-	assert.deepEqual((await admin.get("/settings/notifications")).body.alerts_events, STATE_EVENTS);
+	assert.deepEqual((await admin.get("/settings/notifications")).body.alerts_events, DEFAULT_EVENTS);
 });
 
 it("accepts webhook.disabled and refuses a .resolved id: ticking the base event covers its recovery", async () => {
@@ -102,7 +103,7 @@ it("accepts webhook.disabled and refuses a .resolved id: ticking the base event 
 		assert.equal(refused.status, 400, id);
 		assert.equal(refused.body.error.message_i18n, NOT_FOR_MAIL);
 	}
-	await admin.put("/settings/notifications", { alerts_events: STATE_EVENTS });
+	await admin.put("/settings/notifications", { alerts_events: DEFAULT_EVENTS });
 });
 
 it("saves alerts_events and alerts_addresses without repeats", async () => {
@@ -118,7 +119,7 @@ it("saves alerts_events and alerts_addresses without repeats", async () => {
 		alerts_events: Array.from({ length: 50 }, () => "backup.failed"),
 	});
 	assert.deepEqual(repeated.body.alerts_events, ["backup.failed"]);
-	await admin.put("/settings/notifications", { alerts_events: STATE_EVENTS, alerts_addresses: [] });
+	await admin.put("/settings/notifications", { alerts_events: DEFAULT_EVENTS, alerts_addresses: [] });
 });
 
 it("refuses 21 addresses and names the index of a bad address", async () => {

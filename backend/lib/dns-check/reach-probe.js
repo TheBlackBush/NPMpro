@@ -69,19 +69,21 @@ const readBounded = async (body) => {
 
 /**
  * A request function: one request to the address (never followed on a redirect), through the guarded family-pinned
- * agent. It refuses an address that is not public (an IP URL skips the guarded lookup, so this is the guard).
+ * agent. It refuses an address that is not public first (stricter than the agent, which refuses only blocked ones).
  *
  * @param   {Object}    [options]
  * @param   {number}    [options.timeoutMs]   the limit of the whole request
  * @param   {Function}  [options.isAllowed]   (address) => boolean, default isPublicAddress (a test's local server)
+ * @param   {Function}  [options.createAgent] (agent options) => dispatcher, default createGuardedAgent (a test's local
+ *                                            server)
  * @returns {Function}  ({ scheme, address, family, port, name, path }) => Promise<{ statusCode, headers, body }>,
  *                      rejects when nothing answers
  */
 const createRequest =
-	({ timeoutMs = TIMEOUT_MS, isAllowed = isPublicAddress } = {}) =>
+	({ timeoutMs = TIMEOUT_MS, isAllowed = isPublicAddress, createAgent = createGuardedAgent } = {}) =>
 	async ({ scheme, address, family, port, name, path }) => {
 		if (!isAllowed(address)) throw new Error("The address is not a public one");
-		const agent = createGuardedAgent({ family, rejectUnauthorized: false, servername: name });
+		const agent = createAgent({ family, rejectUnauthorized: false, servername: name });
 		try {
 			const host = family === 6 ? `[${address}]` : address;
 			const response = await undiciRequest(`${scheme}://${host}:${port}${path}`, {

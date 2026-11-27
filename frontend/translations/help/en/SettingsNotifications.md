@@ -33,4 +33,16 @@ Shown once a mail server is set up. Mails about problems NPMpro detects, and whe
 - **Public URL**: the address people open NPMpro at, used for the links in mails, for example `https://npm.example.com`. HTTPS only, no path. **Use this browser's address** fills it with the address of this page when it is opened over HTTPS. Variable: `PUBLIC_URL`.
 - **Default mail language**: the language of mails for people who have not chosen one. Each user's own interface language is remembered and used for their mails. Variable: `MAIL_LANGUAGE`.
 
+### Webhooks
+
+A webhook is an address of your own that NPMpro calls with a signed HTTP request when something happens, for example when a certificate was renewed. Only administrators see this card.
+
+- **URL**: `https://` to any public host, or `http://` to an address on your local network. Redirects are not followed. The address is stored encrypted and never shown again; leave the field empty when you edit to keep it.
+- **Events**: choose the events to send, or **All events**.
+- **Signing secret**: shown once after you save. Store it where your receiver reads it. **Rotate secret** makes a new one; the old one keeps signing for 24 hours so your receiver can switch.
+- **Send test**: sends one test event at once and shows the status and the time it took. It is not listed under Deliveries.
+- **Deliveries**: the newest events of the webhook with their status, attempts and the receiver's answer. **Redeliver** sends a failed one again, for 7 days after it failed.
+- A failed request is tried again up to 8 times over about 41 hours. A webhook is turned off when the receiver answers 410 Gone, or when it fails again after 3 days of failures without a success. A turned off webhook shows the reason; turn it on to use it again.
+- Verify every request with any Standard Webhooks library, using the raw body and the `webhook-id` as the idempotency key.
+
 More in the wiki: Configuration.
