@@ -260,6 +260,7 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 					...status,
 					enabled: Boolean(values.traffic_enabled),
 					geoip: geoipAvailable(),
+					geoip_provider: geoip.provider(),
 					unique_visitors: uniqueVisitors,
 				},
 			};

@@ -210,7 +210,8 @@ describe("event data builders", () => {
 			size: 1234,
 		});
 		assert.deepEqual(buildData("backup.restored", source), { types: ["database"] });
-		assert.deepEqual(buildData("geoip.failed", source), { error: "failed with *** in it" });
+		assert.deepEqual(buildData("geoip.failed", source), { reason: "gone", error: "failed with *** in it" });
+		assert.deepEqual(buildData("geoip.failed", { reason: "download" }), { reason: "download" });
 		assert.deepEqual(buildData("crowdsec.unreachable", source), { error: "failed with *** in it" });
 		assert.deepEqual(buildData("ddns.record_failed", source), {
 			record: { id: 5, name: "home", provider: "duckdns" },

@@ -208,6 +208,7 @@ it("answers the traffic statistics from the stored counts, grouped per host, wit
 	assert.equal(done.text.includes("203.0.113.9"), false);
 	assert.equal(done.body.status.enabled, true);
 	assert.equal(done.body.status.geoip, false);
+	assert.equal(done.body.status.geoip_provider, "dbip");
 	assert.equal(done.body.status.unique_visitors, false);
 	assert.deepEqual(done.body.recent, []);
 });
@@ -343,11 +344,14 @@ it("shows the GeoIP settings without the license key, and saves account, key and
 	assert.deepEqual(defaults.body, {
 		account_id: "",
 		editions: ["GeoLite2-Country", "GeoLite2-ASN"],
+		provider: "dbip",
+		dbip_editions: ["Country", "ASN"],
 		license_key_set: false,
 		locked: [],
 		locked_by: {},
 		secret_error: false,
 		last_update: null,
+		last_check: null,
 		last_error: null,
 	});
 
@@ -386,6 +390,10 @@ it("refuses invalid GeoIP settings with 400", async () => {
 		{ account_id: "12345678901" },
 		{ license_key: "x".repeat(256) },
 		{ editions: ["GeoLite2-Planet"] },
+		{ provider: "geolite" },
+		{ dbip_editions: ["City"] },
+		{ dbip_editions: ["ASN", "ASN"] },
+		{ dbip_editions: ["Country", "ASN", "ASN"] },
 		{ editions: ["GeoLite2-Country", "GeoLite2-Country"] },
 		{ editions: ["GeoLite2-Country", "GeoLite2-ASN", "GeoLite2-City", "GeoLite2-City"] },
 	]) {
@@ -420,6 +428,10 @@ it("downloads the databases when the credentials change, and records the outcome
 	assert.equal(view.body.last_error, null);
 	const files = await readFile(path.join(api.root, "data/goaccess/geoip/GeoLite2-Country.mmdb"));
 	assert.ok(files.length > 100);
+	const traffic = await admin.get("/monitoring/traffic?range=1h&host=geo.example.com");
+	assert.equal(traffic.body.status.geoip, true);
+	assert.equal(traffic.body.status.geoip_provider, "maxmind");
+	assert.ok(view.body.last_check);
 });
 
 it("runs the update now and answers what happened, also when MaxMind refuses", async () => {
@@ -458,6 +470,105 @@ it("answers the update now with the missing credentials", async () => {
 		error: "MaxMind account ID and license key are required",
 		provider: "maxmind",
 	});
+});
+
+const withEnv = async (name, value, run) => {
+	const original = process.env[name];
+	process.env[name] = value;
+	try {
+		return await run();
+	} finally {
+		if (original === undefined) delete process.env[name];
+		else process.env[name] = original;
+	}
+};
+const geoipState = () => api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).first();
+
+it("stores the provider and the DB-IP editions, and refuses a switch the environment locks", async () => {
+	await api.db("setting").where({ id: "geoip" }).del();
+	const maxmind = await admin.put(GEOIP, { provider: "maxmind" });
+	assert.equal(maxmind.status, 200, maxmind.text);
+	assert.equal(maxmind.body.provider, "maxmind");
+	assert.equal((await admin.get(GEOIP)).body.provider, "maxmind");
+	assert.equal((await storedMeta("geoip")).provider, "maxmind");
+
+	const editions = await admin.put(GEOIP, { dbip_editions: ["ASN"] });
+	assert.equal(editions.status, 200, editions.text);
+	assert.deepEqual(editions.body.dbip_editions, ["ASN"]);
+	assert.deepEqual((await storedMeta("geoip")).dbip_editions, ["ASN"]);
+	assert.equal((await admin.put(GEOIP, { dbip_editions: ["City"] })).status, 400);
+
+	await withEnv("GEOIP_PROVIDER", "dbip", async () => {
+		const locked = await admin.put(GEOIP, { provider: "maxmind" });
+		assert.equal(locked.status, 200, locked.text);
+		assert.equal(locked.body.provider, "dbip");
+		assert.ok(locked.body.locked.includes("provider"));
+		assert.equal(locked.body.locked_by.provider, "GEOIP_PROVIDER");
+		assert.equal((await storedMeta("geoip")).provider, "maxmind");
+	});
+	await withEnv("GEOIP_DBIP_EDITIONS", "Country", async () => {
+		const view = await admin.get(GEOIP);
+		assert.deepEqual(view.body.dbip_editions, ["Country"]);
+		assert.equal(view.body.locked_by.dbip_editions, "GEOIP_DBIP_EDITIONS");
+	});
+});
+
+it("lists GEOIP_PROVIDER and GEOIP_DBIP_EDITIONS in the environment answer when they are set", async () => {
+	const names = async () => {
+		const done = await admin.get("/settings/environment");
+		assert.equal(done.status, 200, done.text);
+		return JSON.stringify(done.body);
+	};
+	assert.equal((await names()).includes("GEOIP_PROVIDER"), false);
+	await withEnv("GEOIP_PROVIDER", "dbip", () =>
+		withEnv("GEOIP_DBIP_EDITIONS", "ASN", async () => {
+			const text = await names();
+			assert.ok(text.includes("GEOIP_PROVIDER"), text);
+			assert.ok(text.includes("GEOIP_DBIP_EDITIONS"), text);
+		}),
+	);
+});
+
+it("clears the last error on a provider switch and re-evaluates the failed state", async () => {
+	await api.db("setting").where({ id: "geoip" }).del();
+	await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+	await admin.put(GEOIP, { provider: "maxmind" });
+	const meta = await storedMeta("geoip");
+	await api
+		.db("setting")
+		.where({ id: "geoip" })
+		.update({ meta: JSON.stringify({ ...meta, last_error: "old trouble" }) });
+	assert.equal((await admin.get(GEOIP)).body.last_error, "old trouble");
+	const switched = await admin.put(GEOIP, { provider: "dbip" });
+	assert.equal(switched.status, 200, switched.text);
+	assert.equal(switched.body.last_error, null);
+	assert.equal((await storedMeta("geoip")).last_error, null);
+	assert.equal((await geoipState())?.state ?? "ok", "ok");
+	// the download of the switch starts in the background (no network in the tests): let it end before the next case
+	await waitFor(async () => (await storedMeta("geoip")).last_check, "the download after the switch");
+});
+
+it("reports geoip.failed with the reason download and resolves it with the next good run", async () => {
+	await api.db("setting").where({ id: "geoip" }).del();
+	await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+	api.outside.http.get(MAXMIND).intercept({ path: COUNTRY_DOWNLOAD, method: "GET" }).reply(401, "no");
+	await admin.put(GEOIP, {
+		account_id: "888",
+		license_key: KEY,
+		editions: ["GeoLite2-Country"],
+		provider: "maxmind",
+	});
+	await waitFor(async () => (await geoipState())?.state === "bad", "the failed state");
+	const bad = await geoipState();
+	assert.equal(JSON.parse(bad.data).reason, "download");
+	assert.match(JSON.parse(bad.data).error, /HTTP 401/u);
+
+	const archive = await countryArchive();
+	api.outside.http.get(MAXMIND).intercept({ path: COUNTRY_DOWNLOAD, method: "GET" }).reply(200, archive);
+	const ok = await admin.post(`${GEOIP}/update`);
+	assert.equal(ok.body.ok, true, ok.text);
+	assert.equal(ok.body.provider, "maxmind");
+	assert.equal((await geoipState()).state, "ok");
 });
 
 it("answers 401 without a session on every monitoring route", async () => {

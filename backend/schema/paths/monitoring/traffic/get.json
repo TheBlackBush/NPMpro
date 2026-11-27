@@ -146,6 +146,7 @@
 								"status": {
 									"enabled": true,
 									"geoip": true,
+									"geoip_provider": "dbip",
 									"skipped_lines": 0,
 									"dropped_requests": 0,
 									"last_read": "2026-10-24T10:00:05.000Z",

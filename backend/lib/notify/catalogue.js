@@ -103,6 +103,8 @@ const backupSucceededData = (source) =>
 const backupRestoredData = (source) =>
 	compact({ types: Array.isArray(source.types) ? source.types.map((type) => scalar(String(type))) : undefined });
 
+const geoipData = (source) => compact({ reason: scalar(source.reason), error: errorText(source) });
+
 const errorOnlyData = (source) => compact({ error: errorText(source) });
 
 const ddnsData = (source) =>
@@ -142,7 +144,7 @@ const STATE_EVENTS = Object.freeze([
 	state("certificate.renewal_failed", certificateRenewalFailedData),
 	state("host.config_error", hostConfigErrorData),
 	state("backup.failed", backupFailedData),
-	state("geoip.failed", errorOnlyData),
+	state("geoip.failed", geoipData),
 	state("crowdsec.unreachable", errorOnlyData),
 	state("ddns.record_failed", ddnsData),
 	state("ddns.record_stopped", ddnsData),

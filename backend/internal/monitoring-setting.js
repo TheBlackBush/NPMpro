@@ -11,8 +11,9 @@ import { deleteIps } from "../lib/traffic/store.js";
 import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
+import { applyGeoipProvider } from "./geoip-provider.js";
+import { reportGeoipState } from "./geoip-state.js";
 import { createMonitoringUpdater, pickEditable } from "./monitoring-update.js";
-import { notify } from "./notify.js";
 
 const noop = async () => {};
 
@@ -66,11 +67,14 @@ const geoipView = (cfg) => {
 	return {
 		account_id: values.account_id,
 		editions: values.editions,
+		provider: values.provider,
+		dbip_editions: values.dbip_editions,
 		license_key_set: Boolean(key) || cfg.secretError,
 		locked: cfg.locked,
 		locked_by: lockedByOf("geoip", cfg.locked),
 		secret_error: cfg.secretError,
 		last_update: values.last_update ?? null,
+		last_check: values.last_check ?? null,
 		last_error: values.last_error ?? null,
 	};
 };
@@ -134,12 +138,22 @@ const internalMonitoringSetting = {
 		const before = await getGeoipConfig();
 		const { license_key: _storedKey, ...storedPlain } = stored;
 		const { locked } = mergeGeoipConfig(storedPlain, process.env);
-		const next = { ...stored, ...pickEditable(body ?? {}, locked, ["account_id", "editions"]) };
+		const next = {
+			...stored,
+			...pickEditable(body ?? {}, locked, ["account_id", "editions", "provider", "dbip_editions"]),
+		};
 		if (next.editions) next.editions = [...new Set(next.editions)];
+		if (next.dbip_editions) next.dbip_editions = [...new Set(next.dbip_editions)];
 		const newKey = typeof body?.license_key === "string" ? body.license_key.trim() : "";
 		if (newKey !== "" && !locked.includes("license_key")) {
 			next.license_key = defaultSecretBox.encrypt(newKey);
 		}
+		// a switch of the effective provider starts clean: the old provider's error does not belong to the new one
+		const { license_key: _nextKey, ...nextPlain } = next;
+		const nextProvider = mergeGeoipConfig(nextPlain, process.env, { keySaved: Boolean(next.license_key) }).values
+			.provider;
+		const switched = nextProvider !== before.values.provider;
+		if (switched) next.last_error = null;
 		await saveStored("geoip", "GeoIP", next);
 
 		await internalAuditLog.add(access, {
@@ -148,8 +162,15 @@ const internalMonitoringSetting = {
 			meta: { id: "geoip", ...sanitizeGeoipMeta(next) },
 		});
 
+		if (switched) {
+			await applyGeoipProvider();
+			await reportGeoipState();
+		}
+
 		const after = await getGeoipConfig();
 		if (
+			switched ||
+			!sameList(before.values.dbip_editions, after.values.dbip_editions) ||
 			before.values.account_id !== after.values.account_id ||
 			before.values.license_key !== after.values.license_key ||
 			!sameList(before.values.editions, after.values.editions)
@@ -175,22 +196,15 @@ const internalMonitoringSetting = {
 	/**
 	 * Stores the outcome of a GeoIP update (internal use by the updater, no access check)
 	 *
-	 * @param {{ok: boolean, error?: string, updated?: string[]}} result
+	 * @param {{ok: boolean, error?: string, updated?: string[], provider?: string}} result
 	 */
 	recordGeoipResult: async ({ ok, error, updated }) => {
 		const stored = await readStoredGeoip();
-		const next = { ...stored, last_error: ok ? null : String(error ?? "Unknown error") };
-		if (ok || updated?.length > 0) next.last_update = new Date().toISOString();
+		const now = new Date().toISOString();
+		const next = { ...stored, last_error: ok ? null : String(error ?? "Unknown error"), last_check: now };
+		if (ok || updated?.length > 0) next.last_update = now;
 		await saveStored("geoip", "GeoIP", next);
-		// the notification layer never fails the update's result
-		try {
-			await notify.reportState("geoip.failed", "geoip", {
-				state: ok ? "ok" : "bad",
-				source: { error: ok ? undefined : next.last_error },
-			});
-		} catch (caught) {
-			logger.warn(`GeoIP notification failed: ${String(caught?.message ?? caught).slice(0, 200)}`);
-		}
+		await reportGeoipState();
 	},
 };
 

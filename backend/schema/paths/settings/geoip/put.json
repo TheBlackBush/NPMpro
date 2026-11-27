@@ -1,7 +1,7 @@
 {
 	"operationId": "updateGeoipSettings",
 	"summary": "Update the GeoIP settings",
-	"description": "Saves the MaxMind account ID, license key and editions; send only what changes. Fields set by environment variables are ignored. An empty or omitted license_key keeps the saved one. A change of the account, key or editions starts a database download in the background; the answer does not wait for it, the outcome shows in last_update and last_error.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"description": "Saves the provider, the DB-IP and MaxMind editions and the MaxMind account ID and license key; send only what changes. Fields set by environment variables are ignored. An empty or omitted license_key keeps the saved one. A change of the provider, account, key or editions starts a database download in the background; the answer does not wait for it, the outcome shows in last_update and last_error.\n\nNeeds: an administrator (a token needs its Administrator switch)",
 	"tags": [
 		"settings"
 	],
@@ -37,7 +37,7 @@
 						},
 						"editions": {
 							"type": "array",
-							"description": "Databases to download",
+							"description": "MaxMind databases to download",
 							"maxItems": 3,
 							"uniqueItems": true,
 							"items": {
@@ -46,6 +46,27 @@
 									"GeoLite2-Country",
 									"GeoLite2-ASN",
 									"GeoLite2-City"
+								]
+							}
+						},
+						"provider": {
+							"type": "string",
+							"enum": [
+								"dbip",
+								"maxmind"
+							],
+							"description": "The provider of the GeoIP databases"
+						},
+						"dbip_editions": {
+							"type": "array",
+							"description": "DB-IP databases to download",
+							"maxItems": 2,
+							"uniqueItems": true,
+							"items": {
+								"type": "string",
+								"enum": [
+									"Country",
+									"ASN"
 								]
 							}
 						}
@@ -71,11 +92,17 @@
 									"GeoLite2-Country",
 									"GeoLite2-ASN"
 								],
+								"provider": "dbip",
+								"dbip_editions": [
+									"Country",
+									"ASN"
+								],
 								"license_key_set": true,
 								"locked": [],
 								"locked_by": {},
 								"secret_error": false,
 								"last_update": "2026-11-17T09:30:00.000Z",
+								"last_check": "2026-11-17T09:30:00.000Z",
 								"last_error": null
 							}
 						}
