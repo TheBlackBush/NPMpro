@@ -9,6 +9,7 @@ import {
 	Shield,
 	Shuffle,
 	User,
+	Webhook,
 	Zap,
 	ZapOff,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const getEventValue = (event) => {
 		case "database":
 		case "dns-credential":
 		case "user":
+		case "webhook":
 			return event.meta?.name;
 		case "proxy-host":
 		case "redirection-host":
@@ -105,6 +107,9 @@ const getIcon = (row) => {
 			break;
 		case "acme-account":
 			ico = <CloudCog className={c} aria-hidden="true" />;
+			break;
+		case "webhook":
+			ico = <Webhook className={c} aria-hidden="true" />;
 			break;
 		case "database":
 			ico = <Database className={c} aria-hidden="true" />;

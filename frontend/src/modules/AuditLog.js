@@ -17,6 +17,7 @@ export const AUDIT_OBJECT_TYPES = Object.freeze([
 	"database",
 	"api-token",
 	"acme-account",
+	"webhook",
 ]);
 
 export const AUDIT_ACTIONS = Object.freeze([
@@ -48,6 +49,8 @@ export const AUDIT_ACTIONS = Object.freeze([
 	"replace-failed",
 	"ca-changed",
 	"domains-changed",
+	"secret-rotated",
+	"test-sent",
 ]);
 
 /**

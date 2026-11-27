@@ -47,6 +47,7 @@ import { validations } from "src/modules/Validations";
 import { showObjectSuccess, showSuccess } from "src/notifications";
 import localeList from "translations/lang-list.json" with { type: "json" };
 import { LockedBadge } from "./Authentication/LockedBadge";
+import { WebhooksCard } from "./Notifications/WebhookTable";
 import { SaveBar } from "./SaveBar";
 import { SettingsCard } from "./SettingsCard";
 import { SettingsForm } from "./SettingsForm";
@@ -567,6 +568,7 @@ function NotificationsForm({ email, notifications }) {
 					refused={refusedAddress}
 				/>
 			) : null}
+			<WebhooksCard />
 			<LinksCard locks={notificationLocks} />
 			<SaveBar labels={FIELD_LABELS} />
 		</HookForm>
