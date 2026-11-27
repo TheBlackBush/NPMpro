@@ -33,6 +33,13 @@ Mostrati quando un server di posta è configurato. Mail sui problemi che NPMpro 
 - **URL pubblico**: l'indirizzo con cui le persone aprono NPMpro, usato per i link delle mail, ad esempio `https://npm.example.com`. Solo HTTPS, senza percorso. **Usa l'indirizzo di questo browser** lo compila con l'indirizzo di questa pagina quando è aperta tramite HTTPS. Variabile: `PUBLIC_URL`.
 - **Lingua predefinita delle mail**: la lingua delle mail per le persone che non ne hanno scelta una. La lingua dell'interfaccia di ogni utente viene ricordata e usata per le sue mail. Variabile: `MAIL_LANGUAGE`.
 
+### Inviti e avvisi dell'account
+
+Entrambi richiedono un server di posta. Gli inviti richiedono anche l'**URL pubblico**.
+
+- **Inviti**: quando aggiungi un utente puoi inviare un invito invece di impostare una password. L'utente riceve un'email con un link per scegliere la password; il link funziona una sola volta e per 72 ore. **Invia di nuovo l'invito** nell'elenco degli utenti invia un nuovo link.
+- **Avvisi dell'account**: gli utenti ricevono un'email quando cambiano la password o l'indirizzo, quando l'accesso a due fattori viene disattivato o quando vengono creati nuovi codici di backup.
+
 ### Webhook
 
 Un webhook è un indirizzo tuo che NPMpro chiama con una richiesta HTTP firmata quando succede qualcosa, per esempio quando un certificato è stato rinnovato. Solo gli amministratori vedono questa scheda.

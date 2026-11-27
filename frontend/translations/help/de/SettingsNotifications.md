@@ -33,6 +33,13 @@ Wird angezeigt, sobald ein Mailserver eingerichtet ist. Mails über Probleme, di
 - **Öffentliche URL**: die Adresse, unter der Personen NPMpro öffnen, für die Links in Mails, zum Beispiel `https://npm.example.com`. Nur HTTPS, kein Pfad. **Adresse dieses Browsers verwenden** trägt die Adresse dieser Seite ein, wenn sie über HTTPS geöffnet ist. Variable: `PUBLIC_URL`.
 - **Standardsprache für Mails**: die Sprache der Mails für Personen, die keine gewählt haben. Die Oberflächensprache jedes Benutzers wird gemerkt und für seine Mails verwendet. Variable: `MAIL_LANGUAGE`.
 
+### Einladungen und Kontohinweise
+
+Beides braucht einen Mailserver. Einladungen brauchen außerdem die **Öffentliche URL**.
+
+- **Einladungen**: Beim Anlegen eines Benutzers können Sie eine Einladung senden, statt ein Passwort festzulegen. Der Benutzer erhält eine Mail mit einem Link zum Wählen eines Passworts; der Link funktioniert einmal und 72 Stunden lang. **Einladung erneut senden** in der Benutzerliste sendet einen neuen Link.
+- **Kontohinweise**: Benutzer erhalten eine Mail, wenn sich ihr Passwort oder ihre Adresse ändert, die Zwei-Faktor-Anmeldung ausgeschaltet wird oder neue Backup-Codes erstellt werden.
+
 ### Webhooks
 
 Ein Webhook ist eine eigene Adresse, die NPMpro mit einer signierten HTTP-Anfrage aufruft, wenn etwas passiert, zum Beispiel wenn ein Zertifikat erneuert wurde. Nur Administratoren sehen diese Karte.

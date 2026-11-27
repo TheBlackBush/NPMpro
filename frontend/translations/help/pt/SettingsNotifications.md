@@ -33,6 +33,13 @@ Apresentados quando um servidor de correio está configurado. Correios sobre os 
 - **URL público**: o endereço com que as pessoas abrem o NPMpro, usado para as ligações dos correios, por exemplo `https://npm.example.com`. Apenas HTTPS, sem caminho. **Usar o endereço deste navegador** preenche-o com o endereço desta página quando é aberta por HTTPS. Variável: `PUBLIC_URL`.
 - **Idioma do correio por omissão**: o idioma dos correios para as pessoas que não escolheram um. O idioma de interface de cada utilizador é memorizado e usado para os seus correios. Variável: `MAIL_LANGUAGE`.
 
+### Convites e avisos de conta
+
+Ambos precisam de um servidor de e-mail. Os convites precisam também do **URL público**.
+
+- **Convites**: ao adicionar um utilizador, pode enviar um convite em vez de definir uma palavra-passe. O utilizador recebe um e-mail com uma ligação para escolher uma palavra-passe; a ligação funciona uma só vez e durante 72 horas. **Enviar convite novamente** na lista de utilizadores envia uma nova ligação.
+- **Avisos de conta**: os utilizadores recebem um e-mail quando a palavra-passe ou o endereço muda, quando o início de sessão de dois fatores é desativado ou quando são criados novos códigos de recuperação.
+
 ### Webhooks
 
 Um webhook é um endereço seu que o NPMpro chama com um pedido HTTP assinado quando algo acontece, por exemplo quando um certificado foi renovado. Apenas os administradores veem este cartão.

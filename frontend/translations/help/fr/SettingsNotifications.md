@@ -33,6 +33,13 @@ Affichées une fois un serveur de messagerie configuré. Des e-mails sur les pro
 - **URL publique** : l'adresse à laquelle les personnes ouvrent NPMpro, utilisée pour les liens des messages, par exemple `https://npm.example.com`. HTTPS uniquement, sans chemin. **Utiliser l'adresse de ce navigateur** la remplit avec l'adresse de cette page lorsqu'elle est ouverte en HTTPS. Variable : `PUBLIC_URL`.
 - **Langue des messages par défaut** : la langue des messages pour les personnes qui n'en ont pas choisi. La langue d'interface de chaque utilisateur est mémorisée et utilisée pour ses messages. Variable : `MAIL_LANGUAGE`.
 
+### Invitations et avis de compte
+
+Les deux nécessitent un serveur de messagerie. Les invitations nécessitent aussi l'**URL publique**.
+
+- **Invitations** : lorsque vous ajoutez un utilisateur, vous pouvez envoyer une invitation au lieu de définir un mot de passe. L'utilisateur reçoit un e-mail avec un lien pour choisir un mot de passe ; le lien ne fonctionne qu'une fois et pendant 72 heures. **Renvoyer l'invitation** dans la liste des utilisateurs envoie un nouveau lien.
+- **Avis de compte** : les utilisateurs reçoivent un e-mail lorsque leur mot de passe ou leur adresse change, que la connexion à deux facteurs est désactivée ou que de nouveaux codes de secours sont créés.
+
 ### Webhooks
 
 Un webhook est une adresse à vous que NPMpro appelle avec une requête HTTP signée quand quelque chose se produit, par exemple quand un certificat a été renouvelé. Seuls les administrateurs voient cette carte.
