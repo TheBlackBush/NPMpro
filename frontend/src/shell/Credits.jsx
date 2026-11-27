@@ -9,6 +9,9 @@ const CREDITS = [
 	{ href: "https://github.com/TheBlackBush", project: "NPMpro", author: "TheBlackBush" },
 	{ href: "https://github.com/ZoeyVid/NPMplus", author: "ZoeyVid" },
 	{ href: "https://github.com/NginxProxyManager/nginx-proxy-manager", author: "jc21" },
+	// the GeoIP databases' licences ask for these notices; both are always shown
+	{ href: "https://db-ip.com", author: "IP Geolocation by DB-IP (CC BY 4.0)" },
+	{ href: "https://www.maxmind.com", author: "GeoLite Data by MaxMind" },
 ];
 
 /** The credits of the app footer and the signed-out pages (no data fetch: it shows before sign-in too) */

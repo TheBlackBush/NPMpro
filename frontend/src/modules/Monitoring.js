@@ -368,7 +368,7 @@ const rangeOptions = [
 const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
 
 const MONITORING_KEYS = ["trafficEnabled", "retentionDays", "showIps", "uniqueVisitors", "visitorsCap"];
-const GEOIP_KEYS = ["accountId", "licenseKey", "editions"];
+const GEOIP_KEYS = ["accountId", "licenseKey", "editions", "provider", "dbipEditions"];
 
 const pickEditable = (values, keys) => {
 	const locked = new Set((values.locked ?? []).map(camel));

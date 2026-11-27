@@ -7,7 +7,7 @@ import {
 	TriangleAlertIcon,
 } from "lucide-react";
 import { useSearchParams } from "react-router";
-import { ErrorAlert, Loading, NoticeAlert } from "src/components";
+import { ErrorAlert, GeoipCredit, Loading, NoticeAlert } from "src/components";
 import {
 	CountryName,
 	countryLabel,
@@ -172,6 +172,7 @@ function TrafficData({ data, range, params }) {
 								countries={data.countries}
 								label={intl.formatMessage({ id: "monitoring.traffic.map" })}
 							/>
+							<GeoipCredit provider={status.geoipProvider} className="mt-2" />
 						</CardContent>
 					</Card>
 					<TopList
@@ -179,6 +180,7 @@ function TrafficData({ data, range, params }) {
 						title={<T id="monitoring.top.countries" />}
 						total={totals.requests}
 						empty={empty}
+						footer={<GeoipCredit provider={status.geoipProvider} />}
 						items={data.topCountries.map((c) => ({
 							key: c.country,
 							label: <CountryName code={c.country} />,

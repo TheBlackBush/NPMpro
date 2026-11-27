@@ -23,6 +23,7 @@ import {
 	nginxToForm,
 	nginxValidate,
 	parseCpuList,
+	toggleDbipEdition,
 	toggleEdition,
 	unlockedErrors,
 } from "./SettingsForms.js";
@@ -257,8 +258,45 @@ it("geoip: starting values with the editions in the API's order", () => {
 		accountId: "123",
 		licenseKey: "",
 		editions: ["GeoLite2-Country", "GeoLite2-City"],
+		provider: "dbip",
+		dbipEditions: [],
 	});
-	assert.deepEqual(geoipValues({}), { accountId: "", licenseKey: "", editions: [] });
+	assert.deepEqual(geoipValues({}), {
+		accountId: "",
+		licenseKey: "",
+		editions: [],
+		provider: "dbip",
+		dbipEditions: [],
+	});
+	assert.deepEqual(geoipValues({ provider: "maxmind", dbipEditions: ["ASN", "Country"] }), {
+		accountId: "",
+		licenseKey: "",
+		editions: [],
+		provider: "maxmind",
+		dbipEditions: ["Country", "ASN"],
+	});
+});
+
+it("geoip: the MaxMind fields are not checked while the provider is DB-IP", () => {
+	const validate = geoipValidate(rules, lockedIn([]));
+	const bad = { accountId: "abc", licenseKey: "k".repeat(256), editions: [] };
+	assert.deepEqual(validate({ ...bad, provider: "dbip" }), {});
+	assert.equal(Object.keys(validate({ ...bad, provider: "maxmind" })).length, 2);
+});
+
+it("geoip: switches a DB-IP edition on or off in its order", () => {
+	assert.deepEqual(toggleDbipEdition(["ASN"], "Country", true), ["Country", "ASN"]);
+	assert.deepEqual(toggleDbipEdition(["Country", "ASN"], "Country", false), ["ASN"]);
+});
+
+it("geoip: a provider or DB-IP edition change starts a download, an unchanged form does not", () => {
+	const data = { provider: "dbip", dbipEditions: ["Country"], accountId: "", editions: [], locked: [] };
+	const values = { accountId: "", licenseKey: "", editions: [], provider: "dbip", dbipEditions: ["Country"] };
+	assert.equal(geoipRequest(values, data).startsDownload, false);
+	assert.equal(geoipRequest({ ...values, provider: "maxmind" }, data).startsDownload, true);
+	assert.equal(geoipRequest({ ...values, dbipEditions: ["Country", "ASN"] }, data).startsDownload, true);
+	const locked = { ...data, locked: ["provider", "dbip_editions"] };
+	assert.equal(geoipRequest({ ...values, provider: "maxmind", dbipEditions: [] }, locked).startsDownload, false);
 });
 
 it("geoip: the same errors as the Formik validate, none for a locked field", () => {
@@ -280,10 +318,29 @@ it("geoip: switches an edition on or off in the API's order", () => {
 });
 
 it("geoip: sends the trimmed values with the locked keys and says when a download starts", () => {
-	const data = { accountId: "1", editions: ["GeoLite2-Country"], locked: [] };
-	const values = { accountId: " 1 ", licenseKey: "", editions: ["GeoLite2-Country"] };
+	const data = {
+		accountId: "1",
+		editions: ["GeoLite2-Country"],
+		provider: "dbip",
+		dbipEditions: ["Country"],
+		locked: [],
+	};
+	const values = {
+		accountId: " 1 ",
+		licenseKey: "",
+		editions: ["GeoLite2-Country"],
+		provider: "dbip",
+		dbipEditions: ["Country"],
+	};
 	assert.deepEqual(geoipRequest(values, data), {
-		body: { accountId: "1", licenseKey: "", editions: ["GeoLite2-Country"], locked: [] },
+		body: {
+			accountId: "1",
+			licenseKey: "",
+			editions: ["GeoLite2-Country"],
+			provider: "dbip",
+			dbipEditions: ["Country"],
+			locked: [],
+		},
 		startsDownload: false,
 	});
 	assert.equal(geoipRequest({ ...values, licenseKey: " key " }, data).body.licenseKey, "key");
@@ -291,8 +348,9 @@ it("geoip: sends the trimmed values with the locked keys and says when a downloa
 	assert.equal(geoipRequest({ ...values, accountId: "2" }, data).startsDownload, true);
 	assert.equal(geoipRequest({ ...values, editions: ["GeoLite2-ASN"] }, data).startsDownload, true);
 	const locked = { ...data, locked: ["account_id", "license_key", "editions"] };
-	assert.deepEqual(geoipRequest({ accountId: "2", licenseKey: "k", editions: [] }, locked), {
-		body: { accountId: "2", licenseKey: "k", editions: [], locked: ["account_id", "license_key", "editions"] },
+	const lockedValues = { accountId: "2", licenseKey: "k", editions: [], provider: "dbip", dbipEditions: ["Country"] };
+	assert.deepEqual(geoipRequest(lockedValues, locked), {
+		body: { ...lockedValues, locked: ["account_id", "license_key", "editions"] },
 		startsDownload: false,
 	});
 });

@@ -10,6 +10,7 @@ export * from "./ErrorAlert";
 export * from "./ErrorNotFound";
 export * from "./Flag";
 export * from "./Form";
+export * from "./GeoipCredit";
 export * from "./HasPermission";
 export * from "./ImportExportButtons";
 export * from "./ItemChecklist";

@@ -292,6 +292,15 @@ export const GEOIP_EDITIONS = [
 	{ value: "GeoLite2-City", key: "city" },
 ];
 const EDITION_ORDER = GEOIP_EDITIONS.map((edition) => edition.value);
+export const GEOIP_PROVIDERS = [
+	{ value: "dbip", key: "dbip" },
+	{ value: "maxmind", key: "maxmind" },
+];
+export const DBIP_EDITIONS = [
+	{ value: "Country", key: "country" },
+	{ value: "ASN", key: "asn" },
+];
+const DBIP_ORDER = DBIP_EDITIONS.map((edition) => edition.value);
 const ACCOUNT_ID = /^[0-9]{0,10}$/u;
 const sameEditions = (a, b) => a.length === b.length && a.every((edition) => b.includes(edition));
 
@@ -302,11 +311,14 @@ const sameEditions = (a, b) => a.length === b.length && a.every((edition) => b.i
  * @returns {string[]}
  */
 const inEditionOrder = (editions) => EDITION_ORDER.filter((edition) => editions.includes(edition));
+const inDbipOrder = (editions) => DBIP_ORDER.filter((edition) => editions.includes(edition));
 
 export const geoipValues = (data) => ({
 	accountId: data.accountId ?? "",
 	licenseKey: "",
 	editions: inEditionOrder(data.editions ?? []),
+	provider: data.provider ?? "dbip",
+	dbipEditions: inDbipOrder(data.dbipEditions ?? []),
 });
 
 /**
@@ -316,6 +328,8 @@ export const geoipValues = (data) => ({
  */
 export const geoipValidate = (rules, isLocked) => (values) => {
 	const errors = {};
+	// the MaxMind fields are not shown (and not sent) while DB-IP is the provider
+	if (values.provider === "dbip") return errors;
 	if (!isLocked("accountId") && !ACCOUNT_ID.test(values.accountId.trim())) {
 		errors.accountId = rules.message("settings.geoip.account-id.invalid");
 	}
@@ -337,8 +351,19 @@ export const toggleEdition = (editions, edition, on) =>
 	inEditionOrder(on ? [...editions, edition] : editions.filter((e) => e !== edition));
 
 /**
- * The request of a GeoIP save and whether the backend starts a download in the background (the account, the key or
- * the editions changed)
+ * The DB-IP editions after one is switched on or off
+ *
+ * @param   {string[]} editions
+ * @param   {string}   edition
+ * @param   {boolean}  on
+ * @returns {string[]}
+ */
+export const toggleDbipEdition = (editions, edition, on) =>
+	inDbipOrder(on ? [...editions, edition] : editions.filter((e) => e !== edition));
+
+/**
+ * The request of a GeoIP save and whether the backend starts a download in the background (the account, the key,
+ * the provider or the editions changed)
  *
  * @param   {Object} values
  * @param   {Object} data  the settings as loaded
@@ -351,7 +376,9 @@ export const geoipRequest = (values, data) => {
 	const startsDownload =
 		(!isLocked("accountId") && accountId !== (data.accountId ?? "")) ||
 		(!isLocked("licenseKey") && licenseKey !== "") ||
-		(!isLocked("editions") && !sameEditions(values.editions, data.editions ?? []));
+		(!isLocked("editions") && !sameEditions(values.editions, data.editions ?? [])) ||
+		(!isLocked("provider") && values.provider !== (data.provider ?? "dbip")) ||
+		(!isLocked("dbipEditions") && !sameEditions(values.dbipEditions, data.dbipEditions ?? []));
 	return { body: { ...values, accountId, licenseKey, locked: data.locked ?? [] }, startsDownload };
 };
 
