@@ -89,9 +89,12 @@ router
 	/** POST /api/webhooks/123/test */
 	.post(
 		testMailLimiter,
-		oneAtATime(async (req, res) => {
-			res.status(200).send(await internalWebhook.test(res.locals.access, Number(req.params.id)));
-		}),
+		oneAtATime(
+			async (req, res) => {
+				res.status(200).send(await internalWebhook.test(res.locals.access, Number(req.params.id)));
+			},
+			(req) => `webhook:${Number(req.params.id)}`,
+		),
 	);
 
 /**

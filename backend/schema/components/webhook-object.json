@@ -44,7 +44,7 @@
 		},
 		"url_hint": {
 			"type": "string",
-			"description": "Scheme, host, port and the first 40 characters of the path of the URL; never the query or the fragment. Empty while url_set is false",
+			"description": "Scheme, host and port (cut at 200 characters) and the first 40 characters of the path of the URL; never the query or the fragment. Empty while url_set is false",
 			"example": "https://hooks.example.com/npmpro"
 		},
 		"url_set": {

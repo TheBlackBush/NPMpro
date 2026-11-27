@@ -4,6 +4,7 @@ import { blockedError, lookupAll } from "../outbound-guard.js";
 
 const MAX_URL_LENGTH = 2048;
 const HINT_PATH_LENGTH = 40;
+const HINT_HOST_LENGTH = 200;
 const PARTIAL_ESCAPE = /%[0-9A-Fa-f]?$/u;
 // a resolver answer that says the name does not exist: a settings problem, not a passing outage
 const NO_SUCH_NAME = new Set(["ENOTFOUND", "ENODATA"]);
@@ -34,14 +35,19 @@ const validateWebhookUrl = (text) => {
 };
 
 /**
+ * @param   {String}  pathname
+ * @returns {String}  the first 40 characters of the path that the hint shows, never cut inside a percent escape
+ */
+const hintPath = (pathname) => pathname.slice(0, HINT_PATH_LENGTH).replace(PARTIAL_ESCAPE, "");
+
+/**
  * @param   {String}  url  a validated URL
- * @returns {String}  scheme, host, port and the first 40 characters of the path; never the query or fragment
+ * @returns {String}  scheme, host and port (the first 200 characters), and the first 40 characters of the path; never
+ *                    the query or fragment; at most 248 characters (the column holds 253)
  */
 const urlHint = (url) => {
 	const parsed = new URL(url);
-	// never cut inside a percent escape
-	const path = parsed.pathname.slice(0, HINT_PATH_LENGTH).replace(PARTIAL_ESCAPE, "");
-	return `${parsed.protocol}//${parsed.host}${path}`;
+	return `${parsed.protocol}//${parsed.host.slice(0, HINT_HOST_LENGTH)}${hintPath(parsed.pathname)}`;
 };
 
 const targetError = (code, message) => Object.assign(new Error(message), { code, message_i18n: `error.${code}` });
@@ -78,4 +84,4 @@ const checkWebhookTarget = async (url) => {
 	}
 };
 
-export { checkWebhookTarget, MAX_URL_LENGTH, urlHint, validateWebhookUrl };
+export { checkWebhookTarget, hintPath, MAX_URL_LENGTH, urlHint, validateWebhookUrl };

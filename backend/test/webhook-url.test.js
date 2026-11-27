@@ -103,6 +103,18 @@ describe("urlHint", () => {
 		assert.equal(urlHint(`https://x.example/${"a".repeat(37)}%2Fz`), `https://x.example/${"a".repeat(37)}`);
 	});
 
+	it("fits its 253 character column with a maximal host name, port and path: the host is cut at 200 characters", () => {
+		const host = Array.from({ length: 4 }, (_, at) => "abcd"[at].repeat(63)).join(".");
+		const url = `https://${host}:65535/${"p".repeat(300)}`;
+		assert.ok(validateWebhookUrl(url).url);
+		const hint = urlHint(url);
+		assert.equal(hint, `https://${`${host}:65535`.slice(0, 200)}/${"p".repeat(39)}`);
+		assert.equal(hint.length, 248);
+		assert.ok(hint.length <= 253);
+		// a host that fits is kept whole
+		assert.equal(urlHint(`https://${"h".repeat(200)}/x`), `https://${"h".repeat(200)}/x`);
+	});
+
 	it("keeps a short URL whole", () => {
 		assert.equal(urlHint("http://192.168.1.5/x?a=1"), "http://192.168.1.5/x");
 	});

@@ -317,6 +317,17 @@ it("updates: an empty url keeps it, a refused new url changes nothing, enabling 
 	assert.equal(enabled.body.failing_since, null);
 });
 
+it("a save that keeps a webhook on leaves its failing period running; only turning it on clears it", async () => {
+	const { id } = (await create()).body;
+	const since = sql(Date.now() - DAY);
+	await knex("npmpro_webhook").where({ id }).update({ failing_since: since });
+	const kept = await admin.put(`/webhooks/${id}`, { enabled: true, name: uniqueName() });
+	assert.equal(kept.status, 200);
+	assert.equal(kept.body.enabled, true);
+	assert.notEqual(kept.body.failing_since, null);
+	assert.equal((await row(id)).failing_since, since);
+});
+
 it("disabling drops the pending deliveries, and deleting removes the webhook with its deliveries", async () => {
 	const { id } = (await create()).body;
 	const pending = await delivery(id, { status: "pending", attempts: 0 });
@@ -488,6 +499,10 @@ it("answers 409 for a row whose payload is gone, a row not failed, a disabled we
 	await admin.put(`/webhooks/${created.body.id}`, { enabled: true });
 	const back = await admin.get(`/webhooks/${created.body.id}/deliveries`);
 	assert.equal(back.body.find((item) => item.id === failed.id).redeliverable, true);
+	// a pending row keeps its payload, but only a failed one can be sent again (the disable dropped the first one)
+	const pending = await delivery(created.body.id, { status: "pending", attempts: 1, next_try_on: later() });
+	const rows = (await admin.get(`/webhooks/${created.body.id}/deliveries`)).body;
+	assert.equal(rows.find((item) => item.id === pending.id).redeliverable, false);
 	const other = await create();
 	assert.equal((await admin.post(`/webhooks/${other.body.id}/deliveries/${failed.id}/redeliver`, {})).status, 404);
 	assert.equal((await admin.post(`/webhooks/${other.body.id}/deliveries/99999/redeliver`, {})).status, 404);
@@ -618,6 +633,56 @@ it("limits the test route to 5 a minute per address and one at a time", async ()
 	for (let at = 0; at < 6; at += 1) statuses.push((await client.post(`/webhooks/${id}/test`, {})).status);
 	assert.deepEqual(statuses.slice(0, 5), [200, 200, 200, 200, 200]);
 	assert.equal(statuses[5], 429);
+});
+
+it("runs one test at a time per webhook: two webhooks tested at once both run, the same one twice answers 429", async () => {
+	const first = (await create()).body.id;
+	const second = (await create()).body.id;
+	api.outside.http
+		.get(BASE)
+		.intercept({ path: `${PATH}${QUERY}`, method: "POST" })
+		.reply(200, "slow")
+		.delay(300)
+		.times(2);
+	// the clients are made one after another (their names are counted), the tests run at once
+	const clients = [await bearer(), await bearer(), await bearer(), await bearer()];
+	const sendTestWith = (client, id) => client.post(`/webhooks/${id}/test`, {});
+	const both = await Promise.all([sendTestWith(clients[0], first), sendTestWith(clients[1], second)]);
+	assert.deepEqual(
+		both.map((answer) => [answer.status, answer.body.ok]),
+		[
+			[200, true],
+			[200, true],
+		],
+	);
+	api.outside.http
+		.get(BASE)
+		.intercept({ path: `${PATH}${QUERY}`, method: "POST" })
+		.reply(200, "slow")
+		.delay(300);
+	const [running, again] = await Promise.all([
+		sendTestWith(clients[2], first),
+		new Promise((resolve) => setTimeout(resolve, 100)).then(() => sendTestWith(clients[3], first)),
+	]);
+	assert.equal(running.status, 200);
+	assert.equal(again.status, 429);
+});
+
+it("a test hides the part of the path the hint does not show, also when the receiver echoes only the token", async () => {
+	const token = "pAtHt0kEnAbCdEfGhIjKlMnOpQrStUvWxYz0123456789";
+	const path = `/api/webhooks/123/${token}`;
+	const created = await create({ url: `${BASE}${path}` });
+	api.outside.http
+		.get(BASE)
+		.intercept({ path, method: "POST" })
+		.reply(404, `Cannot POST ${path} (token ${token}, {"path":"${path.replaceAll("/", "\\/")}"})`);
+	const failed = await testCall(created.body.id);
+	assert.equal(failed.body.http_status, 404);
+	const shown = created.body.url_hint.slice(BASE.length + "/api/webhooks/123/".length);
+	assert.ok(shown.length > 0 && shown.length < token.length);
+	assert.equal(failed.body.response.includes(token), false, failed.body.response);
+	assert.equal(failed.body.response.includes(token.slice(shown.length)), false);
+	assert.match(failed.body.response, HIDDEN);
 });
 
 it("refuses to enable a webhook whose secret or URL cannot be opened, until it is rotated or saved again", async () => {

@@ -12,24 +12,29 @@ const testMailLimiter = rateLimit({
 	ipv6Subnet: 48,
 });
 
-let running = false;
+// the keys of the tests in flight
+const running = new Set();
 
 /**
- * One sample alert in flight at a time (it sends one mail per recipient): a second request while one runs answers 429
+ * One test in flight at a time per key: a second request with the same key while one runs answers 429. Each route has
+ * its own key (the sample alert sends one mail per recipient; a webhook test is keyed by its webhook), so a slow test
+ * never blocks another one.
  *
- * @param   {Function}  handler  async (req, res)
+ * @param   {Function}         handler  async (req, res)
+ * @param   {String|Function}  key      the key, or (req) => the key
  * @returns {Function}  an Express handler
  */
-const oneAtATime = (handler) => async (req, res, next) => {
-	if (running) {
+const oneAtATime = (handler, key) => async (req, res, next) => {
+	const name = typeof key === "function" ? key(req) : key;
+	if (running.has(name)) {
 		res.status(429).send({ error: { message: TOO_MANY } });
 		return;
 	}
-	running = true;
+	running.add(name);
 	try {
 		await handler(req, res, next);
 	} finally {
-		running = false;
+		running.delete(name);
 	}
 };
 

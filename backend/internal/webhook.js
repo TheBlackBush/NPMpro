@@ -167,8 +167,8 @@ const presentDelivery = ({ has_payload: hasPayload, ...row }, hook) => ({
 	created_on: isoOf(row.created_on),
 	modified_on: isoOf(row.modified_on),
 	// the payload itself is never answered; a failed row keeps it for a week and can be sent again meanwhile, while the
-	// webhook is on (redeliver refuses a webhook that is off)
-	redeliverable: Boolean(Number(hasPayload)) && Boolean(Number(hook.enabled)),
+	// webhook is on (redeliver refuses a webhook that is off and a row that has not failed)
+	redeliverable: row.status === "failed" && Boolean(Number(hasPayload)) && Boolean(Number(hook.enabled)),
 });
 
 const deliveryRow = async (webhookId, deliveryId) => {
@@ -253,7 +253,9 @@ const internalWebhook = {
 		else if (restored) patch.enabled = true;
 		if (patch.enabled === true && !row.enabled && !usable(row, { urlGiven: newUrl !== null, secretMade: restored }))
 			throw unusable();
-		if (patch.enabled === true) Object.assign(patch, { disabled_reason: null, failing_since: null });
+		// only turning it on starts afresh: a save that keeps it on leaves the failing period running
+		if (patch.enabled === true && !row.enabled)
+			Object.assign(patch, { disabled_reason: null, failing_since: null });
 		const updated = await Webhook.query().patchAndFetchById(row.id, patch);
 		if (patch.enabled === false) await queue.dropTarget("webhook", row.id);
 		await audit(access, "updated", updated);
@@ -336,7 +338,7 @@ const internalWebhook = {
 			.update({ status: "pending", next_try_on: now, modified_on: now });
 		if (Number(count) !== 1) {
 			throw new errs.ConflictError(
-				"This delivery is not waiting for a retry",
+				"Only a failed delivery can be sent again",
 				"error.webhook-delivery-not-failed",
 			);
 		}

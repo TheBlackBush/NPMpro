@@ -45,7 +45,7 @@ router
 		testMailLimiter,
 		oneAtATime(async (_, res) => {
 			res.status(200).send(await internalMailSetting.testAlerts(res.locals.access));
-		}),
+		}, "alert-sample"),
 	);
 
 export default router;
