@@ -1,4 +1,4 @@
-import { DBIP_EDITIONS, effectiveProvider, PROVIDER_IDS } from "./geoip/providers.js";
+import { DBIP_EDITIONS, effectiveProvider, parseProvider } from "./geoip/providers.js";
 
 const MONITORING_DEFAULTS = {
 	traffic_enabled: false,
@@ -141,10 +141,9 @@ const mergeGeoipConfig = (stored, env, { keySaved = false } = {}) => {
 			locked.push("dbip_editions");
 		}
 	}
-	const envProvider = isSet(env.GEOIP_PROVIDER) ? String(env.GEOIP_PROVIDER).trim().toLowerCase() : "";
-	const envValid = PROVIDER_IDS.includes(envProvider);
+	const envProvider = parseProvider(env.GEOIP_PROVIDER);
 	if (isSet(env.GEOIP_PROVIDER)) {
-		if (envValid) locked.push("provider");
+		if (envProvider) locked.push("provider");
 		else ignored.push("GEOIP_PROVIDER");
 	}
 	values.provider = effectiveProvider({

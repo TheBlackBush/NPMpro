@@ -101,6 +101,10 @@ it("geoip provider and DB-IP editions: defaults, env locks, ignored values", () 
 	assert.deepEqual(bad.locked, []);
 	assert.deepEqual(bad.ignored, ["GEOIP_PROVIDER"]);
 	assert.equal(mergeGeoipConfig({ provider: "bogus" }, {}).values.provider, "dbip");
+	const blank = mergeGeoipConfig({ provider: "maxmind" }, { GEOIP_PROVIDER: "  " });
+	assert.equal(blank.values.provider, "maxmind");
+	assert.deepEqual(blank.locked, []);
+	assert.deepEqual(blank.ignored, ["GEOIP_PROVIDER"]);
 });
 
 it("geoip effective provider from credentials", () => {

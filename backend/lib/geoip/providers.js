@@ -39,6 +39,19 @@ const selectedEditions = (values) => (values.provider === "maxmind" ? values.edi
 const validId = (id) => (PROVIDER_IDS.includes(id) ? id : undefined);
 
 /**
+ * A raw GEOIP_PROVIDER value (trimmed, lower-cased) as a provider id, undefined when it is not one
+ *
+ * @param   {string}  [raw]
+ * @returns {string|undefined}
+ */
+const parseProvider = (raw) =>
+	validId(
+		String(raw ?? "")
+			.trim()
+			.toLowerCase(),
+	);
+
+/**
  * env (valid) > stored (valid) > maxmind with credentials > dbip
  *
  * @param   {Object}   args
@@ -64,6 +77,7 @@ export {
 	MAXMIND_EDITIONS,
 	PROVIDER_IDS,
 	PROVIDERS,
+	parseProvider,
 	providerOf,
 	selectedEditions,
 };
