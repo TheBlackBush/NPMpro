@@ -255,7 +255,7 @@ Rules for all of them:
 - Accepting an invitation sends no mail (it is audited as `invitation-accepted`).
 - The password and two-factor reset from the command line (`password-reset.js`) sends no notice. Nobody can be told that way: the command runs on the host.
 - Users created by their first OIDC sign-in, and users restored from a backup, get no notice, because no password is written.
-- Without mail, a public URL or the switch, nothing is sent and the changes themselves work as before.
+- Without mail or the switch, nothing is sent and the changes themselves work as before. Invitations also need the public URL.
 
 ## What a mail contains
 

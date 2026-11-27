@@ -186,10 +186,11 @@ Under Users an administrator creates users, sets or resets their password, reset
 Instead of choosing a password for a new user, an administrator can invite them. In the new user window, the option **Send an invitation instead of setting a password** (shown only when invitations are offered) creates the user without a password and mails them a link.
 
 - Needed: the mail server, a public URL and the switch **Invitations** (on by default), see [Notifications](Notifications#account-mails). Without one of them the option is not shown and the API refuses an invitation.
+- Invitations also need password sign-in: while OIDC turns password sign-in off (**Disable password login**, see [Authentication](Authentication)), the option and **Send invitation again** are not shown, the API refuses an invitation and the links still out stop working until password sign-in is on again.
 - The link works once and for 72 hours. It opens a page that says "Welcome to NPMpro. Choose your password." The user sets the password and then signs in. Accepting sends no mail.
-- A user who has not accepted yet is marked **Invited** in the Users list. Until then they cannot sign in and cannot reset a password, because they have none.
-- If the mail is lost or the link ran out, choose **Send invitation again** in the row menu. The new link replaces the old one. It is offered only for an invited user: one who has no password and never signed in with OIDC.
-- Turning **Invitations** off ends every invitation link that is still out, and turning it on again does not bring them back; send them again. A link also stops working when the user is disabled, deleted, gets a new email address or gets a password set by an administrator.
+- A user who has not accepted yet is marked **Invited** in the Users list while invitations are offered. Until then they cannot sign in, except by OIDC, which ends the invitation, and cannot reset a password, because they have none.
+- If the mail is lost or the link ran out, choose **Send invitation again** in the row menu. The new link replaces the old one. It is offered only for an invited user: one who has no password (and no other sign-in method) and is not linked to OIDC. When a link has run out, the page of the link says to ask an administrator for a new invitation.
+- Turning **Invitations** off ends every invitation link that is still out, and turning it on again does not bring them back; send them again. The same holds for `MAIL_INVITATIONS=false` (the links end at the next start) and for a restore of the notification settings with Invitations off. A link also stops working when the user is disabled, deleted, gets a new email address or gets a password set by an administrator.
 - When the mail server fails, the user is still created and the window says so; use **Send invitation again** later.
 
 ## Audit Logs
