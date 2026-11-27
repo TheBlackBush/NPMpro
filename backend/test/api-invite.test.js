@@ -10,6 +10,8 @@ const NEW_PASSWORD = "an-invited-password-9";
 const LINK = /https:\/\/npm\.example\.test\/reset-password#token=(?<token>[A-Za-z0-9_-]{43})/u;
 const INVALID = "error.reset-invalid";
 const HOUR = 60 * 60_000;
+const TOKEN_ONLY = /^[A-Za-z0-9_-]{43}$/u;
+const NO_SECRET_IN_ANSWER = /#token=|[A-Za-z0-9_-]{43}/u;
 const logs = [];
 const realLog = console.log;
 
@@ -83,7 +85,7 @@ it("creates an invited user without a password: one mail with a #token= link, in
 	assert.equal(user.created.body.invitation.sent, true);
 	assert.equal(user.created.body.invited, true);
 	assert.equal(mailedTo(user.email).length, 1);
-	assert.match(user.token, /^[A-Za-z0-9_-]{43}$/u);
+	assert.match(user.token, TOKEN_ONLY);
 	assert.equal(await api.db("auth").where({ user_id: user.id }).first(), undefined);
 	const row = await rowOf(user.id, "invite").first();
 	assert.ok(row);
@@ -117,7 +119,7 @@ it("a failing mail server: the user exists, invitation.sent false with a scrubbe
 		assert.ok(await api.db("user").where({ email: body.email }).first());
 		assert.equal(refusing.messages.length, 0);
 		const text = JSON.stringify(created.body);
-		assert.doesNotMatch(text, /#token=|[A-Za-z0-9_-]{43}/u);
+		assert.doesNotMatch(text, NO_SECRET_IN_ANSWER);
 		assert.ok(!text.includes(body.email.replace("@", " ")));
 	} finally {
 		must(await serverSettings(smtp.port));
@@ -376,15 +378,15 @@ it("a reset request for an invited user sends nothing and answers the same 202",
 
 it("writes the mail in the language of the invited user, else the default language", async () => {
 	const first = await invite();
-	assert.match(decoded(mailedTo(first.email).at(-1)), /You were invited to NPMpro at/u);
+	assert.ok(decoded(mailedTo(first.email).at(-1)).includes("You were invited to NPMpro at"));
 	const german = await invite();
 	await api.db("user").where({ id: german.id }).update({ npmpro_language: "de" });
 	must(await admin.post(`/users/${german.id}/invite`));
 	const text = decoded(mailedTo(german.email).at(-1));
-	assert.match(text, /Du wurdest zu NPMpro auf npm\.example\.test eingeladen/u);
-	assert.doesNotMatch(text, /You were invited/u);
+	assert.ok(text.includes("Du wurdest zu NPMpro auf npm.example.test eingeladen"));
+	assert.ok(!text.includes("You were invited"));
 	// never the address of the inviter
-	assert.doesNotMatch(text, /admin@example\.com/u);
+	assert.ok(!text.includes("admin@example.com"));
 });
 
 it("no token and no link in any log line or audit row", async () => {
@@ -410,7 +412,7 @@ it("maps a failed send to a scrubbed text of at most 300 characters and a transl
 	const blocked = await sendFailureOf(Object.assign(new Error("resolved 10.0.0.1"), { code: "EBLOCKED" }));
 	assert.equal(blocked.error_i18n, "error.mail-host-blocked");
 	assert.equal(blocked.error_values.host, "127.0.0.1");
-	assert.doesNotMatch(JSON.stringify(blocked), /10\.0\.0\.1/u);
+	assert.ok(!JSON.stringify(blocked).includes("10.0.0.1"));
 	const refused = await sendFailureOf(
 		new errs.ValidationError("The recipient address is not valid", "error.mail-bad-recipient"),
 	);
