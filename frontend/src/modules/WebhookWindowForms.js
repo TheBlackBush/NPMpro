@@ -64,6 +64,14 @@ const EVENT_LINES = [
 ];
 
 /**
+ * The text id of an event's one line; null for an event id that is not listed, so a raw id never shows as a sentence
+ *
+ * @param   {string}  eventId
+ * @returns {string|null}
+ */
+export const eventLabelId = (eventId) => EVENT_LINES.find(([id]) => id === eventId)?.[2] ?? null;
+
+/**
  * The event switches of the webhook window: the events the webhook channel offers (GET /notifications/events), grouped
  * by area in a fixed order, a `.resolved` twin right after its event
  *

@@ -1,5 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createWebhook, getWebhooks, testWebhook, updateWebhook } from "src/api/backend";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	createWebhook,
+	getWebhookDeliveries,
+	getWebhooks,
+	redeliverWebhook,
+	testWebhook,
+	updateWebhook,
+} from "src/api/backend";
 
 // the lists a change of a webhook touches: the list itself, the audit log (every change writes an entry) and the
 // health report (a webhook turned off by NPMpro shows there)
@@ -41,4 +48,48 @@ const useTestWebhook = () => {
 	});
 };
 
-export { INVALIDATIONS as WEBHOOK_INVALIDATIONS, useSaveWebhook, useTestWebhook, useWebhooks };
+// the deliveries window refreshes this often while it is open; a hidden tab does not poll (react-query's default)
+const DELIVERIES_REFRESH_MS = 10 * 1000;
+
+/**
+ * One page of the deliveries of a webhook, asked from the server (limit and offset; the total comes back in
+ * X-Total-Count). The previous page stays on screen while the next one loads. Refreshes every 10 seconds while the
+ * component that uses it is mounted and the page is visible.
+ *
+ * @param {number} id
+ * @param {Object} options
+ * @param {number} options.page  zero-based page
+ * @param {number} options.size  rows per page
+ */
+const useWebhookDeliveries = (id, { page = 0, size = 25 } = {}) => {
+	const result = useQuery({
+		queryKey: ["webhook-deliveries", id, { page, size }],
+		queryFn: () => getWebhookDeliveries(id, { limit: size, offset: page * size }),
+		placeholderData: keepPreviousData,
+		refetchInterval: DELIVERIES_REFRESH_MS,
+		staleTime: 0,
+	});
+	return { ...result, rows: result.data?.data ?? [], total: result.data?.total ?? null };
+};
+
+// Variables: the delivery id of a failed row; the webhook's list shows its last delivery, so it refreshes too
+const useRedeliverWebhook = (id) => {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (deliveryId) => redeliverWebhook(id, deliveryId),
+		onSettled: () =>
+			Promise.all([
+				queryClient.invalidateQueries({ queryKey: ["webhook-deliveries", id] }),
+				queryClient.invalidateQueries({ queryKey: ["webhooks"] }),
+			]),
+	});
+};
+
+export {
+	INVALIDATIONS as WEBHOOK_INVALIDATIONS,
+	useRedeliverWebhook,
+	useSaveWebhook,
+	useTestWebhook,
+	useWebhookDeliveries,
+	useWebhooks,
+};

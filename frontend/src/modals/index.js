@@ -32,5 +32,6 @@ export * from "./StreamModal";
 export * from "./TestMailModal";
 export * from "./UserModal";
 export * from "./UserSignInActions";
+export * from "./WebhookDeliveriesModal";
 export * from "./WebhookModal";
 export * from "./WebhookSecretModal";

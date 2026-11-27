@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { KeyRound, Pause, Play, Plus, Send, SquarePen, Trash2, Webhook } from "lucide-react";
+import { History, KeyRound, Pause, Play, Plus, Send, SquarePen, Trash2, Webhook } from "lucide-react";
 import { useMemo, useState } from "react";
 import { deleteWebhook, rotateWebhookSecret } from "src/api/backend";
 import { Button, EmptyData, ErrorAlert, Loading, RowActions } from "src/components";
@@ -9,7 +9,12 @@ import { useAppTable } from "src/components/Table/useAppTable";
 import { Spinner } from "src/components/ui/spinner";
 import { useSaveWebhook, useTestWebhook, useWebhooks, WEBHOOK_INVALIDATIONS } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
-import { showDeleteConfirmModal, showWebhookModal, showWebhookSecretModal } from "src/modals";
+import {
+	showDeleteConfirmModal,
+	showWebhookDeliveriesModal,
+	showWebhookModal,
+	showWebhookSecretModal,
+} from "src/modals";
 import { WRAP_BADGE } from "src/modules/Badges";
 import { ADMIN, VIEW } from "src/modules/Permissions";
 import { deliveryStateId, eventsLabel, FAILING_DAYS, needsUrl, statusOf, testOutcome } from "src/modules/WebhookForms";
@@ -94,7 +99,7 @@ function LastDelivery({ webhook }) {
 	);
 }
 
-function Actions({ webhook, testing, onEdit, onTest, onRotate, onToggle, onDelete }) {
+function Actions({ webhook, testing, onEdit, onTest, onDeliveries, onRotate, onToggle, onDelete }) {
 	return (
 		<RowActions
 			label={label("list.row-actions", { name: webhook.name })}
@@ -122,6 +127,12 @@ function Actions({ webhook, testing, onEdit, onTest, onRotate, onToggle, onDelet
 					icon: Send,
 					disabled: !webhook.urlSet || testing,
 					onSelect: () => onTest(webhook),
+				},
+				{
+					key: "deliveries",
+					label: <T id="settings.webhooks.deliveries" />,
+					icon: History,
+					onSelect: () => onDeliveries(webhook),
 				},
 				{
 					key: "rotate",
@@ -248,6 +259,7 @@ function WebhooksCard() {
 					setTesting((ids) => ids.filter((id) => id !== webhook.id));
 				}
 			},
+			onDeliveries: (webhook) => showWebhookDeliveriesModal(webhook),
 			onRotate: (webhook) => {
 				showDeleteConfirmModal({
 					title: <T id="settings.webhooks.rotate.title" />,
