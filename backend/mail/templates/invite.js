@@ -1,3 +1,5 @@
+import { INVITE_HOURS } from "../../lib/password-token-lifetime.js";
+
 /**
  * The invitation to a new account, sent at once by sendNow (a link never goes into the delivery queue)
  *
@@ -10,7 +12,7 @@
  */
 const invite = ({ t, data, instance }) => ({
 	subject: t("invite.subject"),
-	lines: [t("invite.intro", { instance }), t("invite.expires"), t("invite.ignore")],
+	lines: [t("invite.intro", { instance }), t("invite.expires", { hours: INVITE_HOURS }), t("invite.ignore")],
 	button: { label: t("invite.button"), url: data.link },
 	footer: [t("footer.sent", { instance })],
 });

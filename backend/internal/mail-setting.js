@@ -237,6 +237,10 @@ const internalMailSetting = {
 		if (patch.allow_password_reset === false && config.values.allow_password_reset === true) {
 			await internalPasswordToken.removePurpose("reset");
 		}
+		// the same for invitations: off ends the pending links, a later switch-on brings none back
+		if (patch.invitations === false && config.values.invitations === true) {
+			await internalPasswordToken.removePurpose("invite");
+		}
 		await audit(access, "updated", { id: "email", changed });
 		return internalMailSetting.getEmail(access);
 	},

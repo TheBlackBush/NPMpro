@@ -8,7 +8,7 @@ import authModel from "../models/auth.js";
 import userModel from "../models/user.js";
 import internalAuditLog from "./audit-log.js";
 import internalMail from "./mail.js";
-import { getNotificationsConfig, resetOffered } from "./mail-setting.js";
+import { getNotificationsConfig, invitationsOffered, resetOffered } from "./mail-setting.js";
 import internalPasswordToken from "./password-token.js";
 import internalUser from "./user.js";
 
@@ -65,12 +65,17 @@ const mailFailed = async (user, err) => {
 };
 
 // a token that can be used now: its purpose is on the row, and a reset needs the reset by mail offered; an invitation
-// needs a user who is still invited
+// needs invitations offered and a user who is still invited
 const usable = async (token) => {
 	const found = await internalPasswordToken.find(token);
 	if (!found) return null;
 	if (found.row.purpose === "reset") return (await resetOffered()) ? found : null;
-	if (found.row.purpose === "invite") return (await internalUser.isInvited(found.user.id)) ? found : null;
+	if (found.row.purpose === "invite") {
+		// the switch is the stop control of the administrator: not offered (off, no mail server, no public URL) is the
+		// same answer as any bad token
+		if (!(await invitationsOffered())) return null;
+		return (await internalUser.isInvited(found.user.id)) ? found : null;
+	}
 	return null;
 };
 
@@ -142,9 +147,8 @@ const internalPasswordReset = {
 	settled: () => pending,
 
 	/**
-	 * What the link is for. A reset token needs a reset by mail to be offered; an invitation token does not (the
-	 * invitation was made while it was offered, and accepting it sends nothing), but only for a user who is still
-	 * invited.
+	 * What the link is for. A reset token needs a reset by mail to be offered; an invitation token needs invitations
+	 * offered and a user who is still invited.
 	 *
 	 * @param   {String}  token
 	 * @returns {Promise<{purpose: String}>}

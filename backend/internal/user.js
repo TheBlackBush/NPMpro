@@ -46,9 +46,6 @@ const writePassword = async (trx, userId, type, secret) => {
 	await internalPasswordToken.removeForUser(trx, userId);
 };
 
-// 72 hours: an invitation outlives a weekend, a reset link does not (the lifetime is fixed when the token is made)
-const INVITATION_LIFETIME_MS = 72 * 60 * 60_000;
-
 const notOffered = () => new errs.ValidationError("Invitations are not offered", "error.invite-not-offered");
 const notAllowed = () => new errs.ValidationError("This user cannot be invited", "error.invite-not-allowed");
 
@@ -63,7 +60,7 @@ const sendInvitation = async (user) => {
 	try {
 		const base = normalizePublicUrl((await getNotificationsConfig()).values.public_url);
 		if (!base) throw notOffered();
-		const token = await internalPasswordToken.create(user.id, "invite", { lifetimeMs: INVITATION_LIFETIME_MS });
+		const token = await internalPasswordToken.create(user.id, "invite");
 		await internalMail.sendNow({
 			to: user.email,
 			template: "invite",

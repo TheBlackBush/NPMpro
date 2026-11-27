@@ -10,7 +10,7 @@
 	"reset-link.button": "Nieuw wachtwoord kiezen",
 	"invite.subject": "Je bent uitgenodigd voor NPMpro",
 	"invite.intro": "Je bent uitgenodigd voor NPMpro op {instance}. Kies een wachtwoord om je account in te stellen.",
-	"invite.expires": "Gebruik de knop hieronder om je wachtwoord te kiezen. De link werkt maar één keer en verloopt na 72 uur.",
+	"invite.expires": "Gebruik de knop hieronder om je wachtwoord te kiezen. De link werkt maar één keer en verloopt na {hours} uur.",
 	"invite.ignore": "Verwachtte je deze uitnodiging niet, negeer dan deze mail: er is geen account actief totdat een wachtwoord is gekozen.",
 	"invite.button": "Wachtwoord kiezen",
 	"button.fallback": "Werkt de knop niet, open dan deze link:",

@@ -10,7 +10,7 @@
 	"reset-link.button": "Elegir una contraseña nueva",
 	"invite.subject": "Te han invitado a NPMpro",
 	"invite.intro": "Te han invitado a NPMpro en {instance}. Elige una contraseña para configurar tu cuenta.",
-	"invite.expires": "Usa el botón de abajo para elegir tu contraseña. El enlace funciona una sola vez y caduca en 72 horas.",
+	"invite.expires": "Usa el botón de abajo para elegir tu contraseña. El enlace funciona una sola vez y caduca en {hours} horas.",
 	"invite.ignore": "Si no esperabas esta invitación, ignora este correo: ninguna cuenta está activa hasta que se elija una contraseña.",
 	"invite.button": "Elegir una contraseña",
 	"button.fallback": "Si el botón no funciona, abre este enlace:",

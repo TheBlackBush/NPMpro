@@ -431,3 +431,42 @@ it("maps a failed send to a scrubbed text of at most 300 characters and a transl
 	const long = await sendFailureOf(new MailError("y".repeat(500)));
 	assert.equal(long.error.length, 300);
 });
+
+it("turning invitations off ends the pending links for good; a missing mail server or public URL only pauses them", async () => {
+	const user = await invite();
+	const refused = async (label) => {
+		const client = api.client();
+		const check = await client.post("/password-reset/check", { token: user.token });
+		assert.equal(check.status, 400, label);
+		assert.equal(check.body.error.message_i18n, INVALID, label);
+		const confirm = await client.post("/password-reset/confirm", { token: user.token, password: NEW_PASSWORD });
+		assert.equal(confirm.status, 400, label);
+		assert.equal(confirm.body.error.message_i18n, INVALID, label);
+	};
+	must(await admin.put("/settings/email", { host: "" }));
+	await refused("no mail server");
+	must(await serverSettings(smtp.port));
+	assert.equal((await api.client().post("/password-reset/check", { token: user.token })).status, 200);
+	must(await admin.put("/settings/notifications", { public_url: "" }));
+	await refused("no public URL");
+	must(await admin.put("/settings/notifications", { public_url: "https://npm.example.test" }));
+	assert.equal((await api.client().post("/password-reset/check", { token: user.token })).status, 200);
+
+	must(await admin.put("/settings/email", { invitations: false }));
+	await refused("switched off");
+	assert.equal((await rowOf(user.id, "invite")).length, 0);
+	must(await admin.put("/settings/email", { invitations: true }));
+	await refused("switched on again");
+	assert.equal(await api.db("auth").where({ user_id: user.id }).first(), undefined);
+});
+
+it("an email change and a delete of an invited user end the invite token", async () => {
+	const changed = await invite();
+	must(await admin.put(`/users/${changed.id}`, { email: `moved-${changed.email}` }));
+	assert.equal((await rowOf(changed.id, "invite")).length, 0);
+	assert.equal((await api.client().post("/password-reset/check", { token: changed.token })).status, 400);
+	const removed = await invite();
+	must(await admin.delete(`/users/${removed.id}`));
+	assert.equal((await rowOf(removed.id, "invite")).length, 0);
+	assert.equal((await api.client().post("/password-reset/check", { token: removed.token })).status, 400);
+});

@@ -10,7 +10,7 @@
 	"reset-link.button": "Neues Passwort wählen",
 	"invite.subject": "Du wurdest zu NPMpro eingeladen",
 	"invite.intro": "Du wurdest zu NPMpro auf {instance} eingeladen. Wähle ein Passwort, um dein Konto einzurichten.",
-	"invite.expires": "Wähle mit der Schaltfläche unten dein Passwort. Der Link funktioniert nur einmal und läuft nach 72 Stunden ab.",
+	"invite.expires": "Wähle mit der Schaltfläche unten dein Passwort. Der Link funktioniert nur einmal und läuft nach {hours} Stunden ab.",
 	"invite.ignore": "Wenn du diese Einladung nicht erwartet hast, ignoriere diese Mail: Ohne gewähltes Passwort ist kein Konto aktiv.",
 	"invite.button": "Passwort wählen",
 	"button.fallback": "Falls die Schaltfläche nicht funktioniert, öffne diesen Link:",

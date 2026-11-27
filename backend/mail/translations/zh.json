@@ -10,7 +10,7 @@
 	"reset-link.button": "设置新密码",
 	"invite.subject": "邀请您使用 NPMpro",
 	"invite.intro": "您已被邀请使用 {instance} 上的 NPMpro。请设置密码以完成账户设置。",
-	"invite.expires": "请使用下方按钮设置您的密码。该链接只能使用一次,72 小时后失效。",
+	"invite.expires": "请使用下方按钮设置您的密码。该链接只能使用一次,{hours} 小时后失效。",
 	"invite.ignore": "如果您没有预期收到此邀请,请忽略此邮件:设置密码之前,账户不会生效。",
 	"invite.button": "设置密码",
 	"button.fallback": "如果按钮无法使用,请打开此链接:",

@@ -10,7 +10,7 @@
 	"reset-link.button": "Wybierz nowe hasło",
 	"invite.subject": "Zaproszenie do NPMpro",
 	"invite.intro": "Zaproszono Cię do NPMpro na {instance}. Wybierz hasło, aby skonfigurować konto.",
-	"invite.expires": "Użyj poniższego przycisku, aby wybrać hasło. Link działa tylko raz i wygasa po 72 godzinach.",
+	"invite.expires": "Użyj poniższego przycisku, aby wybrać hasło. Link działa tylko raz i wygasa po {hours} godzinach.",
 	"invite.ignore": "Jeśli nie spodziewałeś się tego zaproszenia, zignoruj tę wiadomość: konto nie jest aktywne, dopóki nie zostanie wybrane hasło.",
 	"invite.button": "Wybierz hasło",
 	"button.fallback": "Jeśli przycisk nie działa, otwórz ten link:",

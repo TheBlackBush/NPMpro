@@ -10,7 +10,7 @@
 	"reset-link.button": "새 비밀번호 선택",
 	"invite.subject": "NPMpro에 초대되었습니다",
 	"invite.intro": "{instance}의 NPMpro에 초대되었습니다. 비밀번호를 선택하여 계정을 설정하세요.",
-	"invite.expires": "아래 버튼으로 비밀번호를 선택하세요. 링크는 한 번만 사용할 수 있으며 72시간 후 만료됩니다.",
+	"invite.expires": "아래 버튼으로 비밀번호를 선택하세요. 링크는 한 번만 사용할 수 있으며 {hours}시간 후 만료됩니다.",
 	"invite.ignore": "이 초대를 예상하지 못했다면 이 메일을 무시하세요. 비밀번호를 선택하기 전에는 계정이 활성화되지 않습니다.",
 	"invite.button": "비밀번호 선택",
 	"button.fallback": "버튼이 작동하지 않으면 이 링크를 여세요:",

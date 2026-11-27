@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import db from "../db.js";
 import { dbTimeOf, msOfDbTime } from "../lib/notify/db-time.js";
+import { LIFETIME_MS } from "../lib/password-token-lifetime.js";
 import passwordTokenModel from "../models/password_token.js";
 import userModel from "../models/user.js";
 
@@ -11,8 +12,6 @@ import userModel from "../models/user.js";
 const PURPOSES = new Set(["reset", "invite"]);
 // 32 bytes in base64url: 43 characters without padding
 const TOKEN_SHAPE = /^[A-Za-z0-9_-]{43}$/u;
-// each purpose has its own lifetime, fixed when the token is made
-const DEFAULT_LIFETIME_MS = { reset: 30 * 60_000, invite: 72 * 60 * 60_000 };
 
 const hashOf = (token) => createHash("sha256").update(token).digest("hex");
 
@@ -46,7 +45,7 @@ const internalPasswordToken = {
 	 */
 	create: async (userId, purpose, { ip, lifetimeMs } = {}) => {
 		if (!PURPOSES.has(purpose)) throw new Error(`${purpose} is not a password token purpose`);
-		const lifetime = lifetimeMs ?? DEFAULT_LIFETIME_MS[purpose];
+		const lifetime = lifetimeMs ?? LIFETIME_MS[purpose];
 		if (!Number.isFinite(lifetime) || lifetime <= 0) throw new Error("A password token needs a lifetime");
 		const token = randomBytes(32).toString("base64url");
 		const toDbTime = dbTimeOf(db());

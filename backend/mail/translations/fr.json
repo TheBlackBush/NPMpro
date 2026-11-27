@@ -10,7 +10,7 @@
 	"reset-link.button": "Choisir un nouveau mot de passe",
 	"invite.subject": "Vous êtes invité à NPMpro",
 	"invite.intro": "Vous avez été invité à NPMpro sur {instance}. Choisissez un mot de passe pour configurer votre compte.",
-	"invite.expires": "Utilisez le bouton ci-dessous pour choisir votre mot de passe. Le lien ne fonctionne qu'une fois et expire dans 72 heures.",
+	"invite.expires": "Utilisez le bouton ci-dessous pour choisir votre mot de passe. Le lien ne fonctionne qu'une fois et expire dans {hours} heures.",
 	"invite.ignore": "Si vous n'attendiez pas cette invitation, ignorez ce message : aucun compte n'est actif tant qu'un mot de passe n'est pas choisi.",
 	"invite.button": "Choisir un mot de passe",
 	"button.fallback": "Si le bouton ne fonctionne pas, ouvrez ce lien :",
