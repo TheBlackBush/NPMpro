@@ -6,6 +6,16 @@ Model.knex(db());
 
 const SWITCHES = ["enabled", "verify_tls"];
 
+// one corrupt row must not break a whole list: it reads as no events
+const parseEvents = (text) => {
+	try {
+		const list = JSON.parse(text);
+		return Array.isArray(list) ? list : [];
+	} catch {
+		return [];
+	}
+};
+
 class Webhook extends Model {
 	$beforeInsert() {
 		this.created_on = now();
@@ -20,7 +30,7 @@ class Webhook extends Model {
 	$parseDatabaseJson(json) {
 		const row = super.$parseDatabaseJson(json);
 		for (const key of SWITCHES) if (key in row) row[key] = Boolean(Number(row[key]));
-		if (typeof row.events === "string") row.events = JSON.parse(row.events);
+		if (typeof row.events === "string") row.events = parseEvents(row.events);
 		return row;
 	}
 
