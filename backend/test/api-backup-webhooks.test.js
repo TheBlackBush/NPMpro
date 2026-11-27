@@ -10,6 +10,7 @@ const BASE = "/backups";
 const PASSPHRASE = "a long passphrase 1";
 const TYPES = ["webhooks"];
 const SEALED = /^v1:/u;
+const WHSEC = /^whsec_/u;
 const URL_ONE = "https://hooks.example.com/in/hook?token=s3cr3t";
 
 let api;
@@ -73,7 +74,7 @@ it("a backup without secrets restores the webhook off, asking for its URL again,
 	// entering the URL again turns it on with a new secret
 	const again = ok(await admin.put(`/webhooks/${stored.id}`, { url: URL_ONE })).body;
 	assert.equal(again.enabled, true);
-	assert.match(again.secret, /^whsec_/u);
+	assert.match(again.secret, WHSEC);
 });
 
 it("a restore removes the deliveries of the replaced webhooks", async () => {

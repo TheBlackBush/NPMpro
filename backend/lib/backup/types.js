@@ -1,4 +1,5 @@
 import path from "node:path";
+import { global as logger } from "../../logger.js";
 import { isPreset } from "../ddns/presets.js";
 import { sealWebhookText } from "../notify/webhook-seal.js";
 import { urlHint, validateWebhookUrl } from "../notify/webhook-url.js";
@@ -254,13 +255,14 @@ const WEBHOOK_TABLE = "npmpro_webhook";
 const WEBHOOK_SECRETS = ["url", "secret", "previous_secret"];
 
 // a sealed value opened for the archive; one this instance cannot open (saved with another key) leaves the archive as
-// nothing, so that webhook comes back disabled instead of the whole backup failing
-const openedOrNull = (value, box) => {
+// an empty value (the columns are NOT NULL), so that webhook comes back off and the backup goes on
+const openedOrEmpty = (value, box, onFail) => {
 	if (!isSealed(value)) return value;
 	try {
 		return box.decrypt(value);
 	} catch {
-		return null;
+		onFail();
+		return "";
 	}
 };
 
@@ -269,14 +271,26 @@ const openedOrNull = (value, box) => {
 // seal helper (the hint is made from the URL, not taken from the file)
 const webhookSecrets = {
 	export: (rowsByTable, box) =>
-		mapRows(rowsByTable, WEBHOOK_TABLE, (row) =>
-			Object.fromEntries(
+		mapRows(rowsByTable, WEBHOOK_TABLE, (row) => {
+			// one warning per webhook (its id and name, never a value); the backup goes on
+			let unopenable = false;
+			const opened = Object.fromEntries(
 				Object.entries(row).map(([column, value]) => [
 					column,
-					WEBHOOK_SECRETS.includes(column) ? openedOrNull(value, box) : value,
+					WEBHOOK_SECRETS.includes(column)
+						? openedOrEmpty(value, box, () => {
+								unopenable = true;
+							})
+						: value,
 				]),
-			),
-		),
+			);
+			if (unopenable) {
+				logger.warn(
+					`Backup: a stored value of the webhook ${row.id} (${row.name}) cannot be opened with this key; it is left out and the webhook restores off`,
+				);
+			}
+			return opened;
+		}),
 	strip: (rowsByTable) =>
 		mapRows(rowsByTable, WEBHOOK_TABLE, (row) => ({
 			...row,
@@ -307,12 +321,25 @@ const webhookSecrets = {
 // values this instance could not open) comes back off with the reason "restore", asks for its URL again and gets a new
 // secret on that save. No webhook.disabled event and no mail goes out for it: a restore is the administrator's own
 // action and notifications are paused while it runs. A restored webhook is not failing: its failing period starts over.
+// Runs after seal (a usable row then holds a sealed URL, a sealed secret and a hint made from a valid URL). Anything
+// less is unusable, whatever it was (empty, null, an unopenable value or an invalid URL): the whole row's secrets are
+// cleared so the NOT NULL columns hold "" and no half state stays.
 const restoredWebhook = (row) => {
-	const usable = hasText(row.url) && hasText(row.secret);
+	const usable = hasText(row.url) && hasText(row.secret) && hasText(row.url_hint);
 	return {
 		...row,
 		failing_since: null,
-		...(usable ? {} : { enabled: false, disabled_reason: "restore", url_hint: "" }),
+		...(usable
+			? {}
+			: {
+					enabled: false,
+					disabled_reason: "restore",
+					url: "",
+					url_hint: "",
+					secret: "",
+					previous_secret: null,
+					previous_secret_until: null,
+				}),
 	};
 };
 

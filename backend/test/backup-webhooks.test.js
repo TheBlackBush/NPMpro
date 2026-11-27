@@ -25,6 +25,8 @@ const otherBox = {
 	decrypt: (value) => JSON.parse(value.slice(9)),
 };
 const NOW = 1_800_000_000;
+const OTHER_SEALED = /^v1:other:/u;
+const WARNED = /webhook 1 \(Chat\)/u;
 const STAMP = "2026-11-23 12:00:00";
 const URL_ONE = "https://hooks.example.com/in/one?token=s3cr3t";
 const SCOPE = {
@@ -168,8 +170,8 @@ it("a value this instance cannot open leaves the archive as nothing and its webh
 		{ npmpro_webhook: [{ ...webhook(1, "Chat"), url: "v1:x:y:z", secret: "v1:a:b:c", previous_secret: null }] },
 		failing,
 	).npmpro_webhook;
-	assert.equal(row.url, null);
-	assert.equal(row.secret, null);
+	assert.equal(row.url, "");
+	assert.equal(row.secret, "");
 	const [back] = TYPES.webhooks.restoreRows(
 		TYPES.webhooks.secrets.seal({ npmpro_webhook: [row] }, box),
 	).npmpro_webhook;
@@ -215,7 +217,7 @@ it("a replace restore seals the URL and secrets with the box and they open to th
 		});
 		assert.equal(result.counts.webhooks, 1);
 		const stored = await knex("npmpro_webhook").first();
-		for (const column of ["url", "secret", "previous_secret"]) assert.match(stored[column], /^v1:other:/u);
+		for (const column of ["url", "secret", "previous_secret"]) assert.match(stored[column], OTHER_SEALED);
 		assert.equal(otherBox.decrypt(stored.url), URL_ONE);
 		assert.equal(otherBox.decrypt(stored.secret), "whsec_Chat");
 		assert.equal(otherBox.decrypt(stored.previous_secret), "whsec_old_Chat");
@@ -451,14 +453,104 @@ it("an export holds the webhooks and never their deliveries", async () => {
 			assert.deepEqual(Object.keys(exported), ["npmpro_webhook"]);
 			const [row] = exported.npmpro_webhook;
 			assert.deepEqual(row.events, ["backup.failed"]);
-			if (secrets) {
-				assert.equal(row.url, URL_ONE);
-				assert.equal(row.secret, "whsec_Chat");
-			} else {
-				assert.deepEqual([row.url, row.url_hint, row.secret], ["", "", ""]);
-			}
+			assert.deepEqual(
+				[row.url, row.url_hint, row.secret],
+				secrets ? [URL_ONE, "https://hooks.example.com/in/one", "whsec_Chat"] : ["", "", ""],
+			);
 			assert.equal(JSON.stringify(exported).includes("msg_"), false);
 		}
+	} finally {
+		await knex.destroy();
+	}
+});
+
+const unusable = (name, extra = {}) =>
+	webhook(1, name, { url: "", secret: "", previous_secret: null, previous_secret_until: null, ...extra });
+
+it("an unopenable value is left out of the export with one warning and the webhook restores off through the real insert", async () => {
+	const { global: logger } = await import("../logger.js");
+	const warned = [];
+	const original = logger.warn;
+	logger.warn = (line) => warned.push(String(line));
+	let source;
+	try {
+		const failing = {
+			decrypt: () => {
+				throw new Error("another key");
+			},
+		};
+		const sealedRow = {
+			...webhook(1, "Chat"),
+			url: "v1:a:b:c",
+			secret: box.encrypt("whsec_Chat"),
+			previous_secret: "v1:x:y:z",
+		};
+		source = data(TYPES.webhooks.secrets.export({ npmpro_webhook: [sealedRow] }, failing).npmpro_webhook);
+	} finally {
+		logger.warn = original;
+	}
+	assert.equal(warned.length, 1);
+	assert.match(warned[0], WARNED);
+	assert.equal(warned[0].includes("whsec_"), false);
+	const [row] = source.webhooks.npmpro_webhook;
+	assert.deepEqual([row.url, row.previous_secret], ["", ""]);
+
+	const knex = await open();
+	try {
+		await replaceTypes({ knex, data: source, types: ["webhooks"], adminUserId: 1, box, now: NOW });
+		const stored = await knex("npmpro_webhook").first();
+		assert.deepEqual(
+			[
+				Boolean(stored.enabled),
+				stored.disabled_reason,
+				stored.url,
+				stored.secret,
+				stored.previous_secret,
+				stored.previous_secret_until,
+				stored.url_hint,
+			],
+			[false, "restore", "", "", null, null, ""],
+		);
+		await merge(knex, { source: data([{ ...row, id: 5, name: "Merged" }]) });
+		const merged = await knex("npmpro_webhook").where({ name: "Merged" }).first();
+		assert.deepEqual(
+			[Boolean(merged.enabled), merged.disabled_reason, merged.url, merged.secret],
+			[false, "restore", "", ""],
+		);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("null values and an invalid URL restore off through the real insert, with the secrets cleared together", async () => {
+	const knex = await open();
+	try {
+		const rows = [
+			webhook(1, "NullUrl", { url: null }),
+			unusable("NullBoth", { id: 2, url: null, secret: null }),
+			webhook(3, "BadUrl", { url: "ftp://example.com/x" }),
+			webhook(4, "Good"),
+		];
+		rows[1].name = "NullBoth";
+		await replaceTypes({ knex, data: data(rows), types: ["webhooks"], adminUserId: 1, box, now: NOW });
+		const stored = Object.fromEntries((await knex("npmpro_webhook")).map((row) => [row.name, row]));
+		for (const name of ["NullUrl", "NullBoth", "BadUrl"]) {
+			const row = stored[name];
+			assert.deepEqual(
+				[
+					Boolean(row.enabled),
+					row.disabled_reason,
+					row.url,
+					row.secret,
+					row.previous_secret,
+					row.previous_secret_until,
+					row.url_hint,
+				],
+				[false, "restore", "", "", null, null, ""],
+				name,
+			);
+		}
+		assert.equal(Boolean(stored.Good.enabled), true);
 	} finally {
 		await knex.destroy();
 	}
