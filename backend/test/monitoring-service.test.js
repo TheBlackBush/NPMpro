@@ -1370,6 +1370,25 @@ describe("GeoIP service", () => {
 		assert.equal(old.runs(), 1);
 	});
 
+	it("MaxMind keys on the last update, not on the last check", async () => {
+		const credentials = { provider: "maxmind", account_id: "1", license_key: "k" };
+		// a fresh check with an old update is due, a fresh update with an old check is not
+		const oldUpdate = make({
+			...credentials,
+			last_update: new Date(Date.UTC(2026, 9, 20)).toISOString(),
+			last_check: new Date(Date.UTC(2026, 9, 24)).toISOString(),
+		});
+		await oldUpdate.svc.check();
+		assert.equal(oldUpdate.runs(), 1);
+		const freshUpdate = make({
+			...credentials,
+			last_update: new Date(Date.UTC(2026, 9, 23)).toISOString(),
+			last_check: new Date(Date.UTC(2026, 9, 1)).toISOString(),
+		});
+		await freshUpdate.svc.check();
+		assert.equal(freshUpdate.runs(), 0);
+	});
+
 	describe("DB-IP", () => {
 		const day = 24 * 3600000;
 		const makeDbip = (values, { present = true, result = { ok: true, updated: [] } } = {}) => {

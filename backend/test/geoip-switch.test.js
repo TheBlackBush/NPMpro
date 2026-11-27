@@ -116,3 +116,39 @@ it("a failing swap of the readers does not fail the save, and the download still
 	}
 	assert.match((await storedMeta()).last_error, MISSING_CREDENTIALS);
 });
+
+it("a DB-IP check that downloads nothing moves Last check, not Last update; MaxMind's schedule field is unchanged", async () => {
+	const OLD = "2026-11-01T00:00:00.000Z";
+	const setStored = async (patch) =>
+		api
+			.db("setting")
+			.where({ id: "geoip" })
+			.update({ meta: JSON.stringify({ ...(await storedMeta()), ...patch }) });
+	const original = process.env.GEOIP_PROVIDER;
+	try {
+		process.env.GEOIP_PROVIDER = "dbip";
+		await setStored({ last_update: OLD, last_check: OLD, last_error: "earlier" });
+		await internalMonitoringSetting.recordGeoipResult({ ok: true, updated: [], provider: "dbip" });
+		let stored = await storedMeta();
+		assert.equal(stored.last_update, OLD);
+		assert.notEqual(stored.last_check, OLD);
+		assert.equal(stored.last_error, null);
+		await internalMonitoringSetting.recordGeoipResult({ ok: true, updated: ["Country"], provider: "dbip" });
+		assert.notEqual((await storedMeta()).last_update, OLD);
+
+		// MaxMind: a good run moves last_update (the field its schedule keys on), with or without a replaced file
+		process.env.GEOIP_PROVIDER = "maxmind";
+		await setStored({ last_update: OLD, last_check: OLD });
+		await internalMonitoringSetting.recordGeoipResult({ ok: true, updated: [], provider: "maxmind" });
+		stored = await storedMeta();
+		assert.notEqual(stored.last_update, OLD);
+		assert.notEqual(stored.last_check, OLD);
+		await setStored({ last_update: OLD });
+		await internalMonitoringSetting.recordGeoipResult({ ok: false, error: "401", updated: [], provider: "maxmind" });
+		assert.equal((await storedMeta()).last_update, OLD);
+	} finally {
+		if (original === undefined) delete process.env.GEOIP_PROVIDER;
+		else process.env.GEOIP_PROVIDER = original;
+		await setStored({ last_error: null });
+	}
+});

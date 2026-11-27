@@ -205,14 +205,16 @@ const internalMonitoringSetting = {
 	 */
 	recordGeoipResult: async ({ ok, error, updated, provider }) => {
 		// a run of the provider that was switched away while it ran must not write onto the new one
-		if (provider !== undefined && provider !== (await getGeoipConfig()).values.provider) {
+		const active = (await getGeoipConfig()).values.provider;
+		if (provider !== undefined && provider !== active) {
 			logger.info(`GeoIP: the result of the ${provider} run is dropped, the provider was switched meanwhile`);
 			return;
 		}
 		const stored = await readStoredGeoip();
 		const now = new Date().toISOString();
 		const next = { ...stored, last_error: ok ? null : String(error ?? "Unknown error"), last_check: now };
-		if (ok || updated?.length > 0) next.last_update = now;
+		// a DB-IP check that found nothing newer downloads nothing: only last_check moves (MaxMind's ok is a download)
+		if (updated?.length > 0 || (ok && active === "maxmind")) next.last_update = now;
 		await saveStored("geoip", "GeoIP", next);
 		await reportGeoipState();
 	},
