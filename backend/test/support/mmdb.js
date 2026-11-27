@@ -1,11 +1,13 @@
 // The metadata section starts after the last "\xAB\xCD\xEFMaxMind.com"; its map holds the key "database_type"
 // (a UTF-8 string, type 2) followed by its value string. Only the value is re-encoded; nothing after the metadata.
-const MARKER = Buffer.from("abcdef4d61784d696e642e636f6d", "hex");
+const MARKER = Buffer.concat([Buffer.from([0xab, 0xcd, 0xef]), Buffer.from("MaxMind.com")]);
+
+const STRING_TYPE = 0x40; // control byte: the type (string = 2) in the top 3 bits, the size in the low 5
 
 const encodeString = (text) => {
 	const bytes = Buffer.from(text, "utf8");
-	if (bytes.length < 29) return Buffer.concat([Buffer.from([0x40 | bytes.length]), bytes]);
-	if (bytes.length < 285) return Buffer.concat([Buffer.from([0x40 | 29, bytes.length - 29]), bytes]);
+	if (bytes.length < 29) return Buffer.concat([Buffer.from([STRING_TYPE + bytes.length]), bytes]);
+	if (bytes.length < 285) return Buffer.concat([Buffer.from([STRING_TYPE + 29, bytes.length - 29]), bytes]);
 	throw new Error("database type too long");
 };
 
@@ -25,8 +27,8 @@ const withDatabaseType = (buffer, type) => {
 	if (at < 0) throw new Error("no database_type key in the metadata");
 	const valueAt = at + KEY.length;
 	const control = buffer[valueAt];
-	if (control >> 5 !== 2) throw new Error("database_type is not a plain string");
-	let size = control & 0x1f;
+	if (Math.floor(control / 32) !== 2) throw new Error("database_type is not a plain string");
+	let size = control % 32;
 	let header = 1;
 	if (size === 29) {
 		size = 29 + buffer[valueAt + 1];
