@@ -83,7 +83,7 @@ below as its release notes.
 
 ### Changed
 
-- **GeoIP:** installs without MaxMind credentials switch to DB-IP Lite; the active provider is credited under the traffic map, in Settings, GeoIP and in the footer.
+- **GeoIP:** installs without MaxMind credentials switch to DB-IP Lite; the active provider is credited under the traffic map and in Settings, GeoIP; the footer credits both providers.
 - **Notifications:** mails have the NPMpro look (logo, light and dark mode).
 - **Hosts:** saving is safer: a save whose nginx reload fails is kept and says so, streams cannot use NPMpro's own
   ports or ranges wider than 1000 ports, and Pass Auth to Upstream with several access lists needs every list to allow
