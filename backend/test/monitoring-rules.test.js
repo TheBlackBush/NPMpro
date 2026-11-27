@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { mergeGeoipConfig, mergeMonitoringConfig } from "../lib/monitoring-rules.js";
+import { mergeGeoipConfig, mergeMonitoringConfig, parseDbipEditions } from "../lib/monitoring-rules.js";
 
 it("monitoring defaults and env locks", () => {
 	assert.deepEqual(mergeMonitoringConfig({}, {}).values, {
@@ -79,4 +79,37 @@ it("visitors_cap env lock and range", () => {
 	assert.deepEqual(ignored.locked, []);
 	assert.equal(mergeMonitoringConfig({ visitors_cap: 12 }, {}).values.visitors_cap, 1000, "stored value clamped");
 	assert.equal(mergeMonitoringConfig({ visitors_cap: "x" }, {}).values.visitors_cap, 100000);
+});
+
+it("geoip provider and DB-IP editions: defaults, env locks, ignored values", () => {
+	const d = mergeGeoipConfig({}, {});
+	assert.deepEqual(d.values.dbip_editions, ["Country", "ASN"]);
+	assert.equal(d.values.provider, "dbip");
+	assert.deepEqual(d.ignored, []);
+	const e = mergeGeoipConfig({}, { GEOIP_DBIP_EDITIONS: "ASN  bogus Country ASN" });
+	assert.deepEqual(e.values.dbip_editions, ["ASN", "Country"]);
+	assert.deepEqual(e.locked, ["dbip_editions"]);
+	assert.deepEqual(parseDbipEditions("ASN  bogus Country"), ["ASN", "Country"]);
+	const bogus = mergeGeoipConfig({}, { GEOIP_DBIP_EDITIONS: "bogus" });
+	assert.deepEqual(bogus.values.dbip_editions, ["Country", "ASN"]);
+	assert.deepEqual(bogus.locked, []);
+	const p = mergeGeoipConfig({ provider: "dbip" }, { GEOIP_PROVIDER: " MaxMind " });
+	assert.equal(p.values.provider, "maxmind");
+	assert.deepEqual(p.locked, ["provider"]);
+	const bad = mergeGeoipConfig({ provider: "maxmind" }, { GEOIP_PROVIDER: "foo" });
+	assert.equal(bad.values.provider, "maxmind");
+	assert.deepEqual(bad.locked, []);
+	assert.deepEqual(bad.ignored, ["GEOIP_PROVIDER"]);
+	assert.equal(mergeGeoipConfig({ provider: "bogus" }, {}).values.provider, "dbip");
+});
+
+it("geoip effective provider from credentials", () => {
+	const env = { GEOIP_ACCOUNT_ID: "42", GEOIP_LICENSE_KEY: "key" };
+	assert.equal(mergeGeoipConfig({}, env).values.provider, "maxmind");
+	assert.equal(mergeGeoipConfig({}, { GEOIP_ACCOUNT_ID: "42" }, { keySaved: false }).values.provider, "dbip");
+	// a stored key that failed to decrypt has no license_key but keySaved is true
+	assert.equal(mergeGeoipConfig({}, { GEOIP_ACCOUNT_ID: "42" }, { keySaved: true }).values.provider, "maxmind");
+	assert.equal(mergeGeoipConfig({ account_id: "1" }, {}, { keySaved: true }).values.provider, "maxmind");
+	assert.equal(mergeGeoipConfig({}, { GEOIP_LICENSE_KEY: "key" }).values.provider, "dbip");
+	assert.equal(mergeGeoipConfig({}, { ...env, GEOIP_PROVIDER: "dbip" }).values.provider, "dbip");
 });

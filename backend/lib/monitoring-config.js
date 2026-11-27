@@ -4,6 +4,7 @@ import { mergeGeoipConfig, mergeMonitoringConfig } from "./monitoring-rules.js";
 import { defaultSecretBox } from "./secret-box.js";
 
 let warnedSecret = false;
+let warnedIgnoredEnv = false;
 
 const readStored = async (id) => (await settingModel.query().where("id", id).first())?.meta ?? {};
 
@@ -21,7 +22,7 @@ const getMonitoringConfig = async () => mergeMonitoringConfig(await readStoredMo
  * Effective GeoIP configuration: stored settings, decrypted license key, env overrides.
  * values.license_key is plain text: callers must never return it.
  *
- * @returns {Promise<{values: Object, locked: string[], secretError: boolean}>}
+ * @returns {Promise<{values: Object, locked: string[], ignored: string[], secretError: boolean}>}
  */
 const getGeoipConfig = async () => {
 	const { license_key: encrypted, ...stored } = await readStoredGeoip();
@@ -35,7 +36,19 @@ const getGeoipConfig = async () => {
 			warnedSecret = true;
 		}
 	}
-	return { ...mergeGeoipConfig(stored, process.env), secretError };
+	return { ...mergeGeoipConfig(stored, process.env, { keySaved: Boolean(encrypted) }), secretError };
 };
 
-export { getGeoipConfig, getMonitoringConfig, readStoredGeoip, readStoredMonitoring };
+/**
+ * Logs once per process that an invalid GEOIP_PROVIDER is ignored
+ *
+ * @param {{ignored: string[]}}  cfg  result of getGeoipConfig
+ * @param {{warn: Function}}     [log]
+ */
+const logIgnoredGeoipEnv = (cfg, log = logger) => {
+	if (warnedIgnoredEnv || !cfg.ignored?.includes("GEOIP_PROVIDER")) return;
+	warnedIgnoredEnv = true;
+	log.warn("GeoIP: GEOIP_PROVIDER must be dbip or maxmind, the value is ignored");
+};
+
+export { getGeoipConfig, getMonitoringConfig, logIgnoredGeoipEnv, readStoredGeoip, readStoredMonitoring };

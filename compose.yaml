@@ -179,6 +179,8 @@ services:
 #      - "GEOIP_LICENSE_KEY=<your-license-key>" # MaxMind license key
 #      - "GEOIP_LICENSE_KEY_FILE=/run/secrets/geoip_license_key" # GEOIP_LICENSE_KEY from a file instead (a Docker secret, see secrets: below)
 #      - "GEOIP_EDITIONS=GeoLite2-Country GeoLite2-ASN" # space separated: GeoLite2-Country, GeoLite2-ASN, GeoLite2-City, default GeoLite2-Country GeoLite2-ASN
+#      - "GEOIP_PROVIDER=dbip" # dbip (DB-IP Lite, no account, the default) or maxmind (needs GEOIP_ACCOUNT_ID and GEOIP_LICENSE_KEY); default: maxmind when MaxMind credentials are set, else dbip
+#      - "GEOIP_DBIP_EDITIONS=Country ASN" # space separated: Country, ASN; default Country ASN (DB-IP only)
 
       # Authentication (OIDC sign-in for the web UI); with the four connection variables set, OIDC is active without enabling it in the UI
 #      - "OIDC_ISSUER_URL=https://..." # issuer URL, must start with https://

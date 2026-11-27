@@ -1,3 +1,5 @@
+import { DBIP_EDITIONS, effectiveProvider, PROVIDER_IDS } from "./geoip/providers.js";
+
 const MONITORING_DEFAULTS = {
 	traffic_enabled: false,
 	retention_days: 30,
@@ -6,7 +8,11 @@ const MONITORING_DEFAULTS = {
 	visitors_cap: 100000,
 };
 const GEOIP_EDITIONS = ["GeoLite2-Country", "GeoLite2-ASN", "GeoLite2-City"];
-const GEOIP_DEFAULTS = { account_id: "", editions: ["GeoLite2-Country", "GeoLite2-ASN"] };
+const GEOIP_DEFAULTS = {
+	account_id: "",
+	editions: ["GeoLite2-Country", "GeoLite2-ASN"],
+	dbip_editions: ["Country", "ASN"],
+};
 const MONITORING_ENV_KEYS = {
 	traffic_enabled: "TRAFFIC_STATS",
 	retention_days: "TRAFFIC_RETENTION_DAYS",
@@ -18,6 +24,8 @@ const GEOIP_ENV_KEYS = {
 	account_id: "GEOIP_ACCOUNT_ID",
 	license_key: "GEOIP_LICENSE_KEY",
 	editions: "GEOIP_EDITIONS",
+	provider: "GEOIP_PROVIDER",
+	dbip_editions: "GEOIP_DBIP_EDITIONS",
 };
 const RETENTION_MIN = 7;
 const RETENTION_MAX = 365;
@@ -85,15 +93,32 @@ const parseEditions = (raw) => [
 ];
 
 /**
+ * Space separated DB-IP edition names, unknown ones dropped, duplicates removed
+ *
+ * @param   {string}  raw
+ * @returns {string[]}
+ */
+const parseDbipEditions = (raw) => [
+	...new Set(
+		String(raw)
+			.split(WHITESPACE)
+			.filter((name) => DBIP_EDITIONS.includes(name)),
+	),
+];
+
+/**
  * Stored GeoIP settings with env vars layered on top (env wins per field)
  *
  * @param   {Object}  stored  settings meta, license_key decrypted or absent
  * @param   {Object}  env     process.env or a test object
- * @returns {{values: Object, locked: string[]}}
+ * @param   {Object}  [options]
+ * @param   {boolean} [options.keySaved]  a license key is stored, even if it cannot be decrypted
+ * @returns {{values: Object, locked: string[], ignored: string[]}}
  */
-const mergeGeoipConfig = (stored, env) => {
+const mergeGeoipConfig = (stored, env, { keySaved = false } = {}) => {
 	const values = { ...GEOIP_DEFAULTS, ...withoutNulls(stored) };
 	const locked = [];
+	const ignored = [];
 	if (isSet(env.GEOIP_ACCOUNT_ID)) {
 		values.account_id = env.GEOIP_ACCOUNT_ID.trim();
 		locked.push("account_id");
@@ -109,7 +134,25 @@ const mergeGeoipConfig = (stored, env) => {
 			locked.push("editions");
 		}
 	}
-	return { values, locked };
+	if (isSet(env.GEOIP_DBIP_EDITIONS)) {
+		const editions = parseDbipEditions(env.GEOIP_DBIP_EDITIONS);
+		if (editions.length > 0) {
+			values.dbip_editions = editions;
+			locked.push("dbip_editions");
+		}
+	}
+	const envProvider = isSet(env.GEOIP_PROVIDER) ? String(env.GEOIP_PROVIDER).trim().toLowerCase() : "";
+	const envValid = PROVIDER_IDS.includes(envProvider);
+	if (isSet(env.GEOIP_PROVIDER)) {
+		if (envValid) locked.push("provider");
+		else ignored.push("GEOIP_PROVIDER");
+	}
+	values.provider = effectiveProvider({
+		envValue: envProvider,
+		stored: values.provider,
+		credentials: Boolean(values.account_id) && (Boolean(values.license_key) || keySaved),
+	});
+	return { values, locked, ignored };
 };
 
 /**
@@ -123,4 +166,11 @@ const sanitizeGeoipMeta = (meta) => {
 	return { ...rest, license_key_set: Boolean(key) };
 };
 
-export { GEOIP_ENV_KEYS, MONITORING_ENV_KEYS, mergeGeoipConfig, mergeMonitoringConfig, sanitizeGeoipMeta };
+export {
+	GEOIP_ENV_KEYS,
+	MONITORING_ENV_KEYS,
+	mergeGeoipConfig,
+	mergeMonitoringConfig,
+	parseDbipEditions,
+	sanitizeGeoipMeta,
+};
