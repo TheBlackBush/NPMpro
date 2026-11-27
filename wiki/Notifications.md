@@ -54,7 +54,7 @@ The card **Mail alerts** shows once mail is set up. It mails the problems of the
 
 - **Send to administrators** (on by default): every enabled administrator with a valid address gets the alerts. A disabled administrator gets none.
 - **Also send to**: more addresses, for example a team list. Up to 20 plain addresses. `ALERT_ADDRESSES` sets the list and locks the field (see [Configuration](Configuration)).
-- **Events**: the problems the mail channel offers, grouped by area: certificates that are about to expire or could not be renewed, hosts whose nginx configuration is refused, failed backups, a GeoIP update or a CrowdSec connection that fails, dynamic DNS records that fail or are stopped, and a webhook turned off after repeated failures. Ticking an event also sends its recovery. Action events (a host created, a backup succeeded and the like) are never mailed; they go to webhooks only.
+- **Events**: the problems the mail channel offers, grouped by area: certificates that are about to expire or could not be renewed, hosts whose nginx configuration is refused, failed backups, a GeoIP update or a CrowdSec connection that fails, dynamic DNS records that fail or are stopped, and a webhook that NPMpro turned off. Ticking an event also sends its recovery. Action events (a host created, a backup succeeded and the like) are never mailed; they go to webhooks only.
 - **Remind every** (hours, default 24): while a problem stays open, its alert is repeated after this many hours. `0` never repeats it; the maximum is 168.
 - **Send a sample**: sends a sample alert, marked **Sample**, at once to every current recipient. Nothing is wrong in it; it only shows what an alert looks like. The button shares the limit of 5 test mails a minute and runs one sample at a time. A server error stops the sample: the message at the top of the page says how many addresses got it and which one failed, and the rest are not tried.
 
@@ -84,7 +84,7 @@ Only administrators see the card. Creating and editing a webhook, and rotating i
 
 The URL is checked when you save it (see [Security](Security#webhooks)), and again before every request. After saving, the **signing secret** is shown once, with a copy button. It starts with `whsec_`. NPMpro keeps it encrypted and cannot show it again: store it where your receiver reads it. If you lose it, rotate it.
 
-**Send test** sends an event of the type `notification.test` at once and shows the status code and how long it took, or the error. A test is not queued and not retried, it is not recorded in the deliveries, and it does not touch the webhook's state (it can neither turn a webhook off nor count as a failure or a success). At most 5 tests per minute from one IP address, one at a time. It works also for a webhook that is turned off. **All events** never includes `notification.test`: only the button sends it.
+**Send test** sends an event of the type `notification.test` at once and shows the status code and how long it took, or the error. A test is not queued and not retried, it is not recorded in the deliveries, and it does not touch the webhook's state (it can neither turn a webhook off nor count as a failure or a success). At most 5 tests per minute from one IP address, one at a time per webhook. It works also for a webhook that is turned off. **All events** never includes `notification.test`: only the button sends it.
 
 ### What is sent
 
@@ -214,14 +214,14 @@ A request succeeds when the receiver answers 2xx. Anything else is a failure and
 - **410 Gone** means the receiver is gone for good: the webhook is turned off at once, and its waiting deliveries are dropped.
 - A webhook that keeps failing is turned off. NPMpro notes when the failures started (the first failure after a success). The next failure that comes after 3 days without any success turns the webhook off. Plainly: a webhook whose last event failed days ago and has had no success since is turned off by the next failure, even a single one; it is not turned off by the passing of time alone.
 - A webhook that is turned off sends nothing and its waiting deliveries are dropped. It is shown with its reason (answered 410 Gone, failing for 3 days, restored without its URL). Turn it on in its window; that clears the reason and the failing period.
-- A receiver that is down costs one attempt per pass: when a request to a webhook fails, its other waiting events wait for the retry too. One pass spends at most one minute on one webhook, and a slower receiver gets the rest in the next pass.
+- A receiver that is down costs one attempt per pass: when a request gets no answer (a timeout, a connection error, a refused address), or the answer is 5xx, 408 or 429, the webhook's other waiting events wait for that retry too (with a `Retry-After`, until that time). Any other error answer, such as 400, 404 or 422, counts for that one event only: the other events are still sent, and the refused one is retried on its own schedule. At the next try the events that were not tried yet go first. One pass spends at most one minute on one webhook, and a slower receiver gets the rest in the next pass.
 - A delivery fails at once, without a retry, when the stored address or secret cannot be opened (for example after the encryption key changed). Save the webhook again with its URL, or rotate the secret.
 
 When a webhook is turned off by 410 or by repeated failure, NPMpro raises the event `webhook.disabled` and mails the alert if you ticked it under [Mail alerts](#mail-alerts).
 
 ### Deliveries and redelivery
 
-**Deliveries** on a webhook lists its newest first: the event, when it was made, the state (waiting, sending, delivered, failed, dropped), the number of attempts, the status code, the time it took, the error and the first 2 KB of the answer. The address and the secret are removed from the error and the answer. NPMpro keeps the newest 100 rows of a webhook for at most 30 days.
+**Deliveries** on a webhook lists its newest first: the event, when it was made, the state (waiting, sending, delivered, failed, dropped), the number of attempts, the status code, the time it took, the error and the first 2 KB of the answer. The address and the secret are removed from the error and the answer, and so is the part of the path that the hint does not show. NPMpro keeps the newest 100 rows of a webhook for at most 30 days.
 
 **Redeliver** sends a failed delivery again at once, with the same `webhook-id` (and a new `webhook-timestamp`). It is offered only for a failed delivery whose content is still kept, which is for 7 days after the failure, and only while the webhook is turned on. A delivered row keeps no content. The content is never shown in the list.
 
