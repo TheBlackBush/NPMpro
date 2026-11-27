@@ -235,12 +235,27 @@ The card is for administrators. Creating a webhook, editing it and rotating its 
 
 ## Account mails
 
-Besides the events of [Monitoring](Monitoring#events), NPMpro sends two mails about a user's own account, to that user:
+Besides the events of [Monitoring](Monitoring#events), NPMpro sends mails about a user's own account, to that user. Two switches under Settings, Notifications, in the card **Mail server**, control them: **Invitations** and **Account notices**. Both are on by default and can be set with `MAIL_INVITATIONS` and `MAIL_ACCOUNT_NOTICES` (see [Configuration](Configuration)).
 
-- **Reset link**: "Reset your NPMpro password", sent when someone asks for a password reset and the reset is on (see [Authentication](Authentication#password-reset-by-mail)). The button opens the link, which works once and for 30 minutes. The mail is sent at once, is not queued and is not retried.
-- **Reset notice**: "Your NPMpro password was reset", sent after every reset made with the link (a command line reset sends none). It gives the time (UTC), the address the request came from and how many API tokens are still active. Every session was signed out; two-factor sign-in is unchanged. Revoke the tokens under Settings, API access if you did not make the reset.
+| Mail | To | When | Switch |
+|---|---|---|---|
+| **Reset link**: "Reset your NPMpro password" | The user who asked | Someone asks for a password reset (see [Authentication](Authentication#password-reset-by-mail)). The link works once and for 30 minutes. Sent at once, not queued, not retried. | The reset switch in Settings, Authentication |
+| **Reset notice**: "Your NPMpro password was reset" | The user | After every reset made with the link. It gives the time (UTC), the address the request came from and how many API tokens are still active. | None: always sent, even when Account notices is off |
+| **Invitation**: "You are invited to NPMpro" | The invited user | An administrator creates a user with the invitation option, or sends the invitation again (see [Invitations](Usage#invitations)). The link works once and for 72 hours. Sent at once, not queued, not retried. | Invitations |
+| **Password changed** | The user | The password is changed from the account window or by an administrator. All earlier sessions were signed out. It says "by an administrator" when an administrator made the change. | Account notices |
+| **Address changed** | Both the old and the new address | The email address of the user is changed. The old address is told that it is no longer used and never gets the new address; the new address is told that it is now used. | Account notices |
+| **Two-factor sign-in turned off** | The user | Two-factor sign-in is turned off by the user or by an administrator (the mail says "by an administrator" for the latter). | Account notices |
+| **New backup codes** | The user | The user makes new backup codes. The earlier codes no longer work. The codes are never in the mail. | Account notices |
 
-Account mails go to the address of the account and in the user's language (see [Public URL and language](#public-url-and-language)). A user who is disabled or has no password gets no reset mail.
+Rules for all of them:
+
+- Account mails go to the address of the account and in the user's language (see [Public URL and language](#public-url-and-language)). A user who is disabled or has no password gets no reset mail.
+- The notices are queued, so a mail server that is down gets the retries described in [How the mail server is reached](#how-the-mail-server-is-reached). A notice that cannot be queued is logged and never fails the change that caused it.
+- No mail holds a password, a code, a token or the name of an administrator. Only the invitation and reset link mails hold a link.
+- Accepting an invitation sends no mail (it is audited as `invitation-accepted`).
+- The password and two-factor reset from the command line (`password-reset.js`) sends no notice. Nobody can be told that way: the command runs on the host.
+- Users created by their first OIDC sign-in, and users restored from a backup, get no notice, because no password is written.
+- Without mail, a public URL or the switch, nothing is sent and the changes themselves work as before.
 
 ## What a mail contains
 

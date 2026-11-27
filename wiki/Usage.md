@@ -181,6 +181,17 @@ Settings, Authentication sets up sign-in with an OIDC provider: issuer URL, clie
 
 Under Users an administrator creates users, sets or resets their password, resets their MFA, revokes their sessions and sets their permissions: for each section (proxy hosts, redirection hosts, 404 hosts, streams, access lists, certificates) "Manage", "View Only" or "Hidden", and whether they see all items or only the ones they created.
 
+### Invitations
+
+Instead of choosing a password for a new user, an administrator can invite them. In the new user window, the option **Send an invitation instead of setting a password** (shown only when invitations are offered) creates the user without a password and mails them a link.
+
+- Needed: the mail server, a public URL and the switch **Invitations** (on by default), see [Notifications](Notifications#account-mails). Without one of them the option is not shown and the API refuses an invitation.
+- The link works once and for 72 hours. It opens a page that says "Welcome to NPMpro. Choose your password." The user sets the password and then signs in. Accepting sends no mail.
+- A user who has not accepted yet is marked **Invited** in the Users list. Until then they cannot sign in and cannot reset a password, because they have none.
+- If the mail is lost or the link ran out, choose **Send invitation again** in the row menu. The new link replaces the old one. It is offered only for an invited user: one who has no password and never signed in with OIDC.
+- Turning **Invitations** off ends every invitation link that is still out, and turning it on again does not bring them back; send them again. A link also stops working when the user is disabled, deleted, gets a new email address or gets a password set by an administrator.
+- When the mail server fails, the user is still created and the window says so; use **Send invitation again** later.
+
 ## Audit Logs
 
 Audit Logs lists who created, updated, enabled, disabled or deleted which object, with filters for the user, the object type and the action. Each entry opens with its details. Backups, restores, scheduled backup runs (succeeded or failed) and database moves are listed too.
