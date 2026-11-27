@@ -9,6 +9,8 @@ import {
 	defaultSiteValidate,
 	defaultSiteValues,
 	forwardAuthValidate,
+	geoipOutcome,
+	geoipOutcomeChanged,
 	geoipRequest,
 	geoipValidate,
 	geoipValues,
@@ -314,10 +316,38 @@ it("geoip: a provider or DB-IP edition change starts a download, an unchanged fo
 	const data = { provider: "dbip", dbipEditions: ["Country"], accountId: "", editions: [], locked: [] };
 	const values = { accountId: "", licenseKey: "", editions: [], provider: "dbip", dbipEditions: ["Country"] };
 	assert.equal(geoipRequest(values, data).startsDownload, false);
-	assert.equal(geoipRequest({ ...values, provider: "maxmind" }, data).startsDownload, true);
+	assert.equal(
+		geoipRequest({ ...values, provider: "maxmind", accountId: "7", licenseKey: "k" }, data).startsDownload,
+		true,
+	);
 	assert.equal(geoipRequest({ ...values, dbipEditions: ["Country", "ASN"] }, data).startsDownload, true);
 	const locked = { ...data, locked: ["provider", "dbip_editions"] };
 	assert.equal(geoipRequest({ ...values, provider: "maxmind", dbipEditions: [] }, locked).startsDownload, false);
+});
+
+it("geoip: MaxMind without an account ID or a key starts no download", () => {
+	const data = { provider: "dbip", dbipEditions: ["Country"], accountId: "", editions: [], locked: [] };
+	const values = { accountId: "", licenseKey: "", editions: [], provider: "maxmind", dbipEditions: ["Country"] };
+	assert.equal(geoipRequest(values, data).startsDownload, false);
+	assert.equal(geoipRequest({ ...values, accountId: "7" }, data).startsDownload, false);
+	assert.equal(geoipRequest({ ...values, licenseKey: "k" }, data).startsDownload, false);
+	// a saved key counts
+	assert.equal(geoipRequest({ ...values, accountId: "7" }, { ...data, licenseKeySet: true }).startsDownload, true);
+});
+
+it("geoip: the background download has ended once the stored outcome differs from the save's answer", () => {
+	// the switch cleared the old error in the save itself: the answer, not the view before the save, is the snapshot
+	const before = { lastUpdate: "2026-11-01", lastCheck: "2026-11-01", lastError: "HTTP 401" };
+	const answer = { ...before, lastError: null, provider: "dbip" };
+	const snapshot = geoipOutcome(answer);
+	assert.deepEqual(snapshot, { lastUpdate: "2026-11-01", lastCheck: "2026-11-01", lastError: null });
+	assert.equal(geoipOutcomeChanged(geoipOutcome(before), answer), true);
+	assert.equal(geoipOutcomeChanged(snapshot, { ...answer }), false);
+	assert.equal(geoipOutcomeChanged(snapshot, { ...answer, lastCheck: "2026-11-28" }), true);
+	assert.equal(geoipOutcomeChanged(snapshot, { ...answer, lastError: "HTTP 503" }), true);
+	// missing fields count as null
+	assert.deepEqual(geoipOutcome({}), { lastUpdate: null, lastCheck: null, lastError: null });
+	assert.equal(geoipOutcomeChanged(geoipOutcome({}), { lastUpdate: null }), false);
 });
 
 it("geoip: the same errors as the Formik validate, none for a locked field", () => {
@@ -341,6 +371,7 @@ it("geoip: switches an edition on or off in the API's order", () => {
 it("geoip: sends the trimmed values with the locked keys and says when a download starts", () => {
 	const data = {
 		accountId: "1",
+		licenseKeySet: true,
 		editions: ["GeoLite2-Country"],
 		provider: "maxmind",
 		dbipEditions: ["Country"],

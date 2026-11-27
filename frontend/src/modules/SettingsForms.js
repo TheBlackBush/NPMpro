@@ -363,7 +363,7 @@ export const toggleDbipEdition = (editions, edition, on) =>
 
 /**
  * The request of a GeoIP save and whether the backend starts a download in the background (the account, the key,
- * the provider or the editions changed)
+ * the provider or the editions changed; MaxMind without an account ID or a key downloads nothing)
  *
  * @param   {Object} values
  * @param   {Object} data  the settings as loaded
@@ -376,18 +376,40 @@ export const geoipRequest = (values, data) => {
 	const accountId = maxmind ? values.accountId.trim() : (data.accountId ?? "");
 	const licenseKey = maxmind ? values.licenseKey.trim() : "";
 	const savedProvider = data.provider ?? "dbip";
+	const credentials = accountId !== "" && (licenseKey !== "" || Boolean(data.licenseKeySet));
 	const startsDownload =
-		(!isLocked("accountId") && accountId !== (data.accountId ?? "")) ||
-		(!isLocked("licenseKey") && licenseKey !== "") ||
-		(!isLocked("editions") && !sameEditions(values.editions, data.editions ?? [])) ||
-		(!isLocked("provider") && values.provider !== savedProvider) ||
-		(!isLocked("dbipEditions") && !sameEditions(values.dbipEditions, data.dbipEditions ?? []));
+		(!maxmind || credentials) &&
+		((!isLocked("accountId") && accountId !== (data.accountId ?? "")) ||
+			(!isLocked("licenseKey") && licenseKey !== "") ||
+			(!isLocked("editions") && !sameEditions(values.editions, data.editions ?? [])) ||
+			(!isLocked("provider") && values.provider !== savedProvider) ||
+			(!isLocked("dbipEditions") && !sameEditions(values.dbipEditions, data.dbipEditions ?? [])));
 	const { provider, ...rest } = values;
 	// the provider only when changed: a save of another field must not pin a provider that was only derived
 	const body = { ...rest, accountId, licenseKey, locked: data.locked ?? [] };
 	if (provider !== savedProvider) body.provider = provider;
 	return { body, startsDownload };
 };
+
+const GEOIP_OUTCOME = ["lastUpdate", "lastCheck", "lastError"];
+
+/**
+ * The stored outcome of the last GeoIP run, taken from the answer of a save: the background download has ended once
+ * a later view differs from it (a switch clears the old error in the save itself, so the view before the save is no
+ * snapshot)
+ *
+ * @param   {Object} view  the GeoIP settings
+ * @returns {{ lastUpdate: string|null, lastCheck: string|null, lastError: string|null }}
+ */
+export const geoipOutcome = (view) => Object.fromEntries(GEOIP_OUTCOME.map((key) => [key, view?.[key] ?? null]));
+
+/**
+ * @param   {Object} snapshot  geoipOutcome() of the save's answer
+ * @param   {Object} view      the GeoIP settings as loaded now
+ * @returns {boolean}  a run recorded its outcome since the snapshot
+ */
+export const geoipOutcomeChanged = (snapshot, view) =>
+	GEOIP_OUTCOME.some((key) => (view?.[key] ?? null) !== snapshot[key]);
 
 // Logs & monitoring
 

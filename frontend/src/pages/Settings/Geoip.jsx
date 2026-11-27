@@ -22,6 +22,8 @@ import {
 	DBIP_EDITIONS,
 	GEOIP_EDITIONS,
 	GEOIP_PROVIDERS,
+	geoipOutcome,
+	geoipOutcomeChanged,
 	geoipRequest,
 	geoipValidate,
 	geoipValues,
@@ -347,17 +349,11 @@ function GeoipForm({ data, background, setBackground }) {
 		// the backend downloads in the background when the account, the key or the editions change
 		const { body, startsDownload } = geoipRequest(values, data);
 		try {
-			await save(body);
+			const after = await save(body);
 			methods.setValue("licenseKey", "", { shouldDirty: true });
 			showObjectSuccess("setting", "saved");
-			if (startsDownload) {
-				setBackground({
-					lastUpdate: data.lastUpdate,
-					lastCheck: data.lastCheck,
-					lastError: data.lastError,
-					until: Date.now() + POLL_FOR_MS,
-				});
-			}
+			// the snapshot is the save's answer: a switch already cleared the old error there
+			if (startsDownload) setBackground({ outcome: geoipOutcome(after), until: Date.now() + POLL_FOR_MS });
 		} catch (err) {
 			setErrorMsg(<ApiErrorContent error={err} />);
 		}
@@ -387,7 +383,7 @@ function GeoipForm({ data, background, setBackground }) {
 
 export default function Geoip() {
 	const { data, isPending, error, refetch } = useGeoipSettings();
-	// set while a download started by a save runs in the background: { lastUpdate, lastError, until }
+	// set while a download started by a save runs in the background: { outcome, until }
 	const [background, setBackground] = useState(null);
 
 	useEffect(() => {
@@ -401,14 +397,7 @@ export default function Geoip() {
 
 	// the background download is done once the stored outcome changes
 	useEffect(() => {
-		if (!(background && data)) return;
-		if (
-			data.lastUpdate !== background.lastUpdate ||
-			data.lastCheck !== background.lastCheck ||
-			data.lastError !== background.lastError
-		) {
-			setBackground(null);
-		}
+		if (background && data && geoipOutcomeChanged(background.outcome, data)) setBackground(null);
 	}, [background, data]);
 
 	return (
