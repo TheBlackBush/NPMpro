@@ -1,5 +1,6 @@
-import { mkdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { PROVIDER_IDS } from "./providers.js";
 
 const PROVIDER_MARKER = "provider";
 let counter = 0;
@@ -20,4 +21,15 @@ const writeProviderMarker = async (dir, id) => {
 	await rename(tmp, path.join(dir, PROVIDER_MARKER));
 };
 
-export { PROVIDER_MARKER, writeProviderMarker };
+/**
+ * The provider id in dir/provider, or null when the marker is missing, unreadable or names no provider
+ *
+ * @param   {string}  dir
+ * @returns {Promise<string|null>}
+ */
+const readProviderMarker = async (dir) => {
+	const id = (await readFile(path.join(dir, PROVIDER_MARKER), "utf8").catch(() => "")).trim();
+	return PROVIDER_IDS.includes(id) ? id : null;
+};
+
+export { PROVIDER_MARKER, readProviderMarker, writeProviderMarker };

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
@@ -15,6 +15,7 @@ let api;
 let admin;
 let geoip;
 let internalMonitoringSetting;
+let applyGeoipProvider;
 
 const storedMeta = async () => {
 	const row = await api.db("setting").where({ id: "geoip" }).first();
@@ -37,6 +38,7 @@ before(async () => {
 	// the backend modules read their paths when first imported, so only after startApi
 	({ geoip } = await import("../lib/geoip/instance.js"));
 	internalMonitoringSetting = (await import("../internal/monitoring-setting.js")).default;
+	({ applyGeoipProvider } = await import("../internal/geoip-provider.js"));
 });
 after(() => api?.stop());
 
@@ -144,11 +146,65 @@ it("a DB-IP check that downloads nothing moves Last check, not Last update; MaxM
 		assert.notEqual(stored.last_update, OLD);
 		assert.notEqual(stored.last_check, OLD);
 		await setStored({ last_update: OLD });
-		await internalMonitoringSetting.recordGeoipResult({ ok: false, error: "401", updated: [], provider: "maxmind" });
+		await internalMonitoringSetting.recordGeoipResult({
+			ok: false,
+			error: "401",
+			updated: [],
+			provider: "maxmind",
+		});
 		assert.equal((await storedMeta()).last_update, OLD);
 	} finally {
 		if (original === undefined) delete process.env.GEOIP_PROVIDER;
 		else process.env.GEOIP_PROVIDER = original;
 		await setStored({ last_error: null });
+	}
+});
+
+it("a provider change through the env at start clears the old provider's error and alert", async () => {
+	const dir = path.join(api.root, "data/goaccess/geoip");
+	const geoipState = () => api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).first();
+	const prepare = async (markerId) => {
+		await mkdir(dir, { recursive: true });
+		await writeFile(path.join(dir, "provider"), `${markerId}\n`);
+		await api
+			.db("setting")
+			.where({ id: "geoip" })
+			.update({
+				meta: JSON.stringify({
+					...(await storedMeta()),
+					provider: "dbip",
+					last_error: "DB-IP returned HTTP 503",
+				}),
+			});
+		await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+		await api.db("npmpro_notification_state").insert({
+			key: "geoip.failed:geoip",
+			event: "geoip.failed",
+			object_id: "geoip",
+			state: "bad",
+			since: new Date(),
+			data: JSON.stringify({ reason: "download", error: "DB-IP returned HTTP 503" }),
+		});
+	};
+	const original = process.env.GEOIP_PROVIDER;
+	try {
+		process.env.GEOIP_PROVIDER = "maxmind";
+		// the marker already names the active provider: a plain restart keeps the error
+		await prepare("maxmind");
+		assert.equal(await applyGeoipProvider(), "maxmind");
+		assert.equal((await storedMeta()).last_error, "DB-IP returned HTTP 503");
+		assert.equal((await geoipState()).state, "bad");
+
+		// the marker names DB-IP, the env now says MaxMind: the DB-IP error does not belong to MaxMind
+		await prepare("dbip");
+		assert.equal(await applyGeoipProvider(), "maxmind");
+		assert.equal(await marker(), "maxmind\n");
+		assert.equal(geoip.provider(), "maxmind");
+		assert.equal((await storedMeta()).last_error, null);
+		assert.equal((await geoipState()).state, "ok");
+	} finally {
+		if (original === undefined) delete process.env.GEOIP_PROVIDER;
+		else process.env.GEOIP_PROVIDER = original;
+		await applyGeoipProvider();
 	}
 });
