@@ -2,7 +2,8 @@ import { waitWithin } from "../database/pause.js";
 import { safeError } from "./queue.js";
 
 // The delivery worker: one pass at a time. A pass asks the queue for the due rows of every channel, sends them (one
-// target at a time, at most maxConcurrent units at once per channel) and settles the results. A failure of one send
+// target at a time, at most maxConcurrent units at once per channel; a channel with sendsTargetTogether gets the rows
+// of one target in one call) and settles the results. A failure of one send
 // never stops the rest, and an error of the pass is logged, never thrown.
 
 const POLL_MS = 5000;
@@ -65,8 +66,12 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 		);
 	};
 
+	// a channel with sendsTargetTogether gets the whole unit (all claimed rows of one target) in one call
+	const jobsOf = (channel, unit) =>
+		channel.sendsTargetTogether ? [{ rows: unit.flatMap((job) => job.rows) }] : unit;
+
 	const runUnit = async (channel, unit) => {
-		for (const job of unit) {
+		for (const job of jobsOf(channel, unit)) {
 			try {
 				const results = await sendJob(channel, job);
 				await queue.settle(results, { retryDelays: channel.retryDelays ?? [] });

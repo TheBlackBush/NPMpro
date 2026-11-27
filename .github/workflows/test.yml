@@ -100,7 +100,9 @@ jobs:
             test/servers-mysql.test.js \
             test/servers-postgres.test.js \
             test/traffic-totals-servers.test.js \
-            test/user-language-servers.test.js | tee "$RUNNER_TEMP/servers.tap"
+            test/user-language-servers.test.js \
+            test/webhook-store-mysql.test.js \
+            test/webhook-store-postgres.test.js | tee "$RUNNER_TEMP/servers.tap"
           if grep '# SKIP' "$RUNNER_TEMP/servers.tap" | grep -v 'rename migration on mariadb'; then
             echo "::error::a real-server test was skipped"
             exit 1

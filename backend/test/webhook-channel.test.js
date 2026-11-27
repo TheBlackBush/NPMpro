@@ -320,12 +320,41 @@ describe("retries", () => {
 		}
 	});
 
-	it("retryAfterOf reads seconds and IMF dates only", () => {
+	it("retryAfterOf reads seconds and the three HTTP date forms only", () => {
 		assert.equal(retryAfterOf("10", 0), 10_000);
 		assert.equal(retryAfterOf(" 10 ", 0), 10_000);
 		assert.equal(retryAfterOf(null, 0), 0);
 		assert.equal(retryAfterOf("Sat, 28 Nov 2026 09:00:00 GMT", START), 0);
 		assert.equal(retryAfterOf("9".repeat(30), 0), DAY);
+		// IMF-fixdate and the obsolete rfc850 and asctime forms (RFC 9110 5.6.7)
+		assert.equal(retryAfterOf("Sat, 28 Nov 2026 10:10:00 GMT", START), 600_000);
+		assert.equal(retryAfterOf("Saturday, 28-Nov-26 10:10:00 GMT", START), 600_000);
+		assert.equal(retryAfterOf("Sat Nov 28 10:10:00 2026", START), 600_000);
+		assert.equal(retryAfterOf("Sun Dec  6 10:00:00 2026", START), DAY);
+		assert.equal(retryAfterOf("Sun Nov  6 08:49:37 1994", START), 0);
+		assert.equal(retryAfterOf("Sunday, 06-Nov-94 08:49:37 GMT", START), 0);
+		// a two-digit year more than 50 years ahead is in the past, one up to 50 years ahead in the future
+		assert.equal(retryAfterOf("Monday, 01-Jan-80 00:00:00 GMT", START), 0);
+		assert.equal(retryAfterOf("Wednesday, 01-Jan-76 00:00:00 GMT", START), DAY);
+		for (const value of [
+			"Sat, 31 Feb 2026 10:10:00 GMT",
+			"Sat, 28 Foo 2026 10:10:00 GMT",
+			"Sat, 28 Nov 2026 10:10:00 UTC",
+			"sat, 28 Nov 2026 10:10:00 GMT",
+			"Xyz, 28 Nov 2026 10:10:00 GMT",
+			"Sat, 28 Nov 2026 25:10:00 GMT",
+			"Sat, 8 Nov 2026 10:10:00 GMT",
+			"Saturday, 28-Nov-2026 10:10:00 GMT",
+			"Sat, 28-Nov-26 10:10:00 GMT",
+			"Saturday, 28 Nov 2026 10:10:00 GMT",
+			"Sat Nov 28 10:10:00 2026 GMT",
+			"Sat Nov 8 10:10:00 2026",
+			"Sat Nov 28 10:10 2026",
+			" Sat Nov 28 10:10:00 2026x",
+			"28 Nov 2026 10:10:00 GMT",
+		]) {
+			assert.equal(retryAfterOf(value, START), 0, value);
+		}
 	});
 
 	it("a redirect is a failed attempt and is not followed", async () => {
@@ -358,6 +387,106 @@ describe("retries", () => {
 		assert.equal(row.status, "pending");
 		assert.match(row.error, TIMED_OUT);
 		assert.equal(clock.timers[0].cleared, true);
+	});
+
+	it("an answer whose body never ends is a timeout after 15 s and a retry", async () => {
+		await addHook();
+		overrides.fetchFn = (_url, init) =>
+			Promise.resolve(
+				new Response(
+					new ReadableStream({
+						start(controller) {
+							controller.enqueue(new TextEncoder().encode("partial"));
+							init.signal.addEventListener("abort", () =>
+								controller.error(new DOMException("aborted", "AbortError")),
+							);
+						},
+					}),
+					{ status: 200 },
+				),
+			);
+		build();
+		await emitHost();
+		const running = pass();
+		for (let tries = 0; tries < 50 && clock.timers.length === 0; tries++) await flush();
+		assert.equal(clock.timers.length, 1);
+		assert.equal(clock.timers[0].ms, 15_000);
+		clock.timers[0].fn();
+		await running;
+		const [row] = await rowsOf();
+		assert.equal(row.status, "pending");
+		assert.equal(row.attempts, 1);
+		assert.match(row.error, TIMED_OUT);
+		assert.equal(row.http_status, null);
+		assert.equal(await nextIn(), RETRY_DELAYS[0]);
+	});
+});
+
+describe("a dead receiver", () => {
+	it("costs one attempt per pass: the other rows of that webhook wait for the failed row's next try, untried", async () => {
+		await addHook();
+		let calls = 0;
+		overrides.fetchFn = (_url, init) => {
+			calls += 1;
+			return new Promise((_resolve, reject) => {
+				init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+			});
+		};
+		build();
+		for (let index = 0; index < 50; index++) await emitHost();
+		const running = pass();
+		for (let tries = 0; tries < 50 && clock.timers.length === 0; tries++) await flush();
+		assert.equal(clock.timers.length, 1);
+		clock.timers[0].fn();
+		await running;
+		assert.equal(clock.timers.length, 1);
+		assert.equal(calls, 1);
+		const [first, ...rest] = await rowsOf();
+		assert.equal(first.attempts, 1);
+		assert.match(first.error, TIMED_OUT);
+		assert.equal(rest.length, 49);
+		for (const row of [first, ...rest]) assert.equal(row.status, "pending");
+		for (const row of rest) {
+			assert.equal(row.attempts, 0);
+			assert.equal(row.error, null);
+			assert.equal(row.next_try_on, first.next_try_on);
+		}
+	});
+
+	it("an error answer defers only that webhook's rows; the other webhook and the next try go on", async () => {
+		const bad = await addHook({ name: "bad", url: seal("https://bad.example.com/a") });
+		const good = await addHook({ name: "good", url: seal("https://good.example.com/a") });
+		const asked = [];
+		overrides.fetchFn = (url) => {
+			const host = new URL(url).host;
+			asked.push(host);
+			return Promise.resolve(new Response("x", { status: host === "bad.example.com" ? 503 : 200 }));
+		};
+		build();
+		for (let index = 0; index < 3; index++) await emitHost();
+		await pass();
+		assert.deepEqual(
+			asked.filter((host) => host === "bad.example.com"),
+			["bad.example.com"],
+		);
+		assert.equal((await rowsOf({ target_id: good, status: "sent" })).length, 3);
+		const badRows = await rowsOf({ target_id: bad });
+		assert.deepEqual(
+			badRows.map((row) => [row.status, row.attempts, row.http_status]),
+			[
+				["pending", 1, 503],
+				["pending", 0, null],
+				["pending", 0, null],
+			],
+		);
+		// at the next try the first row is tried again, the others wait once more
+		clock.at += RETRY_DELAYS[0];
+		await pass();
+		assert.equal(asked.filter((host) => host === "bad.example.com").length, 2);
+		assert.deepEqual(
+			(await rowsOf({ target_id: bad })).map((row) => row.attempts),
+			[2, 0, 0],
+		);
 	});
 });
 
@@ -534,12 +663,21 @@ describe("the guard", () => {
 	});
 
 	it("an address written as an IP is refused at the attempt too", async () => {
-		await addHook({ url: seal("https://127.0.0.1/in/hook") });
-		await addHook({ url: seal("http://[::ffff:8.8.8.8]/in/hook") });
+		const urls = [
+			"https://127.0.0.1/in/hook",
+			"http://[::ffff:8.8.8.8]/in/hook",
+			"https://[::1]/in/hook",
+			"https://169.254.169.254/latest/meta-data/",
+			"https://[::ffff:7f00:1]/in/hook",
+			"https://0x7f.1/in/hook",
+		];
+		for (const url of urls) await addHook({ url: seal(url) });
 		await realAgent();
 		await emitHost();
 		await pass();
-		for (const row of await rowsOf()) assert.match(row.error, BLOCKED);
+		const rows = await rowsOf();
+		assert.equal(rows.length, urls.length);
+		for (const row of rows) assert.match(row.error, BLOCKED);
 	});
 
 	it("a resolver outage is a retry and does not disable the webhook", async () => {
@@ -590,6 +728,29 @@ describe("secrets and the URL", () => {
 		assert.equal(row.response.includes(TOKEN), false);
 		assert.equal(row.response.includes(SECRET), false);
 		assert.match(row.response, BAD_ECHO);
+	});
+
+	it("a value echoed just before the 2 KB cut is hidden whole, in each spelling, and the cut keeps whole characters", async () => {
+		await addHook({ url: seal(`${BASE}${PATH}?token=a%2Fb%20c`) });
+		const escaped = `${BASE}${PATH}?token=a%2Fb%20c`.replaceAll("/", "\\/");
+		const cases = [
+			[
+				`${"a".repeat(2030)}${BASE}${PATH}?token=a%2Fb%20c${"b".repeat(100)}`,
+				`${"a".repeat(2030)}***${"b".repeat(15)}`,
+			],
+			[`${"a".repeat(2030)}${escaped}${"b".repeat(100)}`, `${"a".repeat(2030)}***${"b".repeat(15)}`],
+			[`${"a".repeat(2030)}?token=a/b c${"b".repeat(100)}`, `${"a".repeat(2030)}***${"b".repeat(15)}`],
+			[`${"a".repeat(2040)}${SECRET}`, `${"a".repeat(2040)}***`],
+			[`a${"é".repeat(1500)}`, `a${"é".repeat(1023)}`],
+		];
+		for (const [body, expected] of cases) {
+			await knex(TABLE).delete();
+			route = { status: 400, body, headers: {} };
+			await emitHost();
+			await pass();
+			const [row] = await rowsOf();
+			assert.equal(row.response, expected);
+		}
 	});
 
 	it("a rotated webhook signs with both secrets until previous_secret_until", async () => {

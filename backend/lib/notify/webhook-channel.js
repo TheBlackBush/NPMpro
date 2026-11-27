@@ -25,11 +25,57 @@ const MAX_CONCURRENT = 5;
 const ALL = "*";
 const TEST_EVENT = "notification.test";
 const SECONDS = /^\d+$/u;
-const HTTP_DATE = /^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/u;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// the three HTTP date forms of RFC 9110 5.6.7: IMF-fixdate and the obsolete rfc850 and asctime forms
+const IMF_DATE =
+	/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), (?<day>\d{2}) (?<month>[A-Z][a-z]{2}) (?<year>\d{4}) (?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2}) GMT$/u;
+const RFC850_DATE =
+	/^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (?<day>\d{2})-(?<month>[A-Z][a-z]{2})-(?<year>\d{2}) (?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2}) GMT$/u;
+const ASCTIME_DATE =
+	/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) (?<month>[A-Z][a-z]{2}) (?<day> \d|\d{2}) (?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2}) (?<year>\d{4})$/u;
 const NOT_SENT = "The webhook is disabled or was deleted, the delivery was not sent";
 
+// a two-digit rfc850 year more than 50 years ahead is the latest past year with those digits (RFC 9110 5.6.7)
+const fullYear = (twoDigits, nowMs) => {
+	const thisYear = new Date(nowMs).getUTCFullYear();
+	const year = thisYear - (thisYear % 100) + twoDigits;
+	return year > thisYear + 50 ? year - 100 : year;
+};
+
 /**
- * A Retry-After header: whole seconds, or an HTTP date (IMF-fixdate); anything else is ignored. At most 24 hours.
+ * An HTTP date in one of its three forms, checked strictly (Date.parse alone is too lenient: "foo 5" parses in V8)
+ *
+ * @returns {Number}  ms, NaN for anything else (also a date that does not exist, such as 31 Feb)
+ */
+const httpDateMs = (text, nowMs) => {
+	const imf = IMF_DATE.exec(text) ?? ASCTIME_DATE.exec(text);
+	const match = imf ?? RFC850_DATE.exec(text);
+	if (!match) return Number.NaN;
+	const { day, month, year, hour, minute, second } = match.groups;
+	const parts = [
+		imf ? Number(year) : fullYear(Number(year), nowMs),
+		MONTHS.indexOf(month),
+		Number(day),
+		Number(hour),
+		Number(minute),
+		Number(second),
+	];
+	if (parts[1] < 0) return Number.NaN;
+	const date = new Date(Date.UTC(...parts));
+	const back = [
+		date.getUTCFullYear(),
+		date.getUTCMonth(),
+		date.getUTCDate(),
+		date.getUTCHours(),
+		date.getUTCMinutes(),
+		date.getUTCSeconds(),
+	];
+	return back.every((value, index) => value === parts[index]) ? date.getTime() : Number.NaN;
+};
+
+/**
+ * A Retry-After header: whole seconds, or an HTTP date (IMF-fixdate, rfc850 or asctime); anything else is ignored. At
+ * most 24 hours.
  *
  * @param   {String|null|undefined}  value
  * @param   {Number}                 nowMs
@@ -39,7 +85,7 @@ const retryAfterOf = (value, nowMs) => {
 	const text = String(value ?? "").trim();
 	let wait = 0;
 	if (SECONDS.test(text)) wait = Number(text) * 1000;
-	else if (HTTP_DATE.test(text)) wait = Date.parse(text) - nowMs;
+	else wait = httpDateMs(text, nowMs) - nowMs;
 	return Number.isFinite(wait) && wait > 0 ? Math.min(wait, MAX_RETRY_AFTER_MS) : 0;
 };
 
@@ -127,14 +173,52 @@ const describeError = (error, timedOut) => {
 	return cause?.code ? `The request failed (${cause.code})` : "The request failed";
 };
 
-// reads at most 2 KB of the answer and stops; a read error after the status is known keeps what was read
-const readCapped = async (response) => {
+// the spellings of a hidden value an answer may echo: as it is, percent-decoded, and both with JSON's escaped "\/"
+const spellingsOf = (value) => {
+	const text = String(value);
+	let decoded = text;
+	try {
+		decoded = decodeURIComponent(text);
+	} catch {
+		// not percent-encoded text: the plain spelling is enough
+	}
+	return [text, decoded].flatMap((spelling) => [spelling, spelling.replaceAll("/", "\\/")]);
+};
+
+// every spelling of the hidden values, the longest first (so a longer value is replaced before a part of it)
+const hiddenSpellings = (hidden) =>
+	[...new Set(hidden.filter(Boolean).flatMap(spellingsOf))]
+		.filter((spelling) => spelling.length > 0)
+		.sort((left, right) => right.length - left.length);
+
+const hide = (text, hidden) => {
+	let result = String(text);
+	for (const value of hiddenSpellings(hidden)) result = result.split(value).join("***");
+	return result;
+};
+
+// at most `max` bytes of UTF-8, never half a character
+const cutBytes = (text, max) => {
+	if (Buffer.byteLength(text) <= max) return text;
+	let bytes = 0;
+	let end = 0;
+	for (const char of text) {
+		bytes += Buffer.byteLength(char);
+		if (bytes > max) break;
+		end += char.length;
+	}
+	return text.slice(0, end);
+};
+
+// reads at most `limit` bytes of the answer and stops; a read error after the status is known keeps what was read. A
+// character cut at the limit is left out.
+const readCapped = async (response, limit) => {
 	const reader = response.body?.getReader();
 	if (!reader) return "";
 	const chunks = [];
 	let total = 0;
 	try {
-		while (total < MAX_RESPONSE_BYTES) {
+		while (total < limit) {
 			const { done, value } = await reader.read();
 			if (done) break;
 			chunks.push(value);
@@ -144,7 +228,7 @@ const readCapped = async (response) => {
 		// the status decides the outcome
 	}
 	await reader.cancel().catch(() => {});
-	return Buffer.concat(chunks).subarray(0, MAX_RESPONSE_BYTES).toString("utf8");
+	return new TextDecoder().decode(Buffer.concat(chunks).subarray(0, limit), { stream: true });
 };
 
 /**
@@ -170,11 +254,6 @@ const createWebhookChannel = ({
 	log,
 	version = "0.0.0",
 }) => {
-	const hide = (text, hidden) => {
-		let result = String(text);
-		for (const value of hidden) if (value) result = result.split(value).join("***");
-		return result;
-	};
 	const scrub = (text, hidden) => safeError(hide(text, hidden));
 
 	const disable = async (hook, reason) => {
@@ -218,7 +297,7 @@ const createWebhookChannel = ({
 		return { body, headers: webhookHeaders({ id: row.message_id, timestamp, body, secrets, version }) };
 	};
 
-	const request = async ({ hook, url, headers, body }) => {
+	const request = async ({ hook, url, headers, body, readLimit }) => {
 		const parsed = new URL(url);
 		if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new TypeError("scheme");
 		const plain = parsed.protocol === "http:";
@@ -239,7 +318,9 @@ const createWebhookChannel = ({
 				dispatcher: agent,
 				signal: controller.signal,
 			});
-			const text = await readCapped(response);
+			const text = await readCapped(response, readLimit);
+			// the answer did not end within the time (the abort stopped the read): a timeout like no answer at all
+			if (timedOut) return { error: describeError(null, true) };
 			return {
 				status: response.status,
 				retryAfter: response.headers.get("retry-after"),
@@ -272,9 +353,11 @@ const createWebhookChannel = ({
 			}
 			const built = build({ secrets, row });
 			if (!built) return { fail: "The event is larger than 20 KB, it was not sent", retry: false, hidden };
-			const answer = await request({ hook, url, ...built });
 			const parsedUrl = new URL(url);
 			const bits = [parsedUrl.href, parsedUrl.search, parsedUrl.hash, ...hidden];
+			// enough to hide a value that starts just before the cut: the answer is hidden first, then cut
+			const longest = Math.max(0, ...hiddenSpellings(bits).map((value) => Buffer.byteLength(value)));
+			const answer = await request({ hook, url, ...built, readLimit: MAX_RESPONSE_BYTES + longest });
 			if (answer.error) return { fail: answer.error, retry: true, book: true, hidden: bits };
 			const outcome = { http_status: answer.status, response: answer.text, hidden: bits, book: true };
 			if (answer.status >= 200 && answer.status < 300) return { ...outcome, ok: true };
@@ -289,7 +372,7 @@ const createWebhookChannel = ({
 		}
 	};
 
-	const sendRow = async (row) => {
+	const sendRow = async (row, waits) => {
 		const started = clock.now();
 		let hook;
 		try {
@@ -299,24 +382,31 @@ const createWebhookChannel = ({
 			return { id: row.id, ok: false, retry: true, error: "The webhook could not be read" };
 		}
 		if (!hook?.enabled) return { id: row.id, ok: false, retry: false, dropped: true, error: NOT_SENT };
+		const failedUntil = waits.get(hook.id);
+		if (failedUntil !== undefined) return { id: row.id, ok: false, deferred: true, next_try_ms: failedUntil };
 		const outcome = await attempt(row, hook);
 		const duration_ms = clock.now() - started;
 		let disabled = false;
 		if (outcome.ok || outcome.book) disabled = await book(hook, outcome);
 		const result = { id: row.id, duration_ms, http_status: outcome.http_status };
-		if (outcome.response !== undefined) result.response = hide(outcome.response, outcome.hidden ?? []);
+		if (outcome.response !== undefined) {
+			result.response = cutBytes(hide(outcome.response, outcome.hidden ?? []), MAX_RESPONSE_BYTES);
+		}
 		if (outcome.ok) return { ...result, ok: true };
 		const text = scrub(outcome.fail, outcome.hidden ?? []);
 		const retry = outcome.retry && !disabled;
 		const delay = RETRY_DELAYS[Number(row.attempts)];
 		if (!retry || delay === undefined) return { ...result, ok: false, retry: false, error: text };
 		const jittered = Math.round(delay * (1 + random() * JITTER));
+		const retryAfterMs = Math.max(jittered, outcome.retryAfter ?? 0);
+		// a request that failed: the webhook's other rows of this call wait for this row's next try, untried
+		if (outcome.book) waits.set(hook.id, clock.now() + retryAfterMs);
 		return {
 			...result,
 			ok: false,
 			retry: true,
 			error: text,
-			retry_after_ms: Math.max(jittered, outcome.retryAfter ?? 0),
+			retry_after_ms: retryAfterMs,
 		};
 	};
 
@@ -324,11 +414,15 @@ const createWebhookChannel = ({
 		id: "webhook",
 		retryDelays: RETRY_DELAYS,
 		maxConcurrent: MAX_CONCURRENT,
+		// the worker sends all claimed rows of one webhook in one call, so a dead receiver costs one attempt per pass
+		sendsTargetTogether: true,
 		accepts: async (type) => (await webhooks.forEvent(type)).length > 0,
 		targets: async (envelope) => (await webhooks.forEvent(envelope.type)).map((hook) => ({ target_id: hook.id })),
 		send: async (rows) => {
+			// webhook id => ms of the next try of its row that failed in this call
+			const waits = new Map();
 			const results = [];
-			for (const row of rows) results.push(await sendRow(row));
+			for (const row of rows) results.push(await sendRow(row, waits));
 			return results;
 		},
 	};
