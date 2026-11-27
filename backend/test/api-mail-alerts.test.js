@@ -129,15 +129,17 @@ it("refuses 21 addresses and names the index of a bad address", async () => {
 	const twenty = await admin.put("/settings/notifications", { alerts_addresses: many.slice(0, 20) });
 	assert.equal(twenty.status, 200);
 
-	for (const [list, index] of [
+	for (const [list, index, address] of [
 		[["ok@example.com", "not an address"], 1],
 		[["a@b.c, d@e.f"], 0],
 		[["ok@example.com", "ok2@example.com", "Name <x@example.com>"], 2],
+		// a repeat in another case is removed first: the index counts in the shorter list, the address names the value
+		[["Ops@example.com", "ops@example.com", "not an address"], 1, "not an address"],
 	]) {
 		const refused = await admin.put("/settings/notifications", { alerts_addresses: list });
 		assert.equal(refused.status, 400, JSON.stringify(list));
 		assert.equal(refused.body.error.message_i18n, ADDRESSES_INVALID);
-		assert.deepEqual(refused.body.error.message_values, { index });
+		assert.deepEqual(refused.body.error.message_values, { index, address: address ?? list[index] });
 	}
 	await admin.put("/settings/notifications", { alerts_addresses: [] });
 });

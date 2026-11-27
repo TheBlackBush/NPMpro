@@ -368,13 +368,20 @@ it("sends the changed alert settings only, the events as the offered ones", () =
 });
 
 it("names the refused address of a save and the failing address of a sample", () => {
-	const refusal = (index) => ({
+	const refusal = (index, address) => ({
 		payload: {
-			error: { message_i18n: "settings.notifications.alerts-addresses.invalid", message_values: { index } },
+			error: {
+				message_i18n: "settings.notifications.alerts-addresses.invalid",
+				message_values: { index, address },
+			},
 		},
 	});
-	assert.equal(refusedAddressOf(refusal(1), ["a@b.example", "bad"]), "bad");
-	assert.equal(refusedAddressOf(refusal(5), ["a@b.example"]), null);
+	assert.equal(refusedAddressOf(refusal(1, "bad"), ["a@b.example", "bad"]), "bad");
+	assert.equal(refusedAddressOf(refusal(5, "gone"), ["a@b.example"]), null);
+	assert.equal(refusedAddressOf(refusal(1), ["a@b.example", "bad"]), null);
+	// the backend removes a repeat in another case first: its index 1 is the third address of the list sent, the
+	// address it names is the one marked, in the spelling of the list
+	assert.equal(refusedAddressOf(refusal(1, "x@Bad"), ["Ops@example.com", "ops@example.com", "x@bad"]), "x@bad");
 	assert.equal(refusedAddressOf({ payload: { error: { message_i18n: "other" } } }, ["x"]), null);
 	assert.equal(refusedAddressOf(new Error("x"), ["x"]), null);
 	const failed = {

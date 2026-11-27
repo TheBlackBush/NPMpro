@@ -414,8 +414,8 @@ export const alertEventGroups = (events) => {
 };
 
 /**
- * The address a refused save names: the backend answers its 0-based position of the first bad address
- * (settings.notifications.alerts-addresses.invalid with the value index); the page shows the address itself
+ * The address a refused save names: the backend answers the first bad address (settings.notifications.alerts-addresses.
+ * invalid with the values index and address); the page marks the entry of the list that matches it in any case
  *
  * @param   {unknown}   err        the error thrown by the request
  * @param   {string[]}  addresses  the list that was sent
@@ -424,8 +424,11 @@ export const alertEventGroups = (events) => {
 export const refusedAddressOf = (err, addresses) => {
 	const error = err?.payload?.error;
 	if (error?.message_i18n !== "settings.notifications.alerts-addresses.invalid") return null;
-	const address = addresses?.[error.message_values?.index];
-	return typeof address === "string" ? address : null;
+	// the index counts in the list after the backend removed its repeats, so the address is matched instead
+	const refused = error.message_values?.address;
+	if (typeof refused !== "string") return null;
+	const key = refused.toLowerCase();
+	return (addresses ?? []).find((address) => typeof address === "string" && address.toLowerCase() === key) ?? null;
 };
 
 /**

@@ -306,6 +306,11 @@ it("the alert settings: defaults, the env list, one problem with its placeholder
 	});
 	assert.deepEqual(alertProblemOf({ alerts_addresses: ["a@b.c", "x"] }, values), {
 		i18n: "settings.notifications.alerts-addresses.invalid",
+		values: { index: 1, address: "x" },
+	});
+	// a value that is not text is named by its index only
+	assert.deepEqual(alertProblemOf({ alerts_addresses: ["a@b.c", 5] }, values), {
+		i18n: "settings.notifications.alerts-addresses.invalid",
 		values: { index: 1 },
 	});
 	assert.equal(

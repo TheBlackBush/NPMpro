@@ -55,7 +55,7 @@
 								"type": "string",
 								"maxLength": 254
 							},
-							"description": "Extra addresses that get alert mails: at most 20, one plain address each (a bad one is refused naming its index). Ignored while ALERT_ADDRESSES is set"
+							"description": "Extra addresses that get alert mails: at most 20, one plain address each (a bad one is refused naming its index and the address in message_values). Ignored while ALERT_ADDRESSES is set"
 						},
 						"alerts_events": {
 							"type": "array",

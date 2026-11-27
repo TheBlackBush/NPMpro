@@ -195,7 +195,7 @@ const MAIL_EVENT_IDS = selectableEvents()
 
 /**
  * What is wrong with an alert setting, or null: the i18n key (and the placeholders of its text) of the refusal. A list
- * of addresses names the index (from 0) of the first bad one; an event the mail channel does not offer (an action event,
+ * of addresses names the index (from 0) and, when it is text, the value of the first bad one; an event the mail channel does not offer (an action event,
  * "*", an unknown id) has its own message.
  *
  * @param   {string}  key
@@ -212,7 +212,10 @@ const alertProblem = (key, value) => {
 	if (key === "alerts_addresses") {
 		if (value.length > ALERT_ADDRESSES_MAX) return generic;
 		const index = value.findIndex((address) => !isSingleAddress(address));
-		return index === -1 ? null : { ...generic, values: { index } };
+		if (index === -1) return null;
+		// the address itself too (the admin's own value): the index counts in the list after its repeats are removed
+		const refused = value[index];
+		return { ...generic, values: typeof refused === "string" ? { index, address: refused } : { index } };
 	}
 	if (value.length > MAIL_EVENT_IDS.length) return generic;
 	const event = value.find((id) => typeof id !== "string" || !MAIL_EVENT_IDS.includes(id));
