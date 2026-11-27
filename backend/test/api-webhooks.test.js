@@ -669,7 +669,7 @@ it("runs one test at a time per webhook: two webhooks tested at once both run, t
 });
 
 it("a test hides the part of the path the hint does not show, also when the receiver echoes only the token", async () => {
-	const token = "pAtHt0kEnAbCdEfGhIjKlMnOpQrStUvWxYz0123456789";
+	const token = `path-${"t".repeat(20)}-${"k".repeat(19)}`;
 	const path = `/api/webhooks/123/${token}`;
 	const created = await create({ url: `${BASE}${path}` });
 	api.outside.http

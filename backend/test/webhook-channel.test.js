@@ -567,7 +567,10 @@ describe("a dead receiver", () => {
 		await emitHost();
 		clock.at += RETRY_DELAYS[0];
 		await pass();
-		assert.deepEqual(asked.slice(3).sort(), ["backup.restored", "backup.succeeded"]);
+		assert.deepEqual(
+			asked.slice(3).sort((left, right) => left.localeCompare(right)),
+			["backup.restored", "backup.succeeded"],
+		);
 		assert.deepEqual(
 			(await rowsOf()).map((row) => [row.status, row.attempts]),
 			[
@@ -579,40 +582,55 @@ describe("a dead receiver", () => {
 		);
 	});
 
-	it("a 429 with Retry-After defers the webhook's other rows to that time; a 404 or a 3xx does not", async () => {
+	// the first request of a pass gets `answer`, every later one 200
+	const firstAnswers = (answer) => {
+		let calls = 0;
+		overrides.fetchFn = () => {
+			calls += 1;
+			const reply = calls === 1 ? answer : { status: 200 };
+			return Promise.resolve(new Response("", { status: reply.status, headers: reply.headers ?? {} }));
+		};
+		return () => calls;
+	};
+
+	it("a 429 with Retry-After defers the webhook's other rows to that time", async () => {
 		await addHook();
-		const answers = [
-			{ status: 429, headers: { "retry-after": "600" } },
+		const calls = firstAnswers({ status: 429, headers: { "retry-after": "600" } });
+		build();
+		for (let index = 0; index < 3; index++) await emitHost();
+		await pass();
+		assert.equal(calls(), 1);
+		const rows = await rowsOf();
+		assert.deepEqual(
+			rows.map((row) => [row.attempts, msOfDbTime(row.next_try_on)]),
+			[
+				[1, START + 600_000],
+				[0, START + 600_000],
+				[0, START + 600_000],
+			],
+		);
+	});
+
+	it("a 404 or a 3xx is about that one delivery: the webhook's other rows go out in the same pass", async () => {
+		await addHook();
+		for (const answer of [
 			{ status: 404 },
 			{ status: 302, headers: { location: "https://elsewhere.example.com/" } },
-		];
-		for (const answer of answers) {
+		]) {
 			await knex(TABLE).delete();
-			clock.at = START;
-			let calls = 0;
-			overrides.fetchFn = () => {
-				calls += 1;
-				const reply = calls === 1 ? answer : { status: 200 };
-				return Promise.resolve(new Response("", { status: reply.status, headers: reply.headers ?? {} }));
-			};
+			const calls = firstAnswers(answer);
 			build();
 			for (let index = 0; index < 3; index++) await emitHost();
 			await pass();
-			const rows = await rowsOf();
-			if (answer.status === 429) {
-				assert.equal(calls, 1);
-				for (const row of rows) assert.equal(msOfDbTime(row.next_try_on), START + 600_000);
-				assert.deepEqual(
-					rows.map((row) => row.attempts),
-					[1, 0, 0],
-				);
-			} else {
-				assert.equal(calls, 3, String(answer.status));
-				assert.deepEqual(
-					rows.map((row) => row.status),
-					["pending", "sent", "sent"],
-				);
-			}
+			assert.equal(calls(), 3, String(answer.status));
+			assert.deepEqual(
+				(await rowsOf()).map((row) => [row.status, row.http_status]),
+				[
+					["pending", answer.status],
+					["sent", 200],
+					["sent", 200],
+				],
+			);
 		}
 	});
 });
@@ -859,7 +877,9 @@ describe("secrets and the URL", () => {
 
 	it("the path beyond what the hint shows is hidden in each spelling; the part the hint shows stays", async () => {
 		// the hint shows 40 characters of the path: "/in/hook/" and 31 characters of the token
-		const token = "t0k3n%2Fwith%20escapes-and-a-long-tail-0123456789";
+		// a tail without repeats (letters a to s), so the hidden part is exact
+		const letters = Array.from({ length: 19 }, (_, at) => String.fromCodePoint(97 + at)).join("");
+		const token = `t0k3n%2Fwith%20${"e".repeat(14)}-${letters}`;
 		const decoded = decodeURIComponent(token);
 		const fullPath = `${PATH}/${token}`;
 		await addHook({ url: seal(`${BASE}${fullPath}`) });
