@@ -242,6 +242,21 @@ describe("queue", () => {
 		assert.equal(failed.response.length, 2048);
 	});
 
+	it("settle: a dropped row is dropped untried, its reason kept and its payload cleared", async () => {
+		const queue = queueOf();
+		await queue.add([row()]);
+		await taking();
+		await queue.settle([{ id: 1, ok: false, retry: true, dropped: true, error: "no longer ticked" }], {
+			retryDelays: DELAYS,
+		});
+		const [gone] = await rows();
+		assert.equal(gone.status, "dropped");
+		assert.equal(gone.attempts, 0);
+		assert.equal(gone.error, "no longer ticked");
+		assert.equal(gone.payload, null);
+		assert.equal(gone.next_try_on, null);
+	});
+
 	it("settle skips an id that is gone", async () => {
 		await queueOf().settle([{ id: 99, ok: true }], { retryDelays: DELAYS });
 		assert.deepEqual(await rows(), []);

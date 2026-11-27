@@ -11,6 +11,8 @@ const BOSS = "Boss@Example.com";
 const LISTED = "listed@example.net";
 const FORTY = 40;
 const NO_LONGER = /no longer an alert recipient/u;
+const UNTICKED = /no longer ticked/u;
+const NOT_SET_UP = /no longer set up/u;
 const ENV_NAMES = ["NPMPRO_TEST_SMTP"];
 const ITEM_LINES = /^- (?:Renewal of certificate|Die Erneuerung des Zertifikats) cert \d+ /gmu;
 const unwrap = (raw) => raw.replace(/[=]\r?\n/gu, "");
@@ -259,7 +261,37 @@ describe("alert mails: recipients, accepts and the grouped send", () => {
 		clock.at += MINUTE;
 		await pass();
 		const rows = await rowsOf();
-		assert.ok(rows.every((row) => row.status === "failed" && NO_LONGER.test(row.error)));
+		assert.ok(rows.every((row) => row.status === "dropped" && NO_LONGER.test(row.error) && row.payload === null));
+		assert.equal(fake.messages.length, 0);
+		assert.equal(audits.length, 0);
+	});
+
+	it("drops the queued alerts of an event unticked before the send: no mail, no audit row", async () => {
+		const fake = await listen("accept");
+		await notify.deliver("certificate.renewal_failed", certificate(1));
+		await notify.deliver("backup.failed", { error: "disk full" });
+		notifications = () => ({ ...baseNotifications(), alerts_events: ["backup.failed"] });
+		clock.at += MINUTE;
+		await pass();
+		const rows = await rowsOf();
+		const unticked = rows.filter((row) => row.event === "certificate.renewal_failed");
+		assert.equal(unticked.length, 2);
+		assert.ok(unticked.every((row) => row.status === "dropped" && UNTICKED.test(row.error) && row.attempts === 0));
+		assert.ok(rows.filter((row) => row.event === "backup.failed").every((row) => row.status === "sent"));
+		assert.equal(fake.messages.length, 2);
+		assert.ok(fake.messages.every((raw) => !unwrap(raw).includes("cert 1")));
+		assert.equal(audits.length, 0);
+	});
+
+	it("drops every queued alert when mail is turned off before the send: no mail, no audit row", async () => {
+		const fake = await listen("accept");
+		await notify.deliver("certificate.renewal_failed", certificate(1));
+		configured = false;
+		clock.at += MINUTE;
+		await pass();
+		const rows = await rowsOf();
+		assert.equal(rows.length, 2);
+		assert.ok(rows.every((row) => row.status === "dropped" && NOT_SET_UP.test(row.error)));
 		assert.equal(fake.messages.length, 0);
 		assert.equal(audits.length, 0);
 	});

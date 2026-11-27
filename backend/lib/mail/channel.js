@@ -17,9 +17,18 @@ const GROUP_DELAY_MS = 60_000;
 const ALERT_TEMPLATE = "alerts";
 const RESOLVED = ".resolved";
 const NO_LONGER = "The address is no longer an alert recipient, the mail was not sent";
+const NOT_SET_UP = "Mail is no longer set up, the mail was not sent";
+const UNTICKED = "The event is no longer ticked for mail alerts, the mail was not sent";
 
 // ticking `x` covers `x.resolved` (the contract of alerts_events in settings-rules.js)
 const baseOf = (type) => (type.endsWith(RESOLVED) ? type.slice(0, -RESOLVED.length) : type);
+
+// the base must be an event mail offers (a state event or webhook.disabled), whatever the stored list holds
+const isTicked = (type, notifications) => {
+	const base = baseOf(String(type ?? ""));
+	const offered = eventById(base)?.mail === base && eventById(base).channels.includes("mail");
+	return offered && (notifications?.alerts_events ?? []).includes(base);
+};
 
 const recipientsOf = (to) => (Array.isArray(to) ? to : [to]).filter((one) => typeof one === "string" && one !== "");
 
@@ -110,13 +119,25 @@ const createMailChannel = ({ settings, admins, send, render, audit, log, clock =
 		}
 	};
 
+	// rows that were not tried because a setting changed since they were queued: no mail and no audit row
+	const dropped = (rows, reason, started) => {
+		const duration_ms = clock.now() - started;
+		return rows.map((row) => ({ id: row.id, ok: false, retry: false, dropped: true, error: reason, duration_ms }));
+	};
+
 	// an alert group: every row of one group_key is one mail to its address, the events oldest first. The rows share
-	// one fate (all sent, all retried, all failed), and a final failure is audited once.
-	const sendGroup = async (rows, values) => {
+	// one fate (all sent, all retried, all failed), and a final failure is audited once. Rows whose event is no longer
+	// ticked, and every row while mail is not set up or the address is no longer a recipient, are dropped unsent.
+	const sendClaimed = async (claimed, values) => {
+		const started = clock.now();
+		if (!isConfigured(values.email)) return dropped(claimed, NOT_SET_UP, started);
+		const rows = claimed.filter((row) => isTicked(row.event ?? row.payload?.envelope?.type, values.notifications));
+		const unticked = claimed.filter((row) => !rows.includes(row));
+		const skipped = unticked.length > 0 ? dropped(unticked, UNTICKED, started) : [];
+		if (rows.length === 0) return skipped;
 		const first = rows[0];
 		const last = rows.at(-1);
 		const to = first.recipient;
-		const started = clock.now();
 		try {
 			const { errors } = validateEmailValues(values.email);
 			if (Object.keys(errors).length > 0) {
@@ -135,10 +156,7 @@ const createMailChannel = ({ settings, admins, send, render, audit, log, clock =
 			// an admin disabled or an address removed since the row was queued gets nothing
 			const current = alertRecipients({ admins: users, settings: values.notifications });
 			const recipient = current.find((one) => one.address.toLowerCase() === to.toLowerCase());
-			if (!recipient) {
-				const duration_ms = clock.now() - started;
-				return rows.map((row) => ({ id: row.id, ok: false, retry: false, error: NO_LONGER, duration_ms }));
-			}
+			if (!recipient) return [...skipped, ...dropped(rows, NO_LONGER, started)];
 			const instance = publicHostOf(values.notifications) ?? hostname();
 			const events = rows.map((row) => row.payload.envelope);
 			// the footer says why the address gets the mail (as the settings are now); the button needs a public URL
@@ -147,16 +165,31 @@ const createMailChannel = ({ settings, admins, send, render, audit, log, clock =
 			const mail = render(ALERT_TEMPLATE, { language: last.payload.language, data, instance });
 			await send(values.email, { to, ...mail }, { ehloName: ehloNameOf(values.notifications) });
 			const duration_ms = clock.now() - started;
-			return rows.map((row) => ({ id: row.id, ok: true, duration_ms }));
+			return [...skipped, ...rows.map((row) => ({ id: row.id, ok: true, duration_ms }))];
 		} catch (error) {
 			const retry = error instanceof MailError && error.retry === true;
 			const text = safeText(error?.message ?? String(error), to);
-			// one fate for the group: its highest attempt count decides for every row
+			// one fate for the group: its highest attempt count decides for every row. A group succeeds or fails as one
+			// mail, so a late row that joined a group in its last attempt shares that attempt (the Task 3.2 ruling).
 			const final = !retry || rows.some((row) => Number(row.attempts) >= RETRY_DELAYS.length);
 			if (final) await recordFailure({ ...first, event: ALERT_TEMPLATE, payload: { to } }, text);
 			const duration_ms = clock.now() - started;
-			return rows.map((row) => ({ id: row.id, ok: false, retry: !final, error: text, duration_ms }));
+			return [
+				...skipped,
+				...rows.map((row) => ({ id: row.id, ok: false, retry: !final, error: text, duration_ms })),
+			];
 		}
+	};
+
+	// one log line per group at most, for the rows it dropped (counts and reasons, never an address)
+	const sendGroup = async (claimed, values) => {
+		const results = await sendClaimed(claimed, values);
+		const gone = results.filter((result) => result.dropped);
+		if (gone.length > 0) {
+			const reasons = [...new Set(gone.map((result) => result.error))].join("; ");
+			log?.info?.(`mail: ${gone.length} queued alert(s) dropped: ${reasons}`);
+		}
+		return results;
 	};
 
 	let loaded = null;
@@ -181,10 +214,7 @@ const createMailChannel = ({ settings, admins, send, render, audit, log, clock =
 		// (the settings read here are reused by the targets call of the same event)
 		accepts: async (type) => {
 			loaded = await settings();
-			const base = baseOf(type);
-			// the base must be an event mail offers (a state event or webhook.disabled), whatever the stored list holds
-			const offered = eventById(base)?.mail === base && eventById(base).channels.includes("mail");
-			return isConfigured(loaded.email) && offered && (loaded.notifications?.alerts_events ?? []).includes(base);
+			return isConfigured(loaded.email) && isTicked(type, loaded.notifications);
 		},
 		// one row per recipient, resolved now: they all wait for their group's window
 		targets: async (envelope) => {
