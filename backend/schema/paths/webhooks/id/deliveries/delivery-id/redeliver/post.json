@@ -1,0 +1,71 @@
+{
+	"operationId": "redeliverWebhookDelivery",
+	"summary": "Send a delivery again",
+	"description": "Queues a new try of a failed delivery: the same delivery and the same message id (the webhook-id header), so a receiver that handled it before can tell. 409 error.webhook-payload-gone when its content is not kept any more (a failed delivery keeps it for 7 days), error.webhook-disabled for a disabled webhook, error.webhook-delivery-not-failed for a delivery that is not failed.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "id",
+			"description": "Webhook id",
+			"required": true,
+			"schema": {
+				"type": "string",
+				"pattern": "^[1-9]\\d{0,9}$"
+			},
+			"example": "1"
+		},
+		{
+			"in": "path",
+			"name": "delivery_id",
+			"description": "Delivery id",
+			"required": true,
+			"schema": {
+				"type": "string",
+				"pattern": "^[1-9]\\d{0,9}$"
+			},
+			"example": "41"
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The delivery, pending again",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../../components/webhook-delivery-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"id": 41,
+								"message_id": "msg_p7n3u2x5r4f6a1z9c8b2d3e4f5",
+								"event": "backup.failed",
+								"status": "pending",
+								"attempts": 8,
+								"next_try_on": "2026-11-27T10:00:00.000Z",
+								"http_status": 500,
+								"duration_ms": 312,
+								"error": "The endpoint's answer was an error (500)",
+								"response": "internal error",
+								"created_on": "2026-11-26T09:12:00.000Z",
+								"modified_on": "2026-11-26T20:12:00.000Z",
+								"redeliverable": true
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

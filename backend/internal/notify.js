@@ -5,6 +5,7 @@ import { dbTimeOf, msOfDbTime } from "../lib/notify/db-time.js";
 import { createNotifyService } from "../lib/notify/service.js";
 import { MOVED_WATERMARK_KEY } from "../lib/notify/state-store.js";
 import { createWebhookChannel, createWebhookStore } from "../lib/notify/webhook-channel.js";
+import { createGuardedAgent, isTestOutbound } from "../lib/outbound-guard.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { global as logger } from "../logger.js";
 import { renderMail } from "../mail/render.js";
@@ -58,15 +59,17 @@ notify.registerChannel(
 );
 
 // The webhook channel: signed deliveries to the admin's URLs (stored sealed, opened for each attempt)
-notify.registerChannel(
-	createWebhookChannel({
-		webhooks: createWebhookStore({ knex: db(), queue }),
-		open: (sealed) => defaultSecretBox.decrypt(sealed),
-		notify,
-		log: logger,
-		version: pjson.version,
-	}),
-);
+// (a test run reaches the receivers through the global dispatcher, a MockAgent, as the other outbound reads do)
+const webhookChannel = createWebhookChannel({
+	webhooks: createWebhookStore({ knex: db(), queue }),
+	open: (sealed) => defaultSecretBox.decrypt(sealed),
+	notify,
+	audit: async (entry) => (await import("./audit-log.js")).default.add(null, entry),
+	createAgent: (options) => (isTestOutbound() ? undefined : createGuardedAgent(options)),
+	log: logger,
+	version: pjson.version,
+});
+notify.registerChannel(webhookChannel);
 
 // the hourly sweep also removes the used and expired password tokens
 registerSweepCheck(() => internalPasswordToken.sweep());
@@ -203,5 +206,6 @@ export {
 	resumeNotify,
 	stateStore,
 	sweep,
+	webhookChannel,
 	worker,
 };

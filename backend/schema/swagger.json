@@ -775,6 +775,45 @@
 				"$ref": "./paths/notifications/events/get.json"
 			}
 		},
+		"/webhooks": {
+			"get": {
+				"$ref": "./paths/webhooks/get.json"
+			},
+			"post": {
+				"$ref": "./paths/webhooks/post.json"
+			}
+		},
+		"/webhooks/{id}": {
+			"get": {
+				"$ref": "./paths/webhooks/id/get.json"
+			},
+			"put": {
+				"$ref": "./paths/webhooks/id/put.json"
+			},
+			"delete": {
+				"$ref": "./paths/webhooks/id/delete.json"
+			}
+		},
+		"/webhooks/{id}/rotate-secret": {
+			"post": {
+				"$ref": "./paths/webhooks/id/rotate-secret/post.json"
+			}
+		},
+		"/webhooks/{id}/test": {
+			"post": {
+				"$ref": "./paths/webhooks/id/test/post.json"
+			}
+		},
+		"/webhooks/{id}/deliveries": {
+			"get": {
+				"$ref": "./paths/webhooks/id/deliveries/get.json"
+			}
+		},
+		"/webhooks/{id}/deliveries/{delivery_id}/redeliver": {
+			"post": {
+				"$ref": "./paths/webhooks/id/deliveries/delivery-id/redeliver/post.json"
+			}
+		},
 		"/settings/{settingID}": {
 			"get": {
 				"$ref": "./paths/settings/settingID/get.json"

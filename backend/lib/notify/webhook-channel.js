@@ -4,6 +4,7 @@ import { fetch as undiciFetch } from "undici";
 import Webhook from "../../models/webhook.js";
 import { isBlockedAddress, isPrivateLanAddress } from "../blocked-address.js";
 import { blockedError, createGuardedAgent } from "../outbound-guard.js";
+import { buildData, makeEnvelope } from "./catalogue.js";
 import { dbTimeOf, msOfDbTime } from "./db-time.js";
 import { safeError } from "./queue.js";
 import { webhookHeaders } from "./webhook-sign.js";
@@ -238,6 +239,7 @@ const readCapped = async (response, limit) => {
  * @param   {Object}    options.webhooks      the store (createWebhookStore)
  * @param   {Function}  options.open          (sealed text) => the clear text; throws for one that cannot be opened
  * @param   {Object}    options.notify        emit(type, source)
+ * @param   {Function}  [options.audit]       async (entry) => the audit row of a disable is written (a failure is logged)
  * @param   {Function}  [options.fetchFn]     fetch(url, init) (undici's)
  * @param   {Function}  [options.createAgent] createGuardedAgent(options): called for every attempt
  * @param   {Object}    [options.clock]       { now, setTimeout, clearTimeout }
@@ -249,6 +251,7 @@ const createWebhookChannel = ({
 	webhooks,
 	open,
 	notify,
+	audit,
 	fetchFn = undiciFetch,
 	createAgent = createGuardedAgent,
 	clock = defaultClock(),
@@ -258,10 +261,27 @@ const createWebhookChannel = ({
 }) => {
 	const scrub = (text, hidden) => safeError(hide(text, hidden));
 
+	// the audit row of a disable (user 0: the worker did it): name, id, the events and the reason, never the URL
+	const auditDisabled = async (hook, reason) => {
+		try {
+			await audit?.({
+				action: "disabled",
+				object_type: "webhook",
+				object_id: hook.id,
+				meta: { name: hook.name, id: hook.id, events: hook.events, reason },
+			});
+		} catch (error) {
+			log?.warn?.(
+				`webhook ${hook.id}: the disable could not be audited: ${safeError(error?.message ?? String(error))}`,
+			);
+		}
+	};
+
 	const disable = async (hook, reason) => {
 		try {
 			if (!(await webhooks.disable(hook.id, reason))) return;
 			log?.warn?.(`webhook ${hook.id} was disabled (${reason})`);
+			await auditDisabled(hook, reason);
 			// the webhook is disabled already, so the event never goes to it
 			await notify.emit("webhook.disabled", { webhook: { id: hook.id, name: hook.name }, reason });
 		} catch (error) {
@@ -332,7 +352,7 @@ const createWebhookChannel = ({
 			return { error: describeError(error, timedOut) };
 		} finally {
 			clock.clearTimeout(timer);
-			await Promise.resolve(agent.close?.()).catch(() => {});
+			await Promise.resolve(agent?.close?.()).catch(() => {});
 		}
 	};
 
@@ -412,8 +432,31 @@ const createWebhookChannel = ({
 		};
 	};
 
+	/**
+	 * One notification.test attempt at once, outside the queue and the webhook's state (no retry, no failing period, no
+	 * disable, no delivery row). The answer is cut and hidden like a delivery's.
+	 *
+	 * @param   {Object}  hook  the webhook row (sealed values)
+	 * @returns {Promise<{ok: Boolean, http_status: ?Number, duration_ms: Number, response: ?String, error: ?String}>}
+	 */
+	const sendTest = async (hook) => {
+		const started = clock.now();
+		const envelope = makeEnvelope(TEST_EVENT, buildData(TEST_EVENT, { version }), { now: new Date(started) });
+		const outcome = await attempt({ message_id: envelope.id, payload: envelope, attempts: 0 }, hook);
+		const hidden = outcome.hidden ?? [];
+		return {
+			ok: outcome.ok === true,
+			http_status: outcome.http_status ?? null,
+			duration_ms: clock.now() - started,
+			response:
+				outcome.response === undefined ? null : cutBytes(hide(outcome.response, hidden), MAX_RESPONSE_BYTES),
+			error: outcome.ok ? null : scrub(outcome.fail, hidden),
+		};
+	};
+
 	return {
 		id: "webhook",
+		sendTest,
 		retryDelays: RETRY_DELAYS,
 		maxConcurrent: MAX_CONCURRENT,
 		// the worker sends all claimed rows of one webhook in one call, so a dead receiver costs one attempt per pass

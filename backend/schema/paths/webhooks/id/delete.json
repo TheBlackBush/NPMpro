@@ -1,0 +1,46 @@
+{
+	"operationId": "deleteWebhook",
+	"summary": "Delete a webhook",
+	"description": "Deletes the webhook and its deliveries; its waiting deliveries are not sent.\n\nNeeds: an administrator (a token needs its Administrator switch) and the token's Allow delete switch",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "id",
+			"description": "Webhook id",
+			"required": true,
+			"schema": {
+				"type": "string",
+				"pattern": "^[1-9]\\d{0,9}$"
+			},
+			"example": "1"
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "true when the webhook was deleted",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "boolean"
+					},
+					"examples": {
+						"default": {
+							"value": true
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,7 @@
+{
+	"type": "array",
+	"description": "Webhooks, by name",
+	"items": {
+		"$ref": "./webhook-object.json"
+	}
+}

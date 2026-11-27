@@ -34,6 +34,7 @@ const listSchema = {
 				"backup",
 				"database",
 				"api-token",
+				"webhook",
 			],
 		},
 		action: {
@@ -60,6 +61,8 @@ const listSchema = {
 				"revoked",
 				"expired",
 				"first-used",
+				"secret-rotated",
+				"test-sent",
 			],
 		},
 		user_id: { $ref: "common#/properties/id" },

@@ -1,0 +1,153 @@
+{
+	"type": "object",
+	"description": "A webhook. The URL and the signing secrets are never returned",
+	"additionalProperties": false,
+	"required": [
+		"id",
+		"created_on",
+		"modified_on",
+		"name",
+		"url_hint",
+		"url_set",
+		"secret_set",
+		"secret_error",
+		"events",
+		"enabled",
+		"verify_tls",
+		"disabled_reason",
+		"failing_since",
+		"last_success_on",
+		"last_delivery"
+	],
+	"properties": {
+		"id": {
+			"type": "integer",
+			"minimum": 1,
+			"description": "Webhook id",
+			"example": 1
+		},
+		"created_on": {
+			"type": "string",
+			"description": "When the webhook was created",
+			"example": "2026-11-27T09:30:00.000Z"
+		},
+		"modified_on": {
+			"type": "string",
+			"description": "When the webhook was last changed",
+			"example": "2026-11-27T09:30:00.000Z"
+		},
+		"name": {
+			"type": "string",
+			"maxLength": 100,
+			"description": "Unique name (case insensitive)",
+			"example": "Chat bridge"
+		},
+		"url_hint": {
+			"type": "string",
+			"description": "Scheme, host, port and the first 40 characters of the path of the URL; never the query or the fragment. Empty while url_set is false",
+			"example": "https://hooks.example.com/npmpro"
+		},
+		"url_set": {
+			"type": "boolean",
+			"description": "Whether a URL is stored. False for a webhook restored from a backup without secrets: enter the URL again"
+		},
+		"secret_set": {
+			"type": "boolean",
+			"description": "Whether a signing secret is stored"
+		},
+		"secret_error": {
+			"type": "boolean",
+			"description": "True when a stored URL or secret cannot be opened (it was saved with another key): save the webhook again with its URL"
+		},
+		"events": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"description": "Event ids as in GET /notifications/events (an event a webhook can carry), or [\"*\"] for every event, also the ones added later. notification.test is never selected by \"*\".",
+			"example": [
+				"certificate.expiring",
+				"backup.failed"
+			]
+		},
+		"enabled": {
+			"type": "boolean",
+			"description": "Whether events are sent to the webhook"
+		},
+		"verify_tls": {
+			"type": "boolean",
+			"description": "Whether the receiver's TLS certificate is verified (https only)"
+		},
+		"disabled_reason": {
+			"type": [
+				"string",
+				"null"
+			],
+			"enum": [
+				"gone",
+				"failing",
+				"restore",
+				null
+			],
+			"description": "Why NPMpro disabled it: gone (the receiver answered 410), failing (3 days of failures without a success) or restore (restored from a backup without secrets); null when it was not disabled by NPMpro"
+		},
+		"failing_since": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "When the first delivery failed since the last success; null when none is failing",
+			"example": null
+		},
+		"last_success_on": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "When the last delivery succeeded; null when none did",
+			"example": "2026-11-27T10:00:00.000Z"
+		},
+		"secret": {
+			"type": "string",
+			"description": "The signing secret (whsec_ and base64). Only in the answer that made it (a create, a rotation, or the save of a webhook restored without secrets): shown once, copy it now",
+			"example": "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSwaGVsbG8gd29ybGQ="
+		},
+		"last_delivery": {
+			"type": [
+				"object",
+				"null"
+			],
+			"additionalProperties": false,
+			"required": [
+				"status",
+				"http_status",
+				"created_on"
+			],
+			"description": "The newest delivery of the webhook; null when there is none",
+			"properties": {
+				"status": {
+					"type": "string",
+					"enum": [
+						"pending",
+						"sending",
+						"sent",
+						"failed",
+						"dropped"
+					],
+					"description": "Where the delivery is: pending (waiting for its first or next try), sending, sent, failed (no more tries) or dropped (the webhook was disabled)"
+				},
+				"http_status": {
+					"type": [
+						"integer",
+						"null"
+					],
+					"description": "The HTTP status of the last try; null when there was none or the request did not get an answer"
+				},
+				"created_on": {
+					"type": "string",
+					"description": "When the delivery was queued"
+				}
+			}
+		}
+	}
+}

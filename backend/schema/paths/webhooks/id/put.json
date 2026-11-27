@@ -1,0 +1,122 @@
+{
+	"operationId": "updateWebhook",
+	"summary": "Update a webhook",
+	"description": "Changes the fields sent. An empty or missing url keeps the stored one; a new one is checked like on create. Enabling a webhook clears its disabled reason and failing period; disabling it drops its waiting deliveries. A webhook restored from a backup without secrets needs its url and gets a new signing secret, shown once in the answer. Errors carry an error.<code> message id: webhook-name-taken, webhook-url-invalid, webhook-url-scheme, webhook-url-userinfo, webhook-url-required, webhook-host-unresolved, webhook-host-lookup-failed (a name lookup failed for now: try again), webhook-host-blocked (the host is, or resolves to, an address webhooks may not reach) and notify-event-not-for-webhook.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "id",
+			"description": "Webhook id",
+			"required": true,
+			"schema": {
+				"type": "string",
+				"pattern": "^[1-9]\\d{0,9}$"
+			},
+			"example": "1"
+		}
+	],
+	"requestBody": {
+		"description": "Fields to change",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"minProperties": 1,
+					"properties": {
+						"name": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 100,
+							"description": "Unique name (case insensitive)",
+							"example": "Chat bridge"
+						},
+						"url": {
+							"type": "string",
+							"maxLength": 2048,
+							"description": "A new address, checked like on create. Empty or left out keeps the stored one (a webhook restored without its URL needs it). It is stored sealed and never returned",
+							"example": "https://hooks.example.com/npmpro?token=abc"
+						},
+						"events": {
+							"type": "array",
+							"items": {
+								"type": "string",
+								"maxLength": 100
+							},
+							"minItems": 1,
+							"maxItems": 100,
+							"description": "Event ids as in GET /notifications/events (an event a webhook can carry), or [\"*\"] for every event, also the ones added later. notification.test is never selected by \"*\".",
+							"example": [
+								"certificate.expiring",
+								"backup.failed"
+							]
+						},
+						"enabled": {
+							"type": "boolean",
+							"description": "Whether events are sent to the webhook. Default true"
+						},
+						"verify_tls": {
+							"type": "boolean",
+							"description": "Whether the receiver's TLS certificate is verified (https only). Default true"
+						}
+					}
+				},
+				"example": {
+					"enabled": false
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "The updated webhook, with secret only when a new one was made",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../components/webhook-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"id": 1,
+								"created_on": "2026-11-27T09:30:00.000Z",
+								"modified_on": "2026-11-27T09:30:00.000Z",
+								"name": "Chat bridge",
+								"url_hint": "https://hooks.example.com/npmpro",
+								"url_set": true,
+								"secret_set": true,
+								"secret_error": false,
+								"events": [
+									"certificate.expiring",
+									"backup.failed"
+								],
+								"enabled": true,
+								"verify_tls": true,
+								"disabled_reason": null,
+								"failing_since": null,
+								"last_success_on": "2026-11-27T10:00:00.000Z",
+								"last_delivery": {
+									"status": "sent",
+									"http_status": 200,
+									"created_on": "2026-11-27T10:00:00.000Z"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

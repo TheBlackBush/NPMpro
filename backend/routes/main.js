@@ -36,6 +36,7 @@ import settingsRoutes from "./settings.js";
 import tokensRoutes from "./tokens.js";
 import usersRoutes from "./users.js";
 import versionRoutes from "./version.js";
+import webhooksRoutes from "./webhooks.js";
 
 const router = express.Router({
 	caseSensitive: true,
@@ -100,6 +101,7 @@ router.get(["/api/docs", "/api/docs/"], (_req, res) => res.redirect(302, "/api-r
 router.use("/api/schema", schemaRoutes);
 router.use("/api/tokens", tokensRoutes);
 router.use("/api/notifications", notificationsRoutes);
+router.use("/api/webhooks", webhooksRoutes);
 router.use("/api/oidc", oidcRoutes);
 router.use("/api/password-reset", passwordResetRoutes);
 router.use("/api/users", usersRoutes);
