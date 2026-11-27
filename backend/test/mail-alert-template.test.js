@@ -244,9 +244,20 @@ describe("alert mail template", () => {
 			timestamp: "2026-11-26T10:00:00.000Z",
 			data: { webhook: { id: 7, name: "hook" }, reason },
 		});
-		assert.ok(mail([webhook("gone")]).subject.endsWith("Webhook hook was disabled: its target no longer exists"));
-		assert.ok(mail([webhook("failing")]).subject.endsWith("Webhook hook was disabled after repeated failures"));
-		assert.ok(mail([webhook("other")]).subject.endsWith("Webhook hook was disabled"));
+		const tail = (reason) => mail([webhook(reason)]).subject;
+		assert.ok(tail("gone").endsWith("Webhook hook was turned off: the receiver answered 410 Gone"));
+		assert.ok(tail("failing").endsWith("Webhook hook was turned off: deliveries failed for 3 days"));
+		assert.ok(tail("restore").endsWith("Webhook hook was turned off: turned off by a backup restore"));
+		assert.ok(tail("other").endsWith("Webhook hook was turned off"));
+		const german = renderMail("alerts", {
+			language: "de",
+			instance: INSTANCE,
+			data: { events: [webhook("gone")] },
+		});
+		assert.ok(
+			german.subject.endsWith("Der Webhook hook wurde ausgeschaltet: der Empfänger antwortete mit 410 Gone"),
+		);
+		assert.ok(!tail("other").includes("other"));
 		const nameless = { ...webhook("gone"), data: { webhook: { id: 7 }, reason: "gone" } };
 		assert.ok(mail([nameless]).subject.includes("Webhook #7 was"));
 		const unknown = { id: "msg_u", type: "future.event", timestamp: "2026-11-26T10:00:00.000Z", data: {} };
