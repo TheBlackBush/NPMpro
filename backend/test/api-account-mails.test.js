@@ -262,3 +262,48 @@ it("a notice that cannot be queued never fails the change and leaves a safe line
 	assert.ok(!line.includes(NEW_PASSWORD) && !line.includes(user.user.email));
 	assert.ok(!everything().includes("boom"));
 });
+
+it("MAIL_ACCOUNT_NOTICES=false in the environment sends nothing", async () => {
+	const user = await newUser();
+	process.env.MAIL_ACCOUNT_NOTICES = "false";
+	try {
+		must(await admin.put(`/users/${user.user.id}/auth`, { type: "password", secret: NEW_PASSWORD }));
+		await flush();
+	} finally {
+		delete process.env.MAIL_ACCOUNT_NOTICES;
+	}
+	assert.equal(mailsTo(user.user.email).length, 0);
+});
+
+it("an administrator setting the password of an invited user sends one 'changed' notice and ends the invitation", async () => {
+	counter += 1;
+	const email = `invitee-admin${counter}@example.com`;
+	const created = must(await admin.post("/users", { name: "Invitee", email, roles: [], invite: true }), 201);
+	const token = mailsTo(email).at(-1).match(TOKEN).groups.token;
+	must(await admin.put(`/users/${created.body.id}/auth`, { type: "password", secret: NEW_PASSWORD }));
+	await flush();
+	const subjects = mailsTo(email).map(subjectOf);
+	assert.equal(subjects.length, 2, subjects.join(" | "));
+	assert.ok(subjects[1].includes("password was changed"));
+	const used = await api.client().post("/password-reset/confirm", { token, password: "another-one-12345" });
+	assert.equal(used.status, 400);
+});
+
+it("a user lookup that fails before the write leaves MFA on and the notice code never throws into the request", async () => {
+	const user = await newUser();
+	const secret = await enroll(user);
+	const { default: internalUser } = await import("../internal/user.js");
+	const lookup = mock.method(internalUser, "get", () => Promise.reject(new Error("gone")));
+	nextPeriod();
+	try {
+		const refused = await user.post(`/users/${user.user.id}/mfa/totp/disable`, {
+			code: await generate({ secret }),
+		});
+		assert.notEqual(refused.status, 200);
+	} finally {
+		lookup.mock.restore();
+	}
+	assert.equal(must(await user.get(`/users/${user.user.id}/mfa`)).body.totp_enabled, true);
+	await flush();
+	assert.equal(mailsTo(user.user.email).length, 0);
+});

@@ -70,7 +70,7 @@
 	"password-changed.subject": "Se cambió tu contraseña de NPMpro",
 	"password-changed.done": "La contraseña de tu cuenta en {instance} se cambió el {time} (UTC).",
 	"password-changed.done.admin": "La contraseña de tu cuenta en {instance} fue cambiada por un administrador el {time} (UTC).",
-	"password-changed.sessions": "Se cerraron todas las sesiones.",
+	"password-changed.sessions": "Se cerraron todas las sesiones anteriores.",
 	"address-changed.subject.old": "Se cambió el correo electrónico de tu cuenta de NPMpro",
 	"address-changed.subject.new": "Esta dirección se usa ahora para tu cuenta de NPMpro",
 	"address-changed.old": "El correo electrónico de tu cuenta en {instance} se cambió el {time} (UTC). Esta dirección ya no se usa para la cuenta.",

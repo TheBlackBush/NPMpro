@@ -76,7 +76,7 @@
 	"password-changed.subject": "Ваш пароль NPMpro изменён",
 	"password-changed.done": "Пароль вашей учётной записи на {instance} был изменён {time} (UTC).",
 	"password-changed.done.admin": "Пароль вашей учётной записи на {instance} был изменён администратором {time} (UTC).",
-	"password-changed.sessions": "Все сеансы завершены.",
+	"password-changed.sessions": "Все прежние сеансы завершены.",
 	"address-changed.subject.old": "Адрес электронной почты вашей учётной записи NPMpro изменён",
 	"address-changed.subject.new": "Этот адрес теперь используется для вашей учётной записи NPMpro",
 	"address-changed.old": "Адрес электронной почты вашей учётной записи на {instance} был изменён {time} (UTC). Этот адрес больше не используется для учётной записи.",

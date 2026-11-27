@@ -67,7 +67,7 @@
 	"password-changed.subject": "您的 NPMpro 密码已更改",
 	"password-changed.done": "您在 {instance} 的账户密码已于 {time} (UTC) 更改。",
 	"password-changed.done.admin": "您在 {instance} 的账户密码已由管理员于 {time} (UTC) 更改。",
-	"password-changed.sessions": "所有会话均已退出登录。",
+	"password-changed.sessions": "所有之前的会话均已退出登录。",
 	"address-changed.subject.old": "您的 NPMpro 账户的电子邮件地址已更改",
 	"address-changed.subject.new": "此地址现已用于您的 NPMpro 账户",
 	"address-changed.old": "您在 {instance} 的账户电子邮件地址已于 {time} (UTC) 更改。此地址不再用于该账户。",

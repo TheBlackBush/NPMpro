@@ -70,7 +70,7 @@
 	"password-changed.subject": "Je NPMpro-wachtwoord is gewijzigd",
 	"password-changed.done": "Het wachtwoord van je account op {instance} is op {time} (UTC) gewijzigd.",
 	"password-changed.done.admin": "Het wachtwoord van je account op {instance} is op {time} (UTC) door een beheerder gewijzigd.",
-	"password-changed.sessions": "Alle sessies zijn afgemeld.",
+	"password-changed.sessions": "Alle eerdere sessies zijn afgemeld.",
 	"address-changed.subject.old": "Het e-mailadres van je NPMpro-account is gewijzigd",
 	"address-changed.subject.new": "Dit adres wordt nu gebruikt voor je NPMpro-account",
 	"address-changed.old": "Het e-mailadres van je account op {instance} is op {time} (UTC) gewijzigd. Dit adres wordt niet meer gebruikt voor het account.",

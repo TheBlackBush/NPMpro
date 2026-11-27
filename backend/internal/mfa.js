@@ -75,10 +75,12 @@ const internalMfa = {
 			throw new errs.ValidationError("Invalid verification code", "error.invalid-code");
 		}
 
+		// loaded before the write: a failure here never leaves a changed account behind an error answer
+		const user = await internalUser.get(access, { id: userId });
 		await totp.disable(access, userId, false, async (trx) => {
 			if (!(await internalMfa.isAnyEnabled(userId, trx))) await backupCodes.delete(userId, trx);
 		});
-		await internalAccountMail.noticeMfaOff(await internalUser.get(access, { id: userId }), false);
+		await internalAccountMail.noticeMfaOff(user, false);
 	},
 
 	/**

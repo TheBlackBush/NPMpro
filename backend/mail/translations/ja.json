@@ -67,7 +67,7 @@
 	"password-changed.subject": "NPMpro のパスワードが変更されました",
 	"password-changed.done": "{instance} のアカウントのパスワードが {time} (UTC) に変更されました。",
 	"password-changed.done.admin": "{instance} のアカウントのパスワードが {time} (UTC) に管理者によって変更されました。",
-	"password-changed.sessions": "すべてのセッションがサインアウトされました。",
+	"password-changed.sessions": "以前のすべてのセッションがサインアウトされました。",
 	"address-changed.subject.old": "NPMpro アカウントのメールアドレスが変更されました",
 	"address-changed.subject.new": "このアドレスが NPMpro アカウントで使われるようになりました",
 	"address-changed.old": "{instance} のアカウントのメールアドレスが {time} (UTC) に変更されました。このアドレスはこのアカウントでは使われなくなりました。",
