@@ -163,8 +163,13 @@ const internalMonitoringSetting = {
 		});
 
 		if (switched) {
-			await applyGeoipProvider();
-			await reportGeoipState();
+			// the setting is stored: a failing swap of the readers never fails the save, the download still starts
+			try {
+				await applyGeoipProvider();
+				await reportGeoipState();
+			} catch (err) {
+				logger.warn(`GeoIP: switching the provider failed: ${String(err?.message ?? err).slice(0, 200)}`);
+			}
 		}
 
 		const after = await getGeoipConfig();
@@ -198,7 +203,12 @@ const internalMonitoringSetting = {
 	 *
 	 * @param {{ok: boolean, error?: string, updated?: string[], provider?: string}} result
 	 */
-	recordGeoipResult: async ({ ok, error, updated }) => {
+	recordGeoipResult: async ({ ok, error, updated, provider }) => {
+		// a run of the provider that was switched away while it ran must not write onto the new one
+		if (provider !== undefined && provider !== (await getGeoipConfig()).values.provider) {
+			logger.info(`GeoIP: the result of the ${provider} run is dropped, the provider was switched meanwhile`);
+			return;
+		}
 		const stored = await readStoredGeoip();
 		const now = new Date().toISOString();
 		const next = { ...stored, last_error: ok ? null : String(error ?? "Unknown error"), last_check: now };

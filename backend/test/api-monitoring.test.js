@@ -413,7 +413,8 @@ it("downloads the databases when the credentials change, and records the outcome
 	assert.equal(done.status, 200, done.text);
 	const meta = await waitFor(async () => {
 		const stored = await storedMeta("geoip");
-		return stored?.last_update ? stored : null;
+		const file = await readFile(path.join(api.root, "data/goaccess/geoip/GeoLite2-Country.mmdb")).catch(() => null);
+		return stored?.last_update && file ? stored : null;
 	}, "the GeoIP update");
 	assert.equal(meta.last_error, null);
 	assert.equal(
@@ -540,11 +541,20 @@ it("clears the last error on a provider switch and re-evaluates the failed state
 		.where({ id: "geoip" })
 		.update({ meta: JSON.stringify({ ...meta, last_error: "old trouble" }) });
 	assert.equal((await admin.get(GEOIP)).body.last_error, "old trouble");
+	await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+	await api.db("npmpro_notification_state").insert({
+		key: "geoip.failed:geoip",
+		event: "geoip.failed",
+		object_id: "geoip",
+		state: "bad",
+		since: new Date(),
+		data: JSON.stringify({ reason: "download", error: "old trouble" }),
+	});
 	const switched = await admin.put(GEOIP, { provider: "dbip" });
 	assert.equal(switched.status, 200, switched.text);
 	assert.equal(switched.body.last_error, null);
 	assert.equal((await storedMeta("geoip")).last_error, null);
-	assert.equal((await geoipState())?.state ?? "ok", "ok");
+	assert.equal((await geoipState()).state, "ok");
 	// the download of the switch starts in the background (no network in the tests): let it end before the next case
 	await waitFor(async () => (await storedMeta("geoip")).last_check, "the download after the switch");
 });

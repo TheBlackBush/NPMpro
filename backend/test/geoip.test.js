@@ -302,7 +302,8 @@ describe("runConfiguredGeoipUpdate", () => {
 			error: "MaxMind account ID and license key are required",
 			provider: "maxmind",
 		});
-		assert.deepEqual(events, []);
+		// no fetch, but the failed run is recorded like any other
+		assert.deepEqual(events, [["record", false, "maxmind"]]);
 	});
 
 	it("DB-IP needs no credentials and calls the DB-IP updater", async () => {
@@ -312,7 +313,7 @@ describe("runConfiguredGeoipUpdate", () => {
 		assert.deepEqual(events, [["dbip", ["Country", "ASN"], "/x", false], ["record", true, "dbip"], "reload"]);
 	});
 
-	it("downloads, records and reloads nothing without selected databases", async () => {
+	it("downloads and reloads nothing without selected databases, and records the check", async () => {
 		for (const values of [
 			{ ...MAXMIND, editions: [] },
 			{ ...DBIP, dbip_editions: [] },
@@ -320,7 +321,7 @@ describe("runConfiguredGeoipUpdate", () => {
 			const { args, events } = make(values, { ok: false, updated: [] });
 			const result = await runConfiguredGeoipUpdate(args);
 			assert.deepEqual(result, { ok: true, updated: [], provider: values.provider });
-			assert.deepEqual(events, []);
+			assert.deepEqual(events, [["record", true, values.provider]]);
 		}
 	});
 

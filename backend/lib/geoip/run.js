@@ -90,12 +90,16 @@ const runOnce = async ({
 }) => {
 	const { values } = await getConfig();
 	const provider = values.provider === "maxmind" ? "maxmind" : "dbip";
+	const finish = async (outcome) => {
+		await recordResult({ ...outcome, provider });
+		return { ...outcome, provider };
+	};
 	if (provider === "maxmind" && (!values.account_id || !values.license_key)) {
-		return { ok: false, updated: [], error: "MaxMind account ID and license key are required", provider };
+		return finish({ ok: false, updated: [], error: "MaxMind account ID and license key are required" });
 	}
 	const editions = selectedEditions(values);
 	// no databases selected: nothing to download, the files already downloaded stay
-	if (editions.length === 0) return { ok: true, updated: [], provider };
+	if (editions.length === 0) return finish({ ok: true, updated: [] });
 	const result = await updaters[provider](
 		provider === "maxmind"
 			? { accountId: values.account_id, licenseKey: values.license_key, editions, dir, fetch }
