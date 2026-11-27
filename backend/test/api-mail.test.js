@@ -15,7 +15,16 @@ const OIDC_ENV = {
 	OIDC_REDIRECT_DOMAIN: "npm.example.com",
 	OIDC_DISABLE_PASSWORD: "true",
 };
-const ENV_VARS = ["SMTP_HOST", "SMTP_PASSWORD", "SMTP_FROM", "PUBLIC_URL", "PASSWORD_RESET", ...Object.keys(OIDC_ENV)];
+const ENV_VARS = [
+	"SMTP_HOST",
+	"SMTP_PASSWORD",
+	"SMTP_FROM",
+	"PUBLIC_URL",
+	"PASSWORD_RESET",
+	"MAIL_INVITATIONS",
+	"MAIL_ACCOUNT_NOTICES",
+	...Object.keys(OIDC_ENV),
+];
 const SEALED = /^v1:/u;
 const TO_ADMIN = /To: admin@example\.com/u;
 const TO_OTHER = /To: someone@example\.org/u;
@@ -118,6 +127,8 @@ it("starts unconfigured: the defaults, no password, the test mail refused", asyn
 		from_name: "",
 		reply_to: "",
 		allow_password_reset: false,
+		invitations: true,
+		account_notices: true,
 		password_set: false,
 		secret_error: false,
 		locked: [],
@@ -586,6 +597,75 @@ it("locks the switch with PASSWORD_RESET, true or false, and ignores a save for 
 	} finally {
 		delete process.env.PASSWORD_RESET;
 	}
+});
+
+it("saves the invitation and account notice switches, refuses a non-boolean, and audits the keys", async () => {
+	const off = await admin.put("/settings/email", { invitations: false, account_notices: false });
+	assert.equal(off.status, 200, off.text);
+	assert.equal(off.body.invitations, false);
+	assert.equal(off.body.account_notices, false);
+	const row = (await auditRows()).filter((entry) => entry.action === "updated").at(-1);
+	assert.deepEqual(parsed(row.meta).changed, ["invitations", "account_notices"]);
+	assert.equal((await admin.put("/settings/email", { invitations: "no" })).status, 400);
+	assert.equal((await admin.put("/settings/email", { account_notices: "yes" })).status, 400);
+	assert.equal((await admin.get("/settings/email")).body.invitations, false);
+
+	process.env.MAIL_INVITATIONS = "false";
+	process.env.MAIL_ACCOUNT_NOTICES = "true";
+	try {
+		const locked = (await admin.get("/settings/email")).body;
+		assert.equal(locked.invitations, false);
+		assert.equal(locked.account_notices, true);
+		assert.deepEqual(locked.locked_by, {
+			invitations: "MAIL_INVITATIONS",
+			account_notices: "MAIL_ACCOUNT_NOTICES",
+		});
+		assert.deepEqual(locked.locked.sort(), ["account_notices", "invitations"]);
+		// a save of a locked switch is dropped, the other one saves
+		const dropped = await admin.put("/settings/email", { invitations: true, account_notices: false });
+		assert.equal(dropped.status, 200, dropped.text);
+		assert.equal(dropped.body.invitations, false);
+		assert.equal(dropped.body.account_notices, true);
+	} finally {
+		delete process.env.MAIL_INVITATIONS;
+		delete process.env.MAIL_ACCOUNT_NOTICES;
+	}
+	assert.equal((await admin.put("/settings/email", { invitations: true, account_notices: true })).status, 200);
+	const back = (await admin.get("/settings/email")).body;
+	assert.equal(back.invitations, true);
+	assert.equal(back.account_notices, true);
+	assert.deepEqual(back.locked, []);
+});
+
+it("offers an invitation only with the switch, the public URL and mail configured, and reads no password while off", async () => {
+	const { invitationsOffered } = await import("../internal/mail-setting.js");
+	await api.db("setting").whereIn("id", ["email", "notifications"]).delete();
+	assert.equal(await invitationsOffered(), false);
+	assert.equal((await admin.put("/settings/notifications", { public_url: "https://npm.example.test" })).status, 200);
+	assert.equal(await invitationsOffered(), false, "no mail");
+	assert.equal((await admin.put("/settings/email", serverOf(accept))).status, 200);
+	assert.equal(await invitationsOffered(), true);
+	assert.equal((await admin.put("/settings/email", { invitations: false })).status, 200);
+	assert.equal(await invitationsOffered(), false, "switch off");
+	// a sealed password that cannot be decrypted is never read while the switch is off
+	const stored = await settingRow("email");
+	await api
+		.db("setting")
+		.where({ id: "email" })
+		.update({ meta: JSON.stringify({ ...stored, password: "v1:garbage" }) });
+	try {
+		assert.equal(await invitationsOffered(), false);
+	} finally {
+		await api
+			.db("setting")
+			.where({ id: "email" })
+			.update({ meta: JSON.stringify(stored) });
+	}
+	assert.equal((await admin.put("/settings/email", { invitations: true })).status, 200);
+	assert.equal((await admin.put("/settings/notifications", { public_url: "" })).status, 200);
+	assert.equal(await invitationsOffered(), false, "no public URL");
+	assert.equal((await admin.put("/settings/notifications", { public_url: "https://npm.example.test" })).status, 200);
+	assert.equal(await invitationsOffered(), true);
 });
 
 it("reads no sealed password and no mail server check while the switch is off", async () => {

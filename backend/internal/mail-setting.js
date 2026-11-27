@@ -310,5 +310,27 @@ const resetOffered = async (oidc) => {
 	return isConfigured(email);
 };
 
-export { getEmailConfig, getNotificationsConfig, reloadMailSettings, resetOffered, useMailSettings };
+/**
+ * Whether an invitation mail is offered: the switch on, a valid public URL (the link's address) and mail configured.
+ * The cheap checks come first and the switch is read from the row or the env, so no password is decrypted while it is
+ * off.
+ *
+ * @returns {Promise<boolean>}
+ */
+const invitationsOffered = async () => {
+	const { password: _sealed, ...stored } = await readStored("email");
+	const { values: email } = mergeEmail(stored, process.env);
+	if (email.invitations !== true) return false;
+	if (!normalizePublicUrl((await getNotificationsConfig()).values.public_url)) return false;
+	return isConfigured(email);
+};
+
+export {
+	getEmailConfig,
+	getNotificationsConfig,
+	invitationsOffered,
+	reloadMailSettings,
+	resetOffered,
+	useMailSettings,
+};
 export default internalMailSetting;

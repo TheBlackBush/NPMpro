@@ -68,6 +68,14 @@
 							"type": "boolean",
 							"description": "Whether users may reset a forgotten password by mail. Turning it on needs the public URL"
 						},
+						"invitations": {
+							"type": "boolean",
+							"description": "Whether a new user gets an invitation mail to set a password. It is offered only with mail set up and the public URL. Default: on"
+						},
+						"account_notices": {
+							"type": "boolean",
+							"description": "Whether account mails go out (a changed address, a changed password, MFA turned off, new backup codes). The reset notice is always sent. Default: on"
+						},
 						"password": {
 							"type": "string",
 							"maxLength": 1024,
@@ -105,6 +113,8 @@
 								"from_name": "NPMpro",
 								"reply_to": "",
 								"allow_password_reset": false,
+								"invitations": true,
+								"account_notices": true,
 								"password_set": true,
 								"secret_error": false,
 								"locked": [],

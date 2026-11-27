@@ -12,6 +12,8 @@
 		"from_name",
 		"reply_to",
 		"allow_password_reset",
+		"invitations",
+		"account_notices",
 		"password_set",
 		"secret_error",
 		"locked",
@@ -62,6 +64,14 @@
 		"allow_password_reset": {
 			"type": "boolean",
 			"description": "Whether users may reset a forgotten password by mail. It also needs mail set up and the public URL; turning it on without the public URL is refused. Default: off"
+		},
+		"invitations": {
+			"type": "boolean",
+			"description": "Whether a new user gets an invitation mail to set a password. It is offered only with mail set up and the public URL. Default: on"
+		},
+		"account_notices": {
+			"type": "boolean",
+			"description": "Whether account mails go out (a changed address, a changed password, MFA turned off, new backup codes). The reset notice is always sent. Default: on"
 		},
 		"password_set": {
 			"type": "boolean",

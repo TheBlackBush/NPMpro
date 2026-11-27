@@ -1003,6 +1003,16 @@ if [ -n "$OIDC_SKIP_MFA" ] && ! echo "$OIDC_SKIP_MFA" | grep -q "^true$\|^false$
     sleep inf
 fi
 
+if [ -n "$MAIL_INVITATIONS" ] && ! echo "$MAIL_INVITATIONS" | grep -q "^true$\|^false$"; then
+    echo "MAIL_INVITATIONS needs to be true or false."
+    sleep inf
+fi
+
+if [ -n "$MAIL_ACCOUNT_NOTICES" ] && ! echo "$MAIL_ACCOUNT_NOTICES" | grep -q "^true$\|^false$"; then
+    echo "MAIL_ACCOUNT_NOTICES needs to be true or false."
+    sleep inf
+fi
+
 if [ -n "$SMTP_PORT" ] && { ! echo "$SMTP_PORT" | grep -q "^[0-9]\{1,5\}$" || [ "$SMTP_PORT" -lt 1 ] || [ "$SMTP_PORT" -gt 65535 ]; }; then
     echo "SMTP_PORT needs to be a number from 1 to 65535."
     sleep inf

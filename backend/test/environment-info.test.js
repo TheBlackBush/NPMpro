@@ -596,4 +596,8 @@ it("lists the mail and notification env locks, the mail credentials are secret e
 	assert.ok(Object.values(EMAIL_ENV_KEYS).includes("PASSWORD_RESET"));
 	assert.deepEqual(lockedByOf("email", ["allow_password_reset"]), { allow_password_reset: "PASSWORD_RESET" });
 	assert.deepEqual(lockedByOf("notifications", ["default_language"]), { default_language: "MAIL_LANGUAGE" });
+	assert.deepEqual(lockedByOf("email", ["invitations", "account_notices"]), {
+		invitations: "MAIL_INVITATIONS",
+		account_notices: "MAIL_ACCOUNT_NOTICES",
+	});
 });

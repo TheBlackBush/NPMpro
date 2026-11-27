@@ -206,6 +206,8 @@ services:
 #      - "PUBLIC_URL=https://npm.example.com" # address you open NPMpro with, https:// only, no path; used in links of mails
 #      - "MAIL_LANGUAGE=en" # language of mails without a known recipient language: en, de, zh, fr, es, pt, ru, it, nl, pl, ja, ko or uk, default en
 #      - "PASSWORD_RESET=true" # lets users reset a forgotten password by mail (needs mail set up and PUBLIC_URL), default false
+#      - "MAIL_INVITATIONS=false" # offer the invitation mail to new users (needs mail set up and PUBLIC_URL), default true
+#      - "MAIL_ACCOUNT_NOTICES=false" # send account mails (changed address, changed password, MFA off, backup codes), default true
 #      - "ALERT_ADDRESSES=ops@example.com,oncall@example.com" # extra addresses that get alert mails, a comma list of at most 20 plain addresses, default none
 
       # Advanced (Time zone: TZ at the top)
