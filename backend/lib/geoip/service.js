@@ -20,13 +20,13 @@ const defaultTimers = {
 /**
  * Keeps the shared GeoIP readers current: reload() every 10 minutes (it only reopens changed files) and an automatic
  * update, checked a minute after start and then hourly. MaxMind: credentials exist and the last update is missing or
- * older than 3 days. DB-IP: a selected file is missing or the last check is missing or older than 7 days. The update
- * records its own result (lib/geoip/run.js).
+ * older than 3 days. DB-IP: a selected file is missing, the last check is missing or older than 7 days, or the last
+ * check failed and is older than 24 hours. The update records its own result (lib/geoip/run.js).
  *
  * @param   {Object}    deps
  * @param   {Object}    deps.geoip      createGeoip() instance
  * @param   {Function}  deps.runUpdate  () => Promise<{ ok, updated, error }>
- * @param   {Function}  deps.getConfig  () => Promise<{ values: { provider, account_id, license_key, last_update, last_check } }>
+ * @param   {Function}  deps.getConfig  () => Promise<{ values }>, the effective GeoIP settings (getGeoipConfig)
  * @param   {Function}  [deps.filesPresent]  (values) => Promise<boolean>, every selected file of the active provider exists
  * @param   {Function}  [deps.now]
  * @param   {Object}    [deps.timers]
@@ -64,7 +64,10 @@ const createGeoipService = ({
 			return olderThan(values.last_update, REFRESH_MS);
 		}
 		if (selectedEditions(values).length === 0) return false;
-		return !(await filesPresent(values)) || olderThan(values.last_check, DBIP_REFRESH_MS);
+		if (!(await filesPresent(values))) return true;
+		// every recorded run moves last_check: a failed check is due again after the retry wait, not after a week
+		if (values.last_error) return olderThan(values.last_check, RETRY_MS);
+		return olderThan(values.last_check, DBIP_REFRESH_MS);
 	};
 
 	/** Runs the update when it is due; resolves to the update result or null when nothing ran. */

@@ -1435,6 +1435,26 @@ describe("GeoIP service", () => {
 			assert.equal(g.runs(), 2);
 		});
 
+		it("retries a failed check a day later when the files exist, not a week later", async () => {
+			const at = (hours) => new Date(Date.UTC(2026, 10, 27) - hours * 3600000).toISOString();
+			const recent = makeDbip({ last_check: at(23), last_error: "DB-IP returned HTTP 503" });
+			assert.equal(await recent.svc.check(), null);
+			assert.equal(recent.runs(), 0);
+			const due = makeDbip({ last_check: at(25), last_error: "DB-IP returned HTTP 503" });
+			await due.svc.check();
+			assert.equal(due.runs(), 1);
+			// the recorded failure moves last_check: the same install is due again 24 hours after it
+			const later = makeDbip({ last_check: at(0), last_error: "DB-IP returned HTTP 503" });
+			assert.equal(await later.svc.check(), null);
+			later.advance(day);
+			await later.svc.check();
+			assert.equal(later.runs(), 1);
+			// without an error the weekly rule holds
+			const fine = makeDbip({ last_check: at(25), last_error: null });
+			assert.equal(await fine.svc.check(), null);
+			assert.equal(fine.runs(), 0);
+		});
+
 		it("a paused service does not run", async () => {
 			const g = makeDbip({ last_check: null }, { present: false });
 			g.svc.pause();
