@@ -3,9 +3,16 @@ import { Badge } from "src/components/ui/badge";
 import { formatDateTime, T } from "src/locale";
 import { signInMethods } from "src/modules/SignInMethods";
 
-// Local: the user has a password; OIDC: linked to an OIDC identity, the tooltip gives the link date
+// Invited: no sign-in method yet, an invitation is out; Local: the user has a password; OIDC: linked to an OIDC identity, the tooltip gives the link date
 export function SignInFormatter({ user }) {
 	const methods = signInMethods(user);
+	if (methods.length === 0 && user.invited === true) {
+		return (
+			<Badge variant="outline">
+				<T id="user.invited" />
+			</Badge>
+		);
+	}
 	if (methods.length === 0) return <span className="text-muted-foreground">-</span>;
 	return (
 		<span className="inline-flex flex-wrap gap-1">

@@ -14,6 +14,7 @@ import { PasswordInput } from "src/components/Form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "src/components/ui/card";
 import { intl, T } from "src/locale";
 import { resetPasswordValidate } from "src/modules/AccountForms";
+import { resetWording } from "src/modules/Invitations";
 import { resetTokenOf } from "src/modules/ResetPassword";
 import { validations } from "src/modules/Validations";
 import { AuthLayout } from "src/shell/AuthLayout";
@@ -53,7 +54,7 @@ function InvalidLink() {
 	);
 }
 
-function NewPasswordForm({ token, onDone, onInvalid }) {
+function NewPasswordForm({ token, purpose, onDone, onInvalid }) {
 	const [error, setError] = useState(null);
 	const methods = useAppForm({ defaultValues: { new: "", confirm: "" }, validate });
 	const { register } = methods;
@@ -105,7 +106,7 @@ function NewPasswordForm({ token, onDone, onInvalid }) {
 					size="lg"
 					isLoading={isSubmitting}
 				>
-					<T id="save" />
+					<T id={resetWording(purpose).button} />
 				</FormSubmit>
 				<BackToSignIn />
 			</CardContent>
@@ -123,6 +124,8 @@ export default function ResetPassword() {
 	const [step, setStep] = useState(token === "" ? "invalid" : "checking");
 	const [attempt, setAttempt] = useState(0);
 	const [failure, setFailure] = useState(null);
+	// what the link is for, as the check answers: "invite" (a new account) or "reset"
+	const [purpose, setPurpose] = useState(null);
 	const checkedAttempt = useRef(-1);
 
 	// only a 400 (error.reset-invalid) means the link is no good; a 429 or any other failure may pass
@@ -130,7 +133,10 @@ export default function ResetPassword() {
 		if (token === "" || checkedAttempt.current === attempt) return;
 		checkedAttempt.current = attempt;
 		checkResetToken(token).then(
-			() => setStep("form"),
+			(answer) => {
+				setPurpose(answer?.purpose ?? "reset");
+				setStep("form");
+			},
 			(err) => {
 				if (err?.status === 400) {
 					setStep("invalid");
@@ -174,22 +180,31 @@ export default function ResetPassword() {
 			</CardContent>
 		);
 	} else {
-		body = <NewPasswordForm token={token} onDone={() => setStep("done")} onInvalid={() => setStep("invalid")} />;
+		body = (
+			<NewPasswordForm
+				token={token}
+				purpose={purpose}
+				onDone={() => setStep("done")}
+				onInvalid={() => setStep("invalid")}
+			/>
+		);
 	}
 
 	return (
 		<AuthLayout>
 			<Card>
-				<CardHeader className="text-center">
-					<CardTitle role="heading" aria-level={1} className="text-xl">
-						<T id="reset-password.title" />
-					</CardTitle>
-					{step === "form" ? (
-						<CardDescription>
-							<T id="reset-password.description" />
-						</CardDescription>
-					) : null}
-				</CardHeader>
+				{step === "checking" ? null : (
+					<CardHeader className="text-center">
+						<CardTitle role="heading" aria-level={1} className="text-xl">
+							<T id={resetWording(step === "form" || step === "done" ? purpose : null).title} />
+						</CardTitle>
+						{step === "form" ? (
+							<CardDescription>
+								<T id="reset-password.description" />
+							</CardDescription>
+						) : null}
+					</CardHeader>
+				)}
 				{body}
 			</Card>
 		</AuthLayout>

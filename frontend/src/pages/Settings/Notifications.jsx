@@ -65,6 +65,8 @@ const FIELD_LABELS = {
 	fromName: "settings.email.from-name",
 	fromAddress: "settings.email.from-address",
 	replyTo: "settings.email.reply-to",
+	invitations: "settings.email.invitations",
+	accountNotices: "settings.email.account-notices",
 	publicUrl: "settings.notifications.public-url",
 	defaultLanguage: "settings.notifications.default-language",
 	alertsAddresses: "settings.notifications.alerts-addresses",
@@ -272,6 +274,24 @@ function MailServerCard({ data, locks, defaultTo }) {
 				type="email"
 				autoComplete="off"
 				spellCheck={false}
+			/>
+			<SwitchField
+				line
+				id="email-invitations"
+				label={<T id="settings.email.invitations" />}
+				hint={<T id="settings.email.invitations.hint" />}
+				badges={locks.badge("invitations")}
+				disabled={locks.isLocked("invitations")}
+				{...register("invitations")}
+			/>
+			<SwitchField
+				line
+				id="email-account-notices"
+				label={<T id="settings.email.account-notices" />}
+				hint={<T id="settings.email.account-notices.hint" />}
+				badges={locks.badge("accountNotices")}
+				disabled={locks.isLocked("accountNotices")}
+				{...register("accountNotices")}
 			/>
 		</SettingsCard>
 	);

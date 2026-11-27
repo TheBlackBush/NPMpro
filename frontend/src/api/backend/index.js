@@ -92,6 +92,7 @@ export * from "./getWebhookDeliveries";
 export * from "./getWebhooks";
 export * from "./hostApi";
 export * from "./inspectBackup";
+export * from "./inviteUser";
 export * from "./leaveHostDnsRecord";
 export * from "./mfa";
 export * from "./openImport";

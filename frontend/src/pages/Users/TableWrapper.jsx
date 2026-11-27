@@ -2,10 +2,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { deleteUser, toggleUser } from "src/api/backend";
+import { deleteUser, inviteUser, toggleUser } from "src/api/backend";
 import { Button, ErrorAlert, ListToolbar, LoadingPage } from "src/components";
-import { useListFilters, useUser, useUsers, useUsersMfa } from "src/hooks";
-import { T } from "src/locale";
+import { useInvitationsOffered, useIsAdmin, useListFilters, useUser, useUsers, useUsersMfa } from "src/hooks";
+import { intl, T } from "src/locale";
 import {
 	showDeleteConfirmModal,
 	showPermissionsModal,
@@ -14,11 +14,16 @@ import {
 	showUserSignInAction,
 } from "src/modals";
 import { rowUser } from "src/modules/AccountWindow";
+import { invitationFailureText } from "src/modules/InvitationMessages";
+import { invitationOutcome } from "src/modules/Invitations";
 import { activeFilterCount } from "src/modules/ListFilters";
-import { showApiError, showObjectSuccess } from "src/notifications";
+import { showApiError, showError, showObjectSuccess, showSuccess } from "src/notifications";
 import { SettingsHeading } from "../Settings/SettingsHeading";
 import { SettingsLead } from "../Settings/SettingsLead";
 import Table, { useColumns } from "./Table";
+
+const hasText = (id) => Boolean(intl.messages[id]);
+const formatText = (id, values) => intl.formatMessage({ id }, values);
 
 export default function TableWrapper() {
 	const queryClient = useQueryClient();
@@ -29,6 +34,7 @@ export default function TableWrapper() {
 	const { isFetching, isPending, isError, error, data } = useUsers();
 	const { data: currentUser } = useUser("me");
 	const mfaUserIds = useUsersMfa(data, currentUser?.id);
+	const invitationsOffered = useInvitationsOffered(useIsAdmin() === true);
 
 	// null when a refetch removed the row while its menu was open: its sign-in actions then open nothing
 	const userOf = (id) => rowUser(data, id);
@@ -41,6 +47,19 @@ export default function TableWrapper() {
 				queryClient.invalidateQueries({ queryKey: ["user", id] }),
 			]);
 			showObjectSuccess("user", enabled ? "enabled" : "disabled");
+		} catch (err) {
+			showApiError(err);
+		}
+	};
+
+	const handleInviteAgain = async (id) => {
+		try {
+			const outcome = invitationOutcome(await inviteUser(id));
+			if (outcome?.sent === false) {
+				showError(invitationFailureText(outcome, { created: false, format: formatText, has: hasText }));
+			} else {
+				showSuccess(<T id="user.invitation.sent" />);
+			}
 		} catch (err) {
 			showApiError(err);
 		}
@@ -95,11 +114,13 @@ export default function TableWrapper() {
 							isFetching={isFetching}
 							currentUserId={currentUser?.id}
 							mfaUserIds={mfaUserIds}
+							invitationsOffered={invitationsOffered}
 							// the own row opens the own Account window: the window itself tells (isOwnUser), also while
 							// /users/me still loads
 							onEditUser={(id) => showUserAccountModal(id)}
 							onEditPermissions={(id) => showPermissionsModal(id)}
 							onSetPassword={(id) => showUserSignInAction("set-password", userOf(id))}
+							onInviteAgain={handleInviteAgain}
 							onResetMfa={(id) => showUserSignInAction("reset-mfa", userOf(id))}
 							onRevokeSessions={(id) => showUserSignInAction("revoke-sessions", userOf(id))}
 							onUnlinkOidc={(id) => showUserSignInAction("unlink-oidc", userOf(id))}

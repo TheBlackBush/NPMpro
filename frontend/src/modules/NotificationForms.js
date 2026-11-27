@@ -111,6 +111,8 @@ export const emailValues = (data) => ({
 	fromName: data.fromName ?? "",
 	fromAddress: data.fromAddress ?? "",
 	replyTo: data.replyTo ?? "",
+	invitations: data.invitations ?? true,
+	accountNotices: data.accountNotices ?? true,
 });
 
 /**
@@ -231,7 +233,18 @@ export const emailPayload = (values, data) => {
 	const next = { ...values, port: Number(String(values.port).trim()) };
 	for (const key of TRIMMED) next[key] = String(values[key] ?? "").trim();
 	const body = {};
-	for (const key of ["host", "port", "security", "verifyTls", "username", "fromName", "fromAddress", "replyTo"]) {
+	for (const key of [
+		"host",
+		"port",
+		"security",
+		"verifyTls",
+		"username",
+		"fromName",
+		"fromAddress",
+		"replyTo",
+		"invitations",
+		"accountNotices",
+	]) {
 		const same = key === "port" ? next.port === Number(saved.port) : next[key] === saved[key];
 		if (!isLocked(key) && !same) body[key] = next[key];
 	}
