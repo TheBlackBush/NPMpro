@@ -555,3 +555,23 @@ it("null values and an invalid URL restore off through the real insert, with the
 		await knex.destroy();
 	}
 });
+
+it("an unusable previous secret is dropped on a replace and a merge: the webhook stays on, previous_secret null, date cleared", async () => {
+	const knex = await open();
+	try {
+		const bad = webhook(1, "Rotated", { previous_secret: "", previous_secret_until: STAMP });
+		await replaceTypes({ knex, data: data([bad]), types: ["webhooks"], adminUserId: 1, box, now: NOW });
+		await merge(knex, { source: data([{ ...bad, id: 2, name: "Merged" }]) });
+		for (const name of ["Rotated", "Merged"]) {
+			const row = await knex("npmpro_webhook").where({ name }).first();
+			assert.deepEqual(
+				[Boolean(row.enabled), row.disabled_reason, row.previous_secret, row.previous_secret_until],
+				[true, null, null, null],
+				name,
+			);
+			assert.equal(box.decrypt(row.secret), "whsec_Rotated");
+		}
+	} finally {
+		await knex.destroy();
+	}
+});

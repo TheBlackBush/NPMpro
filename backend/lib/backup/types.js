@@ -326,9 +326,12 @@ const webhookSecrets = {
 // cleared so the NOT NULL columns hold "" and no half state stays.
 const restoredWebhook = (row) => {
 	const usable = hasText(row.url) && hasText(row.secret) && hasText(row.url_hint);
+	// an empty or unopenable previous secret is dropped with its date (a usable row then signs with its secret only)
+	const previous = hasText(row.previous_secret) ? {} : { previous_secret: null, previous_secret_until: null };
 	return {
 		...row,
 		failing_since: null,
+		...previous,
 		...(usable
 			? {}
 			: {

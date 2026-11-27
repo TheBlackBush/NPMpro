@@ -814,6 +814,16 @@ describe("secrets and the URL", () => {
 		assert.throws(() => verify(OLD_SECRET, later));
 	});
 
+	it("an empty previous secret with a future date is skipped: one signature, the current secret", async () => {
+		await addHook({ previous_secret: "", previous_secret_until: sql(START + DAY) });
+		await emitHost();
+		await pass();
+		const request = lastSeen();
+		assert.equal(request.init.headers["webhook-signature"].split(" ").length, 1);
+		verify(SECRET, request);
+		assert.equal((await rowsOf())[0].status, "sent");
+	});
+
 	it("opens sealed values with the real secret box", async () => {
 		const dir = await mkdtemp(path.join(os.tmpdir(), "npmpro-wh-"));
 		try {
