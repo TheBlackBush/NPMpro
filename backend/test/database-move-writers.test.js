@@ -146,7 +146,8 @@ it("the GeoIP checks start no update while paused and do again after resume", as
 			runs++;
 			return Promise.resolve({ ok: true, updated: [] });
 		},
-		getConfig: () => Promise.resolve({ values: { account_id: "1", license_key: "k", last_update: null } }),
+		getConfig: () =>
+			Promise.resolve({ values: { provider: "maxmind", account_id: "1", license_key: "k", last_update: null } }),
 		log: silent,
 	});
 	service.pause();
@@ -175,7 +176,7 @@ it("a GeoIP pause that comes while the settings are read starts no update", asyn
 	const checking = service.check();
 	await turn();
 	service.pause();
-	answer({ values: { account_id: "1", license_key: "k", last_update: null } });
+	answer({ values: { provider: "maxmind", account_id: "1", license_key: "k", last_update: null } });
 	assert.equal(await checking, null);
 	assert.equal(runs, 0);
 });
@@ -187,15 +188,20 @@ it("the GeoIP wait covers a running update and the one queued after it, a failed
 	const args = {
 		geoip: { reload: () => Promise.resolve() },
 		dir: "/x",
-		getConfig: () => Promise.resolve({ values: { account_id: "1", license_key: "k", editions: ["GeoLite2-ASN"] } }),
+		getConfig: () =>
+			Promise.resolve({
+				values: { provider: "maxmind", account_id: "1", license_key: "k", editions: ["GeoLite2-ASN"] },
+			}),
 		recordResult: (result) => {
 			recorded.push(result.ok);
 			return Promise.resolve();
 		},
-		update: () =>
-			new Promise((resolve, reject) => {
-				gates.push({ resolve, reject });
-			}),
+		updaters: {
+			maxmind: () =>
+				new Promise((resolve, reject) => {
+					gates.push({ resolve, reject });
+				}),
+		},
 	};
 	const first = runConfiguredGeoipUpdate(args).catch(() => null);
 	const second = runConfiguredGeoipUpdate(args);

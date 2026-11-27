@@ -1,8 +1,11 @@
 import { global as logger } from "../../logger.js";
+import { selectedEditions } from "./providers.js";
 
 const RELOAD_MS = 10 * 60000;
 const CHECK_MS = 3600000;
 const REFRESH_MS = 3 * 24 * 3600000;
+// DB-IP publishes monthly: a weekly check finds the new file within days (a HEAD request when nothing changed)
+const DBIP_REFRESH_MS = 7 * 24 * 3600000;
 // a failed automatic update is tried again after this long, not on every check (MaxMind limits downloads)
 const RETRY_MS = 24 * 3600000;
 const FIRST_CHECK_MS = 60000;
@@ -16,40 +19,65 @@ const defaultTimers = {
 
 /**
  * Keeps the shared GeoIP readers current: reload() every 10 minutes (it only reopens changed files) and an automatic
- * update when credentials exist and the last update is missing or older than 3 days, checked a minute after start and
- * then hourly. The update records its own result (lib/geoip/run.js).
+ * update, checked a minute after start and then hourly. MaxMind: credentials exist and the last update is missing or
+ * older than 3 days. DB-IP: a selected file is missing or the last check is missing or older than 7 days. The update
+ * records its own result (lib/geoip/run.js).
  *
  * @param   {Object}    deps
  * @param   {Object}    deps.geoip      createGeoip() instance
  * @param   {Function}  deps.runUpdate  () => Promise<{ ok, updated, error }>
- * @param   {Function}  deps.getConfig  () => Promise<{ values: { account_id, license_key, last_update } }>
+ * @param   {Function}  deps.getConfig  () => Promise<{ values: { provider, account_id, license_key, last_update, last_check } }>
+ * @param   {Function}  [deps.filesPresent]  (values) => Promise<boolean>, every selected file of the active provider exists
  * @param   {Function}  [deps.now]
  * @param   {Object}    [deps.timers]
  * @returns {Object}
  */
-const createGeoipService = ({ geoip, runUpdate, getConfig, now = Date.now, timers = defaultTimers, log = logger }) => {
+const createGeoipService = ({
+	geoip,
+	runUpdate,
+	getConfig,
+	filesPresent = () => Promise.resolve(true),
+	now = Date.now,
+	timers = defaultTimers,
+	log = logger,
+}) => {
 	let reloadTimer = null;
 	let checkTimer = null;
 	let firstTimer = null;
-	let lastAttempt = null;
+	// per provider: a switch is not held back by the other provider's attempt
+	const lastAttempt = new Map();
 	// a database move: the checks do not start an update (the reload timer goes on, it only reopens files)
 	let paused = false;
 
 	const reload = () =>
 		geoip.reload().catch((err) => log.error(`GeoIP: could not reload the databases: ${err.message}`));
 
+	const olderThan = (stamp, ms) => {
+		const at = stamp ? Date.parse(stamp) : Number.NaN;
+		return !Number.isFinite(at) || now() - at >= ms;
+	};
+
+	/** @returns {Promise<boolean>}  the active provider's schedule asks for an update */
+	const isDue = async (values) => {
+		if (values.provider === "maxmind") {
+			if (!values.account_id || !values.license_key) return false;
+			return olderThan(values.last_update, REFRESH_MS);
+		}
+		if (selectedEditions(values).length === 0) return false;
+		return !(await filesPresent(values)) || olderThan(values.last_check, DBIP_REFRESH_MS);
+	};
+
 	/** Runs the update when it is due; resolves to the update result or null when nothing ran. */
 	const check = async () => {
 		try {
 			if (paused) return null;
 			const { values } = await getConfig();
-			if (!values.account_id || !values.license_key) return null;
-			const last = values.last_update ? Date.parse(values.last_update) : Number.NaN;
-			if (Number.isFinite(last) && now() - last < REFRESH_MS) return null;
-			if (lastAttempt !== null && now() - lastAttempt < RETRY_MS) return null;
+			if (!(await isDue(values))) return null;
+			const attempted = lastAttempt.get(values.provider);
+			if (attempted !== undefined && now() - attempted < RETRY_MS) return null;
 			// paused while the settings were read: runUpdate() marks the run as going on at once, so a pause sees it
 			if (paused) return null;
-			lastAttempt = now();
+			lastAttempt.set(values.provider, now());
 			const result = await runUpdate();
 			if (!result.ok) log.warn(`GeoIP: automatic update failed: ${result.error}`);
 			return result;

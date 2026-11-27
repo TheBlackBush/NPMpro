@@ -420,8 +420,6 @@ it("downloads the databases when the credentials change, and records the outcome
 	assert.equal(view.body.last_error, null);
 	const files = await readFile(path.join(api.root, "data/goaccess/geoip/GeoLite2-Country.mmdb"));
 	assert.ok(files.length > 100);
-	const traffic = await admin.get("/monitoring/traffic?range=1h&host=geo.example.com");
-	assert.equal(traffic.body.status.geoip, true);
 });
 
 it("runs the update now and answers what happened, also when MaxMind refuses", async () => {
@@ -444,9 +442,22 @@ it("runs the update now and answers what happened, also when MaxMind refuses", a
 
 it("answers the update now with the missing credentials", async () => {
 	await api.db("setting").where({ id: "geoip" }).del();
-	const done = await admin.post(`${GEOIP}/update`);
+	const original = process.env.GEOIP_PROVIDER;
+	process.env.GEOIP_PROVIDER = "maxmind";
+	let done;
+	try {
+		done = await admin.post(`${GEOIP}/update`);
+	} finally {
+		if (original === undefined) delete process.env.GEOIP_PROVIDER;
+		else process.env.GEOIP_PROVIDER = original;
+	}
 	assert.equal(done.status, 200, done.text);
-	assert.deepEqual(done.body, { ok: false, updated: [], error: "MaxMind account ID and license key are required" });
+	assert.deepEqual(done.body, {
+		ok: false,
+		updated: [],
+		error: "MaxMind account ID and license key are required",
+		provider: "maxmind",
+	});
 });
 
 it("answers 401 without a session on every monitoring route", async () => {

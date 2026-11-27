@@ -2,9 +2,7 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import maxmind from "maxmind";
 import { rooted } from "../paths.js";
-
-const COUNTRY_FILE = "GeoLite2-Country.mmdb";
-const ASN_FILE = "GeoLite2-ASN.mmdb";
+import { asnFileOf, countryFileOf } from "./providers.js";
 
 /**
  * Opens a database only when its file changed since the last load
@@ -40,14 +38,37 @@ const refreshSlot = async (file, slot, cacheSize) => {
  * @param   {Object}  [options]
  * @param   {string}  [options.dir]
  * @param   {number}  [options.cacheSize]
- * @returns {{lookup: Function, available: Function, reload: Function}}
+ * @param   {string}  [options.provider]  the provider whose files are opened (dbip or maxmind)
+ * @returns {{lookup: Function, available: Function, reload: Function, setProvider: Function, provider: Function}}
  */
-const createGeoip = ({ dir = rooted("/data/goaccess/geoip"), cacheSize = 50000 } = {}) => {
+const createGeoip = ({ dir = rooted("/data/goaccess/geoip"), cacheSize = 50000, provider = "dbip" } = {}) => {
 	const country = { reader: null, mtimeMs: null };
 	const asn = { reader: null, mtimeMs: null };
 	let reloading = Promise.resolve();
+	let current = provider;
+	let generation = 0;
+	let countryFile = countryFileOf(current);
+	let asnFile = asnFileOf(current);
+
+	const clear = (slot) => {
+		slot.reader = null;
+		slot.mtimeMs = null;
+	};
 
 	return {
+		provider: () => current,
+		/** Opens the files of another provider: both readers are cleared until the next reload() */
+		setProvider: (id) => {
+			const nextCountry = countryFileOf(id);
+			const nextAsn = asnFileOf(id);
+			current = id;
+			if (nextCountry === countryFile && nextAsn === asnFile) return;
+			countryFile = nextCountry;
+			asnFile = nextAsn;
+			generation++;
+			clear(country);
+			clear(asn);
+		},
 		lookup: (ip) => {
 			if (!maxmind.validate(ip)) return null;
 			const countryRecord = country.reader?.get(ip);
@@ -61,8 +82,14 @@ const createGeoip = ({ dir = rooted("/data/goaccess/geoip"), cacheSize = 50000 }
 		available: () => ({ country: country.reader !== null, asn: asn.reader !== null }),
 		reload: () => {
 			reloading = reloading.then(async () => {
-				await refreshSlot(path.join(dir, COUNTRY_FILE), country, cacheSize);
-				await refreshSlot(path.join(dir, ASN_FILE), asn, cacheSize);
+				const started = generation;
+				await refreshSlot(path.join(dir, countryFile), country, cacheSize);
+				await refreshSlot(path.join(dir, asnFile), asn, cacheSize);
+				// a switch while the files were opened: what was opened may belong to the old provider
+				if (started !== generation) {
+					clear(country);
+					clear(asn);
+				}
 			});
 			return reloading;
 		},

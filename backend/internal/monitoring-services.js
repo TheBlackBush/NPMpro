@@ -1,8 +1,11 @@
+import { stat } from "node:fs/promises";
+import path from "node:path";
 import db from "../db.js";
 import { isSqlite, sqliteFile } from "../lib/config.js";
 import { createCrowdsecService } from "../lib/crowdsec/service.js";
 import { MOVE_PAUSE_MS, waitWithin } from "../lib/database/pause.js";
 import { GEOIP_DIR, geoip } from "../lib/geoip/instance.js";
+import { providerOf, selectedEditions } from "../lib/geoip/providers.js";
 import { geoipUpdateSettled, runConfiguredGeoipUpdate } from "../lib/geoip/run.js";
 import { createGeoipService } from "../lib/geoip/service.js";
 import { getGeoipConfig, getMonitoringConfig } from "../lib/monitoring-config.js";
@@ -124,7 +127,26 @@ const crowdsec = createCrowdsecService({
 	onState: reportCrowdsecState,
 });
 
-const geoipService = createGeoipService({ geoip, runUpdate: runGeoipUpdate, getConfig: getGeoipConfig });
+/** Every selected file of the active provider is in the GeoIP folder */
+const geoipFilesPresent = async (values) => {
+	const provider = providerOf(values.provider);
+	const present = await Promise.all(
+		selectedEditions(values).map((edition) =>
+			stat(path.join(GEOIP_DIR, provider.file(edition))).then(
+				() => true,
+				() => false,
+			),
+		),
+	);
+	return present.every(Boolean);
+};
+
+const geoipService = createGeoipService({
+	geoip,
+	runUpdate: runGeoipUpdate,
+	getConfig: getGeoipConfig,
+	filesPresent: geoipFilesPresent,
+});
 
 // the statistics reads: on SQLite in a worker thread (a slow query would block the API), else on the shared pool
 let reads = null;

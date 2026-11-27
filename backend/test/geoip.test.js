@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
-import { copyFile, mkdir, mkdtemp, readdir, readFile, symlink, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readdir, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { c as createArchive } from "tar";
 import { createGeoip } from "../lib/geoip/lookup.js";
-import { runConfiguredGeoipUpdate } from "../lib/geoip/run.js";
+import { PROVIDER_MARKER, writeProviderMarker } from "../lib/geoip/marker.js";
+import { createGuardedFetch, guardedFetch, runConfiguredGeoipUpdate } from "../lib/geoip/run.js";
 import { archiveFilter, updateGeoip } from "../lib/geoip/update.js";
+import { withDatabaseType } from "./support/mmdb.js";
 
 const fixtures = path.join(import.meta.dirname, "fixtures");
 const COUNTRY = "GeoLite2-Country.mmdb";
@@ -46,7 +48,7 @@ const stubFetch = (body, status = 200) => {
 
 describe("createGeoip", () => {
 	it("resolves country and ASN from the MaxMind test databases", async () => {
-		const geoip = createGeoip({ dir: await withFixtures() });
+		const geoip = createGeoip({ dir: await withFixtures(), provider: "maxmind" });
 		await geoip.reload();
 		assert.deepEqual(geoip.available(), { country: true, asn: true });
 		assert.equal(geoip.lookup("2.125.160.216").country, "GB");
@@ -55,7 +57,7 @@ describe("createGeoip", () => {
 	});
 
 	it("returns nulls for a private IP and null for garbage", async () => {
-		const geoip = createGeoip({ dir: await withFixtures() });
+		const geoip = createGeoip({ dir: await withFixtures(), provider: "maxmind" });
 		await geoip.reload();
 		assert.deepEqual(geoip.lookup("192.168.1.10"), { country: null, asn: null, asnName: null });
 		assert.equal(geoip.lookup("not-an-ip"), null);
@@ -71,7 +73,7 @@ describe("createGeoip", () => {
 	it("picks up a replaced file on reload and keeps the old reader for a corrupt one", async () => {
 		const dir = await tempDir();
 		await copyFile(path.join(fixtures, "GeoLite2-ASN-Test.mmdb"), path.join(dir, COUNTRY));
-		const geoip = createGeoip({ dir });
+		const geoip = createGeoip({ dir, provider: "maxmind" });
 		await geoip.reload();
 		assert.equal(geoip.lookup("2.125.160.216").country, null);
 		await copyFile(path.join(fixtures, "GeoLite2-Country-Test.mmdb"), path.join(dir, COUNTRY));
@@ -258,6 +260,9 @@ describe("updateGeoip", () => {
 });
 
 describe("runConfiguredGeoipUpdate", () => {
+	const MAXMIND = { provider: "maxmind", account_id: "1", license_key: "k", editions: ["GeoLite2-ASN"] };
+	const DBIP = { provider: "dbip", dbip_editions: ["Country", "ASN"] };
+
 	const make = (values, result) => {
 		const events = [];
 		return {
@@ -266,45 +271,70 @@ describe("runConfiguredGeoipUpdate", () => {
 				geoip: { reload: async () => events.push("reload") },
 				dir: "/x",
 				recordResult: (r) => {
-					events.push(["record", r.ok]);
+					events.push(["record", r.ok, r.provider]);
 					return Promise.resolve();
 				},
 				getConfig: async () => ({ values }),
-				update: (opts) => {
-					events.push(["update", opts.accountId, opts.licenseKey, opts.editions, opts.dir]);
-					return Promise.resolve(result);
+				updaters: {
+					maxmind: (opts) => {
+						events.push(["maxmind", opts.accountId, opts.licenseKey, opts.editions, opts.dir]);
+						return Promise.resolve(result);
+					},
+					dbip: (opts) => {
+						events.push(["dbip", opts.editions, opts.dir, "accountId" in opts]);
+						return Promise.resolve(result);
+					},
 				},
 			},
 		};
 	};
 
-	it("refuses without credentials and does not fetch", async () => {
-		const { args, events } = make({ account_id: "", license_key: "k", editions: [] }, { ok: true, updated: [] });
+	it("MaxMind refuses without credentials and does not fetch", async () => {
+		const { args, events } = make({ ...MAXMIND, account_id: "" }, { ok: true, updated: [] });
 		const result = await runConfiguredGeoipUpdate(args);
-		assert.deepEqual(result, { ok: false, updated: [], error: "MaxMind account ID and license key are required" });
+		assert.deepEqual(result, {
+			ok: false,
+			updated: [],
+			error: "MaxMind account ID and license key are required",
+			provider: "maxmind",
+		});
 		assert.deepEqual(events, []);
+	});
+
+	it("DB-IP needs no credentials and calls the DB-IP updater", async () => {
+		const { args, events } = make(DBIP, { ok: true, updated: ["Country"] });
+		const result = await runConfiguredGeoipUpdate(args);
+		assert.deepEqual(result, { ok: true, updated: ["Country"], provider: "dbip" });
+		assert.deepEqual(events, [["dbip", ["Country", "ASN"], "/x", false], ["record", true, "dbip"], "reload"]);
 	});
 
 	it("downloads, records and reloads nothing without selected databases", async () => {
-		const { args, events } = make({ account_id: "1", license_key: "k", editions: [] }, { ok: false, updated: [] });
-		const result = await runConfiguredGeoipUpdate(args);
-		assert.deepEqual(result, { ok: true, updated: [] });
-		assert.deepEqual(events, []);
+		for (const values of [
+			{ ...MAXMIND, editions: [] },
+			{ ...DBIP, dbip_editions: [] },
+		]) {
+			const { args, events } = make(values, { ok: false, updated: [] });
+			const result = await runConfiguredGeoipUpdate(args);
+			assert.deepEqual(result, { ok: true, updated: [], provider: values.provider });
+			assert.deepEqual(events, []);
+		}
 	});
 
-	it("updates, records and reloads on success", async () => {
-		const { args, events } = make(
-			{ account_id: "1", license_key: "k", editions: ["GeoLite2-ASN"] },
-			{ ok: true, updated: ["GeoLite2-ASN"] },
-		);
+	it("updates, records with the provider and reloads on success", async () => {
+		const { args, events } = make(MAXMIND, { ok: true, updated: ["GeoLite2-ASN"] });
 		const result = await runConfiguredGeoipUpdate(args);
 		assert.equal(result.ok, true);
-		assert.deepEqual(events, [["update", "1", "k", ["GeoLite2-ASN"], "/x"], ["record", true], "reload"]);
+		assert.equal(result.provider, "maxmind");
+		assert.deepEqual(events, [
+			["maxmind", "1", "k", ["GeoLite2-ASN"], "/x"],
+			["record", true, "maxmind"],
+			"reload",
+		]);
 	});
 
-	it("reloads and records last_update when only some editions were replaced", async () => {
+	it("reloads and records when only some editions were replaced", async () => {
 		const { args, events } = make(
-			{ account_id: "1", license_key: "k", editions: ["GeoLite2-Country", "GeoLite2-ASN"] },
+			{ ...MAXMIND, editions: ["GeoLite2-Country", "GeoLite2-ASN"] },
 			{ ok: false, updated: ["GeoLite2-Country"], error: "GeoLite2-ASN: MaxMind returned HTTP 401" },
 		);
 		let recorded;
@@ -318,42 +348,166 @@ describe("runConfiguredGeoipUpdate", () => {
 		assert.deepEqual(events.slice(1), ["reload"]);
 	});
 
-	it("queues one follow-up run for calls made while a run is in progress", async () => {
-		const { args, events } = make({ account_id: "1", license_key: "k", editions: ["GeoLite2-ASN"] }, null);
+	it("queues one follow-up run that reads the configuration again, after a switch it uses the new provider", async () => {
+		const { args, events } = make(MAXMIND, null);
 		let release;
 		const gate = new Promise((resolve) => {
 			release = resolve;
 		});
-		let config = { account_id: "1", license_key: "old", editions: ["GeoLite2-ASN"] };
-		args.getConfig = () => Promise.resolve({ values: config });
-		args.update = async (opts) => {
-			events.push(["fetch", opts.licenseKey]);
+		let config = MAXMIND;
+		let running = 0;
+		let overlap = false;
+		const slow = (name) => async () => {
+			running++;
+			overlap ||= running > 1;
+			events.push(["fetch", name]);
 			await gate;
+			running--;
 			return { ok: true, updated: [] };
 		};
+		args.getConfig = () => Promise.resolve({ values: config });
+		args.updaters = { maxmind: slow("maxmind"), dbip: slow("dbip") };
 		const first = runConfiguredGeoipUpdate(args);
-		config = { ...config, license_key: "new" };
+		config = DBIP;
 		const second = runConfiguredGeoipUpdate(args);
 		const third = runConfiguredGeoipUpdate(args);
 		assert.equal(second, third);
 		release();
-		await Promise.all([first, second, third]);
+		const [, queuedResult] = await Promise.all([first, second, third]);
 		assert.deepEqual(
 			events.filter((e) => e[0] === "fetch"),
 			[
-				["fetch", "old"],
-				["fetch", "new"],
+				["fetch", "maxmind"],
+				["fetch", "dbip"],
 			],
 		);
+		assert.equal(queuedResult.provider, "dbip");
+		assert.equal(overlap, false);
 	});
 
 	it("records a failure without reloading", async () => {
-		const { args, events } = make(
-			{ account_id: "1", license_key: "k", editions: ["GeoLite2-ASN"] },
-			{ ok: false, updated: [], error: "nope" },
-		);
+		const { args, events } = make(MAXMIND, { ok: false, updated: [], error: "nope" });
 		const result = await runConfiguredGeoipUpdate(args);
 		assert.equal(result.error, "nope");
-		assert.deepEqual(events.slice(1), [["record", false]]);
+		assert.deepEqual(events.slice(1), [["record", false, "maxmind"]]);
+	});
+
+	it("hands the guarded fetch to each provider's updater, never the global fetch", async () => {
+		const seen = {};
+		const { args } = make(MAXMIND, null);
+		let config = MAXMIND;
+		args.getConfig = () => Promise.resolve({ values: config });
+		args.updaters = {
+			maxmind: (opts) => {
+				seen.maxmind = opts.fetch;
+				return Promise.resolve({ ok: true, updated: [] });
+			},
+			dbip: (opts) => {
+				seen.dbip = opts.fetch;
+				return Promise.resolve({ ok: true, updated: [] });
+			},
+		};
+		await runConfiguredGeoipUpdate(args);
+		config = DBIP;
+		await runConfiguredGeoipUpdate(args);
+		assert.equal(seen.maxmind, guardedFetch);
+		assert.equal(seen.dbip, guardedFetch);
+		assert.notEqual(guardedFetch, globalThis.fetch);
+	});
+});
+
+describe("createGuardedFetch", () => {
+	it("sends every request through the guarded agent", async () => {
+		const agent = {};
+		const calls = [];
+		const fetchFn = (url, init) => {
+			calls.push({ url, init });
+			return Promise.resolve("response");
+		};
+		const guarded = createGuardedFetch({ fetchFn, agent, mocked: () => false });
+		assert.equal(await guarded("https://example.test/x", { method: "HEAD" }), "response");
+		assert.equal(calls[0].init.dispatcher, agent);
+		assert.equal(calls[0].init.method, "HEAD");
+		await guarded("https://example.test/y");
+		assert.equal(calls[1].init.dispatcher, agent);
+	});
+
+	it("reads through the global dispatcher when the tests mock the outbound", async () => {
+		const calls = [];
+		const guarded = createGuardedFetch({
+			fetchFn: (_url, init) => {
+				calls.push(init);
+				return Promise.resolve(null);
+			},
+			agent: {},
+			mocked: () => true,
+		});
+		await guarded("https://example.test/x", { method: "GET" });
+		assert.deepEqual(calls, [{ method: "GET" }]);
+	});
+});
+
+describe("createGeoip providers", () => {
+	const dbipFixtures = async () => {
+		const dir = await tempDir();
+		for (const [from, to, type] of [
+			["GeoLite2-Country-Test.mmdb", "dbip-country-lite.mmdb", "DBIP-Country-Lite"],
+			["GeoLite2-ASN-Test.mmdb", "dbip-asn-lite.mmdb", "DBIP-ASN-Lite"],
+		]) {
+			await writeFile(path.join(dir, to), withDatabaseType(await readFile(path.join(fixtures, from)), type));
+		}
+		await copyFile(path.join(fixtures, "GeoLite2-Country-Test.mmdb"), path.join(dir, COUNTRY));
+		await copyFile(path.join(fixtures, "GeoLite2-ASN-Test.mmdb"), path.join(dir, ASN));
+		return dir;
+	};
+
+	it("opens the files of the provider it was switched to, after the next reload", async () => {
+		const geoip = createGeoip({ dir: await dbipFixtures(), provider: "maxmind" });
+		assert.equal(geoip.provider(), "maxmind");
+		await geoip.reload();
+		assert.deepEqual(geoip.available(), { country: true, asn: true });
+		geoip.setProvider("dbip");
+		assert.equal(geoip.provider(), "dbip");
+		assert.deepEqual(geoip.available(), { country: false, asn: false });
+		assert.equal(geoip.lookup("2.125.160.216").country, null);
+		await geoip.reload();
+		assert.deepEqual(geoip.available(), { country: true, asn: true });
+		assert.equal(geoip.lookup("2.125.160.216").country, "GB");
+		geoip.setProvider("maxmind");
+		assert.deepEqual(geoip.available(), { country: false, asn: false });
+		await geoip.reload();
+		assert.deepEqual(geoip.available(), { country: true, asn: true });
+	});
+
+	it("starts on DB-IP and keeps the readers when the same provider is set again", async () => {
+		const geoip = createGeoip({ dir: await dbipFixtures() });
+		assert.equal(geoip.provider(), "dbip");
+		await geoip.reload();
+		geoip.setProvider("dbip");
+		assert.deepEqual(geoip.available(), { country: true, asn: true });
+	});
+
+	it("a switch that comes while a reload runs ends on the new provider's files after the next reload", async () => {
+		const geoip = createGeoip({ dir: await dbipFixtures(), provider: "maxmind" });
+		const loading = geoip.reload();
+		await new Promise((resolve) => setImmediate(resolve));
+		geoip.setProvider("dbip");
+		await loading;
+		await geoip.reload();
+		assert.deepEqual(geoip.available(), { country: true, asn: true });
+		assert.equal(geoip.provider(), "dbip");
+	});
+});
+
+describe("writeProviderMarker", () => {
+	it("writes the id with a newline, leaves no temporary file and creates the folder", async () => {
+		const dir = path.join(await tempDir(), "missing", "geoip");
+		await writeProviderMarker(dir, "dbip");
+		assert.equal(await readFile(path.join(dir, PROVIDER_MARKER), "utf8"), "dbip\n");
+		assert.deepEqual(await readdir(dir), ["provider"]);
+		assert.ok((await stat(path.join(dir, PROVIDER_MARKER))).mode.toString(8).endsWith("644"));
+		await writeProviderMarker(dir, "maxmind");
+		assert.equal(await readFile(path.join(dir, PROVIDER_MARKER), "utf8"), "maxmind\n");
+		assert.deepEqual(await readdir(dir), ["provider"]);
 	});
 });
