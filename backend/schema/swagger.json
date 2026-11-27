@@ -951,6 +951,11 @@
 				"$ref": "./paths/users/userID/auth/put.json"
 			}
 		},
+		"/users/{userID}/invite": {
+			"post": {
+				"$ref": "./paths/users/userID/invite/post.json"
+			}
+		},
 		"/users/{userID}/permissions": {
 			"put": {
 				"$ref": "./paths/users/userID/permissions/put.json"

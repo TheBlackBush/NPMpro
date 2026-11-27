@@ -2,16 +2,19 @@ import { rm, writeFile } from "node:fs/promises";
 import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
 import { avatarExt, AVATAR_EXTS as avatarExts, fetchGravatar } from "../lib/gravatar.js";
-import { MAIL_LANGUAGES } from "../lib/mail/settings-rules.js";
+import { MAIL_LANGUAGES, normalizePublicUrl } from "../lib/mail/settings-rules.js";
 import { validateDefaultPermissions } from "../lib/oidc-rules.js";
 import { rooted } from "../lib/paths.js";
 import { withPasswordFlag } from "../lib/user-json.js";
+import { global as logger } from "../logger.js";
 import auditLogModel from "../models/audit-log.js";
 import authModel from "../models/auth.js";
 import userModel from "../models/user.js";
 import userPermissionModel from "../models/user_permission.js";
 import internalApiToken from "./api-token.js";
 import internalAuditLog from "./audit-log.js";
+import internalMail from "./mail.js";
+import { getNotificationsConfig, invitationsOffered, sendFailureOf } from "./mail-setting.js";
 import { createOidcIdentity } from "./oidc-identity.js";
 import internalPasswordToken from "./password-token.js";
 import internalToken from "./token.js";
@@ -43,7 +46,52 @@ const writePassword = async (trx, userId, type, secret) => {
 	await internalPasswordToken.removeForUser(trx, userId);
 };
 
+// 72 hours: an invitation outlives a weekend, a reset link does not (the lifetime is fixed when the token is made)
+const INVITATION_LIFETIME_MS = 72 * 60 * 60_000;
+
+const notOffered = () => new errs.ValidationError("Invitations are not offered", "error.invite-not-offered");
+const notAllowed = () => new errs.ValidationError("This user cannot be invited", "error.invite-not-allowed");
+
+/**
+ * Makes the invitation token and sends the mail at once (never queued). A failed send does not fail the caller: the
+ * user exists, so the answer says what went wrong. The link and the token never reach a log, an audit row or the answer.
+ *
+ * @param   {Object}  user  the user row (an invited user)
+ * @returns {Promise<{sent: boolean, error?: string, error_i18n?: string, error_values?: Object}>}
+ */
+const sendInvitation = async (user) => {
+	try {
+		const base = normalizePublicUrl((await getNotificationsConfig()).values.public_url);
+		if (!base) throw notOffered();
+		const token = await internalPasswordToken.create(user.id, "invite", { lifetimeMs: INVITATION_LIFETIME_MS });
+		await internalMail.sendNow({
+			to: user.email,
+			template: "invite",
+			language: await internalMail.languageOf(user),
+			data: { link: `${base}/reset-password#token=${token}` },
+		});
+		return { sent: true };
+	} catch (err) {
+		logger.warn(`invitation: the mail could not be sent (${err?.code ?? err?.name ?? "error"})`);
+		return { sent: false, ...(await sendFailureOf(err)) };
+	}
+};
+
 const internalUser = {
+	/**
+	 * Whether a user can still be invited, or accept an invitation: enabled, no sign-in method yet (no auth row) and no
+	 * OIDC link. A user who set a password or signed in by OIDC is never invited again.
+	 *
+	 * @param   {Number}  userId
+	 * @param   {Object}  [trx]
+	 * @returns {Promise<boolean>}
+	 */
+	isInvited: async (userId, trx) => {
+		const row = await userModel.query(trx).findById(userId);
+		if (!row || row.is_disabled || row.npmpro_oidc_subject) return false;
+		return !(await authModel.query(trx).where("user_id", userId).first());
+	},
+
 	/**
 	 * Unauthenticated only once, and only while no active user exists; otherwise a valid auth method is required.
 	 *
@@ -54,6 +102,8 @@ const internalUser = {
 	create: async (access, data) => {
 		const auth = data.auth || null;
 		delete data.auth;
+		const invite = data.invite === true;
+		delete data.invite;
 
 		data.avatar ||= "";
 		data.roles ||= [];
@@ -61,6 +111,11 @@ const internalUser = {
 		data.email = data.email.toLowerCase();
 
 		access.canAdmin();
+
+		if (invite) {
+			if (auth || data.is_disabled) throw notAllowed();
+			if (!(await invitationsOffered())) throw notOffered();
+		}
 
 		if (!(await internalUser.isEmailAvailable(data.email))) {
 			throw new errs.ValidationError(`Email address already in use - ${data.email}`);
@@ -105,7 +160,24 @@ const internalUser = {
 			meta: user,
 		});
 
+		if (invite) return { ...user, invited: true, invitation: await sendInvitation(user) };
 		return user;
+	},
+
+	/**
+	 * Sends a new invitation: the new token replaces the old one, so the old link stops working. Only for an invited
+	 * user (enabled, no password, no OIDC link).
+	 *
+	 * @param   {Access}   access
+	 * @param   {Integer}  id
+	 * @returns {Promise<Object>}  the user with invitation: { sent, error? }
+	 */
+	invite: async (access, id) => {
+		access.canAdmin();
+		const user = await internalUser.get(access, { id });
+		if (!(await invitationsOffered())) throw notOffered();
+		if (!(await internalUser.isInvited(user.id))) throw notAllowed();
+		return { ...user, invited: true, invitation: await sendInvitation(user) };
 	},
 
 	// Gravatar on or off is read per call (advanced.gravatar)
@@ -313,9 +385,11 @@ const internalUser = {
 			query,
 			authModel.query().select("user_id").where("type", "password"),
 		]);
+		const linked = users.filter((user) => user.npmpro_oidc_subject).map((user) => user.id);
 		return withPasswordFlag(
 			users.map((user) => user.toJSON()),
 			passwords.map((row) => row.user_id),
+			linked,
 		);
 	},
 

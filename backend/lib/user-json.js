@@ -12,11 +12,21 @@ const publicUserJson = (json) => {
 /**
  * @param   {Object[]}  users
  * @param   {number[]}  passwordUserIds  ids of the users with a password auth row
- * @returns {Object[]}  the users with npmpro_has_password
+ * @param   {number[]}  [linkedUserIds]  ids of the users with an OIDC link
+ * @returns {Object[]}  the users with npmpro_has_password and invited (enabled, no password, no OIDC link: they can
+ *                      still accept an invitation)
  */
-const withPasswordFlag = (users, passwordUserIds) => {
+const withPasswordFlag = (users, passwordUserIds, linkedUserIds = []) => {
 	const ids = new Set(passwordUserIds.map(Number));
-	return users.map((user) => ({ ...user, npmpro_has_password: ids.has(Number(user.id)) }));
+	const linked = new Set(linkedUserIds.map(Number));
+	return users.map((user) => {
+		const hasPassword = ids.has(Number(user.id));
+		return {
+			...user,
+			npmpro_has_password: hasPassword,
+			invited: !(hasPassword || linked.has(Number(user.id)) || user.is_disabled),
+		};
+	});
 };
 
 export { publicUserJson, withPasswordFlag };

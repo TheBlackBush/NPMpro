@@ -64,6 +64,31 @@ const mailFailed = async (user, err) => {
 	}
 };
 
+// a token that can be used now: its purpose is on the row, and a reset needs the reset by mail offered; an invitation
+// needs a user who is still invited
+const usable = async (token) => {
+	const found = await internalPasswordToken.find(token);
+	if (!found) return null;
+	if (found.row.purpose === "reset") return (await resetOffered()) ? found : null;
+	if (found.row.purpose === "invite") return (await internalUser.isInvited(found.user.id)) ? found : null;
+	return null;
+};
+
+const auditAccepted = async (user, ip) => {
+	try {
+		await internalAuditLog.add(null, {
+			user_id: user.id,
+			action: "invitation-accepted",
+			object_type: "user",
+			object_id: user.id,
+			meta: { ip },
+		});
+	} catch (err) {
+		// the password is set: the answer stays 200
+		logger.warn(`invitation: the audit row could not be written (${err?.name ?? "error"})`);
+	}
+};
+
 const work = async (email, ip) => {
 	if (!(await resetOffered())) return;
 	// like the sign-in: an enabled user on the address, so a disabled row with the same address is never picked
@@ -117,17 +142,23 @@ const internalPasswordReset = {
 	settled: () => pending,
 
 	/**
+	 * What the link is for. A reset token needs a reset by mail to be offered; an invitation token does not (the
+	 * invitation was made while it was offered, and accepting it sends nothing), but only for a user who is still
+	 * invited.
+	 *
 	 * @param   {String}  token
 	 * @returns {Promise<{purpose: String}>}
 	 */
 	check: async (token) => {
-		const found = (await resetOffered()) ? await internalPasswordToken.find(token) : null;
+		const found = await usable(token);
 		if (!found) throw invalid();
 		return { purpose: found.row.purpose };
 	},
 
 	/**
-	 * Sets the password with a reset token (kept: two-factor sign-in and API tokens), audits it and queues the notice.
+	 * Sets the password with a token. A reset token changes the password (kept: two-factor sign-in and API tokens),
+	 * audits it and queues the notice. An invitation token sets the first password of a user who is still invited,
+	 * audits `invitation-accepted` and sends no notice. A token of one purpose never works as the other.
 	 *
 	 * @param   {Object}  input
 	 * @param   {String}  input.token
@@ -136,19 +167,30 @@ const internalPasswordReset = {
 	 * @returns {Promise<true>}
 	 */
 	confirm: async ({ token, password, ip }) => {
-		if (!(await resetOffered())) throw invalid();
+		const found = await usable(token);
+		if (!found) throw invalid();
+		const purpose = found.row.purpose;
 		const user = await internalPasswordToken.consume(
 			token,
-			async (found, _row, trx) => {
-				// the account may have lost its password since the link was made: no password is created by a link (the
-				// link is still spent, the transaction commits its use and nothing else)
-				if (!(await authModel.query(trx).where({ user_id: found.id, type: "password" }).first())) return null;
-				await internalUser.setPasswordByReset(found.id, password, trx);
-				return found;
+			async (account, _row, trx) => {
+				if (purpose === "invite") {
+					// only an account that is still invited: a password or an OIDC link made since ends the invitation
+					if (!(await internalUser.isInvited(account.id, trx))) return null;
+				} else if (!(await authModel.query(trx).where({ user_id: account.id, type: "password" }).first())) {
+					// the account may have lost its password since the link was made: no password is created by a reset
+					// link (the link is still spent, the transaction commits its use and nothing else)
+					return null;
+				}
+				await internalUser.setPasswordByReset(account.id, password, trx);
+				return account;
 			},
-			"reset",
+			purpose,
 		);
 		if (!user) throw invalid();
+		if (purpose === "invite") {
+			await auditAccepted(user, ip);
+			return true;
+		}
 		try {
 			await internalAuditLog.add(null, {
 				user_id: user.id,

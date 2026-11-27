@@ -146,6 +146,34 @@ const testFailure = async (err, extra = {}) => {
 	});
 };
 
+/**
+ * A failed send as plain data for an answer that still succeeds (an invitation: the user exists, the mail did not go):
+ * the scrubbed text, at most 300 characters, and a translated key with its values when the cause is known. Never the
+ * address, a link or an unscrubbed server text: only a MailError or a ValidationError of ours carries a message.
+ *
+ * @param   {Error}  err
+ * @returns {Promise<{error: string, error_i18n: string, error_values?: Object}>}
+ */
+const sendFailureOf = async (err) => {
+	if (err?.code === "EBLOCKED") {
+		return {
+			error: "The mail server resolves to an address outbound requests may not reach",
+			error_i18n: "error.mail-host-blocked",
+			error_values: { host: (await getEmailConfig()).values.host },
+		};
+	}
+	if (err instanceof errs.ValidationError && err.message_i18n) {
+		return { error: err.message.slice(0, TEST_ERROR_MAX), error_i18n: err.message_i18n };
+	}
+	if (err instanceof MailError && err.message_i18n) {
+		const values = { ...err.message_values };
+		if (typeof values.error === "string") values.error = values.error.slice(0, TEST_ERROR_MAX);
+		return { error: err.message.slice(0, TEST_ERROR_MAX), error_i18n: err.message_i18n, error_values: values };
+	}
+	const text = (err instanceof MailError ? err.message : "The mail could not be sent").slice(0, TEST_ERROR_MAX);
+	return { error: text, error_i18n: "error.invite-mail-failed", error_values: { error: text } };
+};
+
 const internalMailSetting = {
 	/**
 	 * @param   {Access}  access
@@ -331,6 +359,7 @@ export {
 	invitationsOffered,
 	reloadMailSettings,
 	resetOffered,
+	sendFailureOf,
 	useMailSettings,
 };
 export default internalMailSetting;

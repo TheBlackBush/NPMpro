@@ -4,14 +4,15 @@ import { dbTimeOf, msOfDbTime } from "../lib/notify/db-time.js";
 import passwordTokenModel from "../models/password_token.js";
 import userModel from "../models/user.js";
 
-// One-time tokens that let a user set a password without signing in (reset now, invitations in PR 5). The clear token is
+// One-time tokens that let a user set a password without signing in (a reset, an invitation). The clear token is
 // 32 random bytes in base64url, handed out once; the table keeps only its SHA-256 (the token has full entropy, so no
 // slow hash), and a token is found by a lookup on that hash, so nothing compares the clear token byte by byte.
 
 const PURPOSES = new Set(["reset", "invite"]);
 // 32 bytes in base64url: 43 characters without padding
 const TOKEN_SHAPE = /^[A-Za-z0-9_-]{43}$/u;
-const DEFAULT_LIFETIME_MS = { reset: 30 * 60_000 };
+// each purpose has its own lifetime, fixed when the token is made
+const DEFAULT_LIFETIME_MS = { reset: 30 * 60_000, invite: 72 * 60 * 60_000 };
 
 const hashOf = (token) => createHash("sha256").update(token).digest("hex");
 
@@ -40,7 +41,7 @@ const internalPasswordToken = {
 	 * @param   {String}  purpose  reset or invite
 	 * @param   {Object}  [options]
 	 * @param   {String}  [options.ip]  the requesting address, kept for the administrator
-	 * @param   {Number}  [options.lifetimeMs]  how long the token lives; 30 minutes for a reset
+	 * @param   {Number}  [options.lifetimeMs]  how long the token lives; 30 minutes for a reset, 72 hours for an invitation
 	 * @returns {Promise<String>}
 	 */
 	create: async (userId, purpose, { ip, lifetimeMs } = {}) => {
