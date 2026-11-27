@@ -8,6 +8,7 @@ import { buildData, makeEnvelope } from "./catalogue.js";
 import { dbTimeOf, msOfDbTime } from "./db-time.js";
 import { safeError } from "./queue.js";
 import { webhookHeaders } from "./webhook-sign.js";
+import { hintPath } from "./webhook-url.js";
 
 // The webhook channel of the notification worker. A row is one delivery to one webhook (target_id); its payload is the
 // event envelope. Every attempt goes through a guarded agent made at that moment from the stored URL's scheme
@@ -36,6 +37,8 @@ const RFC850_DATE =
 	/^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (?<day>\d{2})-(?<month>[A-Z][a-z]{2})-(?<year>\d{2}) (?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2}) GMT$/u;
 const ASCTIME_DATE =
 	/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) (?<month>[A-Z][a-z]{2}) (?<day> \d|\d{2}) (?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2}) (?<year>\d{4})$/u;
+// the answers that say the receiver cannot take deliveries now (with every 5xx), not that it refused this one
+const UNAVAILABLE_STATUS = new Set([408, 429]);
 const NOT_SENT = "The webhook is disabled or was deleted, the delivery was not sent";
 
 // a two-digit rfc850 year more than 50 years ahead is the latest past year with those digits (RFC 9110 5.6.7)
@@ -100,6 +103,16 @@ const assertLiteralAllowed = (parsed) => {
 	const host = parsed.hostname.replace(BRACKETS, "");
 	if (isIP(host) === 0) return;
 	if (isBlockedAddress(host) || (parsed.protocol === "http:" && !isPrivateLanAddress(host))) throw blockedError(host);
+};
+
+// the path beyond what the URL hint shows is as secret as the query (a token is often its last part): the whole path and
+// that tail are hidden; a tail of a few characters is left alone (hiding it would garble the answer, not protect much)
+const MIN_HIDDEN_TAIL = 4;
+const hiddenPath = (pathname) => {
+	const shown = hintPath(pathname);
+	if (pathname.length <= shown.length) return [];
+	const tail = pathname.slice(shown.length);
+	return tail.length >= MIN_HIDDEN_TAIL ? [pathname, tail] : [pathname];
 };
 
 const selects = (events, type) =>
@@ -376,11 +389,17 @@ const createWebhookChannel = ({
 			const built = build({ secrets, row });
 			if (!built) return { fail: "The event is larger than 20 KB, it was not sent", retry: false, hidden };
 			const parsedUrl = new URL(url);
-			const bits = [parsedUrl.href, parsedUrl.search, parsedUrl.hash, ...hidden];
+			const bits = [
+				parsedUrl.href,
+				parsedUrl.search,
+				parsedUrl.hash,
+				...hiddenPath(parsedUrl.pathname),
+				...hidden,
+			];
 			// enough to hide a value that starts just before the cut: the answer is hidden first, then cut
 			const longest = Math.max(0, ...hiddenSpellings(bits).map((value) => Buffer.byteLength(value)));
 			const answer = await request({ hook, url, ...built, readLimit: MAX_RESPONSE_BYTES + longest });
-			if (answer.error) return { fail: answer.error, retry: true, book: true, hidden: bits };
+			if (answer.error) return { fail: answer.error, retry: true, book: true, unavailable: true, hidden: bits };
 			const outcome = { http_status: answer.status, response: answer.text, hidden: bits, book: true };
 			if (answer.status >= 200 && answer.status < 300) return { ...outcome, ok: true };
 			const retryAfter = retryAfterOf(answer.retryAfter, clock.now());
@@ -388,7 +407,13 @@ const createWebhookChannel = ({
 				return { ...outcome, fail: "The endpoint answered 410 (gone)", retry: false, gone: true };
 			const label =
 				answer.status >= 300 && answer.status < 400 ? "was a redirect (not followed)" : "was an error";
-			return { ...outcome, fail: `The endpoint's answer ${label} (${answer.status})`, retry: true, retryAfter };
+			return {
+				...outcome,
+				fail: `The endpoint's answer ${label} (${answer.status})`,
+				retry: true,
+				retryAfter,
+				unavailable: answer.status >= 500 || UNAVAILABLE_STATUS.has(answer.status),
+			};
 		} catch (error) {
 			return { fail: `The delivery could not be built (${error?.name ?? "error"})`, retry: false, hidden };
 		}
@@ -421,8 +446,9 @@ const createWebhookChannel = ({
 		if (!retry || delay === undefined) return { ...result, ok: false, retry: false, error: text };
 		const jittered = Math.round(delay * (1 + random() * JITTER));
 		const retryAfterMs = Math.max(jittered, outcome.retryAfter ?? 0);
-		// a request that failed: the webhook's other rows of this call wait for this row's next try, untried
-		if (outcome.book) waits.set(hook.id, clock.now() + retryAfterMs);
+		// the receiver is unavailable (no answer, 5xx, 408, 429): the webhook's other rows of this call wait for this row's
+		// next try, untried. Any other answer is about this one delivery, so the next row is tried.
+		if (outcome.unavailable) waits.set(hook.id, clock.now() + retryAfterMs);
 		return {
 			...result,
 			ok: false,
@@ -468,7 +494,12 @@ const createWebhookChannel = ({
 			const waits = new Map();
 			const started = clock.now();
 			const results = [];
-			for (const row of rows) {
+			// the rows that were never tried go first: a row that failed (and made the others wait) is not first again at
+			// the next try, so one rejected event cannot hold the rest behind it
+			const ordered = [...rows].sort(
+				(left, right) => Number(left.attempts) - Number(right.attempts) || left.id - right.id,
+			);
+			for (const row of ordered) {
 				if (clock.now() - started >= CALL_BUDGET_MS) {
 					// a slow receiver may not hold the pass: untried, due again after the first retry delay
 					results.push({ id: row.id, ok: false, deferred: true, defer_ms: RETRY_DELAYS[0] });

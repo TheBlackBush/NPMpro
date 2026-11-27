@@ -523,14 +523,97 @@ describe("a dead receiver", () => {
 				["pending", 0, null],
 			],
 		);
-		// at the next try the first row is tried again, the others wait once more
+		// at the next try a row that was not tried yet goes first, so the failed one cannot hold the rest behind it
 		clock.at += RETRY_DELAYS[0];
 		await pass();
 		assert.equal(asked.filter((host) => host === "bad.example.com").length, 2);
 		assert.deepEqual(
 			(await rowsOf({ target_id: bad })).map((row) => row.attempts),
-			[2, 0, 0],
+			[1, 1, 0],
 		);
+		clock.at += RETRY_DELAYS[0];
+		await pass();
+		assert.deepEqual(
+			(await rowsOf({ target_id: bad })).map((row) => row.attempts),
+			[1, 1, 1],
+		);
+	});
+
+	it("an answer that refuses one event (400) is about that event only: the others go out in the same pass", async () => {
+		await addHook();
+		const asked = [];
+		overrides.fetchFn = (_, init) => {
+			const { type } = JSON.parse(init.body);
+			asked.push(type);
+			return Promise.resolve(new Response("no", { status: type === "backup.succeeded" ? 400 : 200 }));
+		};
+		build();
+		await emitHost();
+		await notify.deliver("backup.succeeded", { file: "a.zip" });
+		await emitHost();
+		await pass();
+		assert.deepEqual(asked, ["backup.restored", "backup.succeeded", "backup.restored"]);
+		const rows = await rowsOf();
+		assert.deepEqual(
+			rows.map((row) => [row.event, row.status, row.attempts, row.http_status]),
+			[
+				["backup.restored", "sent", 1, 200],
+				["backup.succeeded", "pending", 1, 400],
+				["backup.restored", "sent", 1, 200],
+			],
+		);
+		// the refused row is retried on its own schedule
+		assert.equal(msOfDbTime(rows[1].next_try_on), START + RETRY_DELAYS[0]);
+		await emitHost();
+		clock.at += RETRY_DELAYS[0];
+		await pass();
+		assert.deepEqual(asked.slice(3).sort(), ["backup.restored", "backup.succeeded"]);
+		assert.deepEqual(
+			(await rowsOf()).map((row) => [row.status, row.attempts]),
+			[
+				["sent", 1],
+				["pending", 2],
+				["sent", 1],
+				["sent", 1],
+			],
+		);
+	});
+
+	it("a 429 with Retry-After defers the webhook's other rows to that time; a 404 or a 3xx does not", async () => {
+		await addHook();
+		const answers = [
+			{ status: 429, headers: { "retry-after": "600" } },
+			{ status: 404 },
+			{ status: 302, headers: { location: "https://elsewhere.example.com/" } },
+		];
+		for (const answer of answers) {
+			await knex(TABLE).delete();
+			clock.at = START;
+			let calls = 0;
+			overrides.fetchFn = () => {
+				calls += 1;
+				const reply = calls === 1 ? answer : { status: 200 };
+				return Promise.resolve(new Response("", { status: reply.status, headers: reply.headers ?? {} }));
+			};
+			build();
+			for (let index = 0; index < 3; index++) await emitHost();
+			await pass();
+			const rows = await rowsOf();
+			if (answer.status === 429) {
+				assert.equal(calls, 1);
+				for (const row of rows) assert.equal(msOfDbTime(row.next_try_on), START + 600_000);
+				assert.deepEqual(
+					rows.map((row) => row.attempts),
+					[1, 0, 0],
+				);
+			} else {
+				assert.equal(calls, 3, String(answer.status));
+				assert.deepEqual(
+					rows.map((row) => row.status),
+					["pending", "sent", "sent"],
+				);
+			}
+		}
 	});
 });
 
@@ -772,6 +855,32 @@ describe("secrets and the URL", () => {
 		assert.equal(row.response.includes(TOKEN), false);
 		assert.equal(row.response.includes(SECRET), false);
 		assert.match(row.response, BAD_ECHO);
+	});
+
+	it("the path beyond what the hint shows is hidden in each spelling; the part the hint shows stays", async () => {
+		// the hint shows 40 characters of the path: "/in/hook/" and 31 characters of the token
+		const token = "t0k3n%2Fwith%20escapes-and-a-long-tail-0123456789";
+		const decoded = decodeURIComponent(token);
+		const fullPath = `${PATH}/${token}`;
+		await addHook({ url: seal(`${BASE}${fullPath}`) });
+		const shown = fullPath.slice(PATH.length + 1, 40);
+		const tail = token.slice(shown.length);
+		const cases = [
+			[`Cannot POST ${fullPath}`, "Cannot POST ***"],
+			[`token ${token}`, `token ${shown}***`],
+			[`{"path":"${fullPath.replaceAll("/", "\\/")}"}`, `{"path":"***"}`],
+			[`decoded ${decodeURIComponent(fullPath)}`, "decoded ***"],
+			[`tail ${decodeURIComponent(tail)}`, "tail ***"],
+		];
+		assert.equal(decoded.includes("/"), true);
+		for (const [body, expected] of cases) {
+			await knex(TABLE).delete();
+			route = { status: 404, body, headers: {} };
+			await emitHost();
+			await pass();
+			const [row] = await rowsOf();
+			assert.equal(row.response, expected, body);
+		}
 	});
 
 	it("a value echoed just before the 2 KB cut is hidden whole, in each spelling, and the cut keeps whole characters", async () => {
