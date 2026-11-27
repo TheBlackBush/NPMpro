@@ -95,7 +95,7 @@
 		},
 		"redeliverable": {
 			"type": "boolean",
-			"description": "Whether the content is still kept, so the delivery can be redelivered. A failed delivery keeps it for 7 days"
+			"description": "Whether the delivery can be redelivered now: its content is still kept (a failed delivery keeps it for 7 days) and the webhook is turned on"
 		}
 	}
 }

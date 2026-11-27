@@ -20,7 +20,8 @@ export const statusKind = (status) => STATES[status] ?? STATES.pending;
 
 /**
  * The Redeliver button of a row. Only a failed row has one (the backend retries nothing else); it is disabled when the
- * content is no longer kept (`redeliverable` false) or the webhook is turned off.
+ * webhook is turned off or the content is no longer kept (`redeliverable` false; the backend answers false for both,
+ * the webhook's own switch tells which reason shows).
  *
  * @param   {{ status: string, redeliverable: boolean }}  delivery
  * @param   {boolean}  webhookEnabled
@@ -28,10 +29,10 @@ export const statusKind = (status) => STATES[status] ?? STATES.pending;
  */
 export const redeliverState = (delivery, webhookEnabled) => {
 	if (delivery.status !== "failed") return { show: false, disabled: false, reasonId: null };
+	if (!webhookEnabled) return { show: true, disabled: true, reasonId: "error.webhook-disabled" };
 	if (!delivery.redeliverable) {
 		return { show: true, disabled: true, reasonId: "settings.webhooks.deliveries.payload-gone" };
 	}
-	if (!webhookEnabled) return { show: true, disabled: true, reasonId: "error.webhook-disabled" };
 	return { show: true, disabled: false, reasonId: null };
 };
 
@@ -65,3 +66,21 @@ export const formatDeliveryTime = (value, locale, timeZone) => {
 		timeZone,
 	}).format(date);
 };
+
+export const REFRESH_MS = 10 * 1000;
+export const WATCH_REFRESH_MS = 2 * 1000;
+export const WATCH_MS = 20 * 1000;
+
+/**
+ * How soon the window asks again: every 2 seconds for up to 20 seconds after a redeliver while a row is still pending or
+ * sending, else every 10 seconds
+ *
+ * @param   {{ status: string }[]}  rows
+ * @param   {number}  watchUntil  the time (ms) the fast refresh ends; 0 when no redeliver was made
+ * @param   {number}  now  ms
+ * @returns {number}
+ */
+export const refreshInterval = (rows, watchUntil, now) =>
+	now < watchUntil && rows.some((row) => row.status === "pending" || row.status === "sending")
+		? WATCH_REFRESH_MS
+		: REFRESH_MS;

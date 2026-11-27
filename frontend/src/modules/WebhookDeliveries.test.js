@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import en from "../../translations/ui/en.json" with { type: "json" };
-import { detailOf, formatDeliveryTime, redeliverState, statusKind } from "./WebhookDeliveries.js";
+import {
+	detailOf,
+	formatDeliveryTime,
+	REFRESH_MS,
+	redeliverState,
+	refreshInterval,
+	statusKind,
+	WATCH_MS,
+	WATCH_REFRESH_MS,
+} from "./WebhookDeliveries.js";
 
 const DATE = /Nov 26, 2026/u;
 const CLOCK = /09:12:00/u;
@@ -23,7 +32,7 @@ it("offers Redeliver on a failed row only, disabled with the reason", () => {
 	const gone = redeliverState({ status: "failed", redeliverable: false }, true);
 	assert.deepEqual(gone, { show: true, disabled: true, reasonId: "settings.webhooks.deliveries.payload-gone" });
 	assert.equal(en[gone.reasonId], "The payload is no longer kept");
-	const off = redeliverState(failed, false);
+	const off = redeliverState({ status: "failed", redeliverable: false }, false);
 	assert.equal(off.disabled, true);
 	assert.ok(en[off.reasonId]);
 	for (const status of ["pending", "sending", "sent", "dropped"]) {
@@ -49,4 +58,14 @@ it("shows a dash for a missing or invalid time", () => {
 	assert.equal(formatDeliveryTime(undefined, "en"), "-");
 	assert.equal(formatDeliveryTime("", "en"), "-");
 	assert.equal(formatDeliveryTime("not a date", "en"), "-");
+});
+
+it("refreshes fast for 20 seconds after a redeliver while a row is waiting, else every 10 seconds", () => {
+	const waiting = [{ status: "sent" }, { status: "pending" }];
+	const done = [{ status: "sent" }, { status: "failed" }];
+	assert.equal(refreshInterval(waiting, 0, 1000), REFRESH_MS);
+	assert.equal(refreshInterval(waiting, 1000 + WATCH_MS, 1000), WATCH_REFRESH_MS);
+	assert.equal(refreshInterval([{ status: "sending" }], 1000 + WATCH_MS, 1000), WATCH_REFRESH_MS);
+	assert.equal(refreshInterval(done, 1000 + WATCH_MS, 1000), REFRESH_MS);
+	assert.equal(refreshInterval(waiting, 1000 + WATCH_MS, 1000 + WATCH_MS), REFRESH_MS);
 });

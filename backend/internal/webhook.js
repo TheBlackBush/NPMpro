@@ -161,13 +161,14 @@ const pageOf = (value, fallback, max) => {
 	return Number.isInteger(number) && number >= 0 ? Math.min(number, max) : fallback;
 };
 
-const presentDelivery = ({ has_payload: hasPayload, ...row }) => ({
+const presentDelivery = ({ has_payload: hasPayload, ...row }, hook) => ({
 	...row,
 	next_try_on: isoOf(row.next_try_on),
 	created_on: isoOf(row.created_on),
 	modified_on: isoOf(row.modified_on),
-	// the payload itself is never answered; a failed row keeps it for a week and can be sent again meanwhile
-	redeliverable: Boolean(Number(hasPayload)),
+	// the payload itself is never answered; a failed row keeps it for a week and can be sent again meanwhile, while the
+	// webhook is on (redeliver refuses a webhook that is off)
+	redeliverable: Boolean(Number(hasPayload)) && Boolean(Number(hook.enabled)),
 });
 
 const deliveryRow = async (webhookId, deliveryId) => {
@@ -302,7 +303,7 @@ const internalWebhook = {
 	/** @returns {Promise<{rows: Object[], total: Number}>} the deliveries of one webhook, newest first, never the payload */
 	deliveries: async (access, id, { offset, limit } = {}) => {
 		access.canAdmin();
-		await find(id);
+		const hook = await find(id);
 		const where = () => db()(DELIVERY_TABLE).where({ channel: "webhook", target_id: id });
 		const rows = await where()
 			.select(...DELIVERY_COLUMNS)
@@ -311,7 +312,7 @@ const internalWebhook = {
 			.limit(pageOf(limit, DEFAULT_PAGE, MAX_PAGE) || DEFAULT_PAGE)
 			.offset(pageOf(offset, 0, Number.MAX_SAFE_INTEGER));
 		const [{ total }] = await where().count({ total: "*" });
-		return { rows: rows.map(presentDelivery), total: Number(total) };
+		return { rows: rows.map((row) => presentDelivery(row, hook)), total: Number(total) };
 	},
 
 	/**
@@ -340,7 +341,7 @@ const internalWebhook = {
 			);
 		}
 		worker.kick();
-		return presentDelivery(await deliveryRow(hook.id, delivery.id));
+		return presentDelivery(await deliveryRow(hook.id, delivery.id), hook);
 	},
 };
 

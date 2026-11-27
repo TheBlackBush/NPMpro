@@ -7,6 +7,7 @@ import {
 	testWebhook,
 	updateWebhook,
 } from "src/api/backend";
+import { refreshInterval, WATCH_MS } from "src/modules/WebhookDeliveries";
 
 // the lists a change of a webhook touches: the list itself, the audit log (every change writes an entry) and the
 // health report (a webhook turned off by NPMpro shows there)
@@ -48,13 +49,14 @@ const useTestWebhook = () => {
 	});
 };
 
-// the deliveries window refreshes this often while it is open; a hidden tab does not poll (react-query's default)
-const DELIVERIES_REFRESH_MS = 10 * 1000;
+// per webhook id, the time (ms) until which the deliveries window refreshes fast after a redeliver
+const watchUntil = new Map();
 
 /**
  * One page of the deliveries of a webhook, asked from the server (limit and offset; the total comes back in
  * X-Total-Count). The previous page stays on screen while the next one loads. Refreshes every 10 seconds while the
- * component that uses it is mounted and the page is visible.
+ * component that uses it is mounted and the page is visible, every 2 seconds for 20 seconds after a redeliver while a
+ * row is pending or sending (modules/WebhookDeliveries.js refreshInterval).
  *
  * @param {number} id
  * @param {Object} options
@@ -66,7 +68,7 @@ const useWebhookDeliveries = (id, { page = 0, size = 25 } = {}) => {
 		queryKey: ["webhook-deliveries", id, { page, size }],
 		queryFn: () => getWebhookDeliveries(id, { limit: size, offset: page * size }),
 		placeholderData: keepPreviousData,
-		refetchInterval: DELIVERIES_REFRESH_MS,
+		refetchInterval: (query) => refreshInterval(query.state.data?.data ?? [], watchUntil.get(id) ?? 0, Date.now()),
 		staleTime: 0,
 	});
 	return { ...result, rows: result.data?.data ?? [], total: result.data?.total ?? null };
@@ -77,6 +79,7 @@ const useRedeliverWebhook = (id) => {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: (deliveryId) => redeliverWebhook(id, deliveryId),
+		onSuccess: () => watchUntil.set(id, Date.now() + WATCH_MS),
 		onSettled: () =>
 			Promise.all([
 				queryClient.invalidateQueries({ queryKey: ["webhook-deliveries", id] }),

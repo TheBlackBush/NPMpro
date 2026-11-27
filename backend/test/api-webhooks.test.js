@@ -482,6 +482,12 @@ it("answers 409 for a row whose payload is gone, a row not failed, a disabled we
 	const off = await admin.post(`/webhooks/${created.body.id}/deliveries/${failed.id}/redeliver`, {});
 	assert.equal(off.status, 409);
 	assert.equal(off.body.error.message_i18n, "error.webhook-disabled");
+	// the list says the same: nothing can be redelivered while the webhook is off, and again once it is on
+	const listed = await admin.get(`/webhooks/${created.body.id}/deliveries`);
+	assert.equal(listed.body.find((item) => item.id === failed.id).redeliverable, false);
+	await admin.put(`/webhooks/${created.body.id}`, { enabled: true });
+	const back = await admin.get(`/webhooks/${created.body.id}/deliveries`);
+	assert.equal(back.body.find((item) => item.id === failed.id).redeliverable, true);
 	const other = await create();
 	assert.equal((await admin.post(`/webhooks/${other.body.id}/deliveries/${failed.id}/redeliver`, {})).status, 404);
 	assert.equal((await admin.post(`/webhooks/${other.body.id}/deliveries/99999/redeliver`, {})).status, 404);
