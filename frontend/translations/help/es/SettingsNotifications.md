@@ -17,6 +17,17 @@ Con la seguridad **Ninguna** y un usuario, la contraseña viajaría sin cifrar, 
 
 **Enviar correo de prueba** envía un correo con los ajustes guardados a la dirección que escribas (la tuya por defecto) y muestra la respuesta del servidor si falla. Guarda primero: el botón está desactivado mientras el formulario tenga cambios sin guardar, y oculto hasta que el correo esté configurado.
 
+### Alertas por correo
+
+Se muestran una vez configurado un servidor de correo. Correos sobre los problemas que NPMpro detecta y sobre cuándo se resuelven; un problema que sigue abierto se repite.
+
+- **Enviar a los administradores**: cada administrador activado con una dirección válida recibe las alertas.
+- **Enviar también a**: más direcciones, como máximo 20, por ejemplo una lista de equipo. Una dirección rechazada se marca en su etiqueta. Variable: `ALERT_ADDRESSES` (separadas por comas).
+- **Eventos**: marca los problemas sobre los que quieres recibir correo, agrupados por área. Marcar uno también cubre su resolución.
+- **Recordar cada (horas)**: cuánto tiempo permanece en silencio un problema antes de enviarlo de nuevo; 0 no lo repite nunca, como máximo 168.
+
+**Enviar un ejemplo** envía al instante una alerta de ejemplo, con los ajustes guardados, a todos los que recibirían alertas. Guarda primero: el botón está desactivado mientras el formulario tenga cambios sin guardar. Si un envío falla, el mensaje indica la dirección.
+
 ### Enlaces e idioma
 
 - **URL pública**: la dirección con la que las personas abren NPMpro, usada para los enlaces de los correos, por ejemplo `https://npm.example.com`. Solo HTTPS, sin ruta. **Usar la dirección de este navegador** la rellena con la dirección de esta página cuando se abre por HTTPS. Variable: `PUBLIC_URL`.

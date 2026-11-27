@@ -10,12 +10,13 @@ import tls from "node:tls";
  * @param   {Object}  [options]
  * @param   {String}  [options.mode]
  * @param   {Object}  [options.tlsOptions]  key and cert: an implicit-TLS server
+ * @param   {String[]}  [options.rejectTo]   recipients (a part of the address) answered with a 550
  * @returns {Promise<{port: Number, messages: String[], logins: Object[], close: Function}>}
  */
 // built from parts: a URL with credentials the scrub must remove
 const URL_REPLY = ["https://admin:hunter", "22@example.com/help?token=abc", "123"].join("");
 
-const startFakeSmtp = async ({ mode = "accept", tlsOptions } = {}) => {
+const startFakeSmtp = async ({ mode = "accept", tlsOptions, rejectTo = [] } = {}) => {
 	const messages = [];
 	const logins = [];
 	const sockets = new Set();
@@ -66,7 +67,8 @@ const startFakeSmtp = async ({ mode = "accept", tlsOptions } = {}) => {
 				send("250 2.1.0 OK");
 			} else if (upper.startsWith("RCPT TO")) {
 				if (mode === "rcpt-450") send("450 4.2.1 mailbox busy");
-				else if (mode === "rcpt-550") send("550 5.1.1 no such user");
+				else if (mode === "rcpt-550" || rejectTo.some((one) => upper.includes(one.toUpperCase())))
+					send("550 5.1.1 no such user");
 				else send("250 2.1.5 OK");
 			} else if (upper === "DATA") {
 				data = "";

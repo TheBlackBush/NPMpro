@@ -27,6 +27,7 @@ import ddnsRecordsRoutes from "./nginx/ddns_records.js";
 import dnsCheckRoutes from "./nginx/dns_check.js";
 import dnsCredentialsRoutes from "./nginx/dns_credentials.js";
 import dnsDomainsRoutes from "./nginx/dns_domains.js";
+import notificationsRoutes from "./notifications.js";
 import oidcRoutes from "./oidc.js";
 import passwordResetRoutes from "./password-reset.js";
 import reportsRoutes from "./reports.js";
@@ -98,6 +99,7 @@ router.get("/api/auth/admin", requireLogin(), sessionOnly(), (_, res) => {
 router.get(["/api/docs", "/api/docs/"], (_req, res) => res.redirect(302, "/api-reference"));
 router.use("/api/schema", schemaRoutes);
 router.use("/api/tokens", tokensRoutes);
+router.use("/api/notifications", notificationsRoutes);
 router.use("/api/oidc", oidcRoutes);
 router.use("/api/password-reset", passwordResetRoutes);
 router.use("/api/users", usersRoutes);

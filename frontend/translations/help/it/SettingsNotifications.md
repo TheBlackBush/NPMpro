@@ -17,6 +17,17 @@ Con la sicurezza **Nessuna** e un utente, la password viaggerebbe senza crittogr
 
 **Invia mail di prova** invia una mail con le impostazioni salvate all'indirizzo che digiti (il tuo per impostazione predefinita) e mostra la risposta del server se fallisce. Salva prima: il pulsante è disattivato finché il modulo ha modifiche non salvate e nascosto finché la posta non è configurata.
 
+### Avvisi via mail
+
+Mostrati quando un server di posta è configurato. Mail sui problemi che NPMpro rileva e su quando vengono risolti; un problema che resta aperto viene ripetuto.
+
+- **Invia agli amministratori**: ogni amministratore attivo con un indirizzo valido riceve gli avvisi.
+- **Invia anche a**: altri indirizzi, al massimo 20, ad esempio una lista del team. Un indirizzo rifiutato è segnato sul suo chip. Variabile: `ALERT_ADDRESSES` (separati da virgole).
+- **Eventi**: spunta i problemi per cui vuoi ricevere una mail, raggruppati per area. Spuntarne uno copre anche la sua risoluzione.
+- **Ricorda ogni (ore)**: per quanto tempo un problema resta silenzioso prima di essere inviato di nuovo; 0 non lo ripete mai, al massimo 168.
+
+**Invia un esempio** invia subito un avviso di esempio, con le impostazioni salvate, a tutti quelli che riceverebbero gli avvisi. Salva prima: il pulsante è disattivato finché il modulo ha modifiche non salvate. Se un invio non riesce, il messaggio indica l'indirizzo.
+
 ### Link e lingua
 
 - **URL pubblico**: l'indirizzo con cui le persone aprono NPMpro, usato per i link delle mail, ad esempio `https://npm.example.com`. Solo HTTPS, senza percorso. **Usa l'indirizzo di questo browser** lo compila con l'indirizzo di questa pagina quando è aperta tramite HTTPS. Variabile: `PUBLIC_URL`.

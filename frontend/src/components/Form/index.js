@@ -1,6 +1,7 @@
 export * from "./AccessClientFields";
 export * from "./AccessFields";
 export * from "./AcmeServerField";
+export * from "./AddressListField";
 export * from "./BasicAuthFields";
 export * from "./CaaNote";
 export * from "./ChoiceGroup";

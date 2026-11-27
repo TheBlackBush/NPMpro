@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
+	alertProblemOf,
 	EMAIL_DEFAULTS,
 	EMAIL_ENV_KEYS,
 	ehloNameOf,
@@ -33,7 +34,11 @@ it("names every env key and the 13 languages", () => {
 		reply_to: "SMTP_REPLY_TO",
 		allow_password_reset: "PASSWORD_RESET",
 	});
-	assert.deepEqual(NOTIFICATION_ENV_KEYS, { public_url: "PUBLIC_URL", default_language: "MAIL_LANGUAGE" });
+	assert.deepEqual(NOTIFICATION_ENV_KEYS, {
+		public_url: "PUBLIC_URL",
+		default_language: "MAIL_LANGUAGE",
+		alerts_addresses: "ALERT_ADDRESSES",
+	});
 	assert.equal(MAIL_LANGUAGES.length, 13);
 });
 
@@ -73,7 +78,11 @@ it("env wins per key and locks only the keys it sets, an empty variable does not
 		{ public_url: "https://stored.test", default_language: "de" },
 		{ PUBLIC_URL: "https://env.test", MAIL_LANGUAGE: "fr" },
 	);
-	assert.deepEqual(notifications.values, { public_url: "https://env.test", default_language: "fr" });
+	assert.deepEqual(notifications.values, {
+		...NOTIFICATION_DEFAULTS,
+		public_url: "https://env.test",
+		default_language: "fr",
+	});
 	assert.deepEqual(notifications.locked, ["public_url", "default_language"]);
 });
 
@@ -279,4 +288,43 @@ it("allow_password_reset is off by default, on only for the word true, and must 
 		allow_password_reset: "settings.email.allow-password-reset.invalid",
 	});
 	assert.deepEqual(okEmail({ allow_password_reset: false }), {});
+});
+
+it("the alert settings: defaults, the env list, one problem with its placeholders, a kept value passes", () => {
+	const { values } = mergeNotifications({}, {});
+	assert.equal(values.alerts_admins, true);
+	assert.deepEqual(values.alerts_addresses, []);
+	assert.equal(values.reminder_hours, 24);
+	assert.ok(values.alerts_events.includes("backup.failed"));
+	assert.ok(!values.alerts_events.includes("host.created"));
+	const listed = mergeNotifications({}, { ALERT_ADDRESSES: "a@b.c, d@e.f,," });
+	assert.deepEqual(listed.values.alerts_addresses, ["a@b.c", "d@e.f"]);
+	assert.deepEqual(listed.locked, ["alerts_addresses"]);
+	assert.deepEqual(alertProblemOf({ alerts_events: ["host.created"] }, values), {
+		i18n: "error.notify-event-not-for-mail",
+		values: { event: "host.created" },
+	});
+	assert.deepEqual(alertProblemOf({ alerts_addresses: ["a@b.c", "x"] }, values), {
+		i18n: "settings.notifications.alerts-addresses.invalid",
+		values: { index: 1, address: "x" },
+	});
+	// a value that is not text is named by its index only
+	assert.deepEqual(alertProblemOf({ alerts_addresses: ["a@b.c", 5] }, values), {
+		i18n: "settings.notifications.alerts-addresses.invalid",
+		values: { index: 1 },
+	});
+	assert.equal(
+		alertProblemOf({ alerts_events: Array.from({ length: 10 }, () => "backup.failed") }, values).i18n,
+		"settings.notifications.alerts-events.invalid",
+	);
+	assert.equal(
+		alertProblemOf({ alerts_events: ["backup.failed.resolved"] }, values).i18n,
+		"error.notify-event-not-for-mail",
+	);
+	assert.equal(alertProblemOf({ reminder_hours: 169 }, values).i18n, "settings.notifications.reminder-hours.invalid");
+	assert.equal(alertProblemOf({ alerts_events: ["host.created"] }, { alerts_events: ["host.created"] }), null);
+	assert.equal(alertProblemOf({ alerts_events: values.alerts_events, reminder_hours: 0 }, values), null);
+	assert.deepEqual(validateNotificationValues({ ...values, alerts_events: ["*"] }).errors, {
+		alerts_events: "settings.notifications.alerts-events.invalid",
+	});
 });

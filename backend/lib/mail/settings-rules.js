@@ -1,6 +1,7 @@
 import { isIP } from "node:net";
 import { hostname } from "node:os";
 import addressparser from "nodemailer/lib/addressparser";
+import { selectableEvents, stateEvents } from "../notify/catalogue.js";
 
 const MAIL_LANGUAGES = ["en", "de", "zh", "fr", "es", "pt", "ru", "it", "nl", "pl", "ja", "ko", "uk"];
 
@@ -20,6 +21,10 @@ const EMAIL_DEFAULTS = {
 const NOTIFICATION_DEFAULTS = {
 	public_url: "",
 	default_language: "en",
+	alerts_admins: true,
+	alerts_addresses: [],
+	alerts_events: stateEvents().map((entry) => entry.id),
+	reminder_hours: 24,
 };
 
 const EMAIL_ENV_KEYS = {
@@ -38,6 +43,7 @@ const EMAIL_ENV_KEYS = {
 const NOTIFICATION_ENV_KEYS = {
 	public_url: "PUBLIC_URL",
 	default_language: "MAIL_LANGUAGE",
+	alerts_addresses: "ALERT_ADDRESSES",
 };
 
 const EMAIL_NUMBER_KEYS = new Set(["port"]);
@@ -45,6 +51,8 @@ const EMAIL_NUMBER_KEYS = new Set(["port"]);
 const EMAIL_BOOLEAN_KEYS = new Set(["verify_tls"]);
 // off unless the variable says true
 const EMAIL_OPT_IN_KEYS = new Set(["allow_password_reset"]);
+// a comma list: split, trimmed, empty entries dropped
+const LIST_KEYS = new Set(["alerts_addresses"]);
 const SECURITY_MODES = ["starttls", "tls", "none"];
 const ADDRESS_PATTERN = /^[^\s@<>()",;:\\]+@[^\s@<>()",;:\\]+$/u;
 const ASCII_PRINTABLE_PATTERN = /^[\x21-\x7e]+$/u;
@@ -53,6 +61,8 @@ const CONTROL_PATTERN = /[\r\n\0]/u;
 const NAME_PATTERN = /[\r\n\0"]/u;
 const URL_FORBIDDEN_PATTERN = /[?#\\]/u;
 const ADDRESS_MAX = 254;
+const ALERT_ADDRESSES_MAX = 20;
+const REMINDER_HOURS_MAX = 168;
 const NAME_MAX = 100;
 
 /**
@@ -77,6 +87,11 @@ const mergeWithEnv = (defaults, envKeys, stored, env) => {
 			values[key] = Number(raw);
 		} else if (EMAIL_BOOLEAN_KEYS.has(key)) {
 			values[key] = raw !== "false";
+		} else if (LIST_KEYS.has(key)) {
+			values[key] = raw
+				.split(",")
+				.map((entry) => entry.trim())
+				.filter(Boolean);
 		} else if (EMAIL_OPT_IN_KEYS.has(key)) {
 			values[key] = raw === "true";
 		} else {
@@ -167,19 +182,80 @@ const EMAIL_CHECKS = {
 	username: (value) => isPlainText(value, ADDRESS_MAX, CONTROL_PATTERN),
 };
 
+const kebab = (key) => key.replaceAll("_", "-");
+
+const ALERT_KEYS = ["alerts_admins", "alerts_addresses", "alerts_events", "reminder_hours"];
+
+// The events mail offers: the base ids only (the state events and webhook.disabled). The contract for the alert channel:
+// ticking `x` covers the problem, its changes, its reminders and its recovery, so the channel's `accepts` maps
+// `x.resolved` to `x` before it looks the type up in alerts_events. An `x.resolved` id is never stored in the list.
+const MAIL_EVENT_IDS = selectableEvents()
+	.filter(({ channels }) => channels.includes("mail"))
+	.map(({ id }) => id);
+
+/**
+ * What is wrong with an alert setting, or null: the i18n key (and the placeholders of its text) of the refusal. A list
+ * of addresses names the index (from 0) and, when it is text, the value of the first bad one; an event the mail channel does not offer (an action event,
+ * "*", an unknown id) has its own message.
+ *
+ * @param   {string}  key
+ * @param   {*}       value
+ * @returns {{i18n: string, values?: Object}|null}
+ */
+const alertProblem = (key, value) => {
+	const generic = { i18n: `settings.notifications.${kebab(key)}.invalid` };
+	if (key === "alerts_admins") return typeof value === "boolean" ? null : generic;
+	if (key === "reminder_hours") {
+		return Number.isInteger(value) && value >= 0 && value <= REMINDER_HOURS_MAX ? null : generic;
+	}
+	if (!Array.isArray(value)) return generic;
+	if (key === "alerts_addresses") {
+		if (value.length > ALERT_ADDRESSES_MAX) return generic;
+		const index = value.findIndex((address) => !isSingleAddress(address));
+		if (index === -1) return null;
+		// the address itself too (the admin's own value): the index counts in the list after its repeats are removed
+		const refused = value[index];
+		return { ...generic, values: typeof refused === "string" ? { index, address: refused } : { index } };
+	}
+	if (value.length > MAIL_EVENT_IDS.length) return generic;
+	const event = value.find((id) => typeof id !== "string" || !MAIL_EVENT_IDS.includes(id));
+	if (event === undefined) return null;
+	return { i18n: "error.notify-event-not-for-mail", values: { event: String(event).slice(0, NAME_MAX) } };
+};
+
 const NOTIFICATION_CHECKS = {
 	public_url: (value) => value === "" || normalizePublicUrl(value) !== null,
 	default_language: (value) => MAIL_LANGUAGES.includes(value),
+	...Object.fromEntries(ALERT_KEYS.map((key) => [key, (value) => alertProblem(key, value) === null])),
 };
 
-const kebab = (key) => key.replaceAll("_", "-");
+/**
+ * The alert lists of a save without repeats: events by id, addresses case-insensitively (the first spelling stays)
+ *
+ * @param   {Object}  patch
+ * @returns {Object}  the patch with its lists deduplicated
+ */
+const dedupeAlertLists = (patch) => {
+	const out = { ...patch };
+	if (Array.isArray(out.alerts_events)) out.alerts_events = [...new Set(out.alerts_events)];
+	if (Array.isArray(out.alerts_addresses)) {
+		const seen = new Set();
+		out.alerts_addresses = out.alerts_addresses.filter((address) => {
+			const key = address.toLowerCase();
+			return seen.has(key) ? false : seen.add(key);
+		});
+	}
+	return out;
+};
+
+const isSame = (a, b) => a === b || (Array.isArray(a) && JSON.stringify(a) === JSON.stringify(b));
 
 const errorsOf = (checks, area, values, current) => {
 	const errors = {};
 	for (const [key, check] of Object.entries(checks)) {
 		if (!(key in values)) continue;
 		// a stored value passes a save that keeps it, even when it would not pass today
-		if (current && values[key] === current[key]) continue;
+		if (current && isSame(values[key], current[key])) continue;
 		if (!check(values[key])) errors[key] = `settings.${area}.${kebab(key)}.invalid`;
 	}
 	return { errors };
@@ -193,6 +269,23 @@ const errorsOf = (checks, area, values, current) => {
 const validateEmailPatch = (patch, current) => errorsOf(EMAIL_CHECKS, "email", patch, current);
 
 const validateNotificationsPatch = (patch, current) => errorsOf(NOTIFICATION_CHECKS, "notifications", patch, current);
+
+/**
+ * The first refusal among the alert settings of a save, with its placeholders; a value kept as stored passes
+ *
+ * @param   {Object}  patch    the keys of a save
+ * @param   {Object}  current  the stored values
+ * @returns {{i18n: string, values?: Object}|null}
+ */
+const alertProblemOf = (patch, current) => {
+	for (const key of ALERT_KEYS) {
+		if (key in patch && !isSame(patch[key], current?.[key])) {
+			const problem = alertProblem(key, patch[key]);
+			if (problem) return problem;
+		}
+	}
+	return null;
+};
 
 /**
  * The same rules over the merged values (mergeEmail: stored and env). A value from env or a legacy stored value that a
@@ -245,6 +338,8 @@ const ehloNameOf = (values, hostName = hostname()) => {
 };
 
 export {
+	alertProblemOf,
+	dedupeAlertLists,
 	EMAIL_DEFAULTS,
 	EMAIL_ENV_KEYS,
 	ehloNameOf,

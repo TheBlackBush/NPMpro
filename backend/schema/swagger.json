@@ -765,6 +765,16 @@
 				"$ref": "./paths/settings/notifications/put.json"
 			}
 		},
+		"/settings/notifications/test-alert": {
+			"post": {
+				"$ref": "./paths/settings/notifications/test-alert/post.json"
+			}
+		},
+		"/notifications/events": {
+			"get": {
+				"$ref": "./paths/notifications/events/get.json"
+			}
+		},
 		"/settings/{settingID}": {
 			"get": {
 				"$ref": "./paths/settings/settingID/get.json"

@@ -17,6 +17,17 @@ Avec la sécurité **Aucune** et un utilisateur, le mot de passe circulerait en 
 
 **Envoyer un message de test** envoie un message avec les réglages enregistrés à l'adresse saisie (la vôtre par défaut) et affiche la réponse du serveur en cas d'échec. Enregistrez d'abord : le bouton est désactivé tant que le formulaire a des modifications non enregistrées, et masqué tant que la messagerie n'est pas configurée.
 
+### Alertes par e-mail
+
+Affichées une fois un serveur de messagerie configuré. Des e-mails sur les problèmes détectés par NPMpro et sur leur résolution ; un problème qui reste ouvert est rappelé.
+
+- **Envoyer aux administrateurs** : chaque administrateur activé ayant une adresse valide reçoit les alertes.
+- **Envoyer aussi à** : d'autres adresses, 20 au maximum, par exemple une liste d'équipe. Une adresse refusée est marquée sur sa pastille. Variable : `ALERT_ADDRESSES` (séparées par des virgules).
+- **Événements** : cochez les problèmes pour lesquels vous voulez un e-mail, groupés par domaine. Cocher un événement couvre aussi sa résolution.
+- **Rappeler toutes les (heures)** : le temps pendant lequel un problème reste silencieux avant d'être envoyé de nouveau ; 0 ne le répète jamais, 168 au maximum.
+
+**Envoyer un exemple** envoie aussitôt une alerte d'exemple, avec les paramètres enregistrés, à tous ceux qui recevraient les alertes. Enregistrez d'abord : le bouton est désactivé tant que le formulaire a des modifications non enregistrées. Si un envoi échoue, le message indique l'adresse.
+
 ### Liens et langue
 
 - **URL publique** : l'adresse à laquelle les personnes ouvrent NPMpro, utilisée pour les liens des messages, par exemple `https://npm.example.com`. HTTPS uniquement, sans chemin. **Utiliser l'adresse de ce navigateur** la remplit avec l'adresse de cette page lorsqu'elle est ouverte en HTTPS. Variable : `PUBLIC_URL`.

@@ -108,7 +108,7 @@
 	"put /settings/runtime/advanced": "d2cf94a67814b1b3582c7445b951c6fd547b1a61392b32081d134ef25d0399af",
 	"put /settings/email": "ce8e19feefb9417715bd9d8f47e09ffed05bb16fbde1146ee0abfbdd71e0009a",
 	"post /settings/email/test": "9c49d59026eaa6e577bdd2a1239673f7923f1bc9530e73ee0934df5112ca933a",
-	"put /settings/notifications": "a75eee590c297c1aa080db95ed0c56a84c9f57f076a67b65723bb3bddbbe7bd2",
+	"put /settings/notifications": "a713e5e9f0d58bb1064b3697eda08f5495add1d4d11f5d9557b8db0922339ee8",
 	"get /settings/{settingID}": "e6c42ed17e793c7fb599d96324b4c2a72a9073454d160da3f858849ee1cab050",
 	"put /settings/{settingID}": "da902c2288d74c9f84f6b84ef1552cfd8fa19ed59ed0f5024984619f10459796",
 	"post /password-reset": "86667e255ac42ea9eac562da97659b9e5c9308cdfc265bc5ff4713bf0d6957e3",

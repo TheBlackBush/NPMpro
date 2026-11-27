@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { escapeHtml, makeT, renderMail, TEMPLATES } from "../mail/render.js";
+import { escapeHtml, loadDictionaries, makeT, renderMail, TEMPLATES } from "../mail/render.js";
 
 const LINE_BREAK = /[\r\n]/u;
 const SUBJECT_PATTERN = /^\[NPMpro .+\] Test mail$/u;
@@ -149,5 +149,57 @@ describe("mail templates", () => {
 		assert.ok(html.includes('<html lang="de">'));
 		assert.ok(html.includes('<meta charset="utf-8">'));
 		assert.ok(renderMail("test", { language: "xx", instance: "i" }).html.includes('<html lang="en">'));
+	});
+});
+
+describe("plural forms", () => {
+	const plural = (language, count) => makeT(language, loadDictionaries()).plural("alerts.subject.problems", count);
+
+	it("picks the string of the plural category of the language", () => {
+		assert.equal(plural("en", 1), "1 problem");
+		assert.equal(plural("en", 0), "0 problems");
+		assert.equal(plural("de", 1), "1 Problem");
+		assert.equal(plural("de", 2), plural("de", 5).replace("5", "2"));
+		assert.notEqual(plural("de", 2), plural("de", 1).replace("1", "2"));
+		assert.equal(plural("ru", 1), "1 проблема");
+		assert.equal(plural("ru", 3), "3 проблемы");
+		assert.equal(plural("ru", 5), "5 проблем");
+		assert.equal(plural("ru", 21), "21 проблема");
+		assert.equal(plural("ru", 12), "12 проблем");
+		assert.equal(plural("pl", 2), "2 problemy");
+		assert.equal(plural("pl", 5), "5 problemów");
+		assert.equal(plural("pl", 22), "22 problemy");
+		assert.equal(plural("ja", 1), "1 件の問題");
+		assert.equal(plural("ja", 7), "7 件の問題");
+	});
+
+	it("has a string for every category an integer count reaches in every language", () => {
+		const tables = loadDictionaries();
+		for (const [language, table] of Object.entries(tables)) {
+			const rules = new Intl.PluralRules(language);
+			for (const key of ["alerts.subject.problems", "alerts.subject.resolved", "alerts.days"]) {
+				assert.ok(table[`${key}.other`], `${language} ${key}.other`);
+				for (let count = 0; count <= 1000; count++) {
+					assert.ok(table[`${key}.${rules.select(count)}`], `${language} ${key} for ${count}`);
+				}
+			}
+		}
+	});
+
+	it("falls back to the other form, then to English, then to the key, and unknown language codes work", () => {
+		const tables = { en: { "x.one": "one {count}", "x.other": "many {count}" }, xx: { "x.other": "xx {count}" } };
+		const t = makeT("xx", tables);
+		assert.equal(t.plural("x", 1), "xx 1");
+		assert.equal(makeT("en", tables).plural("x", 1), "one 1");
+		assert.equal(makeT("en", {}).plural("x", 2), "x.other");
+		assert.equal(makeT("not a code!", tables).plural("x", 4), "many 4");
+		assert.equal(makeT("en", tables).language, "en");
+		assert.equal(makeT("zz", tables).language, "en");
+	});
+
+	it("fills the other values next to the count and keeps plain keys working", () => {
+		const t = makeT("en", { en: { "y.other": "{count} of {total}", plain: "hi {name}" } });
+		assert.equal(t.plural("y", 3, { total: 9 }), "3 of 9");
+		assert.equal(t("plain", { name: "A" }), "hi A");
 	});
 });

@@ -1,0 +1,49 @@
+{
+	"operationId": "getNotificationEvents",
+	"summary": "List the notification events",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"description": "The events the pickers offer: for each its id, its kind (state: has a bad and a resolved side, action: a single occurrence) and the channels that can carry it. Mail offers the state events and webhook.disabled; webhooks every event except notification.test.\n\nNeeds: an administrator (a token needs its Administrator switch)",
+	"responses": {
+		"200": {
+			"description": "The selectable events",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"id": "certificate.expiring",
+									"kind": "state",
+									"channels": [
+										"mail",
+										"webhook"
+									]
+								},
+								{
+									"id": "host.created",
+									"kind": "action",
+									"channels": [
+										"webhook"
+									]
+								}
+							]
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/notification-event-list.json"
+					}
+				}
+			}
+		}
+	}
+}

@@ -182,6 +182,19 @@ const isSelectable = (id, channel) => {
 };
 
 /**
+ * The events a channel offers in its pickers (the catalogue's selectable entries), as the events route answers them
+ *
+ * @returns {{id: String, kind: String, channels: String[]}[]}
+ */
+const selectableEvents = () =>
+	CATALOGUE.filter((entry) => entry.selectable).map(({ id, kind, channels }) => ({
+		id,
+		kind,
+		// mail ticks the base event, which covers its recovery: a .resolved twin is for webhooks only
+		channels: channels.filter((channel) => channel !== "mail" || !id.endsWith(".resolved")),
+	}));
+
+/**
  * The whitelisted data of an event: only the fields its builder names
  *
  * @param   {String} id
@@ -268,4 +281,15 @@ const makeEnvelope = (type, data, { now = new Date(), randomId = messageId } = {
 	return envelope;
 };
 
-export { buildData, CATALOGUE, clean, eventById, isSelectable, makeEnvelope, messageId, resolvedOf, stateEvents };
+export {
+	buildData,
+	CATALOGUE,
+	clean,
+	eventById,
+	isSelectable,
+	makeEnvelope,
+	messageId,
+	resolvedOf,
+	selectableEvents,
+	stateEvents,
+};

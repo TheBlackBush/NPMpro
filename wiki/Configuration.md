@@ -68,6 +68,7 @@ When a saved setting applies:
 | Notifications | Sender name, sender address, reply-to | `SMTP_FROM_NAME`, `SMTP_FROM`, `SMTP_REPLY_TO` | on save |
 | Notifications | Public URL: the https address of NPMpro, origin only | `PUBLIC_URL` | on save |
 | Notifications | Default mail language (default `en`) | `MAIL_LANGUAGE` (`en`, `de`, `zh`, `fr`, `es`, `pt`, `ru`, `it`, `nl`, `pl`, `ja`, `ko` or `uk`) | on save |
+| Notifications | Also send mail alerts to: a comma list of at most 20 plain addresses, none by default | `ALERT_ADDRESSES` (for example `ops@example.com,oncall@example.com`; an address with a space inside, `<`, `>` or a quote stops the container from starting) | on save |
 | Advanced | Format nginx configs | `DISABLE_NGINX_BEAUTIFIER` (inverted) | immediately |
 | Advanced | Gravatar profile pictures (a real photo only; a user without one, or with Gravatar off, gets their initials drawn by NPMpro) | `DISABLE_GRAVATAR` (inverted) | immediately (a user's picture is refreshed when the user is created (also by the first OIDC sign-in) or saved) |
 | Advanced | Time zone | `TZ` | after a restart |

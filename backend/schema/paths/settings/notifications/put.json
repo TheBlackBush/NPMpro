@@ -44,12 +44,47 @@
 								"uk"
 							],
 							"description": "The language of mails to people without a language of their own. Default: en"
+						},
+						"alerts_admins": {
+							"type": "boolean",
+							"description": "Mail alerts go to every enabled administrator with a valid address"
+						},
+						"alerts_addresses": {
+							"type": "array",
+							"items": {
+								"type": "string",
+								"maxLength": 254
+							},
+							"description": "Extra addresses that get alert mails: at most 20, one plain address each (a bad one is refused naming its index and the address in message_values). Ignored while ALERT_ADDRESSES is set"
+						},
+						"alerts_events": {
+							"type": "array",
+							"items": {
+								"type": "string",
+								"maxLength": 100
+							},
+							"description": "The events mailed as alerts. Only the state events and webhook.disabled are accepted (error.notify-event-not-for-mail otherwise, also for *); see GET /notifications/events"
+						},
+						"reminder_hours": {
+							"type": "integer",
+							"minimum": 0,
+							"maximum": 168,
+							"description": "Hours between reminders of a state that is still bad, 0 for none"
 						}
 					}
 				},
 				"example": {
 					"public_url": "https://npm.example.com",
-					"default_language": "en"
+					"default_language": "en",
+					"alerts_admins": true,
+					"alerts_addresses": [
+						"ops@example.com"
+					],
+					"alerts_events": [
+						"certificate.expiring",
+						"backup.failed"
+					],
+					"reminder_hours": 24
 				}
 			}
 		}
@@ -64,6 +99,19 @@
 							"value": {
 								"public_url": "https://npm.example.com",
 								"default_language": "en",
+								"alerts_admins": true,
+								"alerts_addresses": [],
+								"alerts_events": [
+									"certificate.expiring",
+									"certificate.renewal_failed",
+									"host.config_error",
+									"backup.failed",
+									"geoip.failed",
+									"crowdsec.unreachable",
+									"ddns.record_failed",
+									"ddns.record_stopped"
+								],
+								"reminder_hours": 24,
 								"locked": [],
 								"locked_by": {},
 								"config_errors": []

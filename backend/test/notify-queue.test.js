@@ -101,6 +101,36 @@ describe("queue", () => {
 		assert.equal((await queue.claimDue({ channel: "webhook" })).length, 1);
 	});
 
+	it("gives a row of a waiting group the group's time, and leaves other rows alone", async () => {
+		const queue = queueOf();
+		await queue.add([row({ message_id: "1", group_key: "g", delay_ms: MINUTE })]);
+		clock.at += 30_000;
+		await queue.add([
+			row({ message_id: "2", group_key: "g", delay_ms: MINUTE }),
+			row({ message_id: "3", delay_ms: MINUTE }),
+			row({ message_id: "4", group_key: "other", delay_ms: MINUTE }),
+		]);
+		const times = Object.fromEntries((await rows()).map((one) => [one.message_id, one.next_try_on]));
+		assert.equal(times["2"], times["1"]);
+		assert.equal(times["3"], sql(clock.at + MINUTE));
+		assert.equal(times["4"], sql(clock.at + MINUTE));
+		await db.knex(TABLE).where({ message_id: "1" }).update({ next_try_on: null });
+		await queue.add([row({ message_id: "5", group_key: "g", delay_ms: MINUTE })]);
+		assert.equal((await rows()).find((one) => one.message_id === "5").next_try_on, null);
+	});
+
+	it("does not make a new row of a group in a retry wait wait for it", async () => {
+		const queue = queueOf();
+		await queue.add([row({ message_id: "1", group_key: "g" })]);
+		await queue.claimDue({ channel: "webhook" });
+		await queue.settle([{ id: (await rows())[0].id, ok: false, retry: true }], { retryDelays: [6 * 3_600_000] });
+		clock.at += 30_000;
+		await queue.add([row({ message_id: "2", group_key: "g", delay_ms: MINUTE })]);
+		const times = Object.fromEntries((await rows()).map((one) => [one.message_id, one.next_try_on]));
+		assert.equal(times["1"], sql(clock.at - 30_000 + 6 * 3_600_000));
+		assert.equal(times["2"], sql(clock.at + MINUTE));
+	});
+
 	it("claims only the channel asked for and honours the limit", async () => {
 		const queue = queueOf();
 		await queue.add([row(), row(), row({ channel: "mail" })]);
@@ -210,6 +240,21 @@ describe("queue", () => {
 		assert.equal(failed.error.length, 300);
 		assert.ok(!failed.error.includes("\n"));
 		assert.equal(failed.response.length, 2048);
+	});
+
+	it("settle: a dropped row is dropped untried, its reason kept and its payload cleared", async () => {
+		const queue = queueOf();
+		await queue.add([row()]);
+		await taking();
+		await queue.settle([{ id: 1, ok: false, retry: true, dropped: true, error: "no longer ticked" }], {
+			retryDelays: DELAYS,
+		});
+		const [gone] = await rows();
+		assert.equal(gone.status, "dropped");
+		assert.equal(gone.attempts, 0);
+		assert.equal(gone.error, "no longer ticked");
+		assert.equal(gone.payload, null);
+		assert.equal(gone.next_try_on, null);
 	});
 
 	it("settle skips an id that is gone", async () => {

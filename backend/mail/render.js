@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { MAIL_LANGUAGES } from "../lib/mail/settings-rules.js";
+import alerts from "./templates/alerts.js";
 import passwordReset from "./templates/password-reset.js";
 import resetLink from "./templates/reset-link.js";
 import test from "./templates/test.js";
 
-const TEMPLATES = { "password-reset": passwordReset, "reset-link": resetLink, test };
+const TEMPLATES = { alerts, "password-reset": passwordReset, "reset-link": resetLink, test };
 const FALLBACK = "en";
 const PLACEHOLDER = /\{(?<name>\w+)\}/gu;
 const SUBJECT_STRIP = /[\p{Cc}\u2028\u2029\u0085]+/gu;
@@ -79,23 +80,48 @@ const loadDictionaries = () => {
 	return dictionaries;
 };
 
+const fill = (text, values) =>
+	text.replace(PLACEHOLDER, (whole, ...rest) => {
+		const { name } = rest.at(-1);
+		return Object.hasOwn(values, name) ? String(values[name]) : whole;
+	});
+
+// the plural category of a count in a language (zero, one, two, few, many, other); other for a code Intl rejects
+const categoryOf = (language, count) => {
+	try {
+		return new Intl.PluralRules(language).select(count);
+	} catch {
+		return "other";
+	}
+};
+
 /**
  * A translate function: the language's string for the key, else English's, else the key; `{name}` is replaced
- * by the value (plain text, escaping is the renderer's job)
+ * by the value (plain text, escaping is the renderer's job). `t.plural(key, count, values)` picks the string
+ * `key.<category>` of the count's plural category in the language (`one`, `few`, `many`, `other` and so on: each
+ * language file holds the categories its language uses), else `key.other`, each in the language and then in English;
+ * `{count}` is filled in. `t.language` is the language in use (English for an unknown code).
  *
  * @param   {string}  language
  * @param   {Object}  tables    language code to key to string table
  * @returns {Function}
  */
-const makeT =
-	(language, tables) =>
-	(key, values = {}) => {
-		const text = tables[language]?.[key] ?? tables[FALLBACK]?.[key] ?? key;
-		return text.replace(PLACEHOLDER, (whole, ...rest) => {
-			const { name } = rest.at(-1);
-			return Object.hasOwn(values, name) ? String(values[name]) : whole;
-		});
+const makeT = (language, tables) => {
+	const find = (key) => tables[language]?.[key] ?? tables[FALLBACK]?.[key];
+	const t = (key, values = {}) => fill(find(key) ?? key, values);
+	t.language = tables[language] ? language : FALLBACK;
+	t.plural = (key, count, values = {}) => {
+		const category = categoryOf(language, count);
+		const text =
+			tables[language]?.[`${key}.${category}`] ??
+			tables[language]?.[`${key}.other`] ??
+			tables[FALLBACK]?.[`${key}.${category}`] ??
+			tables[FALLBACK]?.[`${key}.other`] ??
+			`${key}.other`;
+		return fill(text, { ...values, count });
 	};
+	return t;
+};
 
 const oneLine = (text) => String(text).replace(TEXT_BREAKS, " ");
 

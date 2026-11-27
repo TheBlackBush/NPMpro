@@ -40,9 +40,9 @@ GoAccess builds a web log report from the access log. Turn on GoAccess report un
 
 ## Events
 
-NPMpro watches for problems and changes and records each one as an event. Sending events by mail and to webhooks is part of Notifications, which comes in a later release.
+NPMpro watches for problems and changes and records each one as an event. Mail alerts for these events are set up under [Notifications](Notifications#mail-alerts).
 
-State events describe a problem that lasts. Each one is sent when it starts or changes and once more when it recovers. While it stays bad, a reminder comes every 24 hours. A restart repeats nothing. The first time NPMpro sees an object that is healthy, nothing is sent.
+State events describe a problem that lasts. Each one is sent when it starts or changes and once more when it recovers. While it stays bad, a reminder comes every 24 hours (the interval is a setting, see [Notifications](Notifications#mail-alerts)). A restart repeats nothing. The first time NPMpro sees an object that is healthy, nothing is sent.
 
 Disabling a host, a dynamic DNS record or a backup schedule ends its problems without a recovery message, and no reminders follow. When it is enabled again, NPMpro checks it afresh. A restore that replaces hosts, certificates, dynamic DNS records or backup schedules does the same for them: their states are checked again after the restore.
 

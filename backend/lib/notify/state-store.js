@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { createKeyedLock } from "../keyed-lock.js";
 import { resolvedOf, stateEvents } from "./catalogue.js";
-import { dbTimeOf } from "./db-time.js";
+import { dbTimeOf, msOfDbTime } from "./db-time.js";
 
 // The last known state of every state event and its object, in npmpro_notification_state. An event goes out only on
 // a change of the stored state, so a restart (a new store over the same rows) repeats nothing. Reports of one key run
@@ -169,8 +169,9 @@ const createStateStore = ({ knex, clock = { now: () => Date.now() }, reminderHou
 	};
 
 	/**
-	 * The reminders that are due: states still bad whose last event is at least reminderHours old. Each is marked
-	 * sent, so a second sweep within the interval returns none.
+	 * The reminders that are due: states still bad whose last event is at least reminderHours old (the data holds
+	 * `reminder: true` and `since`, the ISO time the state began). Each is marked sent, so a second sweep within the
+	 * interval returns none.
 	 *
 	 * @returns {Promise<{type: String, data: Object}[]>}
 	 */
@@ -181,7 +182,7 @@ const createStateStore = ({ knex, clock = { now: () => Date.now() }, reminderHou
 		const cutoff = dbTime(nowMs - hours * HOUR_MS);
 		const due = (query) => query.whereNull("last_sent_on").orWhere("last_sent_on", "<=", cutoff);
 		const rows = await table()
-			.select("key", "event", "state", "data")
+			.select("key", "event", "state", "data", "since")
 			.whereNot({ state: OK })
 			.where(due)
 			.orderBy("id");
@@ -193,8 +194,13 @@ const createStateStore = ({ knex, clock = { now: () => Date.now() }, reminderHou
 					.where(due)
 					.update({ last_sent_on: dbTime(nowMs) }),
 			);
-			if (Number(count) === 1)
-				reminders.push({ type: row.event, data: { ...parseData(row.data), reminder: true } });
+			if (Number(count) === 1) {
+				const since = msOfDbTime(row.since);
+				const data = { ...parseData(row.data), reminder: true };
+				// the time the problem began (the state's last change), for the "still open since" line of the mail
+				if (Number.isFinite(since)) data.since = new Date(since).toISOString();
+				reminders.push({ type: row.event, data });
+			}
 		}
 		return reminders;
 	};

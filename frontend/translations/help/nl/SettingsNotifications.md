@@ -17,6 +17,17 @@ Met beveiliging **Geen** en een gebruiker zou het wachtwoord onversleuteld worde
 
 **Testmail verzenden** stuurt een mail met de opgeslagen instellingen naar het adres dat je typt (standaard het jouwe) en toont het antwoord van de server als het mislukt. Sla eerst op: de knop is uitgeschakeld zolang het formulier niet-opgeslagen wijzigingen heeft en verborgen totdat e-mail is ingesteld.
 
+### Waarschuwingsmails
+
+Zichtbaar zodra een mailserver is ingesteld. Mails over problemen die NPMpro detecteert en over wanneer ze zijn opgelost; een probleem dat open blijft, wordt herhaald.
+
+- **Naar beheerders sturen**: elke ingeschakelde beheerder met een geldig adres ontvangt de waarschuwingen.
+- **Ook sturen naar**: meer adressen, maximaal 20, bijvoorbeeld een teamlijst. Een geweigerd adres wordt gemarkeerd op zijn chip. Variabele: `ALERT_ADDRESSES` (door komma's gescheiden).
+- **Gebeurtenissen**: vink de problemen aan waarover je mail wilt, gegroepeerd per gebied. Een gebeurtenis aanvinken dekt ook het herstel ervan.
+- **Herinneren elke (uren)**: hoe lang een probleem stil blijft voordat het opnieuw wordt gemaild; 0 herhaalt het nooit, maximaal 168.
+
+**Een voorbeeld sturen** stuurt direct een voorbeeldwaarschuwing met de opgeslagen instellingen naar iedereen die waarschuwingen zou ontvangen. Sla eerst op: de knop is uitgeschakeld zolang het formulier niet-opgeslagen wijzigingen heeft. Als een verzending mislukt, noemt de melding het adres.
+
 ### Links en taal
 
 - **Openbare URL**: het adres waarop mensen NPMpro openen, gebruikt voor de links in mails, bijvoorbeeld `https://npm.example.com`. Alleen HTTPS, geen pad. **Adres van deze browser gebruiken** vult het met het adres van deze pagina als die via HTTPS is geopend. Variabele: `PUBLIC_URL`.

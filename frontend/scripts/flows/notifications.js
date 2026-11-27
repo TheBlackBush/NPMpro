@@ -130,6 +130,109 @@ async function defaultLanguage(page, api, before) {
 		throw new Error("the default mail language was not set back");
 }
 
+const ALERTS_TITLE = "#notifications-alerts-title";
+const ALERT_ADDRESS = "flow-alerts@example.com";
+const ALERT_ADDRESS_TWO = "flow-alerts-two@example.com";
+const HOST_ERROR_EVENT = "#alert-event-host-config-error";
+
+// types an address into the chip input and presses Enter or a comma
+async function typeAddress(page, text, key) {
+	const input = page.locator("#alerts-addresses");
+	await input.fill(text);
+	await input.press(key);
+}
+
+const removeChip = (page, address) =>
+	page.getByRole("button", { name: `Remove ${address}`, exact: true }).filter({ visible: true });
+
+// the Mail alerts card (only with a configured mail server): an address is added with Enter and another with a comma,
+// a bad one is refused before the save, both chips are removed by their buttons; the Host config errors event is turned
+// off, saved, shown off after a reload, turned on and saved; Send a sample answers with the guard (the smoke test's
+// loopback host) or a sent toast. The flow sends 2 of the 5 test requests a minute (this sample and the test mail)
+async function mailAlerts(page, api, configured) {
+	if (!configured) {
+		if ((await page.locator(ALERTS_TITLE).count()) > 0)
+			throw new Error("the Mail alerts card shows without a mail server");
+		console.log("notifications settings: no Mail alerts card without a mail server");
+		return;
+	}
+	await page.locator(ALERTS_TITLE).filter({ hasText: "Mail alerts" }).waitFor();
+	await typeAddress(page, ALERT_ADDRESS, "Enter");
+	await typeAddress(page, ALERT_ADDRESS_TWO, ",");
+	await Promise.all([ALERT_ADDRESS, ALERT_ADDRESS_TWO].map((address) => removeChip(page, address).first().waitFor()));
+	// the bad address is not taken as a chip and the save is refused with its message
+	await typeAddress(page, "bad@", "Enter");
+	if ((await removeChip(page, "bad@").count()) > 0) throw new Error("bad@ was taken as an address chip");
+	await saveButton(page).click();
+	await page
+		.getByText("bad@ is not a valid address.", { exact: false })
+		.filter({ visible: true })
+		.first()
+		.waitFor({ timeout: 5000 });
+	if ((await storedNotifications(api)).alerts_addresses.includes("bad@")) throw new Error("bad@ was saved");
+	await page.locator("#alerts-addresses").fill("");
+	await removeChip(page, ALERT_ADDRESS).first().click();
+	await removeChip(page, ALERT_ADDRESS).first().waitFor({ state: "detached" });
+	await removeChip(page, ALERT_ADDRESS_TWO).first().click();
+	await removeChip(page, ALERT_ADDRESS_TWO).first().waitFor({ state: "detached" });
+	// the event: off and saved, off after a reload, on again and saved
+	const event = page.locator(HOST_ERROR_EVENT);
+	await event.waitFor();
+	const wasOn = await event.isChecked();
+	const set = async (on) => {
+		const toggle = page.locator(HOST_ERROR_EVENT);
+		if ((await toggle.isChecked()) !== on) await toggle.setChecked(on);
+		await withToast(page, SAVED, () => saveButton(page).click());
+	};
+	try {
+		await set(!wasOn);
+		await page.reload();
+		await page.locator(HOST_ERROR_EVENT).waitFor();
+		if ((await page.locator(HOST_ERROR_EVENT).isChecked()) === wasOn)
+			throw new Error("the Host config errors switch is not shown changed after a reload");
+	} finally {
+		// restoring must not hide the error that sent us here
+		try {
+			if ((await page.locator(HOST_ERROR_EVENT).isChecked()) !== wasOn) await set(wasOn);
+		} catch (restoreError) {
+			console.log(`mail alerts: the Host config errors switch was not restored (${restoreError.message})`);
+		}
+	}
+	if ((await storedNotifications(api)).alerts_addresses.length > 0)
+		throw new Error("the alert addresses were not removed");
+	await sampleAlert(page);
+}
+
+// Send a sample: the guard error of a loopback host, or the sent toast of a live server; the limiter's answer is not
+// accepted
+async function sampleAlert(page) {
+	await page.getByRole("button", { name: "Send a sample", exact: true }).click();
+	const answer = await Promise.race([
+		page
+			.getByText(BLOCKED)
+			.filter({ visible: true })
+			.first()
+			.waitFor({ timeout: 20_000 })
+			.then(() => "guard"),
+		page
+			.locator("[data-sonner-toast]")
+			.filter({ hasText: "A sample alert was sent" })
+			.first()
+			.waitFor({ timeout: 20_000 })
+			.then(() => "sent"),
+		page
+			.getByText(TOO_MANY, { exact: true })
+			.filter({ visible: true })
+			.first()
+			.waitFor({ timeout: 20_000 })
+			.then(() => "limited"),
+	]);
+	if (answer === "limited") throw new Error("the sample alert was answered by the limiter");
+	console.log(
+		`notifications settings: the sample alert answer: ${answer === "guard" ? "refused by the guard" : "sent"}`,
+	);
+}
+
 async function notificationsSettings({ admin }) {
 	const { page, api } = admin;
 	const before = await storedNotifications(api);
@@ -145,11 +248,13 @@ async function notificationsSettings({ admin }) {
 		await page.locator(PUBLIC_URL).waitFor();
 		await publicUrl(page, api, before);
 		await defaultLanguage(page, api, before);
+		await mailAlerts(page, api, email.configured);
 	} finally {
 		const now = await storedNotifications(api);
 		const restore = {};
-		for (const key of ["public_url", "default_language"]) {
-			if (!before.locked.includes(key) && now[key] !== before[key]) restore[key] = before[key];
+		for (const key of ["public_url", "default_language", "alerts_addresses", "alerts_events"]) {
+			if (!before.locked.includes(key) && JSON.stringify(now[key]) !== JSON.stringify(before[key]))
+				restore[key] = before[key];
 		}
 		if (Object.keys(restore).length > 0) await api("PUT", "/settings/notifications", restore);
 	}

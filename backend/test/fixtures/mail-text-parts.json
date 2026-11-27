@@ -37,5 +37,29 @@
 	"done-ko": "box.example의 계정 비밀번호가 2026-11-26 18:40(UTC)에 주소 203.0.113.7에서 재설정되었습니다.\n\n모든 세션이 로그아웃되었습니다. 2단계 인증 로그인은 변경되지 않습니다.\n\nAPI 토큰 2개가 계속 활성 상태입니다. 직접 한 일이 아니라면 설정의 API 액세스에서 폐기하세요.\n\n-- \nbox.example의 NPMpro에서 보냈습니다.\n",
 	"test-uk": "Це тестовий лист від NPMpro на box.example.\n\nЯкщо ви його отримали, надсилання пошти працює.\n\n-- \nНадіслано NPMpro на box.example.\n",
 	"reset-uk": "Хтось запросив скидання пароля вашого облікового запису NPMpro на box.example.\n\nНатисніть кнопку нижче, щоб вибрати новий пароль. Посилання діє один раз і спливає за 30 хвилин.\n\nЯкщо ви цього не робили, проігноруйте цей лист: ваш пароль залишиться без змін.\n\nВибрати новий пароль: https://box.example/reset-password#token=abc\n\n-- \nНадіслано NPMpro на box.example.\n",
-	"done-uk": "Пароль вашого облікового запису на box.example було скинуто 2026-11-26 18:40 (UTC) з адреси 203.0.113.7.\n\nУсі сеанси завершено. Двофакторний вхід не змінився.\n\nАктивними залишаються API-токени: 2; якщо це були не ви, відкличте їх у розділі «Налаштування», «Доступ до API».\n\n-- \nНадіслано NPMpro на box.example.\n"
+	"done-uk": "Пароль вашого облікового запису на box.example було скинуто 2026-11-26 18:40 (UTC) з адреси 203.0.113.7.\n\nУсі сеанси завершено. Двофакторний вхід не змінився.\n\nАктивними залишаються API-токени: 2; якщо це були не ви, відкличте їх у розділі «Налаштування», «Доступ до API».\n\n-- \nНадіслано NPMpro на box.example.\n",
+	"alert-de": {
+		"EXPECTED": {
+			"certificate.expiring": "Zertifikat example.com läuft in 5 Tagen ab",
+			"certificate.renewal_failed": "Erneuerung des Zertifikats example.com",
+			"host.config_error": "nginx-Konfiguration von app.example.com",
+			"backup.failed": "Sicherung nightly ist fehlgeschlagen",
+			"geoip.failed": "GeoIP-Datenbank ist fehlgeschlagen",
+			"crowdsec.unreachable": "CrowdSec ist nicht erreichbar",
+			"ddns.record_failed": "Dynamic-DNS-Eintrag home.example.com konnte",
+			"ddns.record_stopped": "Dynamic-DNS-Eintrag home.example.com wurde gestoppt"
+		},
+		"RESOLVED": {
+			"certificate.expiring": "Zertifikat example.com ist wieder gültig",
+			"certificate.renewal_failed": "Zertifikat example.com wurde erneuert",
+			"host.config_error": "nginx-Konfiguration von app.example.com ist wieder gültig",
+			"backup.failed": "Sicherung nightly funktioniert wieder",
+			"geoip.failed": "GeoIP-Datenbank funktioniert wieder",
+			"crowdsec.unreachable": "CrowdSec ist wieder erreichbar",
+			"ddns.record_failed": "Dynamic-DNS-Eintrag home.example.com wird wieder",
+			"ddns.record_stopped": "Dynamic-DNS-Eintrag home.example.com läuft wieder"
+		},
+		"reminder": "Weiterhin offen seit 2026-11-24 08:30 UTC",
+		"problems": "3 Probleme"
+	}
 }

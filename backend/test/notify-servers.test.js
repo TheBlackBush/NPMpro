@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import knexFactory from "knex";
 import { runMigrations } from "../lib/database/schema.js";
+import { createQueue } from "../lib/notify/queue.js";
 import { createStateStore } from "../lib/notify/state-store.js";
 import { ENGINES, resetEngine } from "./support/servers.js";
 
@@ -169,6 +170,36 @@ for (const [name, label] of [
 			assert.deepEqual(index, ["user_id"]);
 			await knex("user").where({ id: userId }).del();
 			assert.equal(Number((await knex("npmpro_password_token").count({ count: "*" }))[0].count), 0);
+		});
+
+		it("joins a waiting alert group at its earliest time and leaves a group in a retry wait alone", async () => {
+			const { knex } = ctx;
+			const table = () => knex("npmpro_notification_delivery");
+			await table().delete();
+			const clock = { at: Date.parse("2026-11-26T10:00:00Z"), now: () => clock.at };
+			const queue = createQueue({ knex, clock });
+			const alert = (id, key) => ({
+				message_id: id,
+				event: "backup.failed",
+				channel: "mail",
+				group_key: key,
+				payload: {},
+				delay_ms: 60_000,
+			});
+			await queue.add([alert("a1", "alerts:a")]);
+			clock.at += 30_000;
+			await queue.add([alert("a2", "alerts:a")]);
+			const waiting = await table().select("message_id", "next_try_on").where({ group_key: "alerts:a" });
+			assert.equal(waiting.length, 2);
+			assert.equal(new Date(waiting[0].next_try_on).getTime(), new Date(waiting[1].next_try_on).getTime());
+
+			await table().where({ message_id: "a1" }).update({ attempts: 1 });
+			await table().where({ message_id: "a2" }).update({ attempts: 1 });
+			clock.at += 30_000;
+			await queue.add([alert("a3", "alerts:a")]);
+			const third = await table().select("next_try_on").where({ message_id: "a3" }).first();
+			// 60 s after the group's time, as the third row's own delay from its own enqueue 60 s later
+			assert.equal(new Date(third.next_try_on).getTime() - new Date(waiting[0].next_try_on).getTime(), 60_000);
 		});
 
 		it("runs the state store: transitions, a racing insert, reminders, clearMatching and prune", async () => {

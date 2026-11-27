@@ -1,0 +1,38 @@
+{
+	"type": "array",
+	"description": "Notification events",
+	"items": {
+		"type": "object",
+		"additionalProperties": false,
+		"required": [
+			"id",
+			"kind",
+			"channels"
+		],
+		"properties": {
+			"id": {
+				"type": "string",
+				"description": "The event id, such as certificate.expiring"
+			},
+			"kind": {
+				"type": "string",
+				"enum": [
+					"state",
+					"action"
+				],
+				"description": "state: has a bad and a resolved side; action: a single occurrence"
+			},
+			"channels": {
+				"type": "array",
+				"items": {
+					"type": "string",
+					"enum": [
+						"mail",
+						"webhook"
+					]
+				},
+				"description": "The channels that can carry the event"
+			}
+		}
+	}
+}

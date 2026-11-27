@@ -27,6 +27,14 @@ const safeError = (text) =>
 			.replace(URL_QUERY, "$<url>?***"),
 	);
 
+// the earliest first, a row due at once (no time) before the rest
+const byTime = (left, right) => {
+	if (left.next_try_on === right.next_try_on) return 0;
+	if (left.next_try_on === null) return -1;
+	if (right.next_try_on === null) return 1;
+	return left.next_try_on < right.next_try_on ? -1 : 1;
+};
+
 const textOrNull = (value) => (value === undefined || value === null ? null : String(value));
 
 const parsePayload = (text) => {
@@ -50,7 +58,8 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 
 	/**
 	 * Adds pending rows. A row: { message_id, event, channel, target_id?, recipient?, group_key?, payload, delay_ms? }
-	 * where payload is an object or JSON text and delay_ms postpones the first try.
+	 * where payload is an object or JSON text and delay_ms postpones the first try. A row with a group_key joins the
+	 * pending rows of its key: it gets the earliest of their next_try_on (none when one is due at once) while that group has not been tried yet.
 	 *
 	 * @param   {Object[]}  rows
 	 * @returns {Promise<number>}  the number of rows added
@@ -73,7 +82,19 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 			next_try_on: row.delay_ms > 0 ? dbTime(nowMs + row.delay_ms) : null,
 		}));
 		await knex.transaction(async (trx) => {
-			for (const record of records) await trx(TABLE).insert(record);
+			for (const record of records) {
+				// a row of a group joins a group that still waits for its first try: it is due when the group is (a due
+				// group takes it at once). A group in a retry wait is not joined, the row keeps its own time; a key with no
+				// pending row and a row with no key keep their own time too
+				if (record.group_key !== null) {
+					const waiting = await trx(TABLE)
+						.select("next_try_on", "attempts")
+						.where({ group_key: record.group_key, status: "pending" });
+					const first = [...waiting].sort(byTime)[0];
+					if (first && Number(first.attempts) === 0) record.next_try_on = first.next_try_on;
+				}
+				await trx(TABLE).insert(record);
+			}
 		});
 		return records.length;
 	};
@@ -116,9 +137,10 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 	/**
 	 * Records the outcome of sends. A success is sent (payload cleared). A retry waits max(retryDelays[attempts],
 	 * retry_after_ms) while retryDelays has an entry for the attempt, else it is failed. A failure without retry is
-	 * failed at once. attempts counts every try.
+	 * failed at once. A dropped row was not tried (its setting changed since it was queued): dropped with the reason as
+	 * its error, payload cleared, attempts unchanged. attempts counts every try.
 	 *
-	 * @param   {Object[]}  results  [{ id, ok, retry, retry_after_ms, http_status, duration_ms, error, response }]
+	 * @param   {Object[]}  results  [{ id, ok, retry, dropped, retry_after_ms, http_status, duration_ms, error, response }]
 	 * @param   {Object}    options
 	 * @param   {Number[]}  options.retryDelays
 	 */
@@ -128,7 +150,7 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 		for (const result of results) {
 			const row = await table().select("attempts").where({ id: result.id, status: "sending" }).first();
 			if (!row) continue;
-			const attempts = Number(row.attempts) + 1;
+			const attempts = Number(row.attempts) + (result.dropped ? 0 : 1);
 			const changes = {
 				attempts,
 				modified_on: now,
@@ -139,6 +161,8 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 			};
 			if (result.ok) {
 				Object.assign(changes, { status: "sent", payload: null, next_try_on: null, error: null });
+			} else if (result.dropped) {
+				Object.assign(changes, { status: "dropped", payload: null, next_try_on: null });
 			} else if (result.retry && Number(row.attempts) < retryDelays.length) {
 				const wait = Math.max(retryDelays[Number(row.attempts)], result.retry_after_ms ?? 0);
 				Object.assign(changes, { status: "pending", next_try_on: dbTime(nowMs + wait) });

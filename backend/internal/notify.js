@@ -12,7 +12,10 @@ import internalPasswordToken from "./password-token.js";
 // arms no timer, but emit() still queues: initNotify() resets the rows a stopped process left sending, then the worker's
 // start sends what is pending.
 
-const service = createNotifyService({ knex: db(), log: logger });
+// the reminder interval is a setting (Settings, Notifications), read at every sweep; mail.js is loaded when it is first needed
+const reminderHours = async () => (await (await import("./mail.js")).default.settings()).notifications.reminder_hours;
+
+const service = createNotifyService({ knex: db(), log: logger, reminderHours });
 const {
 	notify,
 	queue,
@@ -27,9 +30,22 @@ const {
 	clearReplacedStates,
 } = service;
 
+const parseRoles = (text) => {
+	try {
+		return JSON.parse(text);
+	} catch {
+		return [];
+	}
+};
+
 // The mail channel. mail.js and audit-log.js import this module, so they are loaded when a mail goes out, not now.
 notify.registerChannel(
 	createMailChannel({
+		admins: async () =>
+			(await db()("user").select("email", "roles", "is_disabled", "npmpro_language")).map((user) => ({
+				...user,
+				roles: typeof user.roles === "string" ? parseRoles(user.roles) : user.roles,
+			})),
 		settings: async () => (await import("./mail.js")).default.settings(),
 		send: sendMail,
 		render: renderMail,

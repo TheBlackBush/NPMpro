@@ -157,6 +157,15 @@
 			]
 		},
 		{
+			"name": "mail alerts card",
+			"route": "/settings/notifications",
+			"steps": [
+				{ "skipIfMissing": "#notifications-alerts-title" },
+				{ "waitFor": "#alerts-addresses" },
+				{ "scroll": "#notifications-alerts-title" }
+			]
+		},
+		{
 			"name": "runtime select list",
 			"route": "/settings/nginx",
 			"steps": [

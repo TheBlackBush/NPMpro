@@ -1,7 +1,8 @@
-import { CircleAlert, TriangleAlert } from "lucide-react";
+import { CircleAlert, Loader2, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useFormContext, useFormState, useWatch } from "react-hook-form";
+import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
 import {
+	AddressListField,
 	ApiErrorContent,
 	Button,
 	ErrorAlert,
@@ -15,14 +16,17 @@ import {
 } from "src/components";
 import {
 	useEmailSettings,
+	useNotificationEvents,
 	useNotificationSettings,
 	useSaveEmailSettings,
 	useSaveNotificationSettings,
+	useSendSampleAlert,
 	useUser,
 } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showTestMailModal } from "src/modals";
 import {
+	alertEventGroups,
 	browserPublicUrl,
 	configErrorItems,
 	emailPayload,
@@ -32,11 +36,15 @@ import {
 	notificationsValidate,
 	notificationValues,
 	PASSWORD_ENV,
+	REMINDER_HOURS_MAX,
+	refusedAddressOf,
+	sampleFailureOf,
 	sendsPlainLogin,
+	stillRefused,
 } from "src/modules/NotificationForms";
 import { lockedIn } from "src/modules/SettingsForms";
 import { validations } from "src/modules/Validations";
-import { showObjectSuccess } from "src/notifications";
+import { showObjectSuccess, showSuccess } from "src/notifications";
 import localeList from "translations/lang-list.json" with { type: "json" };
 import { LockedBadge } from "./Authentication/LockedBadge";
 import { SaveBar } from "./SaveBar";
@@ -58,6 +66,8 @@ const FIELD_LABELS = {
 	replyTo: "settings.email.reply-to",
 	publicUrl: "settings.notifications.public-url",
 	defaultLanguage: "settings.notifications.default-language",
+	alertsAddresses: "settings.notifications.alerts-addresses",
+	reminderHours: "settings.notifications.reminder-hours",
 };
 
 const label = (id) => intl.formatMessage({ id });
@@ -263,6 +273,147 @@ function MailServerCard({ data, locks, defaultTo }) {
 	);
 }
 
+// Send a sample: needs saved settings (it goes to the saved recipients), so it waits while the form has changes; a
+// failure names the address it failed for
+function SampleAlertButton({ onError }) {
+	const { isDirty } = useFormState();
+	const { mutateAsync: send, isPending } = useSendSampleAlert();
+	const onClick = async () => {
+		onError(null);
+		try {
+			const { sent } = await send();
+			showSuccess(<T id="settings.notifications.alerts.test.sent" data={{ count: sent }} />);
+		} catch (err) {
+			// the shared limiter and the one-at-a-time guard answer 429 in English: show the translated text
+			if (err?.status === 429) {
+				onError(<T id="error.too-many-requests" />);
+				return;
+			}
+			const failure = sampleFailureOf(err);
+			if (!failure) {
+				onError(<ApiErrorContent error={err} />);
+				return;
+			}
+			onError(
+				<>
+					<T
+						id="settings.notifications.alerts.test.failed"
+						data={{ address: failure.address, message: <ApiErrorContent error={err} /> }}
+					/>
+					{failure.sent > 0 || failure.skipped > 0 || failure.failed > 1 ? (
+						<>
+							{" "}
+							<T id="settings.notifications.alerts.test.counts" data={failure} />
+						</>
+					) : null}
+				</>,
+			);
+		}
+	};
+	return (
+		<div className="flex items-center gap-2">
+			{isDirty ? (
+				<span className="text-sm text-muted-foreground">
+					<T id="settings.email.test.save-first" />
+				</span>
+			) : null}
+			<Button outline color="secondary" disabled={isDirty || isPending} onClick={onClick}>
+				{isPending ? <Loader2 aria-hidden="true" className="animate-spin" /> : null}
+				<T id="settings.notifications.alerts.test" />
+			</Button>
+		</div>
+	);
+}
+
+// the event switches, one line each under the heading of its area; the list is one value (the ticked ids)
+function AlertEvents({ events }) {
+	const { field } = useController({ name: "alertsEvents" });
+	if (events.isPending) {
+		return (
+			<SettingLineNote role="status" className="text-sm text-muted-foreground">
+				<T id="settings.notifications.alerts.events.loading" />
+			</SettingLineNote>
+		);
+	}
+	if (events.error) {
+		return (
+			<SettingLineNote>
+				<ErrorAlert error={events.error} />
+			</SettingLineNote>
+		);
+	}
+	const ticked = field.value ?? [];
+	return alertEventGroups(events.data).map((group) => (
+		<fieldset key={group.area} className="m-0 min-w-0 divide-y border-0 p-0">
+			<legend className="w-full bg-muted/50 px-4 py-2 text-xs font-semibold text-muted-foreground">
+				<T id={group.title} />
+			</legend>
+			{group.events.map((event) => (
+				<SwitchField
+					key={event.id}
+					line
+					id={`alert-event-${event.id.replaceAll(/[._]/gu, "-")}`}
+					label={<T id={event.label} />}
+					checked={ticked.includes(event.id)}
+					onChange={(e) =>
+						field.onChange(
+							e.target.checked ? [...ticked, event.id] : ticked.filter((id) => id !== event.id),
+						)
+					}
+					onBlur={field.onBlur}
+				/>
+			))}
+		</fieldset>
+	));
+}
+
+// hidden until a mail server is set up (the caller): alerts are never queued without one
+function MailAlertsCard({ locks, events, onError, refused }) {
+	const { register } = useFormContext();
+	const addresses = useWatch({ name: "alertsAddresses" });
+	return (
+		<SettingsCard
+			id="notifications-alerts"
+			lines
+			title={<T id="settings.notifications.alerts" />}
+			info={<T id="settings.notifications.alerts.description" />}
+			actions={<SampleAlertButton onError={onError} />}
+		>
+			<SwitchField
+				line
+				id="alerts-admins"
+				label={<T id="settings.notifications.alerts-admins" />}
+				hint={<T id="settings.notifications.alerts-admins.hint" />}
+				badges={locks.badge("alertsAdmins")}
+				disabled={locks.isLocked("alertsAdmins")}
+				{...register("alertsAdmins")}
+			/>
+			<AddressListField
+				name="alertsAddresses"
+				id="alerts-addresses"
+				label={<T id="settings.notifications.alerts-addresses" />}
+				hint={<T id="settings.notifications.alerts-addresses.hint" />}
+				badges={locks.badge("alertsAddresses")}
+				disabled={locks.isLocked("alertsAddresses")}
+				placeholder={label("settings.notifications.alerts-addresses.placeholder")}
+				refused={stillRefused(refused, addresses)}
+			/>
+			<AlertEvents events={events} />
+			<TextField
+				line="inline"
+				name="reminderHours"
+				id="alerts-reminder-hours"
+				label={<T id="settings.notifications.reminder-hours" />}
+				hint={<T id="settings.notifications.reminder-hours.hint" data={{ max: REMINDER_HOURS_MAX }} />}
+				badges={locks.badge("reminderHours")}
+				disabled={locks.isLocked("reminderHours")}
+				inputMode="numeric"
+				autoComplete="off"
+			/>
+		</SettingsCard>
+	);
+}
+
 function PublicUrlButton({ disabled }) {
 	const { setValue } = useFormContext();
 	const origin = browserPublicUrl(window.location);
@@ -336,7 +487,9 @@ function NotificationsForm({ email, notifications }) {
 	const { mutateAsync: saveEmail } = useSaveEmailSettings();
 	const { mutateAsync: saveNotifications } = useSaveNotificationSettings();
 	const { data: me } = useUser("me");
+	const events = useNotificationEvents({ enabled: email.configured });
 	const [errorMsg, setErrorMsg] = useState(null);
+	const [refusedAddress, setRefusedAddress] = useState(null);
 	const errorRef = useRef(null);
 	const emailLocks = useLocks(email, { password: PASSWORD_ENV });
 	const notificationLocks = useLocks(notifications);
@@ -360,17 +513,18 @@ function NotificationsForm({ email, notifications }) {
 
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
+		setRefusedAddress(null);
 		try {
 			const emailBody = emailPayload(values, email);
 			if (emailBody) await saveEmail(emailBody);
-			const notificationBody = notificationPayload(values, notifications);
+			const notificationBody = notificationPayload(values, notifications, events.data);
 			if (notificationBody) {
 				try {
 					await saveNotifications(notificationBody);
 				} catch (err) {
 					// the saved mail server reloaded the form: the card that failed keeps the user's edit
 					if (emailBody) {
-						for (const key of ["publicUrl", "defaultLanguage"]) {
+						for (const key of Object.keys(notificationValues(notifications))) {
 							methods.setValue(key, values[key], { shouldDirty: true });
 						}
 					}
@@ -381,7 +535,15 @@ function NotificationsForm({ email, notifications }) {
 			methods.setValue("clearPassword", false, { shouldDirty: true });
 			showObjectSuccess("setting", "saved");
 		} catch (err) {
-			setErrorMsg(<ApiErrorContent error={err} />);
+			const refused = refusedAddressOf(err, values.alertsAddresses);
+			setRefusedAddress(refused);
+			setErrorMsg(
+				refused ? (
+					<T id="settings.notifications.alerts-addresses.refused" data={{ address: refused }} />
+				) : (
+					<ApiErrorContent error={err} />
+				),
+			);
 		}
 	};
 
@@ -397,6 +559,14 @@ function NotificationsForm({ email, notifications }) {
 			) : null}
 			<ConfigErrors email={email} notifications={notifications} />
 			<MailServerCard data={email} locks={emailLocks} defaultTo={me?.email} />
+			{email.configured ? (
+				<MailAlertsCard
+					locks={notificationLocks}
+					events={events}
+					onError={setErrorMsg}
+					refused={refusedAddress}
+				/>
+			) : null}
 			<LinksCard locks={notificationLocks} />
 			<SaveBar labels={FIELD_LABELS} />
 		</HookForm>
