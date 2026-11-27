@@ -6,7 +6,7 @@ Een variabele die op de container is gezet, gaat voor op de interface en vergren
 
 ### Provider
 
-- **DB-IP Lite** is de standaard: gratis, geen account nodig, elke maand nieuwe bestanden (NPMpro controleert één keer per week). Variabele: `GEOIP_PROVIDER`.
+- **DB-IP Lite** is de standaard: gratis, geen account nodig, elke maand nieuwe bestanden (NPMpro controleert één keer per week).
 - **MaxMind GeoLite2** blijft behouden: je hebt een gratis account en een licentiesleutel nodig, en het wordt twee keer per week bijgewerkt.
 
 Er is steeds één provider actief en alleen de databases daarvan worden gebruikt. De bestanden van de andere provider blijven op schijf staan, dus terugschakelen vraagt geen nieuwe download. GoAccess neemt een wissel over bij de volgende start van de container. Variabele: `GEOIP_PROVIDER` (`dbip` of `maxmind`).
@@ -35,7 +35,7 @@ Variabele: `GEOIP_EDITIONS`, gescheiden door spaties, bijvoorbeeld `GeoLite2-Cou
 
 ### Status
 
-Toont de laatste update en de laatste fout. NPMpro werkt de databases bij als u het account of de databases wijzigt, als u op **Nu bijwerken** klikt, en automatisch elke 3 dagen. Een mislukte automatische update wordt na 24 uur opnieuw geprobeerd. **Nu bijwerken** heeft een opgeslagen account-ID en licentiesleutel nodig.
+Toont de laatste update, de laatste controle en de laatste fout. NPMpro werkt de databases van de actieve provider bij wanneer je de provider, het account of de databases wijzigt, wanneer je op **Nu bijwerken** klikt en automatisch: MaxMind elke 3 dagen, DB-IP elke 7 dagen (DB-IP publiceert maandelijks nieuwe bestanden en alleen een nieuwer bestand wordt gedownload). Een mislukte automatische update wordt na 24 uur opnieuw geprobeerd. Bij MaxMind heeft **Nu bijwerken** een opgeslagen account-ID en licentiesleutel nodig, bij DB-IP minstens één geselecteerde database.
 
 Zonder databases zijn de kaart en de land- en netwerklijsten verborgen; de rest werkt.
 

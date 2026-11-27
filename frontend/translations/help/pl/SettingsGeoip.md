@@ -6,7 +6,7 @@ Zmienna ustawiona w kontenerze ma pierwszeństwo przed interfejsem i blokuje pol
 
 ### Dostawca
 
-- **DB-IP Lite** jest domyślny: bezpłatny, konto nie jest potrzebne, nowe pliki co miesiąc (NPMpro sprawdza raz w tygodniu). Zmienna: `GEOIP_PROVIDER`.
+- **DB-IP Lite** jest domyślny: bezpłatny, konto nie jest potrzebne, nowe pliki co miesiąc (NPMpro sprawdza raz w tygodniu).
 - **MaxMind GeoLite2** pozostaje dostępny: wymaga bezpłatnego konta i klucza licencyjnego i jest aktualizowany dwa razy w tygodniu.
 
 Aktywny jest jeden dostawca naraz i używane są tylko jego bazy danych. Pliki drugiego dostawcy pozostają na dysku, więc powrót nie wymaga ponownego pobierania. GoAccess uwzględnia zmianę przy następnym uruchomieniu kontenera. Zmienna: `GEOIP_PROVIDER` (`dbip` lub `maxmind`).
@@ -35,7 +35,7 @@ Zmienna: `GEOIP_EDITIONS`, oddzielona spacjami, na przykład `GeoLite2-Country G
 
 ### Stan
 
-Pokazuje ostatnią aktualizację i ostatni błąd. NPMpro aktualizuje bazy, gdy zmienisz konto lub bazy, gdy klikniesz **Aktualizuj teraz**, oraz automatycznie co 3 dni. Nieudana automatyczna aktualizacja jest ponawiana po 24 godzinach. **Aktualizuj teraz** wymaga zapisanego ID konta i klucza licencyjnego.
+Pokazuje ostatnią aktualizację, ostatnie sprawdzenie i ostatni błąd. NPMpro aktualizuje bazy danych aktywnego dostawcy, gdy zmienisz dostawcę, konto lub bazy danych, gdy klikniesz **Aktualizuj teraz** oraz automatycznie: MaxMind co 3 dni, DB-IP co 7 dni (DB-IP publikuje nowe pliki co miesiąc i pobierany jest tylko nowszy plik). Nieudana automatyczna aktualizacja jest ponawiana po 24 godzinach. W przypadku MaxMind **Aktualizuj teraz** wymaga zapisanego identyfikatora konta i klucza licencyjnego, w przypadku DB-IP co najmniej jednej wybranej bazy danych.
 
 Bez baz mapa oraz listy krajów i sieci są ukryte; reszta działa.
 

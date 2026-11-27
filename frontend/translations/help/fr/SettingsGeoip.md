@@ -6,7 +6,7 @@ Une variable définie sur le conteneur l'emporte sur l'interface et verrouille l
 
 ### Fournisseur
 
-- **DB-IP Lite** est le choix par défaut : gratuit, aucun compte nécessaire, de nouveaux fichiers chaque mois (NPMpro vérifie une fois par semaine). Variable : `GEOIP_PROVIDER`.
+- **DB-IP Lite** est le choix par défaut : gratuit, aucun compte nécessaire, de nouveaux fichiers chaque mois (NPMpro vérifie une fois par semaine).
 - **MaxMind GeoLite2** est conservé : il nécessite un compte gratuit et une clé de licence, et est mis à jour deux fois par semaine.
 
 Un seul fournisseur est actif à la fois et seules ses bases de données sont utilisées. Les fichiers de l'autre fournisseur restent sur le disque : revenir en arrière ne demande donc aucun nouveau téléchargement. GoAccess prend en compte un changement au prochain démarrage du conteneur. Variable : `GEOIP_PROVIDER` (`dbip` ou `maxmind`).
@@ -35,7 +35,7 @@ Variable : `GEOIP_EDITIONS`, séparées par des espaces, par exemple `GeoLite2-C
 
 ### État
 
-Affiche la dernière mise à jour et la dernière erreur. NPMpro met à jour les bases quand vous changez le compte ou les bases, quand vous cliquez sur **Mettre à jour maintenant**, et automatiquement tous les 3 jours. Une mise à jour automatique échouée est retentée au bout de 24 heures. **Mettre à jour maintenant** demande un ID de compte et une clé de licence enregistrés.
+Affiche la dernière mise à jour, la dernière vérification et la dernière erreur. NPMpro met à jour les bases de données du fournisseur actif quand vous changez le fournisseur, le compte ou les bases de données, quand vous cliquez sur **Mettre à jour maintenant** et automatiquement : MaxMind tous les 3 jours, DB-IP tous les 7 jours (DB-IP publie de nouveaux fichiers chaque mois et seul un fichier plus récent est téléchargé). Une mise à jour automatique échouée est retentée après 24 heures. Avec MaxMind, **Mettre à jour maintenant** nécessite un identifiant de compte et une clé de licence enregistrés ; avec DB-IP, au moins une base de données sélectionnée.
 
 Sans bases, la carte et les listes de pays et de réseaux sont masquées ; le reste fonctionne.
 

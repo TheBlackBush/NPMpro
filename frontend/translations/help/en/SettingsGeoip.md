@@ -6,7 +6,7 @@ A variable set on the container wins over the UI and locks the field (the field 
 
 ### Provider
 
-- **DB-IP Lite** is the default: free, no account needed, new files every month (NPMpro checks once a week). Variable: `GEOIP_PROVIDER`.
+- **DB-IP Lite** is the default: free, no account needed, new files every month (NPMpro checks once a week).
 - **MaxMind GeoLite2** is kept: it needs a free account and a license key and updates twice a week.
 
 One provider is active at a time and only its databases are used. The files of the other provider stay on disk, so switching back needs no new download. GoAccess picks up a switch at the next container start. Variable: `GEOIP_PROVIDER` (`dbip` or `maxmind`).
@@ -35,7 +35,7 @@ Variable: `GEOIP_EDITIONS`, space separated, for example `GeoLite2-Country GeoLi
 
 ### Status
 
-Shows the last update and the last error. NPMpro updates the databases when you change the account or databases, when you click **Update now**, and automatically every 3 days. A failed automatic update is tried again after 24 hours. **Update now** needs a saved account ID and license key.
+Shows the last update, the last check and the last error. NPMpro updates the active provider's databases when you change the provider, the account or the databases, when you click **Update now** and automatically: MaxMind every 3 days, DB-IP every 7 days (DB-IP publishes new files monthly and only a newer file is downloaded). A failed automatic update is tried again after 24 hours. With MaxMind, **Update now** needs a saved account ID and license key; with DB-IP, at least one database selected.
 
 Without databases, the map and the country and network lists are hidden; the rest works.
 

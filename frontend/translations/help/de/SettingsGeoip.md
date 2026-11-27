@@ -6,7 +6,7 @@ Eine am Container gesetzte Variable hat Vorrang vor der Oberfläche und sperrt d
 
 ### Anbieter
 
-- **DB-IP Lite** ist der Standard: kostenlos, kein Konto nötig, jeden Monat neue Dateien (NPMpro prüft einmal pro Woche). Variable: `GEOIP_PROVIDER`.
+- **DB-IP Lite** ist der Standard: kostenlos, kein Konto nötig, jeden Monat neue Dateien (NPMpro prüft einmal pro Woche).
 - **MaxMind GeoLite2** bleibt erhalten: Es braucht ein kostenloses Konto und einen Lizenzschlüssel und wird zweimal pro Woche aktualisiert.
 
 Es ist immer ein Anbieter aktiv, und nur dessen Datenbanken werden verwendet. Die Dateien des anderen Anbieters bleiben auf der Festplatte, sodass beim Zurückwechseln kein neuer Download nötig ist. GoAccess übernimmt einen Wechsel beim nächsten Containerstart. Variable: `GEOIP_PROVIDER` (`dbip` oder `maxmind`).
@@ -35,7 +35,7 @@ Variable: `GEOIP_EDITIONS`, durch Leerzeichen getrennt, zum Beispiel `GeoLite2-C
 
 ### Status
 
-Zeigt die letzte Aktualisierung und den letzten Fehler. NPMpro aktualisiert die Datenbanken, wenn Sie das Konto oder die Datenbanken ändern, wenn Sie auf **Jetzt aktualisieren** klicken und automatisch alle 3 Tage. Eine fehlgeschlagene automatische Aktualisierung wird nach 24 Stunden erneut versucht. **Jetzt aktualisieren** braucht eine gespeicherte Konto-ID und einen gespeicherten Lizenzschlüssel.
+Zeigt die letzte Aktualisierung, die letzte Prüfung und den letzten Fehler. NPMpro aktualisiert die Datenbanken des aktiven Anbieters, wenn Sie den Anbieter, das Konto oder die Datenbanken ändern, wenn Sie auf **Jetzt aktualisieren** klicken und automatisch: MaxMind alle 3 Tage, DB-IP alle 7 Tage (DB-IP veröffentlicht monatlich neue Dateien, und nur eine neuere Datei wird heruntergeladen). Eine fehlgeschlagene automatische Aktualisierung wird nach 24 Stunden erneut versucht. Bei MaxMind braucht **Jetzt aktualisieren** eine gespeicherte Konto-ID und einen gespeicherten Lizenzschlüssel, bei DB-IP mindestens eine ausgewählte Datenbank.
 
 Ohne Datenbanken sind die Karte sowie die Länder- und Netzwerklisten ausgeblendet; der Rest funktioniert.
 
