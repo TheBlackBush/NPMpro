@@ -139,9 +139,10 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 	 * retry_after_ms) while retryDelays has an entry for the attempt, else it is failed. A failure without retry is
 	 * failed at once. A dropped row was not tried (its setting changed since it was queued): dropped with the reason as
 	 * its error, payload cleared, attempts unchanged. A deferred row was not tried either (its target failed just
-	 * before): pending again at next_try_ms, attempts and the last outcome unchanged. attempts counts every try.
+	 * before, or the call ran out of time): pending again at next_try_ms (else defer_ms from now), attempts and the last
+	 * outcome unchanged. attempts counts every try.
 	 *
-	 * @param   {Object[]}  results  [{ id, ok, retry, dropped, deferred, next_try_ms, retry_after_ms, http_status,
+	 * @param   {Object[]}  results  [{ id, ok, retry, dropped, deferred, next_try_ms, defer_ms, retry_after_ms, http_status,
 	 *                                 duration_ms, error, response }]
 	 * @param   {Object}    options
 	 * @param   {Number[]}  options.retryDelays
@@ -153,7 +154,11 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 			if (result.deferred) {
 				await table()
 					.where({ id: result.id, status: "sending" })
-					.update({ status: "pending", next_try_on: dbTime(result.next_try_ms ?? nowMs), modified_on: now });
+					.update({
+						status: "pending",
+						next_try_on: dbTime(result.next_try_ms ?? nowMs + (result.defer_ms ?? 0)),
+						modified_on: now,
+					});
 				continue;
 			}
 			const row = await table().select("attempts").where({ id: result.id, status: "sending" }).first();

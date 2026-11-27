@@ -59,6 +59,15 @@ const createWorker = ({ queue, channels, clock = globalThis, log, pollMs = POLL_
 			log?.warn?.(`notify: ${channel.id} send failed: ${reason}`);
 			results = [];
 		}
+		// a together-call that threw tried its first row at most: that one counts an attempt, the others wait untried
+		if (results.length === 0 && reason !== undefined && channel.sendsTargetTogether) {
+			const [first, ...rest] = job.rows;
+			const wait = channel.retryDelays?.[0] ?? 0;
+			return [
+				{ id: first.id, ok: false, retry: true, error: reason },
+				...rest.map((row) => ({ id: row.id, ok: false, deferred: true, defer_ms: wait })),
+			];
+		}
 		const byId = new Map((results ?? []).map((result) => [result.id, result]));
 		// a row the channel did not answer for is retried like a failed send
 		return job.rows.map(

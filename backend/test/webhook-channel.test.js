@@ -25,6 +25,7 @@ const REDIRECT = /redirect \(not followed\)/u;
 const GONE = /410/u;
 const BAD_ECHO = /^bad \*\*\* \*\*\*$/u;
 const LOOKUP_CODE = /EAI_AGAIN/u;
+const BOOM = /boom/u;
 
 const api = await startApi();
 const knex = api.db;
@@ -450,6 +451,49 @@ describe("a dead receiver", () => {
 			assert.equal(row.attempts, 0);
 			assert.equal(row.error, null);
 			assert.equal(row.next_try_on, first.next_try_on);
+		}
+	});
+
+	it("a slow but live receiver gets a minute per call: the rest waits untried for a later pass", async () => {
+		await addHook();
+		let calls = 0;
+		overrides.fetchFn = () => {
+			calls += 1;
+			clock.at += 14_000;
+			return Promise.resolve(new Response("ok"));
+		};
+		build();
+		for (let index = 0; index < 50; index++) await emitHost();
+		await pass();
+		// 4 x 14 s = 56 s goes on, the fifth row crosses 60 s, then the call stops
+		assert.equal(calls, 5);
+		const rows = await rowsOf();
+		assert.deepEqual(
+			rows.slice(0, 5).map((row) => [row.status, row.attempts]),
+			Array.from({ length: 5 }, () => ["sent", 1]),
+		);
+		const rest = rows.slice(5);
+		assert.equal(rest.length, 45);
+		for (const row of rest) {
+			assert.equal(row.status, "pending");
+			assert.equal(row.attempts, 0);
+			assert.equal(row.error, null);
+			assert.equal(msOfDbTime(row.next_try_on), START + 70_000 + RETRY_DELAYS[0]);
+		}
+	});
+
+	it("a call that throws counts an attempt on its first row only, the others wait untried", async () => {
+		await addHook();
+		build();
+		channel.send = () => Promise.reject(new Error("boom"));
+		for (let index = 0; index < 3; index++) await emitHost();
+		await pass();
+		const [first, ...rest] = await rowsOf();
+		assert.deepEqual([first.status, first.attempts], ["pending", 1]);
+		assert.match(first.error, BOOM);
+		for (const row of rest) {
+			assert.deepEqual([row.status, row.attempts, row.error], ["pending", 0, null]);
+			assert.equal(msOfDbTime(row.next_try_on), START + RETRY_DELAYS[0]);
 		}
 	});
 

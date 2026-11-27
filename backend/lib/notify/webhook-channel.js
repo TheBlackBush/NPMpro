@@ -16,6 +16,8 @@ import { webhookHeaders } from "./webhook-sign.js";
 
 const RETRY_DELAYS = [5e3, 300e3, 1_800e3, 7_200e3, 18_000e3, 36_000e3, 86_400e3];
 const TIMEOUT_MS = 15_000;
+// one call (the rows of one webhook in a pass) stops trying after a minute; the rest is tried in a later pass
+const CALL_BUDGET_MS = 60_000;
 const MAX_BODY_BYTES = 20 * 1024;
 const MAX_RESPONSE_BYTES = 2048;
 const MAX_RETRY_AFTER_MS = 24 * 3_600_000;
@@ -421,14 +423,23 @@ const createWebhookChannel = ({
 		send: async (rows) => {
 			// webhook id => ms of the next try of its row that failed in this call
 			const waits = new Map();
+			const started = clock.now();
 			const results = [];
-			for (const row of rows) results.push(await sendRow(row, waits));
+			for (const row of rows) {
+				if (clock.now() - started >= CALL_BUDGET_MS) {
+					// a slow receiver may not hold the pass: untried, due again after the first retry delay
+					results.push({ id: row.id, ok: false, deferred: true, defer_ms: RETRY_DELAYS[0] });
+				} else {
+					results.push(await sendRow(row, waits));
+				}
+			}
 			return results;
 		},
 	};
 };
 
 export {
+	CALL_BUDGET_MS,
 	createWebhookChannel,
 	createWebhookStore,
 	FAILING_AFTER_MS,
