@@ -9,6 +9,7 @@ import { startApi } from "./support/api.js";
 const GEOIP = "/settings/geoip";
 const MAXMIND = "https://download.maxmind.com";
 const COUNTRY_DOWNLOAD = "/geoip/databases/GeoLite2-Country/download?suffix=tar.gz";
+const MISSING_CREDENTIALS = /MaxMind account ID and license key are required/u;
 const KEY = "maxmind-license-SECRET-4711";
 
 let api;
@@ -18,7 +19,8 @@ let internalMonitoringSetting;
 
 const storedMeta = async () => {
 	const row = await api.db("setting").where({ id: "geoip" }).first();
-	return row ? (typeof row.meta === "string" ? JSON.parse(row.meta) : row.meta) : null;
+	if (!row) return null;
+	return typeof row.meta === "string" ? JSON.parse(row.meta) : row.meta;
 };
 const waitFor = async (check, what) => {
 	for (let attempt = 0; attempt < 500; attempt += 1) {
@@ -46,6 +48,30 @@ it("a switch while a run of the old provider is in progress: readers, marker and
 		await original(result);
 		seen.push({ provider: result.provider, stored: (await storedMeta()).last_error });
 	};
+	const switchWhileRunning = async () => {
+		api.outside.http.get(MAXMIND).intercept({ path: COUNTRY_DOWNLOAD, method: "GET" }).reply(401, "no").delay(300);
+		const saved = await admin.put(GEOIP, {
+			provider: "maxmind",
+			account_id: "42",
+			license_key: KEY,
+			editions: ["GeoLite2-Country"],
+		});
+		assert.equal(saved.status, 200, saved.text);
+		assert.equal(geoip.provider(), "maxmind");
+		// the run started by the save is now waiting for the delayed answer
+		const switched = await admin.put(GEOIP, { provider: "dbip", dbip_editions: [] });
+		assert.equal(switched.status, 200, switched.text);
+		assert.equal(switched.body.provider, "dbip");
+		assert.equal(switched.body.last_error, null);
+		assert.equal(geoip.provider(), "dbip");
+		assert.equal(await marker(), "dbip\n");
+		// the old run ends with its 401 and the queued run (DB-IP, no editions) after it: the 401 is never stored
+		await waitFor(async () => (await storedMeta()).last_check, "the queued run");
+		await new Promise((resolve) => setTimeout(resolve, 400));
+		assert.equal((await storedMeta()).last_error, null);
+		assert.equal((await admin.get(GEOIP)).body.last_error, null);
+		assert.equal(geoip.provider(), "dbip");
+	};
 	try {
 		await switchWhileRunning();
 	} finally {
@@ -60,31 +86,6 @@ it("a switch while a run of the old provider is in progress: readers, marker and
 	assert.equal(seen[0].stored, null);
 	assert.equal(seen[1].stored, null);
 });
-
-const switchWhileRunning = async () => {
-	api.outside.http.get(MAXMIND).intercept({ path: COUNTRY_DOWNLOAD, method: "GET" }).reply(401, "no").delay(300);
-	const saved = await admin.put(GEOIP, {
-		provider: "maxmind",
-		account_id: "42",
-		license_key: KEY,
-		editions: ["GeoLite2-Country"],
-	});
-	assert.equal(saved.status, 200, saved.text);
-	assert.equal(geoip.provider(), "maxmind");
-	// the run started by the save is now waiting for the delayed answer
-	const switched = await admin.put(GEOIP, { provider: "dbip", dbip_editions: [] });
-	assert.equal(switched.status, 200, switched.text);
-	assert.equal(switched.body.provider, "dbip");
-	assert.equal(switched.body.last_error, null);
-	assert.equal(geoip.provider(), "dbip");
-	assert.equal(await marker(), "dbip\n");
-	// the old run ends with its 401 and the queued run (DB-IP, no editions) after it: the 401 is never stored
-	await waitFor(async () => (await storedMeta()).last_check, "the queued run");
-	await new Promise((resolve) => setTimeout(resolve, 400));
-	assert.equal((await storedMeta()).last_error, null);
-	assert.equal((await admin.get(GEOIP)).body.last_error, null);
-	assert.equal(geoip.provider(), "dbip");
-};
 
 it("drops the result of a run of a provider that is no longer the effective one", async () => {
 	const before_ = await storedMeta();
@@ -113,5 +114,5 @@ it("a failing swap of the readers does not fail the save, and the download still
 	} finally {
 		geoip.reload = original;
 	}
-	assert.match((await storedMeta()).last_error, /MaxMind account ID and license key are required/u);
+	assert.match((await storedMeta()).last_error, MISSING_CREDENTIALS);
 });
