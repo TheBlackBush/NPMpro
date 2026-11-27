@@ -961,6 +961,33 @@ async function usersSignIn({ admin }) {
 	if ((await page.getByRole("menuitem", { name: "Unlink OIDC", exact: true }).count()) > 0)
 		throw new Error("Unlink OIDC is offered for a user without an OIDC link");
 	await page.keyboard.press("Escape");
+	await inviteOption(admin);
+}
+
+// The invite option of the new user window follows what the backend offers: mail configured, Invitations on and a valid
+// public URL. The smoke test has no PUBLIC_URL, so there the option is absent (logged); an instance with all three
+// shows it. The flow reads the stored settings and asserts the matching state, and creates nothing.
+async function inviteOption({ page, api }) {
+	const email = await api("GET", "/settings/email");
+	const notifications = await api("GET", "/settings/notifications");
+	const publicUrl = String(notifications.public_url ?? "").startsWith("https://");
+	const offered = email.configured === true && email.invitations === true && publicUrl;
+	await page.goto("/settings/users");
+	await page.getByRole("button", { name: "Add User", exact: true }).filter({ visible: true }).click();
+	const dialog = page.getByRole("dialog");
+	await dialog.locator('input[name="email"]').waitFor();
+	const shown = (await dialog.locator("#invite").count()) > 0;
+	if (shown !== offered)
+		throw new Error(
+			`the invite option is ${shown ? "shown" : "absent"} but invitations are ${offered ? "" : "not "}offered (mail ${email.configured}, switch ${email.invitations}, public URL ${publicUrl})`,
+		);
+	console.log(
+		offered
+			? "users: the invite option is shown (mail configured, Invitations on, public URL set)"
+			: `users: the invite option is absent (${publicUrl ? "mail or the Invitations switch is off" : "no public URL"})`,
+	);
+	await page.keyboard.press("Escape");
+	await windowClosed(page);
 }
 
 // A window opened with the mouse focuses its first element, and closing it gives the focus back to the button that

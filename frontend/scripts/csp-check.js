@@ -71,16 +71,25 @@ const seededWebhooks = [];
 // FLOWS_WEBKIT_WS (a remote Playwright WebKit server's WebSocket URL, local runs only) connects instead of launching
 // biome-ignore lint/style/noProcessEnv: the same switch as in flows/run.js
 const webkitWs = process.env.FLOWS_WEBKIT_WS;
+// FLOWS_CDP (a remote Chromium's DevTools WebSocket URL, local runs only) does the same for Chromium
+// biome-ignore lint/style/noProcessEnv: the same switch as in flows/run.js
+const cdp = process.env.FLOWS_CDP;
+const remoteChromium = engine !== "webkit" && Boolean(cdp);
 let browser;
 try {
-	browser =
-		engine === "webkit" && webkitWs
-			? await webkit.connect(webkitWs)
-			: await (engine === "webkit" ? webkit : chromium).launch();
+	if (engine === "webkit" && webkitWs) browser = await webkit.connect(webkitWs);
+	else if (remoteChromium) browser = await chromium.connectOverCDP(cdp);
+	else browser = await (engine === "webkit" ? webkit : chromium).launch();
 } catch (error) {
-	// with the remote URL the error holds it and its token, so it is neither printed nor passed on as the cause
+	// with a remote URL the error holds it and its token, so it is neither printed nor passed on as the cause
 	// biome-ignore lint/style/useErrorCause: the token stays out of the log
-	throw new Error(engine === "webkit" && webkitWs ? "FLOWS_WEBKIT_WS did not connect" : error.message);
+	throw new Error(
+		engine === "webkit" && webkitWs
+			? "FLOWS_WEBKIT_WS did not connect"
+			: remoteChromium
+				? "FLOWS_CDP did not connect"
+				: error.message,
+	);
 }
 const options = { ignoreHTTPSErrors: true, locale: "en-US", viewport: { width: 1440, height: 900 } };
 
@@ -95,6 +104,15 @@ async function watchedPage(browserContext) {
 		});
 	});
 	const watched = await browserContext.newPage();
+	// a remote Chromium ignores the context's viewport and stays 800 x 600: set it by hand (as flows/lib.js does)
+	if (remoteChromium) {
+		const session = await browserContext.newCDPSession(watched);
+		await session.send("Emulation.setDeviceMetricsOverride", {
+			...options.viewport,
+			deviceScaleFactor: 1,
+			mobile: false,
+		});
+	}
 	// a missing button fails its action in 10 s, not 30
 	watched.setDefaultTimeout(10_000);
 	// navigations get 30 s on a cold runner (the page's own default would shadow a context setting)

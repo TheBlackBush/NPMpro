@@ -233,6 +233,42 @@ async function sampleAlert(page) {
 	);
 }
 
+const NOTICES = "#email-account-notices";
+
+// the Account notices switch of the Mail server card: off and saved, off after a reload, on again and saved; the
+// stored value is put back at the end
+async function accountNotices(page, api) {
+	const toggle = () => page.locator(NOTICES);
+	await toggle().waitFor();
+	if (await toggle().isDisabled()) {
+		console.log("notifications settings: the Account notices switch is locked here");
+		return;
+	}
+	const was = await toggle().isChecked();
+	const stored = async () => (await api("GET", "/settings/email")).account_notices;
+	const set = async (on) => {
+		if ((await toggle().isChecked()) !== on) await toggle().setChecked(on);
+		await withToast(page, SAVED, () => saveButton(page).click());
+	};
+	try {
+		await set(false);
+		if ((await stored()) !== false) throw new Error("Account notices was not saved as off");
+		await page.reload();
+		await toggle().waitFor();
+		if (await toggle().isChecked()) throw new Error("Account notices shows on after it was saved off and reloaded");
+		await set(true);
+		if ((await stored()) !== true) throw new Error("Account notices was not saved as on");
+	} finally {
+		try {
+			await page.reload();
+			await toggle().waitFor();
+			if ((await toggle().isChecked()) !== was) await set(was);
+		} catch (restoreError) {
+			console.log(`notifications settings: Account notices was not restored (${restoreError.message})`);
+		}
+	}
+}
+
 async function notificationsSettings({ admin }) {
 	const { page, api } = admin;
 	const before = await storedNotifications(api);
@@ -249,6 +285,9 @@ async function notificationsSettings({ admin }) {
 		await publicUrl(page, api, before);
 		await defaultLanguage(page, api, before);
 		await mailAlerts(page, api, email.configured);
+		await page.reload();
+		await page.locator(HOST).waitFor();
+		await accountNotices(page, api);
 	} finally {
 		const now = await storedNotifications(api);
 		const restore = {};
