@@ -170,23 +170,24 @@
 			"route": "/settings/notifications",
 			"steps": [
 				{ "waitFor": "#notifications-webhooks-title" },
-				{ "click": "role=button[name='Add webhook']" },
+				{ "click": "role=button[name='Add webhook'] >> visible=true" },
 				{ "waitFor": "[role=dialog] input[name=name]" },
 				{ "press": "Escape" },
 				{ "gone": "[role=dialog]" },
 				{ "seedWebhook": true },
 				{ "reload": true },
-				{ "waitFor": "role=button[name='Actions for flow-csp-hook']" },
-				{ "click": "role=button[name='Actions for flow-csp-hook']" },
+				{ "waitFor": "role=button[name='Actions for flow-csp-hook'] >> visible=true" },
+				{ "click": "role=button[name='Actions for flow-csp-hook'] >> visible=true" },
 				{ "click": "role=menuitem[name='Deliveries']" },
 				{ "waitFor": "[data-webhook-deliveries-empty], [data-webhook-deliveries]" },
 				{ "press": "Escape" },
 				{ "gone": "[role=dialog]" },
-				{ "click": "role=button[name='Actions for flow-csp-hook']" },
+				{ "click": "role=button[name='Actions for flow-csp-hook'] >> visible=true" },
 				{ "click": "role=menuitem[name='Rotate secret']" },
 				{ "click": "role=alertdialog >> role=button[name='Rotate secret']" },
 				{ "waitFor": "[role=dialog] [data-webhook-secret]" },
-				{ "press": "Escape" }
+				{ "click": "[role=dialog] >> role=button[name='Done']" },
+				{ "gone": "[role=dialog]" }
 			]
 		},
 		{

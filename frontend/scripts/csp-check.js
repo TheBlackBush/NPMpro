@@ -147,6 +147,13 @@ async function seedProxyHost() {
 }
 
 async function seedWebhook() {
+	// a webhook of a run that was killed would make the row's buttons ambiguous
+	const left = await apiOf("GET", "/webhooks");
+	const leftovers = left.ok() ? (await left.json()).filter((item) => item.name === "flow-csp-hook") : [];
+	for (const hook of leftovers) {
+		// biome-ignore lint/performance/noAwaitInLoops: one request after another
+		await apiOf("DELETE", `/webhooks/${hook.id}`);
+	}
 	const answer = await apiOf("POST", "/webhooks", {
 		name: "flow-csp-hook",
 		url: "https://192.0.2.10/csp",
