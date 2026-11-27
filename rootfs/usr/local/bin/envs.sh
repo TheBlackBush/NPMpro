@@ -854,14 +854,9 @@ if echo "$GOACLA" | grep -vq "geoip-database"; then
         echo "All goaccess geoip databases need to be moved from etc/goaccess/geoip to goaccess/geoip inside the mounted data folder!"
         sleep inf
     fi
-    if [ -s /data/goaccess/geoip/GeoLite2-City.mmdb ]; then
-        export GOACLA="$GOACLA --geoip-database=/data/goaccess/geoip/GeoLite2-City.mmdb"
-    fi
-    if [ -s /data/goaccess/geoip/GeoLite2-Country.mmdb ]; then
-        export GOACLA="$GOACLA --geoip-database=/data/goaccess/geoip/GeoLite2-Country.mmdb"
-    fi
-    if [ -s /data/goaccess/geoip/GeoLite2-ASN.mmdb ]; then
-        export GOACLA="$GOACLA --geoip-database=/data/goaccess/geoip/GeoLite2-ASN.mmdb"
+    goaccess_geoip="$(geoip-goaccess-args.sh /data/goaccess/geoip)"
+    if [ -n "$goaccess_geoip" ]; then
+        export GOACLA="$GOACLA $goaccess_geoip"
     fi
 fi
 
