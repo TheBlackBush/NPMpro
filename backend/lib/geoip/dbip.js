@@ -8,6 +8,7 @@ import { byteLimit, isTimeout, saveBody, sweepLeftovers, TIMEOUT_MS, UpdateError
 import { providerOf } from "./providers.js";
 
 const DBIP_URL = "https://download.db-ip.com/free";
+const DAY_MS = 24 * 60 * 60 * 1000;
 const DBIP_MAX_BYTES = 100 * 1024 * 1024; // packed and unpacked (R8)
 
 /** UTC "YYYY-MM" */
@@ -66,10 +67,12 @@ const unpack = async (gz, mmdb, maxBytes) => {
 };
 
 /** @returns {Promise<boolean>} true when the file was replaced, false when the local file is already current */
-const updateEdition = async ({ edition, dir, fetch, month, maxBytes }) => {
+const updateEdition = async ({ edition, dir, fetch, month, maxBytes, now }) => {
 	const { url, response: head } = await findFile(fetch, edition, month);
 	const target = path.join(dir, providerOf("dbip").file(edition));
-	const lastModified = Date.parse(head.headers.get("last-modified") ?? "");
+	const parsed = Date.parse(head.headers.get("last-modified") ?? "");
+	// a date far in the future would block every later update: treat it as now
+	const lastModified = parsed > now.getTime() + DAY_MS ? now.getTime() : parsed;
 	if (await isCurrent(target, lastModified)) return false;
 
 	const work = await mkdtemp(path.join(dir, ".update-"));
@@ -77,7 +80,10 @@ const updateEdition = async ({ edition, dir, fetch, month, maxBytes }) => {
 		const gz = path.join(work, "download.mmdb.gz");
 		const mmdb = path.join(work, path.basename(target));
 		const response = await request(fetch, url, "GET");
-		if (!response.ok) throw new UpdateError(`DB-IP returned HTTP ${response.status}`);
+		if (!response.ok) {
+			await response.body?.cancel();
+			throw new UpdateError(`DB-IP returned HTTP ${response.status}`);
+		}
 		try {
 			await saveBody(response, gz, maxBytes);
 		} catch (err) {
@@ -110,26 +116,26 @@ const updateEdition = async ({ edition, dir, fetch, month, maxBytes }) => {
  * @param   {Object}    options
  * @param   {string[]}  options.editions
  * @param   {string}    options.dir
- * @param   {Function}  [options.fetch]
+ * @param   {Function}  options.fetch  the guarded fetch (required, there is no default)
  * @param   {Function}  [options.now]
  * @param   {number}    [options.maxBytes]  size cap of the packed and the unpacked file (a parameter for tests)
  * @returns {Promise<{ok: boolean, updated: string[], error?: string}>}
  */
-const updateDbip = async ({
-	editions,
-	dir,
-	fetch = globalThis.fetch,
-	now = () => new Date(),
-	maxBytes = DBIP_MAX_BYTES,
-}) => {
+const updateDbip = async ({ editions, dir, fetch, now = () => new Date(), maxBytes = DBIP_MAX_BYTES }) => {
+	if (typeof fetch !== "function") throw new TypeError("updateDbip needs the guarded fetch");
 	const updated = [];
 	const errors = [];
-	await mkdir(dir, { recursive: true });
-	await sweepLeftovers(dir);
-	const month = monthOf(now());
+	try {
+		await mkdir(dir, { recursive: true });
+		await sweepLeftovers(dir);
+	} catch {
+		return { ok: false, updated, error: "The GeoIP folder is not writable" };
+	}
+	const current = now();
+	const month = monthOf(current);
 	for (const edition of editions) {
 		try {
-			if (await updateEdition({ edition, dir, fetch, month, maxBytes })) updated.push(edition);
+			if (await updateEdition({ edition, dir, fetch, month, maxBytes, now: current })) updated.push(edition);
 		} catch (err) {
 			errors.push(`${edition}: ${err instanceof UpdateError ? err.message : "Update failed"}`);
 		}

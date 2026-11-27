@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { copyFile, mkdtemp, readdir, readFile, stat, utimes, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
@@ -211,12 +211,68 @@ describe("updateDbip", () => {
 
 	it("updates the working editions and reports the failing one", async () => {
 		const dir = await tempDir();
-		await copyFile(path.join(fixtures, "GeoLite2-ASN-Test.mmdb"), path.join(dir, "unused"));
+		await writeFile(path.join(dir, "dbip-asn-lite.mmdb"), "old asn");
 		const fetch = stubFetch({ [URL_NOV]: { body: gzipSync(await dbipFixture()) } });
 		const result = await updateDbip({ editions: ["Country", "ASN"], dir, fetch, now: NOW });
 		assert.equal(result.ok, false);
 		assert.deepEqual(result.updated, ["Country"]);
 		assert.equal(result.error, "ASN: DB-IP has no file for 2026-11 or 2026-10");
+		assert.equal(await readFile(path.join(dir, "dbip-asn-lite.mmdb"), "utf8"), "old asn");
+	});
+
+	it("fails a truncated gzip with the old file kept", async () => {
+		const dir = await withOldFile();
+		const packed = gzipSync(await dbipFixture());
+		const fetch = stubFetch({ [URL_NOV]: { body: packed.subarray(0, packed.length - 40) } });
+		const result = await updateDbip({ editions: ["Country"], dir, fetch, now: NOW });
+		assert.equal(result.error, "Country: The downloaded file could not be unpacked");
+		assert.equal(await content(dir), "old content");
+	});
+
+	it("refuses an ASN file of the wrong type", async () => {
+		const dir = await tempDir();
+		const wrong = await dbipFixture("DBIP-Country-Lite");
+		const fetch = stubFetch({
+			"https://download.db-ip.com/free/dbip-asn-lite-2026-11.mmdb.gz": { body: gzipSync(wrong) },
+		});
+		const result = await updateDbip({ editions: ["ASN"], dir, fetch, now: NOW });
+		assert.equal(result.error, "ASN: The downloaded database is invalid");
+		assert.deepEqual(await leftovers(dir), []);
+	});
+
+	it("falls back to December of the previous year in January", async () => {
+		const dir = await tempDir();
+		const december = "https://download.db-ip.com/free/dbip-country-lite-2025-12.mmdb.gz";
+		const fetch = stubFetch({ [december]: { body: gzipSync(await dbipFixture()) } });
+		const result = await updateDbip({
+			editions: ["Country"],
+			dir,
+			fetch,
+			now: () => new Date("2026-01-01T00:30:00Z"),
+		});
+		assert.deepEqual(result, { ok: true, updated: ["Country"] });
+		assert.equal(fetch.calls.at(-1).url, december);
+	});
+
+	it("treats a last-modified in the future as now", async () => {
+		const dir = await tempDir();
+		const headers = { "last-modified": "Fri, 01 Jan 2100 00:00:00 GMT" };
+		const fetch = stubFetch({ [URL_NOV]: { headers, body: gzipSync(await dbipFixture()) } });
+		await updateDbip({ editions: ["Country"], dir, fetch, now: NOW });
+		assert.equal((await stat(path.join(dir, FILE))).mtimeMs, NOW().getTime());
+	});
+
+	it("needs a fetch and returns ok false when the folder is unusable", async () => {
+		await assert.rejects(updateDbip({ editions: ["Country"], dir: await tempDir() }), TypeError);
+		const dir = await tempDir();
+		await writeFile(path.join(dir, "file"), "x");
+		const result = await updateDbip({
+			editions: ["Country"],
+			dir: path.join(dir, "file", "sub"),
+			fetch: stubFetch({}),
+		});
+		assert.equal(result.ok, false);
+		assert.equal(result.error, "The GeoIP folder is not writable");
 	});
 
 	it("removes work folders left by an interrupted update", async () => {
