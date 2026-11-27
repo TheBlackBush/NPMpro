@@ -25,6 +25,9 @@ const useSaveWebhook = () => {
 	return useMutation({
 		mutationFn: ({ id, ...data }) => (id ? updateWebhook(id, data) : createWebhook(data)),
 		onSuccess: () => invalidateAll(queryClient),
+		// gcTime 0: the result holds the secret and the variables the typed URL, so they leave the mutation cache as soon
+		// as the window is gone
+		gcTime: 0,
 	});
 };
 

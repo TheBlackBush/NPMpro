@@ -16,9 +16,9 @@ import {
 } from "src/components";
 import { DirtyTracker, useNotificationEvents, useSaveWebhook, useUnsavedChangesGuard } from "src/hooks";
 import { intl, T } from "src/locale";
+import { needsUrl } from "src/modules/WebhookForms";
 import {
 	isPlainHttp,
-	needsUrl,
 	urlMayStayEmpty,
 	WEBHOOK_NAME_MAX,
 	WEBHOOK_URL_MAX,
@@ -26,7 +26,7 @@ import {
 	webhookPayload,
 	webhookValidate,
 	webhookValues,
-} from "src/modules/WebhookForms";
+} from "src/modules/WebhookWindowForms";
 import { showObjectSuccess } from "src/notifications";
 import { showWebhookSecretModal } from "./WebhookSecretModal";
 

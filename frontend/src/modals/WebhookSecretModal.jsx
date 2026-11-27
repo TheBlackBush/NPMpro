@@ -31,6 +31,11 @@ const WebhookSecretModal = EasyModal.create(({ name, secret, visible, remove }) 
 				data-webhook-secret=""
 				className="mb-3"
 			/>
+			{navigator.clipboard?.writeText ? null : (
+				<p className="mb-3 text-sm text-muted-foreground">
+					<T id="settings.webhooks.secret.no-clipboard" />
+				</p>
+			)}
 			<NoticeAlert>
 				<T id="settings.webhooks.secret.once" />
 			</NoticeAlert>

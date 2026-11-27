@@ -12,7 +12,7 @@ import { formatDateTime, intl, T } from "src/locale";
 import { showDeleteConfirmModal, showWebhookModal, showWebhookSecretModal } from "src/modals";
 import { WRAP_BADGE } from "src/modules/Badges";
 import { ADMIN, VIEW } from "src/modules/Permissions";
-import { deliveryStateId, eventsLabel, needsUrl, statusOf, testOutcome } from "src/modules/WebhookForms";
+import { deliveryStateId, eventsLabel, FAILING_DAYS, needsUrl, statusOf, testOutcome } from "src/modules/WebhookForms";
 import { showApiError, showError, showObjectSuccess, showSuccess } from "src/notifications";
 import { SettingsCard } from "../SettingsCard";
 
@@ -29,7 +29,10 @@ const BADGE_TEXTS = {
 const reasonText = (webhook) => {
 	const { reasonKey } = statusOf(webhook);
 	if (!reasonKey) return null;
-	return label(reasonKey, { since: webhook.failingSince ? formatDateTime(webhook.failingSince) : "" });
+	return label(reasonKey, {
+		since: webhook.failingSince ? formatDateTime(webhook.failingSince) : "",
+		days: FAILING_DAYS,
+	});
 };
 
 const eventsText = (webhook) => {
@@ -92,7 +95,6 @@ function LastDelivery({ webhook }) {
 }
 
 function Actions({ webhook, testing, onEdit, onTest, onRotate, onToggle, onDelete }) {
-	if (testing) return <Spinner role="status" aria-label={label("settings.webhooks.testing")} />;
 	return (
 		<RowActions
 			label={label("list.row-actions", { name: webhook.name })}
@@ -109,9 +111,16 @@ function Actions({ webhook, testing, onEdit, onTest, onRotate, onToggle, onDelet
 				},
 				{
 					key: "test",
-					label: <T id="settings.webhooks.test" />,
+					label: testing ? (
+						<span className="flex items-center gap-2">
+							<T id="settings.webhooks.testing" />
+							<Spinner aria-hidden="true" />
+						</span>
+					) : (
+						<T id="settings.webhooks.test" />
+					),
 					icon: Send,
-					disabled: !webhook.urlSet,
+					disabled: !webhook.urlSet || testing,
 					onSelect: () => onTest(webhook),
 				},
 				{
@@ -308,4 +317,4 @@ function WebhooksCard() {
 	);
 }
 
-export { WebhooksCard };
+export default WebhooksCard;
