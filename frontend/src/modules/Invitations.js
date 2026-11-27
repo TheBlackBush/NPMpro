@@ -67,12 +67,16 @@ export const invitationOutcome = (result) => {
 };
 
 /**
- * The wording of the reset page by the purpose of its link ("invite", else a reset): the title and the button
+ * The wording of the reset page by the purpose of its link ("invite", else a reset): the title, the button and the done text
  *
  * @param   {string|null|undefined}  purpose
- * @returns {{ title: string, button: string }}  translation ids
+ * @returns {{ title: string, button: string, done: string }}  translation ids
  */
 export const resetWording = (purpose) =>
 	purpose === "invite"
-		? { title: "reset-password.invite.title", button: "reset-password.invite.button" }
-		: { title: "reset-password.title", button: "save" };
+		? {
+				title: "reset-password.invite.title",
+				button: "reset-password.invite.button",
+				done: "reset-password.invite.done",
+			}
+		: { title: "reset-password.title", button: "save", done: "reset-password.done" };

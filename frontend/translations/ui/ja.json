@@ -1407,6 +1407,7 @@
 	"reset-password.description": "新しいパスワードを 2 回入力してください。",
 	"reset-password.done": "パスワードを変更しました。新しいパスワードでサインインしてください。",
 	"reset-password.invite.button": "パスワードを設定",
+	"reset-password.invite.done": "パスワードを設定しました。設定したパスワードでサインインしてください。",
 	"reset-password.invite.title": "NPMpro へようこそ。パスワードを設定してください。",
 	"reset-password.request-new": "新しいリンクを依頼",
 	"reset-password.retry": "再試行",

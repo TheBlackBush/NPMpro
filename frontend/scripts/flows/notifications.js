@@ -114,16 +114,19 @@ async function choose(page, select, name) {
 	await page.getByRole("option", { name, exact: true }).click();
 }
 
-// the default mail language: German is saved, then the stored one again
+// the default mail language: another one than the stored (German, French when German is stored) is saved, then the
+// stored one again
 async function defaultLanguage(page, api, before) {
 	const select = page.locator(LANGUAGE);
 	if (await select.isDisabled()) {
 		console.log("notifications settings: the default mail language is locked here");
 		return;
 	}
-	await choose(page, select, langs.de.name);
+	const other = before.default_language === "de" ? "fr" : "de";
+	await choose(page, select, langs[other].name);
 	await withToast(page, SAVED, () => saveButton(page).click());
-	if ((await storedNotifications(api)).default_language !== "de") throw new Error("German was not saved");
+	if ((await storedNotifications(api)).default_language !== other)
+		throw new Error(`${langs[other].name} was not saved`);
 	await choose(page, select, langs[before.default_language].name);
 	await withToast(page, SAVED, () => saveButton(page).click());
 	if ((await storedNotifications(api)).default_language !== before.default_language)

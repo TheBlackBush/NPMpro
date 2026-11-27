@@ -1407,6 +1407,7 @@
 	"reset-password.description": "Wpisz nowe hasło dwa razy.",
 	"reset-password.done": "Twoje hasło zostało zmienione. Zaloguj się nim.",
 	"reset-password.invite.button": "Ustaw hasło",
+	"reset-password.invite.done": "Twoje hasło zostało ustawione. Zaloguj się nim.",
 	"reset-password.invite.title": "Witamy w NPMpro. Wybierz swoje hasło.",
 	"reset-password.request-new": "Poproś o nowy link",
 	"reset-password.retry": "Spróbuj ponownie",

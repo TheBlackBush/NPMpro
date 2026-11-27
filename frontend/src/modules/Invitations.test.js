@@ -64,7 +64,16 @@ it("the reset page words an invitation differently", () => {
 	assert.deepEqual(resetWording("invite"), {
 		title: "reset-password.invite.title",
 		button: "reset-password.invite.button",
+		done: "reset-password.invite.done",
 	});
-	assert.deepEqual(resetWording("reset"), { title: "reset-password.title", button: "save" });
-	assert.deepEqual(resetWording(undefined), { title: "reset-password.title", button: "save" });
+	assert.deepEqual(resetWording("reset"), {
+		title: "reset-password.title",
+		button: "save",
+		done: "reset-password.done",
+	});
+	assert.deepEqual(resetWording(undefined), {
+		title: "reset-password.title",
+		button: "save",
+		done: "reset-password.done",
+	});
 });

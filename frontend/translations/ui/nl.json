@@ -1407,6 +1407,7 @@
 	"reset-password.description": "Vul het nieuwe wachtwoord twee keer in.",
 	"reset-password.done": "Je wachtwoord is gewijzigd. Log ermee in.",
 	"reset-password.invite.button": "Wachtwoord instellen",
+	"reset-password.invite.done": "Je wachtwoord is ingesteld. Log ermee in.",
 	"reset-password.invite.title": "Welkom bij NPMpro. Kies je wachtwoord.",
 	"reset-password.request-new": "Een nieuwe link aanvragen",
 	"reset-password.retry": "Opnieuw proberen",

@@ -172,7 +172,7 @@ export default function ResetPassword() {
 		body = (
 			<CardContent className="flex flex-col gap-4">
 				<NoticeAlert variant="info">
-					<T id="reset-password.done" />
+					<T id={resetWording(purpose).done} />
 				</NoticeAlert>
 				<a href="/" className="text-center text-sm underline underline-offset-4">
 					<T id="sign-in" />

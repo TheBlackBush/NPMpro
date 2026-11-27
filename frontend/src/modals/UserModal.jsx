@@ -126,14 +126,16 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 							required
 						/>
 						{inviteShown ? (
-							<SwitchList>
-								<SwitchField
-									id="invite"
-									label={<T id="user.invite" />}
-									hint={<T id="user.invite.hint" />}
-									{...register("invite")}
-								/>
-							</SwitchList>
+							<FormSection legend={<T id="user.invite" />} hideLegend>
+								<SwitchList>
+									<SwitchField
+										id="invite"
+										label={<T id="user.invite" />}
+										hint={<T id="user.invite.hint" />}
+										{...register("invite")}
+									/>
+								</SwitchList>
+							</FormSection>
 						) : null}
 						{currentUser?.id !== data?.id ? (
 							<FormSection legend={<T id="options" />} className="mb-0">
