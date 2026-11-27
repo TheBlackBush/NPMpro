@@ -1,8 +1,22 @@
 ## GeoIP
 
-NPMpro descarga por sí mismo las bases de datos gratuitas MaxMind GeoLite2 y busca países y redes en tu servidor, de modo que las IP de los visitantes nunca se envían a ningún sitio. No necesitas un contenedor geoipupdate aparte. Las bases de datos alimentan el mapa y las listas de Monitorización, GoAccess y las reglas de país de nginx.
+NPMpro descarga por sí mismo bases de datos GeoIP gratuitas (DB-IP Lite o MaxMind GeoLite2) y consulta países y redes en tu servidor, así que las IP de los visitantes nunca se envían a ningún sitio. No necesitas un contenedor geoipupdate aparte. Las bases de datos alimentan el mapa y las listas de Monitorización, GoAccess y las reglas de país de nginx.
 
 Una variable definida en el contenedor tiene prioridad sobre la interfaz y bloquea el campo (el campo muestra «Definido por el entorno»). Usa la interfaz para todo lo que no esté definido en el contenedor. Al guardar se inicia la descarga en segundo plano, y el estado de abajo se actualiza cuando termina.
+
+### Proveedor
+
+- **DB-IP Lite** es el valor predeterminado: gratis, sin necesidad de cuenta, con archivos nuevos cada mes (NPMpro comprueba una vez por semana). Variable: `GEOIP_PROVIDER`.
+- **MaxMind GeoLite2** se mantiene: requiere una cuenta gratuita y una clave de licencia, y se actualiza dos veces por semana.
+
+Solo hay un proveedor activo a la vez y solo se usan sus bases de datos. Los archivos del otro proveedor se quedan en el disco, así que volver a cambiar no requiere una nueva descarga. GoAccess aplica el cambio en el siguiente inicio del contenedor. Variable: `GEOIP_PROVIDER` (`dbip` o `maxmind`).
+
+### Bases de datos de DB-IP
+
+- **Country**: países para el mapa, las listas de países y las reglas de país de las listas de acceso.
+- **ASN**: redes (número AS y nombre) para las listas de redes.
+
+Ambas están activadas de forma predeterminada. Variable: `GEOIP_DBIP_EDITIONS`.
 
 ### Cuenta de MaxMind
 

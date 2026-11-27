@@ -1,8 +1,22 @@
 ## GeoIP
 
-NPMpro télécharge lui-même les bases gratuites MaxMind GeoLite2 et recherche les pays et les réseaux sur votre serveur, de sorte que les IP des visiteurs ne sont jamais envoyées nulle part. Vous n'avez pas besoin d'un conteneur geoipupdate séparé. Les bases alimentent la carte et les listes de la Surveillance, GoAccess et les règles de pays de nginx.
+NPMpro télécharge lui-même des bases de données GeoIP gratuites (DB-IP Lite ou MaxMind GeoLite2) et recherche les pays et réseaux sur votre serveur, les IP des visiteurs ne sont donc jamais envoyées ailleurs. Vous n'avez pas besoin d'un conteneur geoipupdate séparé. Les bases alimentent la carte et les listes de la Surveillance, GoAccess et les règles de pays de nginx.
 
 Une variable définie sur le conteneur l'emporte sur l'interface et verrouille le champ (le champ affiche « Défini par l'environnement »). Utilisez l'interface pour tout ce qui n'est pas défini dans le conteneur. L'enregistrement lance le téléchargement en arrière-plan, et l'état ci-dessous est mis à jour quand il est terminé.
+
+### Fournisseur
+
+- **DB-IP Lite** est le choix par défaut : gratuit, aucun compte nécessaire, de nouveaux fichiers chaque mois (NPMpro vérifie une fois par semaine). Variable : `GEOIP_PROVIDER`.
+- **MaxMind GeoLite2** est conservé : il nécessite un compte gratuit et une clé de licence, et est mis à jour deux fois par semaine.
+
+Un seul fournisseur est actif à la fois et seules ses bases de données sont utilisées. Les fichiers de l'autre fournisseur restent sur le disque : revenir en arrière ne demande donc aucun nouveau téléchargement. GoAccess prend en compte un changement au prochain démarrage du conteneur. Variable : `GEOIP_PROVIDER` (`dbip` ou `maxmind`).
+
+### Bases de données DB-IP
+
+- **Country** : pays pour la carte, les listes de pays et les règles de pays des listes d'accès.
+- **ASN** : réseaux (numéro AS et nom) pour les listes de réseaux.
+
+Les deux sont activées par défaut. Variable : `GEOIP_DBIP_EDITIONS`.
 
 ### Compte MaxMind
 

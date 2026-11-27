@@ -1,8 +1,22 @@
 ## GeoIP
 
-NPMpro sam pobiera darmowe bazy danych MaxMind GeoLite2 i wyszukuje kraje i sieci na Twoim serwerze, więc adresy IP odwiedzających nigdy nie są nigdzie wysyłane. Nie potrzebujesz osobnego kontenera geoipupdate. Bazy zasilają mapę i listy Monitorowania, GoAccess i reguły krajów w nginx.
+NPMpro sam pobiera bezpłatne bazy danych GeoIP (DB-IP Lite lub MaxMind GeoLite2) i wyszukuje kraje i sieci na Twoim serwerze, więc adresy IP odwiedzających nigdy nie są nigdzie wysyłane. Nie potrzebujesz osobnego kontenera geoipupdate. Bazy zasilają mapę i listy Monitorowania, GoAccess i reguły krajów w nginx.
 
 Zmienna ustawiona w kontenerze ma pierwszeństwo przed interfejsem i blokuje pole (pole pokazuje "Ustawione przez środowisko"). Używaj interfejsu dla wszystkiego, czego nie ustawiono w kontenerze. Zapis uruchamia pobieranie w tle, a stan poniżej aktualizuje się po jego zakończeniu.
+
+### Dostawca
+
+- **DB-IP Lite** jest domyślny: bezpłatny, konto nie jest potrzebne, nowe pliki co miesiąc (NPMpro sprawdza raz w tygodniu). Zmienna: `GEOIP_PROVIDER`.
+- **MaxMind GeoLite2** pozostaje dostępny: wymaga bezpłatnego konta i klucza licencyjnego i jest aktualizowany dwa razy w tygodniu.
+
+Aktywny jest jeden dostawca naraz i używane są tylko jego bazy danych. Pliki drugiego dostawcy pozostają na dysku, więc powrót nie wymaga ponownego pobierania. GoAccess uwzględnia zmianę przy następnym uruchomieniu kontenera. Zmienna: `GEOIP_PROVIDER` (`dbip` lub `maxmind`).
+
+### Bazy danych DB-IP
+
+- **Country**: kraje dla mapy, list krajów i reguł krajów w listach dostępu.
+- **ASN**: sieci (numer AS i nazwa) dla list sieci.
+
+Obie są domyślnie włączone. Zmienna: `GEOIP_DBIP_EDITIONS`.
 
 ### Konto MaxMind
 
