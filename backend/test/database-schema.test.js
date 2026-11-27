@@ -31,6 +31,7 @@ const KNOWN = [
 	"npmpro_notification_state",
 	"npmpro_password_token",
 	"npmpro_proxy_host_access_list",
+	"npmpro_webhook",
 	"proxy_host",
 	"session_revocation",
 	"setting",
