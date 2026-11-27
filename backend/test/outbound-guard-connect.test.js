@@ -16,7 +16,7 @@ dns.lookup = (hostname, options, callback) => {
 	const done = typeof options === "function" ? options : callback;
 	asked.push({ hostname, family: options?.family });
 	const queue = answers.get(hostname);
-	if (!queue && hostname === "127.0.0.1") return realLookup(hostname, options, callback);
+	if (!queue && (hostname === "127.0.0.1" || hostname === "::1")) return realLookup(hostname, options, callback);
 	if (!queue) return done(Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" }));
 	const list = queue.length > 1 ? queue.shift() : queue[0];
 	const all = list.map((address) => ({ address, family: address.includes(":") ? 6 : 4 }));
@@ -25,14 +25,22 @@ dns.lookup = (hostname, options, callback) => {
 
 let hits = 0;
 let port = 0;
+let port6 = 0;
 let server;
-before(async () => {
-	server = http.createServer((_req, res) => {
+let server6;
+const listen = async (host) => {
+	const listener = http.createServer((_req, res) => {
 		hits += 1;
 		res.end("ok");
 	});
-	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	await new Promise((resolve) => listener.listen(0, host, resolve));
+	return listener;
+};
+before(async () => {
+	server = await listen("127.0.0.1");
 	port = server.address().port;
+	server6 = await listen("::1");
+	port6 = server6.address().port;
 });
 beforeEach(() => {
 	hits = 0;
@@ -43,6 +51,7 @@ beforeEach(() => {
 after(async () => {
 	dns.lookup = realLookup;
 	await new Promise((resolve) => server.close(resolve));
+	await new Promise((resolve) => server6.close(resolve));
 });
 
 const blockedCause = (err) => {
@@ -111,4 +120,62 @@ it("with family 4 or 6 the lookup asks only for that family", async () => {
 		asked.filter(({ hostname }) => hostname === "fam.test").map(({ family }) => family),
 		[4, 6, undefined],
 	);
+});
+
+// a connector that records the hosts it is asked for and never opens a socket
+const spyBuild = () => {
+	const spy = { built: [], hosts: [] };
+	spy.build = (options) => {
+		spy.built.push(options);
+		return (opts, callback) => {
+			spy.hosts.push(opts.hostname);
+			callback(Object.assign(new Error("not connected"), { code: "ESPY" }), null);
+		};
+	};
+	return spy;
+};
+
+it("an IP address of this host is refused before connecting, in every spelling, with and without privateOnly", async () => {
+	const urls = [
+		`http://127.0.0.1:${port}/`,
+		`https://127.0.0.1:${port}/`,
+		`http://[::1]:${port6}/`,
+		`https://[::1]:${port6}/`,
+		`http://[::ffff:127.0.0.1]:${port}/`,
+		`http://[::ffff:7f00:1]:${port}/`,
+		`http://2130706433:${port}/`,
+		`http://0x7f.1:${port}/`,
+	];
+	for (const privateOnly of [false, true]) {
+		for (const url of urls) {
+			await assert.rejects(fetch(url, { dispatcher: createGuardedAgent({ privateOnly }) }), blockedCause, url);
+		}
+	}
+	assert.equal(hits, 0);
+});
+
+it("the metadata address is refused without connecting anywhere", async () => {
+	const spy = spyBuild();
+	const agent = createGuardedAgent({}, { build: spy.build });
+	await assert.rejects(fetch("http://169.254.169.254/latest/meta-data/", { dispatcher: agent }), blockedCause);
+	await assert.rejects(fetch("https://169.254.169.254/", { dispatcher: agent }), blockedCause);
+	assert.deepEqual(spy.hosts, []);
+});
+
+it("a public IP address goes on to the connect step, privateOnly refuses it there", async () => {
+	const spy = spyBuild();
+	const agent = createGuardedAgent({ rejectUnauthorized: false, servername: "a.example.test" }, { build: spy.build });
+	for (const url of ["https://8.8.8.8/", "https://[2001:4860:4860::8888]/"]) {
+		await assert.rejects(fetch(url, { dispatcher: agent }), (err) => err.cause?.code === "ESPY", url);
+	}
+	assert.deepEqual(spy.hosts, ["8.8.8.8", "2001:4860:4860::8888"]);
+	assert.equal(spy.built[0].rejectUnauthorized, false);
+	assert.equal(spy.built[0].servername, "a.example.test");
+
+	const strict = spyBuild();
+	const lanOnly = createGuardedAgent({ privateOnly: true }, { build: strict.build });
+	await assert.rejects(fetch("http://8.8.8.8/", { dispatcher: lanOnly }), blockedCause);
+	await assert.rejects(fetch("http://[2001:4860:4860::8888]/", { dispatcher: lanOnly }), blockedCause);
+	await assert.rejects(fetch("http://192.168.1.5/", { dispatcher: lanOnly }), (err) => err.cause?.code === "ESPY");
+	assert.deepEqual(strict.hosts, ["192.168.1.5"]);
 });

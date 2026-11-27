@@ -45,7 +45,8 @@ const retryAfterOf = (value, nowMs) => {
 
 const BRACKETS = /^\[|\]$/gu;
 
-// the guarded lookup only sees names: a host written as an IP address is checked here, at every attempt
+// a host written as an IP address is checked here at every attempt for the channel's own rule and error text (the
+// guarded agent refuses a blocked one before connecting too)
 const assertLiteralAllowed = (parsed) => {
 	const host = parsed.hostname.replace(BRACKETS, "");
 	if (isIP(host) === 0) return;
