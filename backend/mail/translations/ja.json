@@ -53,7 +53,7 @@
 	"alerts.webhook.disabled.plain": "Webhook {name} が無効になりました",
 	"alerts.webhook.reason.gone": "受信側が 410 Gone を返しました",
 	"alerts.webhook.reason.failing": "配信が 3 日間失敗しました",
-	"alerts.webhook.reason.restore": "バックアップの復元により無効になりました",
+	"alerts.webhook.reason.restore": "バックアップが復元されました",
 	"alerts.subject.both": "{problems}、{resolved}",
 	"alerts.subject.problems.other": "{count} 件の問題",
 	"alerts.subject.resolved.other": "{count} 件解決",

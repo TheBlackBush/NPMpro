@@ -247,7 +247,7 @@ describe("alert mail template", () => {
 		const tail = (reason) => mail([webhook(reason)]).subject;
 		assert.ok(tail("gone").endsWith("Webhook hook was turned off: the receiver answered 410 Gone"));
 		assert.ok(tail("failing").endsWith("Webhook hook was turned off: deliveries failed for 3 days"));
-		assert.ok(tail("restore").endsWith("Webhook hook was turned off: turned off by a backup restore"));
+		assert.ok(tail("restore").endsWith("Webhook hook was turned off: a backup was restored"));
 		assert.ok(tail("other").endsWith("Webhook hook was turned off"));
 		const german = renderMail("alerts", {
 			language: "de",

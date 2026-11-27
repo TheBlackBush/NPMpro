@@ -53,7 +53,7 @@
 	"alerts.webhook.disabled.plain": "Der Webhook {name} wurde ausgeschaltet",
 	"alerts.webhook.reason.gone": "der Empfänger antwortete mit 410 Gone",
 	"alerts.webhook.reason.failing": "Zustellungen schlugen 3 Tage lang fehl",
-	"alerts.webhook.reason.restore": "durch eine Wiederherstellung ausgeschaltet",
+	"alerts.webhook.reason.restore": "ein Backup wurde wiederhergestellt",
 	"alerts.subject.both": "{problems}, {resolved}",
 	"alerts.subject.problems.one": "{count} Problem",
 	"alerts.subject.problems.other": "{count} Probleme",

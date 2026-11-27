@@ -53,7 +53,7 @@
 	"alerts.webhook.disabled.plain": "Webhook {name} is uitgeschakeld",
 	"alerts.webhook.reason.gone": "de ontvanger antwoordde met 410 Gone",
 	"alerts.webhook.reason.failing": "bezorgingen mislukten 3 dagen lang",
-	"alerts.webhook.reason.restore": "uitgeschakeld door een back-uphersteloperatie",
+	"alerts.webhook.reason.restore": "er is een back-up hersteld",
 	"alerts.subject.both": "{problems}, {resolved}",
 	"alerts.subject.problems.one": "{count} probleem",
 	"alerts.subject.problems.other": "{count} problemen",

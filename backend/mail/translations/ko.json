@@ -53,7 +53,7 @@
 	"alerts.webhook.disabled.plain": "웹훅 {name}이(가) 비활성화되었습니다",
 	"alerts.webhook.reason.gone": "수신 측이 410 Gone으로 응답했습니다",
 	"alerts.webhook.reason.failing": "전송이 3일 동안 실패했습니다",
-	"alerts.webhook.reason.restore": "백업 복원으로 비활성화되었습니다",
+	"alerts.webhook.reason.restore": "백업이 복원되었습니다",
 	"alerts.subject.both": "{problems}, {resolved}",
 	"alerts.subject.problems.other": "문제 {count}건",
 	"alerts.subject.resolved.other": "{count}건 해결",

@@ -53,7 +53,7 @@
 	"alerts.webhook.disabled.plain": "Webhook {name} został wyłączony",
 	"alerts.webhook.reason.gone": "odbiorca odpowiedział 410 Gone",
 	"alerts.webhook.reason.failing": "dostarczanie nie powiodło się przez 3 dni",
-	"alerts.webhook.reason.restore": "wyłączony przez przywrócenie kopii zapasowej",
+	"alerts.webhook.reason.restore": "przywrócono kopię zapasową",
 	"alerts.subject.both": "{problems}, {resolved}",
 	"alerts.subject.problems.one": "{count} problem",
 	"alerts.subject.problems.few": "{count} problemy",

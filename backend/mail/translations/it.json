@@ -53,7 +53,7 @@
 	"alerts.webhook.disabled.plain": "Il webhook {name} è stato disattivato",
 	"alerts.webhook.reason.gone": "il destinatario ha risposto 410 Gone",
 	"alerts.webhook.reason.failing": "gli invii sono falliti per 3 giorni",
-	"alerts.webhook.reason.restore": "disattivato da un ripristino di backup",
+	"alerts.webhook.reason.restore": "è stato ripristinato un backup",
 	"alerts.subject.both": "{problems}, {resolved}",
 	"alerts.subject.problems.one": "{count} problema",
 	"alerts.subject.problems.other": "{count} problemi",

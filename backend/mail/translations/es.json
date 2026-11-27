@@ -53,7 +53,7 @@
 	"alerts.webhook.disabled.plain": "El webhook {name} se desactivó",
 	"alerts.webhook.reason.gone": "el receptor respondió 410 Gone",
 	"alerts.webhook.reason.failing": "los envíos fallaron durante 3 días",
-	"alerts.webhook.reason.restore": "desactivado por una restauración de copia de seguridad",
+	"alerts.webhook.reason.restore": "se restauró una copia de seguridad",
 	"alerts.subject.both": "{problems}, {resolved}",
 	"alerts.subject.problems.one": "{count} problema",
 	"alerts.subject.problems.other": "{count} problemas",

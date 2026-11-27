@@ -53,7 +53,7 @@
 	"alerts.webhook.disabled.plain": "Webhook {name} 已被禁用",
 	"alerts.webhook.reason.gone": "接收方返回了 410 Gone",
 	"alerts.webhook.reason.failing": "投递已连续失败 3 天",
-	"alerts.webhook.reason.restore": "已因备份还原而被禁用",
+	"alerts.webhook.reason.restore": "已还原备份",
 	"alerts.subject.both": "{problems}，{resolved}",
 	"alerts.subject.problems.other": "{count} 个问题",
 	"alerts.subject.resolved.other": "{count} 个已解决",

@@ -53,7 +53,7 @@
 	"alerts.webhook.disabled.plain": "Webhook {name} was turned off",
 	"alerts.webhook.reason.gone": "the receiver answered 410 Gone",
 	"alerts.webhook.reason.failing": "deliveries failed for 3 days",
-	"alerts.webhook.reason.restore": "turned off by a backup restore",
+	"alerts.webhook.reason.restore": "a backup was restored",
 	"alerts.subject.both": "{problems}, {resolved}",
 	"alerts.subject.problems.one": "{count} problem",
 	"alerts.subject.problems.other": "{count} problems",

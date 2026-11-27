@@ -53,7 +53,7 @@
 	"alerts.webhook.disabled.plain": "Вебхук {name} вимкнено",
 	"alerts.webhook.reason.gone": "одержувач відповів 410 Gone",
 	"alerts.webhook.reason.failing": "доставки не вдавалися 3 дні",
-	"alerts.webhook.reason.restore": "вимкнено відновленням із резервної копії",
+	"alerts.webhook.reason.restore": "виконано відновлення з резервної копії",
 	"alerts.subject.both": "{problems}, {resolved}",
 	"alerts.subject.problems.one": "{count} проблема",
 	"alerts.subject.problems.few": "{count} проблеми",
