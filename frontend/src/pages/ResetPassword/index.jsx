@@ -196,7 +196,7 @@ export default function ResetPassword() {
 				{step === "checking" ? null : (
 					<CardHeader className="text-center">
 						<CardTitle role="heading" aria-level={1} className="text-xl">
-							<T id={resetWording(step === "form" || step === "done" ? purpose : null).title} />
+							<T id={resetWording(step === "form" ? purpose : null).title} />
 						</CardTitle>
 						{step === "form" ? (
 							<CardDescription>
