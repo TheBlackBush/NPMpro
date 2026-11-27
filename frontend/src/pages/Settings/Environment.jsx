@@ -65,6 +65,8 @@ const LABELS = {
 	"geoip/account_id": "settings.geoip.account-id",
 	"geoip/license_key": "settings.geoip.license-key",
 	"geoip/editions": "settings.geoip.editions",
+	"geoip/provider": "settings.geoip.provider",
+	"geoip/dbip_editions": "settings.geoip.editions",
 	"email/host": "settings.email.host",
 	"email/port": "settings.email.port",
 	"email/security": "settings.email.security",
