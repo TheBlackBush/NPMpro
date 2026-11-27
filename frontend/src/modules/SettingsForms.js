@@ -371,15 +371,22 @@ export const toggleDbipEdition = (editions, edition, on) =>
  */
 export const geoipRequest = (values, data) => {
 	const isLocked = lockedIn(data.locked);
-	const accountId = values.accountId.trim();
-	const licenseKey = values.licenseKey.trim();
+	// the MaxMind fields are not shown while DB-IP is the provider: the saved account ID stays, no key is sent
+	const maxmind = values.provider !== "dbip";
+	const accountId = maxmind ? values.accountId.trim() : (data.accountId ?? "");
+	const licenseKey = maxmind ? values.licenseKey.trim() : "";
+	const savedProvider = data.provider ?? "dbip";
 	const startsDownload =
 		(!isLocked("accountId") && accountId !== (data.accountId ?? "")) ||
 		(!isLocked("licenseKey") && licenseKey !== "") ||
 		(!isLocked("editions") && !sameEditions(values.editions, data.editions ?? [])) ||
-		(!isLocked("provider") && values.provider !== (data.provider ?? "dbip")) ||
+		(!isLocked("provider") && values.provider !== savedProvider) ||
 		(!isLocked("dbipEditions") && !sameEditions(values.dbipEditions, data.dbipEditions ?? []));
-	return { body: { ...values, accountId, licenseKey, locked: data.locked ?? [] }, startsDownload };
+	const { provider, ...rest } = values;
+	// the provider only when changed: a save of another field must not pin a provider that was only derived
+	const body = { ...rest, accountId, licenseKey, locked: data.locked ?? [] };
+	if (provider !== savedProvider) body.provider = provider;
+	return { body, startsDownload };
 };
 
 // Logs & monitoring
