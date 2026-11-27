@@ -45,7 +45,7 @@ What NPMpro offers, grouped by topic. Each group links to the page that explains
 
 ## Monitoring and logs
 - a [Monitoring](Monitoring) page with traffic statistics per host (requests, bytes, status classes, countries, networks, optional unique visitors and top IPs) and the active CrowdSec bans
-- GeoIP: NPMpro downloads the MaxMind GeoLite2 databases itself (Settings, GeoIP)
+- GeoIP: NPMpro downloads the GeoIP databases itself, from DB-IP Lite (no account, the default) or MaxMind GeoLite2 (Settings, GeoIP)
 - the [GoAccess](Monitoring#goaccess) log report (`/goaccess`) and the API reference (`/api-reference`), both inside
   the web UI
 
