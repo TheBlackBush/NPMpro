@@ -43,3 +43,10 @@ it("formats a time with its zone name", () => {
 	assert.match(text, CLOCK);
 	assert.match(text, ZONE);
 });
+
+it("shows a dash for a missing or invalid time", () => {
+	assert.equal(formatDeliveryTime(null, "en"), "-");
+	assert.equal(formatDeliveryTime(undefined, "en"), "-");
+	assert.equal(formatDeliveryTime("", "en"), "-");
+	assert.equal(formatDeliveryTime("not a date", "en"), "-");
+});

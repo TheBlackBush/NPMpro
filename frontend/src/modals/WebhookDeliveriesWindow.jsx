@@ -35,6 +35,8 @@ function Row({ delivery, webhookEnabled, open, onToggle, redelivering, onRedeliv
 	const redeliver = redeliverState(delivery, webhookEnabled);
 	const eventId = eventLabelId(delivery.event);
 	const detailId = `webhook-delivery-detail-${delivery.id}`;
+	const time = formatDeliveryTime(delivery.createdOn, currentLocale);
+	const eventName = eventId ? intl.formatMessage({ id: eventId }) : delivery.event;
 	return (
 		<>
 			<TableRow data-webhook-delivery={delivery.id}>
@@ -44,10 +46,15 @@ function Row({ delivery, webhookEnabled, open, onToggle, redelivering, onRedeliv
 							type="button"
 							className="me-1 inline-flex size-5 items-center justify-center rounded-sm align-middle hover:bg-muted"
 							aria-expanded={open}
-							aria-controls={detailId}
-							aria-label={intl.formatMessage({
-								id: open ? "settings.webhooks.deliveries.hide" : "settings.webhooks.deliveries.show",
-							})}
+							aria-controls={open ? detailId : undefined}
+							aria-label={intl.formatMessage(
+								{
+									id: open
+										? "settings.webhooks.deliveries.hide"
+										: "settings.webhooks.deliveries.show",
+								},
+								{ time, event: eventName },
+							)}
 							onClick={onToggle}
 						>
 							{open ? (
@@ -59,7 +66,7 @@ function Row({ delivery, webhookEnabled, open, onToggle, redelivering, onRedeliv
 					) : (
 						<span className="me-1 inline-block size-5 align-middle" aria-hidden="true" />
 					)}
-					{formatDeliveryTime(delivery.createdOn, currentLocale)}
+					{time}
 				</TableCell>
 				<TableCell className="wrap-anywhere whitespace-normal">
 					{eventId ? <T id={eventId} /> : <span className="font-mono text-sm">{delivery.event}</span>}
@@ -201,7 +208,7 @@ function WebhookDeliveriesWindow({ webhook, visible, remove }) {
 											webhookEnabled={webhook.enabled}
 											open={openIds.includes(delivery.id)}
 											onToggle={() => toggle(delivery.id)}
-											redelivering={redeliver.isPending}
+											redelivering={redeliver.isPending && redeliver.variables === delivery.id}
 											onRedeliver={onRedeliver}
 											columns={columns}
 										/>

@@ -53,9 +53,15 @@ export const detailOf = (delivery) => {
  * @param   {string}  value  an ISO time
  * @param   {string}  locale
  * @param   {string}  [timeZone]  default: the browser's
- * @returns {string}
+ * @returns {string} a dash for a missing or invalid time
  */
-export const formatDeliveryTime = (value, locale, timeZone) =>
-	new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "long", hourCycle: "h23", timeZone }).format(
-		new Date(value),
-	);
+export const formatDeliveryTime = (value, locale, timeZone) => {
+	const date = new Date(value ?? Number.NaN);
+	if (Number.isNaN(date.getTime())) return "-";
+	return new Intl.DateTimeFormat(locale, {
+		dateStyle: "medium",
+		timeStyle: "long",
+		hourCycle: "h23",
+		timeZone,
+	}).format(date);
+};
