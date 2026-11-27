@@ -1,5 +1,6 @@
 import errs from "../lib/error.js";
 import userModel from "../models/user.js";
+import internalAccountMail from "./account-mail.js";
 import internalAuditLog from "./audit-log.js";
 import backupCodes from "./backup-codes.js";
 import totp from "./totp.js";
@@ -74,9 +75,12 @@ const internalMfa = {
 			throw new errs.ValidationError("Invalid verification code", "error.invalid-code");
 		}
 
+		// loaded before the write: a failure here never leaves a changed account behind an error answer
+		const user = await internalUser.get(access, { id: userId });
 		await totp.disable(access, userId, false, async (trx) => {
 			if (!(await internalMfa.isAnyEnabled(userId, trx))) await backupCodes.delete(userId, trx);
 		});
+		await internalAccountMail.noticeMfaOff(user, false);
 	},
 
 	/**
@@ -127,6 +131,7 @@ const internalMfa = {
 				recovery: true,
 			},
 		});
+		await internalAccountMail.noticeMfaOff(user, true);
 	},
 
 	/**
@@ -166,6 +171,8 @@ const internalMfa = {
 				backup_codes_regenerated: true,
 			},
 		});
+
+		await internalAccountMail.noticeBackupCodes(user, false);
 
 		return { backup_codes: plain };
 	},

@@ -33,6 +33,13 @@ Shown once a mail server is set up. Mails about problems NPMpro detects, and whe
 - **Public URL**: the address people open NPMpro at, used for the links in mails, for example `https://npm.example.com`. HTTPS only, no path. **Use this browser's address** fills it with the address of this page when it is opened over HTTPS. Variable: `PUBLIC_URL`.
 - **Default mail language**: the language of mails for people who have not chosen one. Each user's own interface language is remembered and used for their mails. Variable: `MAIL_LANGUAGE`.
 
+### Invitations and account notices
+
+Both need a mail server. Invitations also need the **Public URL**.
+
+- **Invitations**: when you add a user, you can send an invitation instead of setting a password. The user gets a mail with a link to choose a password; the link works once and for 72 hours. **Send invitation again** in the user list sends a new link.
+- **Account notices**: users get a mail when their password or address changes, when two-factor sign-in is turned off or when new backup codes are made.
+
 ### Webhooks
 
 A webhook is an address of your own that NPMpro calls with a signed HTTP request when something happens, for example when a certificate was renewed. Only administrators see this card.

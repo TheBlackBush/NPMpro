@@ -14,13 +14,15 @@ import {
 	TextField,
 	useAppForm,
 } from "src/components";
-import { DirtyTracker, useSetUser, useUnsavedChangesGuard, useUser } from "src/hooks";
-import { T } from "src/locale";
+import { DirtyTracker, useInvitationsOffered, useSetUser, useUnsavedChangesGuard, useUser } from "src/hooks";
+import { intl, T } from "src/locale";
 import { userValidate } from "src/modules/AccountForms";
 import EasyModal from "src/modules/easyModal";
+import { invitationFailureText } from "src/modules/InvitationMessages";
+import { invitationOutcome, inviteOptionShown, userCreatePayload } from "src/modules/Invitations";
 import { isAdmin } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
-import { showObjectSuccess } from "src/notifications";
+import { showError, showObjectSuccess, showSuccess } from "src/notifications";
 
 /**
  * @param {number|string} id  a user's id, "new" or "me"
@@ -31,7 +33,10 @@ const showUserModal = (id) => {
 
 const validate = userValidate(validations);
 
-const emptyUser = { name: "", email: "", isAdmin: false, isDisabled: false };
+const emptyUser = { name: "", email: "", isAdmin: false, isDisabled: false, invite: false };
+
+const hasText = (messageId) => Boolean(intl.messages[messageId]);
+const formatText = (messageId, values) => intl.formatMessage({ id: messageId }, values);
 
 const UserModal = EasyModal.create(({ id, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
@@ -39,6 +44,9 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 	const { data: currentUser, isPending: currentIsPending } = useUser("me");
 	const { mutateAsync: setUser } = useSetUser();
 	const [errorMsg, setErrorMsg] = useState(null);
+	const admin = isAdmin(currentUser?.roles) === true;
+	const offered = useInvitationsOffered(admin);
+	const inviteShown = inviteOptionShown({ offered, isAdmin: admin, isNew: id === "new" });
 	const methods = useAppForm({
 		defaultValues: emptyUser,
 		values: data
@@ -47,6 +55,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 					email: data.email ?? "",
 					isAdmin: Boolean(isAdmin(data.roles)),
 					isDisabled: Boolean(data.isDisabled),
+					invite: false,
 				}
 			: undefined,
 		validate,
@@ -58,11 +67,14 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
 
-		const payload = {
-			id: id === "new" ? undefined : id,
-			roles: [],
-			...values,
-		};
+		const payload = userCreatePayload(
+			{
+				id: id === "new" ? undefined : id,
+				roles: [],
+				...values,
+			},
+			inviteShown,
+		);
 
 		if (data?.id === currentUser?.id) {
 			// Prevent user from locking themselves out
@@ -76,8 +88,14 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 		delete payload.isAdmin;
 
 		try {
-			await setUser(payload);
+			const result = await setUser(payload);
+			const outcome = payload.invite ? invitationOutcome(result) : null;
 			showObjectSuccess("user", "saved");
+			if (outcome?.sent === true) {
+				showSuccess(<T id="user.invitation.sent" />);
+			} else if (outcome) {
+				showError(invitationFailureText(outcome, { created: true, format: formatText, has: hasText }));
+			}
 			remove();
 		} catch (err) {
 			setErrorMsg(<ApiErrorContent error={err} />);
@@ -107,6 +125,18 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 							autoComplete="off"
 							required
 						/>
+						{inviteShown ? (
+							<FormSection legend={<T id="user.invite" />} hideLegend>
+								<SwitchList>
+									<SwitchField
+										id="invite"
+										label={<T id="user.invite" />}
+										hint={<T id="user.invite.hint" />}
+										{...register("invite")}
+									/>
+								</SwitchList>
+							</FormSection>
+						) : null}
 						{currentUser?.id !== data?.id ? (
 							<FormSection legend={<T id="options" />} className="mb-0">
 								<SwitchList>

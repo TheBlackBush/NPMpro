@@ -74,9 +74,31 @@ const mailValues = async () => ({
 /** Plugs the stored settings into the mail sender (startup); without it only the env counts */
 const useMailSettings = () => internalMail.useSettings(mailValues);
 
-/** After a restore: the settings are read from the database on every send, only the decrypt warning starts over */
-const reloadMailSettings = () => {
+/**
+ * Invitations off (the stored switch or MAIL_INVITATIONS) end the invitation links that are still out, so a later
+ * switch-on brings none back: the switch in the UI does it at the save, startup and a restore of the settings call this.
+ * The password is not decrypted.
+ *
+ * @returns {Promise<void>}
+ */
+const endInvitationsWhenOff = async () => {
+	const { password: _sealed, ...stored } = await readStored("email");
+	if (mergeEmail(stored, process.env).values.invitations !== true)
+		await internalPasswordToken.removePurpose("invite");
+};
+
+/**
+ * After a restore: the settings are read from the database on every send, only the decrypt warning starts over;
+ * restored invitations off end the pending links
+ */
+const reloadMailSettings = async () => {
 	warnedSecret = false;
+	// a failure here must not fail the restore after its data is in: the links then end at the next start
+	try {
+		await endInvitationsWhenOff();
+	} catch (err) {
+		logger.warn(`Could not end the pending invitations: ${err.message}`);
+	}
 };
 
 const invalid = (errors) => {
@@ -146,6 +168,34 @@ const testFailure = async (err, extra = {}) => {
 	});
 };
 
+/**
+ * A failed send as plain data for an answer that still succeeds (an invitation: the user exists, the mail did not go):
+ * the scrubbed text, at most 300 characters, and a translated key with its values when the cause is known. Never the
+ * address, a link or an unscrubbed server text: only a MailError or a ValidationError of ours carries a message.
+ *
+ * @param   {Error}  err
+ * @returns {Promise<{error: string, error_i18n: string, error_values?: Object}>}
+ */
+const sendFailureOf = async (err) => {
+	if (err?.code === "EBLOCKED") {
+		return {
+			error: "The mail server resolves to an address outbound requests may not reach",
+			error_i18n: "error.mail-host-blocked",
+			error_values: { host: (await getEmailConfig()).values.host },
+		};
+	}
+	if (err instanceof errs.ValidationError && err.message_i18n) {
+		return { error: err.message.slice(0, TEST_ERROR_MAX), error_i18n: err.message_i18n };
+	}
+	if (err instanceof MailError && err.message_i18n) {
+		const values = { ...err.message_values };
+		if (typeof values.error === "string") values.error = values.error.slice(0, TEST_ERROR_MAX);
+		return { error: err.message.slice(0, TEST_ERROR_MAX), error_i18n: err.message_i18n, error_values: values };
+	}
+	const text = (err instanceof MailError ? err.message : "The mail could not be sent").slice(0, TEST_ERROR_MAX);
+	return { error: text, error_i18n: "error.invite-mail-failed", error_values: { error: text } };
+};
+
 const internalMailSetting = {
 	/**
 	 * @param   {Access}  access
@@ -208,6 +258,10 @@ const internalMailSetting = {
 		// switching reset off is an emergency stop: the links still out must not come back when it is switched on
 		if (patch.allow_password_reset === false && config.values.allow_password_reset === true) {
 			await internalPasswordToken.removePurpose("reset");
+		}
+		// the same for invitations: off ends the pending links, a later switch-on brings none back
+		if (patch.invitations === false && config.values.invitations === true) {
+			await internalPasswordToken.removePurpose("invite");
 		}
 		await audit(access, "updated", { id: "email", changed });
 		return internalMailSetting.getEmail(access);
@@ -310,5 +364,44 @@ const resetOffered = async (oidc) => {
 	return isConfigured(email);
 };
 
-export { getEmailConfig, getNotificationsConfig, reloadMailSettings, resetOffered, useMailSettings };
+/**
+ * Whether an invitation mail is offered: the switch on, a valid public URL (the link's address), password sign-in not
+ * turned off by OIDC (the invited user sets a password) and mail configured. The cheap checks come first and the switch
+ * is read from the row or the env, so no password is decrypted while it is off.
+ *
+ * @param   {Object}  [oidc]  the result of getOidcConfig() when the caller has it already
+ * @returns {Promise<boolean>}
+ */
+const invitationsOffered = async (oidc) => {
+	const { password: _sealed, ...stored } = await readStored("email");
+	const { values: email } = mergeEmail(stored, process.env);
+	if (email.invitations !== true) return false;
+	if (!normalizePublicUrl((await getNotificationsConfig()).values.public_url)) return false;
+	const cfg = oidc ?? (await getOidcConfig());
+	if (cfg.active && cfg.values.disable_password) return false;
+	return isConfigured(email);
+};
+
+/**
+ * Whether the account notices (password changed, address changed, MFA off, new backup codes) are on. The switch only:
+ * whether mail is configured is checked when the mail is queued. The password is not decrypted.
+ *
+ * @returns {Promise<boolean>}
+ */
+const accountNoticesOn = async () => {
+	const { password: _sealed, ...stored } = await readStored("email");
+	return mergeEmail(stored, process.env).values.account_notices === true;
+};
+
+export {
+	accountNoticesOn,
+	endInvitationsWhenOff,
+	getEmailConfig,
+	getNotificationsConfig,
+	invitationsOffered,
+	reloadMailSettings,
+	resetOffered,
+	sendFailureOf,
+	useMailSettings,
+};
 export default internalMailSetting;

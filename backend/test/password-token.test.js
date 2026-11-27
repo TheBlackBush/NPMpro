@@ -52,13 +52,19 @@ it("creates a 43 character base64url token and stores only its SHA-256, the life
 	assert.notEqual(await tokens.create(userId, "reset"), token);
 });
 
-it("takes the lifetime of a caller, and refuses an unknown purpose or no lifetime", async () => {
+it("takes the lifetime of a caller, gives an invitation 72 hours by default, and refuses an unknown purpose", async () => {
 	await tokens.create(userId, "invite", { lifetimeMs: 72 * 60 * MINUTE });
 	const [row] = await rows();
 	const lifetime = Date.parse(row.expires_on.replace(" ", "T")) - Date.parse(row.created_on.replace(" ", "T"));
 	assert.equal(lifetime, 72 * 60 * MINUTE);
 	await assert.rejects(tokens.create(userId, "other"));
-	await assert.rejects(tokens.create(userId, "invite"));
+	await assert.rejects(tokens.create(userId, "invite", { lifetimeMs: 0 }));
+	await tokens.create(userId, "invite");
+	const [fixed] = await rows();
+	assert.equal(
+		Date.parse(fixed.expires_on.replace(" ", "T")) - Date.parse(fixed.created_on.replace(" ", "T")),
+		72 * 60 * MINUTE,
+	);
 });
 
 it("finds the token within 30 minutes and not after", async () => {

@@ -29,6 +29,8 @@
 								"from_name": "NPMpro",
 								"reply_to": "",
 								"allow_password_reset": false,
+								"invitations": true,
+								"account_notices": true,
 								"password_set": true,
 								"secret_error": false,
 								"locked": [],

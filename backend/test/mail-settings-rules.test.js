@@ -33,6 +33,8 @@ it("names every env key and the 13 languages", () => {
 		from_name: "SMTP_FROM_NAME",
 		reply_to: "SMTP_REPLY_TO",
 		allow_password_reset: "PASSWORD_RESET",
+		invitations: "MAIL_INVITATIONS",
+		account_notices: "MAIL_ACCOUNT_NOTICES",
 	});
 	assert.deepEqual(NOTIFICATION_ENV_KEYS, {
 		public_url: "PUBLIC_URL",
@@ -288,6 +290,29 @@ it("allow_password_reset is off by default, on only for the word true, and must 
 		allow_password_reset: "settings.email.allow-password-reset.invalid",
 	});
 	assert.deepEqual(okEmail({ allow_password_reset: false }), {});
+});
+
+it("invitations and account_notices are on by default, off only for the word false, and must be booleans", () => {
+	for (const key of ["invitations", "account_notices"]) {
+		const envName = key === "invitations" ? "MAIL_INVITATIONS" : "MAIL_ACCOUNT_NOTICES";
+		assert.equal(mergeEmail({}, {}).values[key], true, key);
+		assert.equal(mergeEmail({ [key]: false }, {}).values[key], false, key);
+		assert.equal(mergeEmail({ [key]: false }, { [envName]: "true" }).values[key], true, key);
+		for (const raw of ["0", "no", "FALSE", "true"]) {
+			assert.equal(
+				mergeEmail({ [key]: false }, { [envName]: raw }).values[key],
+				raw !== "false",
+				`${key} ${raw}`,
+			);
+		}
+		const off = mergeEmail({}, { [envName]: "false" });
+		assert.equal(off.values[key], false);
+		assert.deepEqual(off.locked, [key]);
+		assert.deepEqual(okEmail({ [key]: "false" }), {
+			[key]: `settings.email.${key.replaceAll("_", "-")}.invalid`,
+		});
+		assert.deepEqual(okEmail({ [key]: false }), {});
+	}
 });
 
 it("the alert settings: defaults, the env list, one problem with its placeholders, a kept value passes", () => {

@@ -1,5 +1,16 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Lock, MonitorOff, Power, ShieldCheck, ShieldOff, SquarePen, Trash2, Unlink, Users } from "lucide-react";
+import {
+	Lock,
+	MailPlus,
+	MonitorOff,
+	Power,
+	ShieldCheck,
+	ShieldOff,
+	SquarePen,
+	Trash2,
+	Unlink,
+	Users,
+} from "lucide-react";
 import { useMemo } from "react";
 import {
 	EmailFormatter,
@@ -15,7 +26,7 @@ import { TableLayout } from "src/components/Table/TableLayout";
 import { useAppTable } from "src/components/Table/useAppTable";
 import { intl, T } from "src/locale";
 import { signInActions } from "src/modules/AccountWindow";
-import { signInMethods } from "src/modules/SignInMethods";
+import { resendShown, signInLabels } from "src/modules/Invitations";
 
 const columnHelper = createColumnHelper();
 
@@ -25,17 +36,19 @@ const rolesSummary = (row) =>
 		.join(", ");
 
 const signInSummary = (row) =>
-	signInMethods(row)
-		.map((method) => intl.formatMessage({ id: `user.sign-in.${method}` }))
+	signInLabels(row)
+		.map((id) => intl.formatMessage({ id }))
 		.join(", ");
 
 function UserActions({
 	user,
 	currentUserId,
 	mfaUserIds,
+	invitationsOffered,
 	onEditUser,
 	onEditPermissions,
 	onSetPassword,
+	onInviteAgain,
 	onResetMfa,
 	onRevokeSessions,
 	onUnlinkOidc,
@@ -77,6 +90,13 @@ function UserActions({
 					icon: Lock,
 					onSelect: () => onSetPassword?.(user.id),
 					hidden: !signIn.includes("set-password"),
+				},
+				{
+					key: "invite-again",
+					label: <T id="user.invite-again" />,
+					icon: MailPlus,
+					onSelect: () => onInviteAgain?.(user.id),
+					hidden: !resendShown(user, invitationsOffered),
 				},
 				{
 					key: "reset-mfa",
@@ -167,7 +187,7 @@ export function useColumns() {
 				header: intl.formatMessage({ id: "column.roles" }),
 				cell: (info) => <RolesFormatter roles={info.row.original.roles} />,
 			}),
-			columnHelper.accessor((row) => signInMethods(row).join(","), {
+			columnHelper.accessor((row) => signInLabels(row).join(","), {
 				id: "signIn",
 				meta: { mobile: "summary", summaryText: signInSummary },
 				header: intl.formatMessage({ id: "column.sign-in" }),
@@ -208,9 +228,11 @@ export default function Table({
 	isFetching,
 	currentUserId,
 	mfaUserIds,
+	invitationsOffered,
 	onEditUser,
 	onEditPermissions,
 	onSetPassword,
+	onInviteAgain,
 	onResetMfa,
 	onRevokeSessions,
 	onUnlinkOidc,
@@ -231,9 +253,11 @@ export default function Table({
 			actions: {
 				currentUserId,
 				mfaUserIds,
+				invitationsOffered,
 				onEditUser,
 				onEditPermissions,
 				onSetPassword,
+				onInviteAgain,
 				onResetMfa,
 				onRevokeSessions,
 				onUnlinkOidc,

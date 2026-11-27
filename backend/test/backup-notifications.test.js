@@ -110,3 +110,22 @@ it("an env password still wins after a restore with secrets", async () => {
 	// the restored row still holds the backup's password under the env one
 	assert.equal(secretBox.decrypt((await metaOf("email")).password), "mail-pass-3");
 });
+
+it("a restore with invitations off ends the invitation links still out; with them on it keeps them", async () => {
+	const { default: tokens } = await import("../internal/password-token.js");
+	const adminId = (await admin.get("/users/me")).body.id;
+	const invites = () => api.db("npmpro_password_token").where({ purpose: "invite" });
+	await save({ invitations: true });
+	const on = await keep({ secrets: false });
+	await save({ invitations: false });
+	const off = await keep({ secrets: false });
+	await save({ invitations: true });
+
+	await tokens.create(adminId, "invite");
+	await restore(on);
+	assert.equal((await invites()).length, 1);
+	await restore(off);
+	assert.equal((await invites()).length, 0);
+	await save({ invitations: true });
+	assert.equal((await invites()).length, 0, "switching on again brings no link back");
+});

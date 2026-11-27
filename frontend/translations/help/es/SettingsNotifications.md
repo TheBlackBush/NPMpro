@@ -33,6 +33,13 @@ Se muestran una vez configurado un servidor de correo. Correos sobre los problem
 - **URL pública**: la dirección con la que las personas abren NPMpro, usada para los enlaces de los correos, por ejemplo `https://npm.example.com`. Solo HTTPS, sin ruta. **Usar la dirección de este navegador** la rellena con la dirección de esta página cuando se abre por HTTPS. Variable: `PUBLIC_URL`.
 - **Idioma del correo por defecto**: el idioma de los correos para las personas que no han elegido uno. El idioma de interfaz de cada usuario se recuerda y se usa para sus correos. Variable: `MAIL_LANGUAGE`.
 
+### Invitaciones y avisos de cuenta
+
+Ambos necesitan un servidor de correo. Las invitaciones necesitan además la **URL pública**.
+
+- **Invitaciones**: al añadir un usuario puedes enviar una invitación en lugar de establecer una contraseña. El usuario recibe un correo con un enlace para elegir una contraseña; el enlace funciona una sola vez y durante 72 horas. **Reenviar invitación** en la lista de usuarios envía un enlace nuevo.
+- **Avisos de cuenta**: los usuarios reciben un correo cuando cambia su contraseña o su dirección, cuando se desactiva el inicio de sesión en dos pasos o cuando se generan nuevos códigos de respaldo.
+
 ### Webhooks
 
 Un webhook es una dirección tuya a la que NPMpro llama con una petición HTTP firmada cuando ocurre algo, por ejemplo cuando se renovó un certificado. Solo los administradores ven esta tarjeta.

@@ -33,6 +33,13 @@ Zichtbaar zodra een mailserver is ingesteld. Mails over problemen die NPMpro det
 - **Openbare URL**: het adres waarop mensen NPMpro openen, gebruikt voor de links in mails, bijvoorbeeld `https://npm.example.com`. Alleen HTTPS, geen pad. **Adres van deze browser gebruiken** vult het met het adres van deze pagina als die via HTTPS is geopend. Variabele: `PUBLIC_URL`.
 - **Standaardtaal van mails**: de taal van mails voor mensen die er geen hebben gekozen. De interfacetaal van elke gebruiker wordt onthouden en gebruikt voor zijn of haar mails. Variabele: `MAIL_LANGUAGE`.
 
+### Uitnodigingen en accountmeldingen
+
+Beide hebben een mailserver nodig. Uitnodigingen hebben ook de **Openbare URL** nodig.
+
+- **Uitnodigingen**: als je een gebruiker toevoegt, kun je een uitnodiging sturen in plaats van een wachtwoord in te stellen. De gebruiker krijgt een mail met een link om een wachtwoord te kiezen; de link werkt één keer en 72 uur. **Uitnodiging opnieuw sturen** in de gebruikerslijst stuurt een nieuwe link.
+- **Accountmeldingen**: gebruikers krijgen een mail wanneer hun wachtwoord of adres verandert, tweestapsaanmelding wordt uitgezet of nieuwe back-upcodes worden gemaakt.
+
 ### Webhooks
 
 Een webhook is een eigen adres dat NPMpro aanroept met een ondertekend HTTP-verzoek wanneer er iets gebeurt, bijvoorbeeld wanneer een certificaat is vernieuwd. Alleen beheerders zien deze kaart.

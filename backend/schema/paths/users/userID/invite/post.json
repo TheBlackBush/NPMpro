@@ -1,0 +1,62 @@
+{
+	"operationId": "inviteUser",
+	"summary": "Send an invitation again",
+	"tags": [
+		"users"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "userID",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"required": true,
+			"description": "ID of the user",
+			"example": 2
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The user with `invited: true` and `invitation`: `{ sent, error?, error_i18n?, error_values? }`",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/user-object.json"
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"id": 2,
+								"created_on": "2026-11-17T09:30:00.000Z",
+								"modified_on": "2026-11-17T09:30:00.000Z",
+								"is_disabled": false,
+								"email": "jane@example.com",
+								"name": "Jane Doe",
+								"avatar": "//www.gravatar.com/avatar/0f3a8c5d9e1b4a7c2d6e8f0a1b3c5d7e?default=mm",
+								"roles": [],
+								"invited": true,
+								"invitation": {
+									"sent": true
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "`error.invite-not-offered` (invitations are not offered) or `error.invite-not-allowed` (the user has a password or an OIDC link, or is disabled)"
+		},
+		"403": {
+			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
+		}
+	},
+	"description": "Sends a new invitation mail to a user who has not set a password and is not linked to OIDC. The new link replaces the old one: the old link stops working. The link lives 72 hours. A mail that did not go out still answers 200 with `invitation.sent` false.\n\nNeeds: a signed-in session of an administrator (API tokens are refused)"
+}

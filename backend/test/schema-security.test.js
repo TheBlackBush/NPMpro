@@ -29,6 +29,8 @@ const SESSION_ONLY = new Set([
 	"put /users/{userID}",
 	"delete /users/{userID}",
 	"put /users/{userID}/permissions",
+	// an invitation link sets a password: a session of an administrator only
+	"post /users/{userID}/invite",
 	// the settings that decide who can sign in (Administrator switch included)
 	"put /settings/oidc",
 	// where mail and its login go

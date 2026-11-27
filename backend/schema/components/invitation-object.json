@@ -1,0 +1,30 @@
+{
+	"type": "object",
+	"description": "The result of sending an invitation mail",
+	"required": [
+		"sent"
+	],
+	"additionalProperties": false,
+	"properties": {
+		"sent": {
+			"type": "boolean",
+			"description": "Whether the mail was handed to the mail server",
+			"example": false
+		},
+		"error": {
+			"type": "string",
+			"description": "Why it was not sent: a scrubbed text of at most 300 characters, never the address or the link",
+			"example": "The mail server refused the login"
+		},
+		"error_i18n": {
+			"type": "string",
+			"description": "The translation key of the error",
+			"example": "error.invite-mail-failed"
+		},
+		"error_values": {
+			"type": "object",
+			"description": "Values for the translated error",
+			"additionalProperties": true
+		}
+	}
+}

@@ -114,16 +114,19 @@ async function choose(page, select, name) {
 	await page.getByRole("option", { name, exact: true }).click();
 }
 
-// the default mail language: German is saved, then the stored one again
+// the default mail language: another one than the stored (German, French when German is stored) is saved, then the
+// stored one again
 async function defaultLanguage(page, api, before) {
 	const select = page.locator(LANGUAGE);
 	if (await select.isDisabled()) {
 		console.log("notifications settings: the default mail language is locked here");
 		return;
 	}
-	await choose(page, select, langs.de.name);
+	const other = before.default_language === "de" ? "fr" : "de";
+	await choose(page, select, langs[other].name);
 	await withToast(page, SAVED, () => saveButton(page).click());
-	if ((await storedNotifications(api)).default_language !== "de") throw new Error("German was not saved");
+	if ((await storedNotifications(api)).default_language !== other)
+		throw new Error(`${langs[other].name} was not saved`);
 	await choose(page, select, langs[before.default_language].name);
 	await withToast(page, SAVED, () => saveButton(page).click());
 	if ((await storedNotifications(api)).default_language !== before.default_language)
@@ -233,6 +236,42 @@ async function sampleAlert(page) {
 	);
 }
 
+const NOTICES = "#email-account-notices";
+
+// the Account notices switch of the Mail server card: off and saved, off after a reload, on again and saved; the
+// stored value is put back at the end
+async function accountNotices(page, api) {
+	const toggle = () => page.locator(NOTICES);
+	await toggle().waitFor();
+	if (await toggle().isDisabled()) {
+		console.log("notifications settings: the Account notices switch is locked here");
+		return;
+	}
+	const was = await toggle().isChecked();
+	const stored = async () => (await api("GET", "/settings/email")).account_notices;
+	const set = async (on) => {
+		if ((await toggle().isChecked()) !== on) await toggle().setChecked(on);
+		await withToast(page, SAVED, () => saveButton(page).click());
+	};
+	try {
+		await set(false);
+		if ((await stored()) !== false) throw new Error("Account notices was not saved as off");
+		await page.reload();
+		await toggle().waitFor();
+		if (await toggle().isChecked()) throw new Error("Account notices shows on after it was saved off and reloaded");
+		await set(true);
+		if ((await stored()) !== true) throw new Error("Account notices was not saved as on");
+	} finally {
+		try {
+			await page.reload();
+			await toggle().waitFor();
+			if ((await toggle().isChecked()) !== was) await set(was);
+		} catch (restoreError) {
+			console.log(`notifications settings: Account notices was not restored (${restoreError.message})`);
+		}
+	}
+}
+
 async function notificationsSettings({ admin }) {
 	const { page, api } = admin;
 	const before = await storedNotifications(api);
@@ -249,6 +288,9 @@ async function notificationsSettings({ admin }) {
 		await publicUrl(page, api, before);
 		await defaultLanguage(page, api, before);
 		await mailAlerts(page, api, email.configured);
+		await page.reload();
+		await page.locator(HOST).waitFor();
+		await accountNotices(page, api);
 	} finally {
 		const now = await storedNotifications(api);
 		const restore = {};

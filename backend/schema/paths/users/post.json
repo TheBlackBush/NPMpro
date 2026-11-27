@@ -61,6 +61,11 @@
 								"type": "password",
 								"secret": "your-password"
 							}
+						},
+						"invite": {
+							"type": "boolean",
+							"default": false,
+							"description": "Send the user an invitation mail instead of setting a password: the user chooses the password from the link (72 hours). Not together with `auth`. Refused with `error.invite-not-offered` unless invitations are offered (mail configured, the public URL set, Invitations on)"
 						}
 					}
 				},
@@ -82,7 +87,7 @@
 	},
 	"responses": {
 		"201": {
-			"description": "The created user",
+			"description": "The created user. With `invite` it also holds `invited: true` and `invitation`: `{ sent, error?, error_i18n?, error_values? }`, so a mail that did not go out is visible while the user exists",
 			"content": {
 				"application/json": {
 					"examples": {
@@ -109,5 +114,5 @@
 			"description": "Not allowed: API tokens are refused here, use a signed-in session. The answer is an error with the message `API tokens cannot manage users`."
 		}
 	},
-	"description": "Creates a user with the permissions all hidden (visibility is all for an administrator, own items for others), and a password when `auth` is given. Set the permissions afterwards with the permissions route. The email is stored in lower case and must not be in use (400).\n\nNeeds: a signed-in session of an administrator (API tokens are refused)"
+	"description": "Creates a user with the permissions all hidden (visibility is all for an administrator, own items for others), and a password when `auth` is given, or an invitation mail when `invite` is true. Set the permissions afterwards with the permissions route. The email is stored in lower case and must not be in use (400).\n\nNeeds: a signed-in session of an administrator (API tokens are refused)"
 }

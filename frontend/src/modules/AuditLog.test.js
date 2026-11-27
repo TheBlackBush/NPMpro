@@ -36,6 +36,10 @@ it("the ACME account events are in the lists", () => {
 	}
 });
 
+it("the password reset and invitation events are in the lists", () => {
+	for (const a of ["password-reset", "invitation-accepted", "mail-failed"]) assert.ok(AUDIT_ACTIONS.includes(a), a);
+});
+
 it("shows an entry NPMpro wrote itself (user id 0) as NPMpro, a missing user as deleted", () => {
 	const labels = { system: "NPMpro", deleted: "Deleted User" };
 	assert.equal(auditActorName({ user: { name: "Ann" }, userId: 1 }, labels), "Ann");

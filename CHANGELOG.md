@@ -14,6 +14,7 @@ below as its release notes.
 - **Notifications:** mail alerts for expiring certificates, failed renewals, host config errors, failed backups, GeoIP, CrowdSec and Dynamic DNS problems, with resolved mails and reminders.
 - **Notifications:** signed webhooks (Standard Webhooks) for every event, with retries, a test, a delivery log and redelivery.
 - **Authentication:** password reset by mail, off by default (Settings, Authentication), with a notice mail after every reset.
+- **Users:** invite users by mail, and notice mails when a password, address or two-factor setting changes.
 - **DNS:** test a saved DNS credential, see where each host name points, clean up leftover ACME challenge records, and a CAA warning in the certificate windows and list.
 - **DNS:** dynamic DNS: records under Certificates & DNS, Dynamic DNS keep names pointed at the instance's public IP (address records, or aliases such as a wildcard CNAME to one address record) with the saved Cloudflare, DigitalOcean, Hetzner Cloud and Gandi credentials, with Update now, Check now, history, backups and Settings, Dynamic DNS.
 - **DNS:** an opt-in option in the host windows to create a host's DNS record at the provider, kept current by dynamic DNS.

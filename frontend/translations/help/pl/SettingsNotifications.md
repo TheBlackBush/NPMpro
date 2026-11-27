@@ -33,6 +33,13 @@ Widoczne po skonfigurowaniu serwera poczty. Wiadomości o problemach wykrytych p
 - **Publiczny URL**: adres, pod którym osoby otwierają NPMpro, używany w linkach w wiadomościach, na przykład `https://npm.example.com`. Tylko HTTPS, bez ścieżki. **Użyj adresu tej przeglądarki** wypełnia go adresem tej strony, gdy jest otwarta przez HTTPS. Zmienna: `PUBLIC_URL`.
 - **Domyślny język poczty**: język wiadomości dla osób, które żadnego nie wybrały. Język interfejsu każdego użytkownika jest zapamiętywany i używany w jego wiadomościach. Zmienna: `MAIL_LANGUAGE`.
 
+### Zaproszenia i powiadomienia o koncie
+
+Oba wymagają serwera poczty. Zaproszenia wymagają też **Publicznego adresu URL**.
+
+- **Zaproszenia**: przy dodawaniu użytkownika możesz wysłać zaproszenie zamiast ustawiać hasło. Użytkownik otrzymuje wiadomość z linkiem do wyboru hasła; link działa jednorazowo i przez 72 godziny. **Wyślij zaproszenie ponownie** na liście użytkowników wysyła nowy link.
+- **Powiadomienia o koncie**: użytkownicy otrzymują wiadomość, gdy zmieni się ich hasło lub adres, gdy logowanie dwuskładnikowe zostanie wyłączone lub gdy powstaną nowe kody zapasowe.
+
 ### Webhooki
 
 Webhook to Twój własny adres, który NPMpro wywołuje podpisanym żądaniem HTTP, gdy coś się wydarzy, na przykład gdy certyfikat został odnowiony. Tę kartę widzą tylko administratorzy.

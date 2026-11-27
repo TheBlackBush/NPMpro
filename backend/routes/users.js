@@ -221,6 +221,21 @@ router
 	});
 
 /**
+ * /api/users/123/invite
+ */
+router
+	.route("/:user_id/invite")
+	.all(jwtdecode())
+	.all(userIdFromMe)
+	.all(sessionOnly())
+
+	/** POST /api/users/123/invite: a new invitation mail; the new link replaces the old one */
+	.post(async (req, res) => {
+		const result = await internalUser.invite(res.locals.access, req.params.user_id);
+		res.status(200).send(result);
+	});
+
+/**
  * /api/users/123/permissions
  */
 router

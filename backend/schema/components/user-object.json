@@ -77,13 +77,19 @@
 			"example": 0
 		},
 		"npmpro_oidc_linked_on": {
-			"type": ["string", "null"],
+			"type": [
+				"string",
+				"null"
+			],
 			"description": "When the user was linked to an OIDC identity, null when not linked",
 			"readOnly": true,
 			"example": "2026-11-12 12:00:00"
 		},
 		"npmpro_language": {
-			"type": ["string", "null"],
+			"type": [
+				"string",
+				"null"
+			],
 			"description": "The UI language of the user (one of the 13 codes), set by the UI after sign-in; mails go out in it. Null until then",
 			"readOnly": true,
 			"example": "de"
@@ -177,6 +183,15 @@
 					"pattern": "^(manage|view|hidden)$"
 				}
 			}
+		},
+		"invited": {
+			"type": "boolean",
+			"description": "Whether the user can still accept an invitation: enabled, no password and no OIDC link (users list and invitation answers only)",
+			"readOnly": true,
+			"example": false
+		},
+		"invitation": {
+			"$ref": "./invitation-object.json"
 		}
 	}
 }

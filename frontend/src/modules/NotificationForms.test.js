@@ -162,6 +162,24 @@ it("sends only what changed and never a locked key or an empty password", () => 
 	);
 });
 
+it("reads the invitations and account notices switches, on unless stored off", () => {
+	assert.equal(emailValues({}).invitations, true);
+	assert.equal(emailValues({}).accountNotices, true);
+	assert.equal(emailValues({ invitations: false, accountNotices: false }).invitations, false);
+	assert.equal(emailValues({ invitations: false, accountNotices: false }).accountNotices, false);
+});
+
+it("sends a changed invitations or account notices switch, never a locked one", () => {
+	const values = emailValues(stored);
+	assert.deepEqual(emailPayload({ ...values, invitations: false, accountNotices: false }, stored), {
+		invitations: false,
+		accountNotices: false,
+	});
+	assert.deepEqual(emailPayload({ ...values, accountNotices: false }, stored), { accountNotices: false });
+	const locked = { ...stored, locked: ["invitations", "account_notices"] };
+	assert.equal(emailPayload({ ...values, invitations: false, accountNotices: false }, locked), null);
+});
+
 it("sends the changed notification settings only", () => {
 	const data = { publicUrl: "https://npm.example.com", defaultLanguage: "de", locked: [] };
 	const values = notificationValues(data);

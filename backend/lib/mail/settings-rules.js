@@ -16,6 +16,8 @@ const EMAIL_DEFAULTS = {
 	from_name: "",
 	reply_to: "",
 	allow_password_reset: false,
+	invitations: true,
+	account_notices: true,
 };
 
 const NOTIFICATION_DEFAULTS = {
@@ -38,6 +40,8 @@ const EMAIL_ENV_KEYS = {
 	from_name: "SMTP_FROM_NAME",
 	reply_to: "SMTP_REPLY_TO",
 	allow_password_reset: "PASSWORD_RESET",
+	invitations: "MAIL_INVITATIONS",
+	account_notices: "MAIL_ACCOUNT_NOTICES",
 };
 
 const NOTIFICATION_ENV_KEYS = {
@@ -48,7 +52,7 @@ const NOTIFICATION_ENV_KEYS = {
 
 const EMAIL_NUMBER_KEYS = new Set(["port"]);
 // on unless the variable says false
-const EMAIL_BOOLEAN_KEYS = new Set(["verify_tls"]);
+const EMAIL_BOOLEAN_KEYS = new Set(["verify_tls", "invitations", "account_notices"]);
 // off unless the variable says true
 const EMAIL_OPT_IN_KEYS = new Set(["allow_password_reset"]);
 // a comma list: split, trimmed, empty entries dropped
@@ -176,6 +180,8 @@ const EMAIL_CHECKS = {
 	security: (value) => SECURITY_MODES.includes(value),
 	verify_tls: (value) => typeof value === "boolean",
 	allow_password_reset: (value) => typeof value === "boolean",
+	invitations: (value) => typeof value === "boolean",
+	account_notices: (value) => typeof value === "boolean",
 	from_address: (value) => value === "" || isSingleAddress(value),
 	reply_to: (value) => value === "" || isSingleAddress(value),
 	from_name: (value) => isPlainText(value, NAME_MAX, NAME_PATTERN),
