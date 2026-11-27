@@ -4,8 +4,11 @@ import { sendMail } from "../lib/mail/transport.js";
 import { dbTimeOf, msOfDbTime } from "../lib/notify/db-time.js";
 import { createNotifyService } from "../lib/notify/service.js";
 import { MOVED_WATERMARK_KEY } from "../lib/notify/state-store.js";
+import { createWebhookChannel, createWebhookStore } from "../lib/notify/webhook-channel.js";
+import { defaultSecretBox } from "../lib/secret-box.js";
 import { global as logger } from "../logger.js";
 import { renderMail } from "../mail/render.js";
+import pjson from "../package.json" with { type: "json" };
 import internalPasswordToken from "./password-token.js";
 
 // The notification layer of the running app, over the real database. Before initNotify() the worker runs no pass and
@@ -51,6 +54,17 @@ notify.registerChannel(
 		render: renderMail,
 		audit: async (entry) => (await import("./audit-log.js")).default.add(null, entry),
 		log: logger,
+	}),
+);
+
+// The webhook channel: signed deliveries to the admin's URLs (stored sealed, opened for each attempt)
+notify.registerChannel(
+	createWebhookChannel({
+		webhooks: createWebhookStore({ knex: db(), queue }),
+		open: (sealed) => defaultSecretBox.decrypt(sealed),
+		notify,
+		log: logger,
+		version: pjson.version,
 	}),
 );
 

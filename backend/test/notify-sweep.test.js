@@ -54,6 +54,7 @@ const fakes = (calls) => ({
 	},
 	queue: {
 		pruneMail: async (days) => calls.push(`pruneMail ${days}`),
+		pruneWebhooks: async (keep, days) => calls.push(`pruneWebhooks ${keep} ${days}`),
 		clearOldPayloads: async (days) => calls.push(`payloads ${days}`),
 	},
 	notify: { deliver: async (type, data, object) => calls.push(`deliver ${type} ${data.reminder} ${object}`) },
@@ -74,6 +75,7 @@ describe("the sweep", () => {
 			"deliver certificate.expiring true 5",
 			"prune",
 			"pruneMail 30",
+			"pruneWebhooks 100 30",
 			"payloads 7",
 		]);
 	});
@@ -110,7 +112,7 @@ describe("the sweep", () => {
 			log,
 		});
 		await sweep.runOnce();
-		assert.deepEqual(calls, ["prune", "pruneMail 30", "payloads 7"]);
+		assert.deepEqual(calls, ["prune", "pruneMail 30", "pruneWebhooks 100 30", "payloads 7"]);
 		assert.match(log.lines[0], BOOM);
 	});
 

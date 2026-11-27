@@ -211,6 +211,12 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 		await where().where("id", "<", kept.at(-1).id).delete();
 	};
 
+	/** Prunes the final rows of every webhook that has some (pruneTarget for each) */
+	const pruneWebhooks = async (keep, days) => {
+		const targets = await table().where({ channel: "webhook" }).whereIn("status", FINAL).distinct("target_id");
+		for (const { target_id } of targets) if (target_id !== null) await pruneTarget(target_id, keep, days);
+	};
+
 	/** Clears the payload of failed rows that failed more than `days` days ago */
 	const clearOldPayloads = async (days) => {
 		await table()
@@ -220,7 +226,7 @@ const createQueue = ({ knex, clock = { now: () => Date.now() } }) => {
 			.update({ payload: null });
 	};
 
-	return { add, claimDue, clearOldPayloads, dropTarget, pruneMail, pruneTarget, resetSending, settle };
+	return { add, claimDue, clearOldPayloads, dropTarget, pruneMail, pruneTarget, pruneWebhooks, resetSending, settle };
 };
 
 export { createQueue, safeError };
