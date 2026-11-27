@@ -65,5 +65,21 @@
 	"alerts.subject.resolved.one": "{count} resolved",
 	"alerts.subject.resolved.other": "{count} resolved",
 	"alerts.days.one": "{count} day",
-	"alerts.days.other": "{count} days"
+	"alerts.days.other": "{count} days",
+	"account.unexpected": "If you did not expect this, contact an administrator of NPMpro.",
+	"password-changed.subject": "Your NPMpro password was changed",
+	"password-changed.done": "The password of your account at {instance} was changed on {time} (UTC).",
+	"password-changed.done.admin": "The password of your account at {instance} was changed by an administrator on {time} (UTC).",
+	"password-changed.sessions": "Every session was signed out.",
+	"address-changed.subject.old": "The email address of your NPMpro account was changed",
+	"address-changed.subject.new": "This address is now used for your NPMpro account",
+	"address-changed.old": "The email address of your account at {instance} was changed on {time} (UTC). This address is no longer used for the account.",
+	"address-changed.new": "This address is now used for your account at {instance} (changed on {time} (UTC)).",
+	"mfa-off.subject": "Two-factor sign-in was turned off for your NPMpro account",
+	"mfa-off.done": "Two-factor sign-in for your account at {instance} was turned off on {time} (UTC).",
+	"mfa-off.done.admin": "Two-factor sign-in for your account at {instance} was turned off by an administrator on {time} (UTC).",
+	"backup-codes.subject": "New backup codes were made for your NPMpro account",
+	"backup-codes.done": "New backup codes were made for your account at {instance} on {time} (UTC).",
+	"backup-codes.done.admin": "New backup codes were made for your account at {instance} by an administrator on {time} (UTC).",
+	"backup-codes.old": "The earlier backup codes no longer work."
 }

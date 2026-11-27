@@ -65,5 +65,21 @@
 	"alerts.subject.resolved.one": "{count} résolu",
 	"alerts.subject.resolved.other": "{count} résolus",
 	"alerts.days.one": "{count} jour",
-	"alerts.days.other": "{count} jours"
+	"alerts.days.other": "{count} jours",
+	"account.unexpected": "Si vous ne vous y attendiez pas, contactez un administrateur de NPMpro.",
+	"password-changed.subject": "Votre mot de passe NPMpro a été modifié",
+	"password-changed.done": "Le mot de passe de votre compte sur {instance} a été modifié le {time} (UTC).",
+	"password-changed.done.admin": "Le mot de passe de votre compte sur {instance} a été modifié par un administrateur le {time} (UTC).",
+	"password-changed.sessions": "Toutes les sessions ont été fermées.",
+	"address-changed.subject.old": "L'adresse e-mail de votre compte NPMpro a été modifiée",
+	"address-changed.subject.new": "Cette adresse est désormais utilisée pour votre compte NPMpro",
+	"address-changed.old": "L'adresse e-mail de votre compte sur {instance} a été modifiée le {time} (UTC). Cette adresse n'est plus utilisée pour ce compte.",
+	"address-changed.new": "Cette adresse est désormais utilisée pour votre compte sur {instance} (modification du {time} (UTC)).",
+	"mfa-off.subject": "La connexion à deux facteurs a été désactivée pour votre compte NPMpro",
+	"mfa-off.done": "La connexion à deux facteurs de votre compte sur {instance} a été désactivée le {time} (UTC).",
+	"mfa-off.done.admin": "La connexion à deux facteurs de votre compte sur {instance} a été désactivée par un administrateur le {time} (UTC).",
+	"backup-codes.subject": "De nouveaux codes de secours ont été créés pour votre compte NPMpro",
+	"backup-codes.done": "De nouveaux codes de secours ont été créés pour votre compte sur {instance} le {time} (UTC).",
+	"backup-codes.done.admin": "De nouveaux codes de secours ont été créés pour votre compte sur {instance} par un administrateur le {time} (UTC).",
+	"backup-codes.old": "Les anciens codes de secours ne fonctionnent plus."
 }

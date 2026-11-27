@@ -62,5 +62,21 @@
 	"alerts.subject.both": "{problems}, {resolved}",
 	"alerts.subject.problems.other": "문제 {count}건",
 	"alerts.subject.resolved.other": "{count}건 해결",
-	"alerts.days.other": "{count}일"
+	"alerts.days.other": "{count}일",
+	"account.unexpected": "예상하지 못한 일이라면 NPMpro 관리자에게 문의하세요.",
+	"password-changed.subject": "NPMpro 비밀번호가 변경되었습니다",
+	"password-changed.done": "{instance}의 계정 비밀번호가 {time}(UTC)에 변경되었습니다.",
+	"password-changed.done.admin": "{instance}의 계정 비밀번호가 {time}(UTC)에 관리자에 의해 변경되었습니다.",
+	"password-changed.sessions": "모든 세션이 로그아웃되었습니다.",
+	"address-changed.subject.old": "NPMpro 계정의 이메일 주소가 변경되었습니다",
+	"address-changed.subject.new": "이 주소가 이제 NPMpro 계정에 사용됩니다",
+	"address-changed.old": "{instance}의 계정 이메일 주소가 {time}(UTC)에 변경되었습니다. 이 주소는 더 이상 계정에 사용되지 않습니다.",
+	"address-changed.new": "이 주소가 이제 {instance}의 계정에 사용됩니다({time}(UTC)에 변경).",
+	"mfa-off.subject": "NPMpro 계정의 2단계 인증 로그인이 꺼졌습니다",
+	"mfa-off.done": "{instance}의 계정 2단계 인증 로그인이 {time}(UTC)에 꺼졌습니다.",
+	"mfa-off.done.admin": "{instance}의 계정 2단계 인증 로그인이 {time}(UTC)에 관리자에 의해 꺼졌습니다.",
+	"backup-codes.subject": "NPMpro 계정의 새 백업 코드가 만들어졌습니다",
+	"backup-codes.done": "{instance}의 계정에 새 백업 코드가 {time}(UTC)에 만들어졌습니다.",
+	"backup-codes.done.admin": "{instance}의 계정에 새 백업 코드가 {time}(UTC)에 관리자에 의해 만들어졌습니다.",
+	"backup-codes.old": "이전 백업 코드는 더 이상 작동하지 않습니다."
 }

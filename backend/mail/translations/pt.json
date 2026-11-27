@@ -65,5 +65,21 @@
 	"alerts.subject.resolved.one": "{count} resolvido",
 	"alerts.subject.resolved.other": "{count} resolvidos",
 	"alerts.days.one": "{count} dia",
-	"alerts.days.other": "{count} dias"
+	"alerts.days.other": "{count} dias",
+	"account.unexpected": "Se você não esperava isso, entre em contato com um administrador do NPMpro.",
+	"password-changed.subject": "A sua senha do NPMpro foi alterada",
+	"password-changed.done": "A senha da sua conta em {instance} foi alterada em {time} (UTC).",
+	"password-changed.done.admin": "A senha da sua conta em {instance} foi alterada por um administrador em {time} (UTC).",
+	"password-changed.sessions": "Todas as sessões foram encerradas.",
+	"address-changed.subject.old": "O e-mail da sua conta do NPMpro foi alterado",
+	"address-changed.subject.new": "Este endereço agora é usado na sua conta do NPMpro",
+	"address-changed.old": "O e-mail da sua conta em {instance} foi alterado em {time} (UTC). Este endereço não é mais usado na conta.",
+	"address-changed.new": "Este endereço agora é usado na sua conta em {instance} (alteração em {time} (UTC)).",
+	"mfa-off.subject": "O login em duas etapas da sua conta do NPMpro foi desativado",
+	"mfa-off.done": "O login em duas etapas da sua conta em {instance} foi desativado em {time} (UTC).",
+	"mfa-off.done.admin": "O login em duas etapas da sua conta em {instance} foi desativado por um administrador em {time} (UTC).",
+	"backup-codes.subject": "Novos códigos de backup foram criados para a sua conta do NPMpro",
+	"backup-codes.done": "Novos códigos de backup foram criados para a sua conta em {instance} em {time} (UTC).",
+	"backup-codes.done.admin": "Um administrador criou novos códigos de backup para a sua conta em {instance} em {time} (UTC).",
+	"backup-codes.old": "Os códigos de backup anteriores não funcionam mais."
 }

@@ -357,7 +357,19 @@ const invitationsOffered = async () => {
 	return isConfigured(email);
 };
 
+/**
+ * Whether the account notices (password changed, address changed, MFA off, new backup codes) are on. The switch only:
+ * whether mail is configured is checked when the mail is queued. The password is not decrypted.
+ *
+ * @returns {Promise<boolean>}
+ */
+const accountNoticesOn = async () => {
+	const { password: _sealed, ...stored } = await readStored("email");
+	return mergeEmail(stored, process.env).values.account_notices === true;
+};
+
 export {
+	accountNoticesOn,
 	getEmailConfig,
 	getNotificationsConfig,
 	invitationsOffered,

@@ -71,5 +71,21 @@
 	"alerts.days.one": "{count} dzień",
 	"alerts.days.few": "{count} dni",
 	"alerts.days.many": "{count} dni",
-	"alerts.days.other": "{count} dnia"
+	"alerts.days.other": "{count} dnia",
+	"account.unexpected": "Jeśli tego się nie spodziewałeś(-aś), skontaktuj się z administratorem NPMpro.",
+	"password-changed.subject": "Twoje hasło do NPMpro zostało zmienione",
+	"password-changed.done": "Hasło do Twojego konta na {instance} zostało zmienione {time} (UTC).",
+	"password-changed.done.admin": "Hasło do Twojego konta na {instance} zostało zmienione przez administratora {time} (UTC).",
+	"password-changed.sessions": "Wszystkie sesje zostały wylogowane.",
+	"address-changed.subject.old": "Adres e-mail Twojego konta NPMpro został zmieniony",
+	"address-changed.subject.new": "Ten adres jest teraz używany dla Twojego konta NPMpro",
+	"address-changed.old": "Adres e-mail Twojego konta na {instance} został zmieniony {time} (UTC). Ten adres nie jest już używany dla konta.",
+	"address-changed.new": "Ten adres jest teraz używany dla Twojego konta na {instance} (zmiana z {time} (UTC)).",
+	"mfa-off.subject": "Logowanie dwuskładnikowe dla Twojego konta NPMpro zostało wyłączone",
+	"mfa-off.done": "Logowanie dwuskładnikowe dla Twojego konta na {instance} zostało wyłączone {time} (UTC).",
+	"mfa-off.done.admin": "Logowanie dwuskładnikowe dla Twojego konta na {instance} zostało wyłączone przez administratora {time} (UTC).",
+	"backup-codes.subject": "Dla Twojego konta NPMpro utworzono nowe kody zapasowe",
+	"backup-codes.done": "Dla Twojego konta na {instance} utworzono {time} (UTC) nowe kody zapasowe.",
+	"backup-codes.done.admin": "Administrator utworzył {time} (UTC) nowe kody zapasowe dla Twojego konta na {instance}.",
+	"backup-codes.old": "Poprzednie kody zapasowe już nie działają."
 }

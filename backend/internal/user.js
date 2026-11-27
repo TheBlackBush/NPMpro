@@ -11,6 +11,7 @@ import auditLogModel from "../models/audit-log.js";
 import authModel from "../models/auth.js";
 import userModel from "../models/user.js";
 import userPermissionModel from "../models/user_permission.js";
+import internalAccountMail from "./account-mail.js";
 import internalApiToken from "./api-token.js";
 import internalAuditLog from "./audit-log.js";
 import internalMail from "./mail.js";
@@ -282,6 +283,10 @@ const internalUser = {
 			meta: user,
 		});
 
+		if (data.email !== undefined && data.email !== existingUser.email) {
+			await internalAccountMail.noticeAddressChanged(user, existingUser.email);
+		}
+
 		return user;
 	},
 
@@ -439,6 +444,8 @@ const internalUser = {
 				auth_type: data.type,
 			},
 		});
+
+		await internalAccountMail.noticePasswordChanged(user, user.id !== access.token.getUserId(0));
 
 		return true;
 	},

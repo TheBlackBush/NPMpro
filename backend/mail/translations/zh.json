@@ -62,5 +62,21 @@
 	"alerts.subject.both": "{problems}，{resolved}",
 	"alerts.subject.problems.other": "{count} 个问题",
 	"alerts.subject.resolved.other": "{count} 个已解决",
-	"alerts.days.other": "{count} 天"
+	"alerts.days.other": "{count} 天",
+	"account.unexpected": "如果这不是您预期的操作,请联系 NPMpro 管理员。",
+	"password-changed.subject": "您的 NPMpro 密码已更改",
+	"password-changed.done": "您在 {instance} 的账户密码已于 {time} (UTC) 更改。",
+	"password-changed.done.admin": "您在 {instance} 的账户密码已由管理员于 {time} (UTC) 更改。",
+	"password-changed.sessions": "所有会话均已退出登录。",
+	"address-changed.subject.old": "您的 NPMpro 账户的电子邮件地址已更改",
+	"address-changed.subject.new": "此地址现已用于您的 NPMpro 账户",
+	"address-changed.old": "您在 {instance} 的账户电子邮件地址已于 {time} (UTC) 更改。此地址不再用于该账户。",
+	"address-changed.new": "此地址现已用于您在 {instance} 的账户(更改于 {time} (UTC))。",
+	"mfa-off.subject": "您的 NPMpro 账户的双因素登录已关闭",
+	"mfa-off.done": "您在 {instance} 的账户的双因素登录已于 {time} (UTC) 关闭。",
+	"mfa-off.done.admin": "您在 {instance} 的账户的双因素登录已由管理员于 {time} (UTC) 关闭。",
+	"backup-codes.subject": "已为您的 NPMpro 账户生成新的备用码",
+	"backup-codes.done": "已于 {time} (UTC) 为您在 {instance} 的账户生成新的备用码。",
+	"backup-codes.done.admin": "管理员已于 {time} (UTC) 为您在 {instance} 的账户生成新的备用码。",
+	"backup-codes.old": "之前的备用码已失效。"
 }

@@ -65,5 +65,21 @@
 	"alerts.subject.resolved.one": "{count} risolto",
 	"alerts.subject.resolved.other": "{count} risolti",
 	"alerts.days.one": "{count} giorno",
-	"alerts.days.other": "{count} giorni"
+	"alerts.days.other": "{count} giorni",
+	"account.unexpected": "Se non te lo aspettavi, contatta un amministratore di NPMpro.",
+	"password-changed.subject": "La tua password di NPMpro è stata modificata",
+	"password-changed.done": "La password del tuo account su {instance} è stata modificata il {time} (UTC).",
+	"password-changed.done.admin": "La password del tuo account su {instance} è stata modificata da un amministratore il {time} (UTC).",
+	"password-changed.sessions": "Tutte le sessioni sono state chiuse.",
+	"address-changed.subject.old": "L'indirizzo email del tuo account NPMpro è stato modificato",
+	"address-changed.subject.new": "Questo indirizzo è ora usato per il tuo account NPMpro",
+	"address-changed.old": "L'indirizzo email del tuo account su {instance} è stato modificato il {time} (UTC). Questo indirizzo non è più usato per l'account.",
+	"address-changed.new": "Questo indirizzo è ora usato per il tuo account su {instance} (modifica del {time} (UTC)).",
+	"mfa-off.subject": "L'accesso a due fattori per il tuo account NPMpro è stato disattivato",
+	"mfa-off.done": "L'accesso a due fattori per il tuo account su {instance} è stato disattivato il {time} (UTC).",
+	"mfa-off.done.admin": "L'accesso a due fattori per il tuo account su {instance} è stato disattivato da un amministratore il {time} (UTC).",
+	"backup-codes.subject": "Sono stati creati nuovi codici di backup per il tuo account NPMpro",
+	"backup-codes.done": "Sono stati creati nuovi codici di backup per il tuo account su {instance} il {time} (UTC).",
+	"backup-codes.done.admin": "Un amministratore ha creato nuovi codici di backup per il tuo account su {instance} il {time} (UTC).",
+	"backup-codes.old": "I codici di backup precedenti non funzionano più."
 }
