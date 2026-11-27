@@ -93,7 +93,12 @@ const endInvitationsWhenOff = async () => {
  */
 const reloadMailSettings = async () => {
 	warnedSecret = false;
-	await endInvitationsWhenOff();
+	// a failure here must not fail the restore after its data is in: the links then end at the next start
+	try {
+		await endInvitationsWhenOff();
+	} catch (err) {
+		logger.warn(`Could not end the pending invitations: ${err.message}`);
+	}
 };
 
 const invalid = (errors) => {
