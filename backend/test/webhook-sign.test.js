@@ -31,6 +31,23 @@ describe("webhook signing", () => {
 		assert.notEqual(signatureHeader({ id: ID, timestamp: TIMESTAMP, body: compact, secrets: [SECRET] }), EXPECTED);
 	});
 
+	it("throws on a caller bug: bad secret, id with a dot, timestamp not whole seconds", () => {
+		const ok = { id: ID, timestamp: TIMESTAMP, body: BODY, secrets: [SECRET] };
+		const bad = [
+			{ secrets: [SECRET.slice(6)] },
+			{ secrets: ["whsec_"] },
+			{ secrets: ["whsec_AAAA"] },
+			{ secrets: [null] },
+			{ id: "msg.1" },
+			{ id: "" },
+			{ timestamp: 1614265330.5 },
+			{ timestamp: 1614265330000.5 },
+			{ timestamp: "1614265330" },
+			{ timestamp: -1 },
+		];
+		for (const change of bad) assert.throws(() => signatureHeader({ ...ok, ...change }), TypeError);
+	});
+
 	it("makes secrets of 32 random bytes with the prefix", () => {
 		const secret = newSecret();
 		assert.match(secret, SECRET_FORMAT);

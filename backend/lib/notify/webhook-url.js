@@ -4,6 +4,10 @@ import { blockedError, lookupAll } from "../outbound-guard.js";
 
 const MAX_URL_LENGTH = 2048;
 const HINT_PATH_LENGTH = 40;
+const PARTIAL_ESCAPE = /%[0-9A-Fa-f]?$/u;
+// a resolver answer that says the name does not exist: a settings problem, not a passing outage
+const NO_SUCH_NAME = new Set(["ENOTFOUND", "ENODATA"]);
+const EMPTY_USERINFO = /^[a-z]+:\/\/[^/?#]*@/iu;
 const BRACKETS = /^\[|\]$/gu;
 
 /**
@@ -21,9 +25,12 @@ const validateWebhookUrl = (text) => {
 		return { error: "webhook-url-invalid" };
 	}
 	if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return { error: "webhook-url-scheme" };
-	if (parsed.username || parsed.password) return { error: "webhook-url-userinfo" };
+	// any user info, also an empty one ("https://:@host")
+	if (parsed.username || parsed.password || EMPTY_USERINFO.test(value)) {
+		return { error: "webhook-url-userinfo" };
+	}
 	if (!parsed.hostname) return { error: "webhook-url-invalid" };
-	return { url: value, privateOnly: parsed.protocol === "http:" };
+	return { url: parsed.href, privateOnly: parsed.protocol === "http:" };
 };
 
 /**
@@ -32,7 +39,9 @@ const validateWebhookUrl = (text) => {
  */
 const urlHint = (url) => {
 	const parsed = new URL(url);
-	return `${parsed.protocol}//${parsed.host}${parsed.pathname.slice(0, HINT_PATH_LENGTH)}`;
+	// never cut inside a percent escape
+	const path = parsed.pathname.slice(0, HINT_PATH_LENGTH).replace(PARTIAL_ESCAPE, "");
+	return `${parsed.protocol}//${parsed.host}${path}`;
 };
 
 const targetError = (code, message) => Object.assign(new Error(message), { code, message_i18n: `error.${code}` });
@@ -43,7 +52,7 @@ const targetError = (code, message) => Object.assign(new Error(message), { code,
  * `createGuardedAgent`, which checks again at connect time.
  *
  * @param   {String}  url
- * @returns {Promise<void>}  rejects with the guard's EBLOCKED error or a `webhook-host-unresolved` error
+ * @returns {Promise<void>}  rejects with the guard's EBLOCKED error a `webhook-host-unresolved` error, or a `webhook-host-lookup-failed` error with `temporary: true` (a resolver outage)
  */
 const checkWebhookTarget = async (url) => {
 	const parsed = new URL(url);
@@ -52,8 +61,12 @@ const checkWebhookTarget = async (url) => {
 	if (isIP(name) === 0) {
 		try {
 			addresses = await lookupAll(name);
-		} catch {
-			throw targetError("webhook-host-unresolved", `${name} does not resolve`);
+		} catch (err) {
+			if (NO_SUCH_NAME.has(err?.code)) throw targetError("webhook-host-unresolved", `${name} does not resolve`);
+			throw Object.assign(
+				targetError("webhook-host-lookup-failed", `${name} could not be looked up (${err?.code ?? "error"})`),
+				{ temporary: true },
+			);
 		}
 		if (addresses.length === 0) throw targetError("webhook-host-unresolved", `${name} does not resolve`);
 	} else {
