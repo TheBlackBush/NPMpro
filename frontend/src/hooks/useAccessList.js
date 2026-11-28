@@ -13,9 +13,10 @@ const fetchAccessList = (id) => {
 			passAuth: false,
 			items: [],
 			clients: [],
+			npmproCountries: [],
 		});
 	}
-	return getAccessList(id, ["items", "clients"]);
+	return getAccessList(id, ["items", "clients", "npmpro_countries"]);
 };
 
 const useAccessList = (id) => {

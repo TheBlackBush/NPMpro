@@ -6,6 +6,7 @@ import {
 	AppModal,
 	BasicAuthFields,
 	Button,
+	CountryRulesFields,
 	ErrorAlert,
 	FormSection,
 	FormSubmit,
@@ -26,6 +27,7 @@ import { FieldMessage } from "src/components/Form/FieldMessage";
 import {
 	DirtyTracker,
 	useAccessList,
+	useAccessListGeoip,
 	useCanManage,
 	useIsAdmin,
 	useSetAccessList,
@@ -58,7 +60,15 @@ const Icon = sectionIcon("accessLists");
 // field name -> label for the note next to Save
 const FIELD_LABELS = { accessRules: "access-list.rules-required" };
 
-function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
+// the Countries tab: the rules need to know whether a country database is usable
+function CountriesPane({ saved, close }) {
+	const { data: status, isPending, error } = useAccessListGeoip();
+	if (error) return <ErrorAlert error={error} />;
+	if (isPending) return <Loading noLogo />;
+	return <CountryRulesFields saved={saved} status={status} onNavigate={close} />;
+}
+
+function AccessListForm({ data, savedUsers, savedGeo, errorMsg, onCloseError, close }) {
 	const { register } = useFormContext();
 	const { errors, isSubmitted, isSubmitting } = useFormState();
 	const readOnly = useReadOnly();
@@ -117,6 +127,9 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 					<TabPane id="rules">
 						<AccessClientFields />
 					</TabPane>
+					<TabPane id="countries">
+						<CountriesPane saved={savedGeo} close={close} />
+					</TabPane>
 				</ModalTabs>
 			</AppModal.Body>
 			<AppModal.Footer>
@@ -145,14 +158,20 @@ function AccessListEditor({ data, onSubmit, dirtyRef, readOnly, ...formProps }) 
 	const [saved] = useState(() => ({
 		users: new Set(data.items.map((item) => item.username)),
 		clients: data.clients,
+		unknown: data.npmproGeoUnknown ?? "auto",
+		geo: { npmproGeoMode: data.npmproGeoMode ?? "off" },
 	}));
 	const [validate] = useState(() => accessListValidate(validations, { savedUsers: saved.users }));
 	const [defaultValues] = useState(() => accessListDefaults(data));
 	const methods = useAppForm({ defaultValues, validate });
 	return (
-		<HookForm readOnly={readOnly} methods={methods} onSubmit={(values) => onSubmit(values, saved.clients)}>
+		<HookForm
+			readOnly={readOnly}
+			methods={methods}
+			onSubmit={(values) => onSubmit(values, saved.clients, saved.unknown)}
+		>
 			<DirtyTracker dirtyRef={dirtyRef} />
-			<AccessListForm data={data} savedUsers={saved.users} {...formProps} />
+			<AccessListForm data={data} savedUsers={saved.users} savedGeo={saved.geo} {...formProps} />
 		</HookForm>
 	);
 }
@@ -165,11 +184,14 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 	const { mutateAsync: setAccessList, isPending: isSaving } = useSetAccessList();
 	const [errorMsg, setErrorMsg] = useState(null);
 
-	// savedClients: the rules the editor's starting values were built from
-	const onSubmit = async (values, savedClients) => {
+	// savedClients, savedUnknown: the rules and the unknown-country setting the editor's starting values were built from
+	const onSubmit = async (values, savedClients, savedUnknown) => {
 		setErrorMsg(null);
 		try {
-			await setAccessList({ id: id === "new" ? undefined : id, ...accessListPayload(values, savedClients) });
+			await setAccessList({
+				id: id === "new" ? undefined : id,
+				...accessListPayload(values, savedClients, savedUnknown),
+			});
 			showObjectSuccess("access-list", "saved");
 			remove();
 		} catch (err) {

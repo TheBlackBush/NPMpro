@@ -40,6 +40,7 @@ export * from "./downloadPendingBackup";
 export * from "./exportItems";
 export * from "./exportPreview";
 export * from "./getAccessList";
+export * from "./getAccessListGeoip";
 export * from "./getAccessLists";
 export * from "./getAcmeProfiles";
 export * from "./getAcmeServers";
