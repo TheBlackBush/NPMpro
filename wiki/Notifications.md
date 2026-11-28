@@ -54,7 +54,7 @@ The card **Mail alerts** shows once mail is set up. It mails the problems of the
 
 - **Send to administrators** (on by default): every enabled administrator with a valid address gets the alerts. A disabled administrator gets none.
 - **Also send to**: more addresses, for example a team list. Up to 20 plain addresses. `ALERT_ADDRESSES` sets the list and locks the field (see [Configuration](Configuration)).
-- **Events**: the problems the mail channel offers, grouped by area: certificates that are about to expire or could not be renewed, hosts whose nginx configuration is refused, failed backups, a GeoIP update or a CrowdSec connection that fails, dynamic DNS records that fail or are stopped, and a webhook that NPMpro turned off. Ticking an event also sends its recovery. Action events (a host created, a backup succeeded and the like) are never mailed; they go to webhooks only.
+- **Events**: the problems the mail channel offers, grouped by area: certificates that are about to expire or could not be renewed, hosts whose nginx configuration is refused, failed backups, a GeoIP database download or a CrowdSec connection that fails, dynamic DNS records that fail or are stopped, and a webhook that NPMpro turned off. Ticking an event also sends its recovery. Action events (a host created, a backup succeeded and the like) are never mailed; they go to webhooks only.
 - **Remind every** (hours, default 24): while a problem stays open, its alert is repeated after this many hours. `0` never repeats it; the maximum is 168.
 - **Send a sample**: sends a sample alert, marked **Sample**, at once to every current recipient. Nothing is wrong in it; it only shows what an alert looks like. The button shares the limit of 5 test mails a minute and runs one sample at a time. A server error stops the sample: the message at the top of the page says how many addresses got it and which one failed, and the rest are not tried.
 
@@ -122,7 +122,8 @@ Problem events are sent when a problem starts, and each has a `.resolved` event 
 | `certificate.expiring`, `certificate.renewal_failed` (and `.resolved`) | `id`, `nice_name`, `domain_names`, `provider`, `expires_on`; `state` and `days_left` for `expiring`; `error` for `renewal_failed` |
 | `host.config_error` (and `.resolved`) | `type` (`proxy`, `redirection`, `dead` or `stream`), `id`, `domain_names` (a stream has `incoming_port` instead), `enabled`, `error` |
 | `backup.failed` (and `.resolved`) | `schedule` (`id`, `name`), `error` |
-| `geoip.failed`, `crowdsec.unreachable` (and `.resolved`) | `error` |
+| `geoip.failed` (and `.resolved`) | `reason` (`download`: the databases could not be downloaded), `error` |
+| `crowdsec.unreachable` (and `.resolved`) | `error` |
 | `ddns.record_failed`, `ddns.record_stopped` (and `.resolved`) | `record` (`id`, `name`, `provider`), `error` |
 
 Action events happen once, when something was done:

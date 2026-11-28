@@ -1,19 +1,12 @@
-import { createWriteStream } from "node:fs";
 import { mkdir, mkdtemp, readdir, rename, rm } from "node:fs/promises";
 import path from "node:path";
-import { Readable, Transform } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import maxmind from "maxmind";
 import { x as extractArchive } from "tar";
+import { isTimeout, saveBody, sweepLeftovers, TIMEOUT_MS, UpdateError } from "./download.js";
 
 const DOWNLOAD_URL = "https://download.maxmind.com/geoip/databases";
-const TIMEOUT_MS = 60000;
 const MAX_BYTES = 300 * 1024 * 1024;
 const WANTED_ENTRY = /\.(?:mmdb|txt)$/u;
-const TIMEOUT_NAMES = new Set(["TimeoutError", "AbortError"]);
-
-/** Failure with a fixed, safe message (no response bodies, no credentials) */
-class UpdateError extends Error {}
 
 /**
  * Archive entries that are extracted: directories and regular files named *.mmdb or *.txt up to MAX_BYTES; links and
@@ -38,24 +31,6 @@ const findFile = async (dir, name) => {
 	return null;
 };
 
-/** Streams the response body into file, failing when it exceeds MAX_BYTES */
-const saveBody = async (response, file) => {
-	const declared = Number(response.headers.get("content-length"));
-	if (declared > MAX_BYTES) {
-		await response.body?.cancel();
-		throw new UpdateError("The download is too large");
-	}
-	let seen = 0;
-	const counter = new Transform({
-		transform(chunk, _encoding, callback) {
-			seen += chunk.length;
-			if (seen > MAX_BYTES) callback(new UpdateError("The download is too large"));
-			else callback(null, chunk);
-		},
-	});
-	await pipeline(Readable.fromWeb(response.body), counter, createWriteStream(file));
-};
-
 /** Downloads the archive, mapping every failure to a fixed message */
 const download = async ({ url, authorization, fetch, file }) => {
 	try {
@@ -65,10 +40,10 @@ const download = async ({ url, authorization, fetch, file }) => {
 			signal: AbortSignal.timeout(TIMEOUT_MS),
 		});
 		if (!response.ok) throw new UpdateError(`MaxMind returned HTTP ${response.status}`);
-		await saveBody(response, file);
+		await saveBody(response, file, MAX_BYTES);
 	} catch (err) {
 		if (err instanceof UpdateError) throw err;
-		if (TIMEOUT_NAMES.has(err?.name)) throw new UpdateError("Download timed out");
+		if (isTimeout(err)) throw new UpdateError("Download timed out");
 		throw new UpdateError("Download failed (network error)");
 	}
 };
@@ -113,13 +88,6 @@ const updateEdition = async ({ edition, authorization, dir, fetch }) => {
 		await rename(found, path.join(dir, name));
 	} finally {
 		await rm(work, { recursive: true, force: true });
-	}
-};
-
-/** Removes work dirs left behind by an interrupted update */
-const sweepLeftovers = async (dir) => {
-	for (const entry of await readdir(dir)) {
-		if (entry.startsWith(".update-")) await rm(path.join(dir, entry), { recursive: true, force: true });
 	}
 };
 

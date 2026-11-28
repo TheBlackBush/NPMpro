@@ -330,6 +330,7 @@
 			"required": [
 				"enabled",
 				"geoip",
+				"geoip_provider",
 				"skipped_lines",
 				"dropped_requests",
 				"last_read",
@@ -344,7 +345,15 @@
 				},
 				"geoip": {
 					"type": "boolean",
-					"description": "A GeoLite2 Country or ASN database is loaded"
+					"description": "A GeoIP Country or ASN database is loaded"
+				},
+				"geoip_provider": {
+					"type": "string",
+					"enum": [
+						"dbip",
+						"maxmind"
+					],
+					"description": "The active GeoIP provider, named in the credit under the map"
 				},
 				"skipped_lines": {
 					"type": "integer",

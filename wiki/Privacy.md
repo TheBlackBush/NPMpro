@@ -34,6 +34,7 @@ Hints for your privacy policy and the connections the container makes.
 - if enabled to the alpine package repositories to install the inbuilt php-fpm and its extensions
 - if Trust Cloudflare is on, to cloudflare to download their IPs
 - if enabled to the crowdsec (container) lapi (also for the CrowdSec tab of the Monitoring page, the URL is the LAPI URL in Settings, CrowdSec)
+- if the DB-IP Lite provider is active (the default without MaxMind credentials) to download.db-ip.com (served through Cloudflare) to download the DB-IP Lite country and ASN databases: a plain HTTPS GET with no account data, when the provider or the databases are changed, when "Update now" is used, and every 7 days (a failed automatic update is retried after 24 hours). Switching to MaxMind or deselecting both DB-IP databases stops it.
 - if GeoIP credentials are set to download.maxmind.com (and the storage location it redirects to) to download the GeoLite2 databases: when the credentials or editions are changed, when "Update now" is used, and every 3 days (a failed automatic update is retried after 24 hours)
 - if enabled to your captcha provider for the crowdsec captcha remediation
 - if you see more/others please report them

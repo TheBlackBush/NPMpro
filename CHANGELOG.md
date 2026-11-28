@@ -8,6 +8,7 @@ below as its release notes.
 
 ### Added
 
+- **GeoIP:** DB-IP Lite as the default GeoIP provider (country and network databases, no account, CC BY 4.0); MaxMind GeoLite2 stays selectable, exactly one provider is active (`GEOIP_PROVIDER`, `GEOIP_DBIP_EDITIONS`).
 - **Certificates:** a Warn before expiry setting (default 14 days, at most a third of a certificate's lifetime, so short-lived certificates no longer show as expiring all the time).
 - **Notifications:** an event layer that detects certificate, host, backup, GeoIP, CrowdSec and Dynamic DNS problems and changes, the base of mail and webhook notifications.
 - **Notifications:** mail through your SMTP server: Settings, Notifications with a test mail, a public URL for links and a mail language per user.
@@ -82,6 +83,7 @@ below as its release notes.
 
 ### Changed
 
+- **GeoIP:** installs without MaxMind credentials switch to DB-IP Lite; the active provider is credited under the traffic map and in Settings, GeoIP; the footer credits both providers.
 - **Notifications:** mails have the NPMpro look (logo, light and dark mode).
 - **Hosts:** saving is safer: a save whose nginx reload fails is kept and says so, streams cannot use NPMpro's own
   ports or ranges wider than 1000 ports, and Pass Auth to Upstream with several access lists needs every list to allow

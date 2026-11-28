@@ -217,6 +217,9 @@ const startApi = async ({ env = {}, files = {} } = {}) => {
 			throw new Error("startApi must run before any backend import, once per test file");
 		const { migrateUp } = await import("../../migrate.js");
 		await migrateUp();
+		// the GeoIP downloads read through the global dispatcher (the undici MockAgent), as the ACME reads do
+		const { setGeoipAgent } = await import("../../lib/geoip/run.js");
+		setGeoipAgent(undefined);
 		const { prepareApp } = await import("../../startup.js");
 		await prepareApp({ background: false });
 		const { default: app } = await import("../../app.js");

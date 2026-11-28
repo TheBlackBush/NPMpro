@@ -11,6 +11,7 @@ import { backupStore } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
 import { logCrowdsecBlock, setCrowdsecHooks, startCrowdsec } from "./internal/crowdsec-setting.js";
 import { initDdnsTimer, restartDdnsTimer } from "./internal/ddns.js";
+import { applyGeoipProvider } from "./internal/geoip-provider.js";
 import internalHostDnsRecord from "./internal/host-dns-record.js";
 import internalIpRanges from "./internal/ip_ranges.js";
 import { startLandingPages } from "./internal/landing-pages.js";
@@ -29,7 +30,6 @@ import { proxyHostsUsingDefault, renderRuntimeHosts } from "./internal/runtime-h
 import { runtimeExclusive } from "./internal/runtime-queue.js";
 import { setRuntimeApply, setRuntimeApplyAll } from "./internal/runtime-setting.js";
 import { recoverStapling, watchOcspResponses } from "./internal/stapling-recovery.js";
-import { geoip } from "./lib/geoip/instance.js";
 import { getMonitoringConfig } from "./lib/monitoring-config.js";
 import { createRuntimeApplier } from "./lib/runtime-apply.js";
 import { getRuntimeConfig, loadRuntimeConfig } from "./lib/runtime-config.js";
@@ -159,7 +159,7 @@ const prepareApp = async ({ background = true } = {}) => {
 			clearCaches: internalMonitoring.clearCaches,
 		}),
 	});
-	await geoip.reload();
+	await applyGeoipProvider();
 	await internalNginx.reload();
 	// the CrowdSec block of the startup log, after the reload that loaded the files; startup does not wait for its checks
 	if (background) void logCrowdsecBlock(crowdsecStart);

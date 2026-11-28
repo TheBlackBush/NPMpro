@@ -353,6 +353,36 @@ it("replaces whole parts on a restore that is confirmed, and refuses one that is
 	assert.ok(audit);
 });
 
+it("restores the GeoIP provider and the DB-IP editions, and applies the effective-provider rule to an old backup", async () => {
+	const GEOIP = "/settings/geoip";
+	const restoreMonitoring = async (backup) => {
+		const { token } = await inspect(backup.name);
+		const done = await admin.post(`${BASE}/restore/${token}`, { types: ["settings_monitoring"], confirm: true });
+		assert.equal(done.status, 200, done.text);
+	};
+	assert.equal((await admin.put(GEOIP, { provider: "maxmind", dbip_editions: ["ASN"] })).status, 200);
+	const entry = await keep({ types: ["settings_monitoring"] });
+	assert.equal((await admin.put(GEOIP, { provider: "dbip", dbip_editions: ["Country"] })).status, 200);
+	await restoreMonitoring(entry);
+	const back = (await admin.get(GEOIP)).body;
+	assert.equal(back.provider, "maxmind");
+	assert.deepEqual(back.dbip_editions, ["ASN"]);
+
+	// a backup from before the provider existed: no stored provider, no credentials
+	const stored = await api.db("setting").where({ id: "geoip" }).first();
+	await api
+		.db("setting")
+		.where({ id: "geoip" })
+		.update({ meta: JSON.stringify({ account_id: "" }) });
+	const old = await keep({ types: ["settings_monitoring"] });
+	await api.db("setting").where({ id: "geoip" }).update({ meta: stored.meta });
+	await restoreMonitoring(old);
+	const legacy = (await admin.get(GEOIP)).body;
+	assert.equal(legacy.provider, "dbip");
+	assert.deepEqual(legacy.dbip_editions, ["Country", "ASN"]);
+	await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+});
+
 it("restores the description of a host from a backup", async () => {
 	const host = await addHost("described-bk.example.com");
 	assert.equal((await admin.put(`/nginx/proxy-hosts/${host.id}`, { npmpro_description: "Backed up" })).status, 200);

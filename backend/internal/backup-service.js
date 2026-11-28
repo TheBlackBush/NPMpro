@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import os from "node:os";
 import db from "../db.js";
 import { createBackupStore } from "../lib/backup/store.js";
-import { geoip } from "../lib/geoip/instance.js";
 import { clearDiscoveryCache } from "../lib/oidc-config.js";
 import { rooted } from "../lib/paths.js";
 import { loadRuntimeConfig } from "../lib/runtime-config.js";
@@ -18,6 +17,7 @@ import internalCertificate from "./certificate.js";
 import { reloadCrowdsecAfterRestore } from "./crowdsec-setting.js";
 import { pauseDdns, resumeDdns } from "./ddns.js";
 import internalDnsCredential from "./dns-credential.js";
+import { applyGeoipProvider } from "./geoip-provider.js";
 import { reloadLandingPagesAfterRestore } from "./landing-pages.js";
 import { reloadMailSettings } from "./mail-setting.js";
 import internalNginx from "./nginx.js";
@@ -68,7 +68,7 @@ const internalBackup = createBackupService({
 	reloadSettings: {
 		oidc: clearDiscoveryCache,
 		mail: reloadMailSettings,
-		monitoring: () => geoip.reload(),
+		monitoring: () => applyGeoipProvider(),
 		landingPages: reloadLandingPagesAfterRestore,
 		crowdsec: reloadCrowdsecAfterRestore,
 		acmeServer: loadAcmeServer,

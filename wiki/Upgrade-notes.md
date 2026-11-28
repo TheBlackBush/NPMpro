@@ -6,6 +6,7 @@ Notes for installs that update to a newer NPMpro, and the variables that are not
 
 For installs that update to this version:
 
+- **GeoIP:** installs without MaxMind credentials now download DB-IP Lite (no account). Installs with MaxMind credentials stay on MaxMind. If you feed the databases with the separate geoipupdate container and have no credentials in NPMpro, set `GEOIP_PROVIDER=maxmind` to keep using those files.
 - **DNS resolver:** The nginx resolver is a setting now (Settings, nginx, DNS resolver, or the `NGINX_RESOLVER*` variables). The default is the line nginx.conf had (`resolver local=on hosts=on ipv6=on;`), so nothing changes until you set it. The line moved from nginx.conf to `/data/npmpro/nginx/resolver.conf`, which the container writes at start. A custom `http.conf` or `stream.conf` must not add a second `resolver` line. Addresses you set replace the container's own resolvers (local=on): a name that only the container's resolver knows, such as another container's name on a Docker network (127.0.0.11), is then no longer found unless one of your addresses answers it. See [DNS](DNS#dns-resolver).
 - **DNS domains:** DNS credentials can list the domains they manage (Certificates & DNS, Domains tab). Existing credentials start with no domains, and no host is regenerated. See [DNS](DNS).
 - **ACME accounts:**

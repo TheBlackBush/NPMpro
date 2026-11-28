@@ -292,6 +292,15 @@ export const GEOIP_EDITIONS = [
 	{ value: "GeoLite2-City", key: "city" },
 ];
 const EDITION_ORDER = GEOIP_EDITIONS.map((edition) => edition.value);
+export const GEOIP_PROVIDERS = [
+	{ value: "dbip", key: "dbip" },
+	{ value: "maxmind", key: "maxmind" },
+];
+export const DBIP_EDITIONS = [
+	{ value: "Country", key: "country" },
+	{ value: "ASN", key: "asn" },
+];
+const DBIP_ORDER = DBIP_EDITIONS.map((edition) => edition.value);
 const ACCOUNT_ID = /^[0-9]{0,10}$/u;
 const sameEditions = (a, b) => a.length === b.length && a.every((edition) => b.includes(edition));
 
@@ -302,11 +311,14 @@ const sameEditions = (a, b) => a.length === b.length && a.every((edition) => b.i
  * @returns {string[]}
  */
 const inEditionOrder = (editions) => EDITION_ORDER.filter((edition) => editions.includes(edition));
+const inDbipOrder = (editions) => DBIP_ORDER.filter((edition) => editions.includes(edition));
 
 export const geoipValues = (data) => ({
 	accountId: data.accountId ?? "",
 	licenseKey: "",
 	editions: inEditionOrder(data.editions ?? []),
+	provider: data.provider ?? "dbip",
+	dbipEditions: inDbipOrder(data.dbipEditions ?? []),
 });
 
 /**
@@ -316,6 +328,8 @@ export const geoipValues = (data) => ({
  */
 export const geoipValidate = (rules, isLocked) => (values) => {
 	const errors = {};
+	// the MaxMind fields are not shown (and not sent) while DB-IP is the provider
+	if (values.provider === "dbip") return errors;
 	if (!isLocked("accountId") && !ACCOUNT_ID.test(values.accountId.trim())) {
 		errors.accountId = rules.message("settings.geoip.account-id.invalid");
 	}
@@ -337,8 +351,19 @@ export const toggleEdition = (editions, edition, on) =>
 	inEditionOrder(on ? [...editions, edition] : editions.filter((e) => e !== edition));
 
 /**
- * The request of a GeoIP save and whether the backend starts a download in the background (the account, the key or
- * the editions changed)
+ * The DB-IP editions after one is switched on or off
+ *
+ * @param   {string[]} editions
+ * @param   {string}   edition
+ * @param   {boolean}  on
+ * @returns {string[]}
+ */
+export const toggleDbipEdition = (editions, edition, on) =>
+	inDbipOrder(on ? [...editions, edition] : editions.filter((e) => e !== edition));
+
+/**
+ * The request of a GeoIP save and whether the backend starts a download in the background (the account, the key,
+ * the provider or the editions changed; MaxMind without an account ID or a key downloads nothing)
  *
  * @param   {Object} values
  * @param   {Object} data  the settings as loaded
@@ -346,14 +371,45 @@ export const toggleEdition = (editions, edition, on) =>
  */
 export const geoipRequest = (values, data) => {
 	const isLocked = lockedIn(data.locked);
-	const accountId = values.accountId.trim();
-	const licenseKey = values.licenseKey.trim();
+	// the MaxMind fields are not shown while DB-IP is the provider: the saved account ID stays, no key is sent
+	const maxmind = values.provider !== "dbip";
+	const accountId = maxmind ? values.accountId.trim() : (data.accountId ?? "");
+	const licenseKey = maxmind ? values.licenseKey.trim() : "";
+	const savedProvider = data.provider ?? "dbip";
+	const credentials = accountId !== "" && (licenseKey !== "" || Boolean(data.licenseKeySet));
 	const startsDownload =
-		(!isLocked("accountId") && accountId !== (data.accountId ?? "")) ||
-		(!isLocked("licenseKey") && licenseKey !== "") ||
-		(!isLocked("editions") && !sameEditions(values.editions, data.editions ?? []));
-	return { body: { ...values, accountId, licenseKey, locked: data.locked ?? [] }, startsDownload };
+		(!maxmind || credentials) &&
+		((!isLocked("accountId") && accountId !== (data.accountId ?? "")) ||
+			(!isLocked("licenseKey") && licenseKey !== "") ||
+			(!isLocked("editions") && !sameEditions(values.editions, data.editions ?? [])) ||
+			(!isLocked("provider") && values.provider !== savedProvider) ||
+			(!isLocked("dbipEditions") && !sameEditions(values.dbipEditions, data.dbipEditions ?? [])));
+	const { provider, ...rest } = values;
+	// the provider only when changed: a save of another field must not pin a provider that was only derived
+	const body = { ...rest, accountId, licenseKey, locked: data.locked ?? [] };
+	if (provider !== savedProvider) body.provider = provider;
+	return { body, startsDownload };
 };
+
+const GEOIP_OUTCOME = ["lastUpdate", "lastCheck", "lastError"];
+
+/**
+ * The stored outcome of the last GeoIP run, taken from the answer of a save: the background download has ended once
+ * a later view differs from it (a switch clears the old error in the save itself, so the view before the save is no
+ * snapshot)
+ *
+ * @param   {Object} view  the GeoIP settings
+ * @returns {{ lastUpdate: string|null, lastCheck: string|null, lastError: string|null }}
+ */
+export const geoipOutcome = (view) => Object.fromEntries(GEOIP_OUTCOME.map((key) => [key, view?.[key] ?? null]));
+
+/**
+ * @param   {Object} snapshot  geoipOutcome() of the save's answer
+ * @param   {Object} view      the GeoIP settings as loaded now
+ * @returns {boolean}  a run recorded its outcome since the snapshot
+ */
+export const geoipOutcomeChanged = (snapshot, view) =>
+	GEOIP_OUTCOME.some((key) => (view?.[key] ?? null) !== snapshot[key]);
 
 // Logs & monitoring
 

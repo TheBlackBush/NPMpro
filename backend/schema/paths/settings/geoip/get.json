@@ -25,11 +25,17 @@
 									"GeoLite2-Country",
 									"GeoLite2-ASN"
 								],
+								"provider": "dbip",
+								"dbip_editions": [
+									"Country",
+									"ASN"
+								],
 								"license_key_set": true,
 								"locked": [],
 								"locked_by": {},
 								"secret_error": false,
 								"last_update": "2026-11-17T09:30:00.000Z",
+								"last_check": "2026-11-17T09:30:00.000Z",
 								"last_error": null
 							}
 						}
@@ -41,5 +47,5 @@
 			}
 		}
 	},
-	"description": "Returns the MaxMind GeoLite2 settings and the outcome of the last update. The license key is never returned; license_key_set says whether one exists.\n\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Returns the GeoIP settings (the active provider, DB-IP Lite or MaxMind GeoLite2, and the databases of each) and the outcome of the last update. The license key is never returned; license_key_set says whether one exists.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

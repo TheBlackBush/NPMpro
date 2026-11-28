@@ -1526,6 +1526,61 @@ async function acmeAccount({ admin }) {
 	if (admin.errors.length > 0) throw new Error(`page error: ${admin.errors[0]}`);
 }
 
+const DBIP_RADIO = /^DB-IP Lite/u;
+const MAXMIND_RADIO = /^MaxMind GeoLite2/u;
+const DBIP_CREDIT = "IP Geolocation by DB-IP";
+const MAXMIND_CREDIT = "This product includes GeoLite Data created by MaxMind";
+
+// Settings, GeoIP: the provider choice. Where an env var locks the provider (the smoke test sets GEOIP_PROVIDER) the
+// Provider line shows the lock and MaxMind chosen and disabled, the Account card and the MaxMind credit show. Without
+// the lock the choice switches the cards (DB-IP: no Account card, the DB-IP Databases with Country and ASN on, its
+// credit; MaxMind: the Account card again) and the page is left without a save, which would start a download.
+async function geoipProvider({ admin }) {
+	const { page, api, errors } = admin;
+	const before = JSON.stringify(await api("GET", "/settings/geoip"));
+	const settings = JSON.parse(before);
+	const changes = [];
+	page.on("request", (sent) => {
+		if (sent.method() !== "GET") changes.push(`${sent.method()} ${sent.url()}`);
+	});
+	await page.goto("/settings/geoip");
+	const dbip = page.getByRole("radio", { name: DBIP_RADIO });
+	const maxmind = page.getByRole("radio", { name: MAXMIND_RADIO });
+	const account = page.getByText("MaxMind account", { exact: true });
+	const dbipDatabases = page.getByRole("switch", { name: "Country", exact: true });
+	await maxmind.waitFor();
+	if (settings.locked?.includes("provider")) {
+		await page.getByText("Set by environment").first().waitFor();
+		if (settings.provider !== "maxmind") throw new Error(`the locked provider is ${settings.provider}`);
+		if (!(await maxmind.isChecked())) throw new Error("the locked provider is not shown as chosen");
+		if (await maxmind.isEnabled()) throw new Error("the locked provider choice is not disabled");
+		await account.waitFor();
+		await page.getByText(MAXMIND_CREDIT, { exact: false }).waitFor();
+		console.log("  (the provider is locked by env)");
+	} else {
+		await dbip.check();
+		await account.waitFor({ state: "detached" });
+		await dbipDatabases.waitFor();
+		await page.getByRole("switch", { name: "ASN", exact: true }).waitFor();
+		await page.getByText(DBIP_CREDIT, { exact: true }).waitFor();
+		await maxmind.check();
+		await account.waitFor();
+		await dbipDatabases.waitFor({ state: "detached" });
+		// leaving asks when the form differs from the saved provider; Discard changes leaves without a save
+		const menuLink = page.locator('header nav a[href="/access"]').filter({ visible: true }).first();
+		await menuLink.click();
+		const ask = page.getByRole("alertdialog");
+		await Promise.race([page.waitForURL("**/access"), ask.waitFor()]);
+		if ((await ask.count()) > 0) {
+			await ask.getByRole("button", { name: "Discard changes", exact: true }).click();
+			await page.waitForURL("**/access");
+		}
+	}
+	if (changes.length > 0) throw new Error(`a save request was sent: ${changes}`);
+	if (JSON.stringify(await api("GET", "/settings/geoip")) !== before) throw new Error("the GeoIP settings changed");
+	if (errors.length > 0) throw new Error(`page error: ${errors[0]}`);
+}
+
 export const appFlows = [
 	{ name: "api reference", run: apiReference },
 	{ name: "settings save", run: settingsSave },
@@ -1535,6 +1590,7 @@ export const appFlows = [
 	{ name: "log format", run: logFormat },
 	{ name: "tls handshake log", run: tlsHandshakeLog },
 	{ name: "crowdsec settings", run: crowdsecSettings },
+	{ name: "geoip provider", run: geoipProvider },
 	{ name: "collapsed card opens", run: collapsedCardOpens },
 	{ name: "landing pages settings", run: landingPagesSettings },
 	{ name: "phone list", run: phoneList },

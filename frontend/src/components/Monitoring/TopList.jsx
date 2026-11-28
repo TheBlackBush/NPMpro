@@ -41,9 +41,10 @@ function FullText({ text, linked, children }) {
  * @param {(n: number) => string} [props.formatValue]  count text, default formatCount
  * @param {"primary"|"destructive"} [props.tone]  colour of the share bars, default "primary" (CrowdSec uses "destructive")
  * @param {import("react").ReactNode} [props.empty]   text when there are no rows
+ * @param {import("react").ReactNode} [props.footer]  a note under the rows (such as a data credit)
  * @param {string} [props.className]    classes for the card, which sizes it in the caller's grid
  */
-function TopList({ title, items, total, formatValue = formatCount, tone = "primary", empty, className }) {
+function TopList({ title, items, total, formatValue = formatCount, tone = "primary", empty, footer, className }) {
 	const sum = total ?? items.reduce((acc, item) => acc + (Number(item.value) || 0), 0);
 	return (
 		<Card className={className}>
@@ -111,6 +112,7 @@ function TopList({ title, items, total, formatValue = formatCount, tone = "prima
 			) : (
 				<CardContent className="text-muted-foreground">{empty}</CardContent>
 			)}
+			{footer ? <CardContent>{footer}</CardContent> : null}
 		</Card>
 	);
 }

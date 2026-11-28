@@ -1337,7 +1337,7 @@ describe("GeoIP service", () => {
 	};
 
 	it("updates when credentials exist and the last update is missing, then waits a day after a failure", async () => {
-		const g = make({ account_id: "1", license_key: "k", last_update: null });
+		const g = make({ provider: "maxmind", account_id: "1", license_key: "k", last_update: null });
 		await g.svc.check();
 		assert.equal(g.runs(), 1);
 		g.advance(3600000);
@@ -1349,10 +1349,11 @@ describe("GeoIP service", () => {
 	});
 
 	it("does not update without credentials or with a recent update", async () => {
-		const none = make({ account_id: "", license_key: "", last_update: null });
+		const none = make({ provider: "maxmind", account_id: "", license_key: "", last_update: null });
 		await none.svc.check();
 		assert.equal(none.runs(), 0);
 		const recent = make({
+			provider: "maxmind",
 			account_id: "1",
 			license_key: "k",
 			last_update: new Date(Date.UTC(2026, 9, 22)).toISOString(),
@@ -1360,6 +1361,7 @@ describe("GeoIP service", () => {
 		await recent.svc.check();
 		assert.equal(recent.runs(), 0);
 		const old = make({
+			provider: "maxmind",
 			account_id: "1",
 			license_key: "k",
 			last_update: new Date(Date.UTC(2026, 9, 20)).toISOString(),
@@ -1368,8 +1370,120 @@ describe("GeoIP service", () => {
 		assert.equal(old.runs(), 1);
 	});
 
+	it("MaxMind keys on the last update, not on the last check", async () => {
+		const credentials = { provider: "maxmind", account_id: "1", license_key: "k" };
+		// a fresh check with an old update is due, a fresh update with an old check is not
+		const oldUpdate = make({
+			...credentials,
+			last_update: new Date(Date.UTC(2026, 9, 20)).toISOString(),
+			last_check: new Date(Date.UTC(2026, 9, 24)).toISOString(),
+		});
+		await oldUpdate.svc.check();
+		assert.equal(oldUpdate.runs(), 1);
+		const freshUpdate = make({
+			...credentials,
+			last_update: new Date(Date.UTC(2026, 9, 23)).toISOString(),
+			last_check: new Date(Date.UTC(2026, 9, 1)).toISOString(),
+		});
+		await freshUpdate.svc.check();
+		assert.equal(freshUpdate.runs(), 0);
+	});
+
+	describe("DB-IP", () => {
+		const day = 24 * 3600000;
+		const makeDbip = (values, { present = true, result = { ok: true, updated: [] } } = {}) => {
+			let runs = 0;
+			let time = Date.UTC(2026, 10, 27);
+			const svc = createGeoipService({
+				geoip: { reload: () => Promise.resolve() },
+				runUpdate: () => {
+					runs++;
+					return Promise.resolve(result);
+				},
+				getConfig: () =>
+					Promise.resolve({ values: { provider: "dbip", dbip_editions: ["Country", "ASN"], ...values } }),
+				filesPresent: () => Promise.resolve(present),
+				now: () => time,
+				timers: fakeTimers(),
+				log: silent,
+			});
+			return {
+				svc,
+				runs: () => runs,
+				advance: (ms) => {
+					time += ms;
+				},
+			};
+		};
+
+		it("runs at the first check when a selected file is missing", async () => {
+			const g = makeDbip({ last_check: null }, { present: false });
+			await g.svc.check();
+			assert.equal(g.runs(), 1);
+		});
+
+		it("runs without a last check, not 6 days after one, 8 days after one", async () => {
+			const none = makeDbip({ last_check: null });
+			await none.svc.check();
+			assert.equal(none.runs(), 1);
+			const sixDays = makeDbip({ last_check: new Date(Date.UTC(2026, 10, 21)).toISOString() });
+			await sixDays.svc.check();
+			assert.equal(sixDays.runs(), 0);
+			const eightDays = makeDbip({ last_check: new Date(Date.UTC(2026, 10, 19)).toISOString() });
+			await eightDays.svc.check();
+			assert.equal(eightDays.runs(), 1);
+		});
+
+		it("does nothing with no selected edition", async () => {
+			const g = makeDbip({ dbip_editions: [], last_check: null }, { present: false });
+			assert.equal(await g.svc.check(), null);
+			assert.equal(g.runs(), 0);
+		});
+
+		it("waits a day after a failed run, then retries", async () => {
+			const g = makeDbip(
+				{ last_check: null },
+				{ present: false, result: { ok: false, updated: [], error: "404" } },
+			);
+			await g.svc.check();
+			g.advance(3600000);
+			await g.svc.check();
+			assert.equal(g.runs(), 1);
+			g.advance(day);
+			await g.svc.check();
+			assert.equal(g.runs(), 2);
+		});
+
+		it("retries a failed check a day later when the files exist, not a week later", async () => {
+			const at = (hours) => new Date(Date.UTC(2026, 10, 27) - hours * 3600000).toISOString();
+			const recent = makeDbip({ last_check: at(23), last_error: "DB-IP returned HTTP 503" });
+			assert.equal(await recent.svc.check(), null);
+			assert.equal(recent.runs(), 0);
+			const due = makeDbip({ last_check: at(25), last_error: "DB-IP returned HTTP 503" });
+			await due.svc.check();
+			assert.equal(due.runs(), 1);
+			// the recorded failure moves last_check: the same install is due again 24 hours after it
+			const later = makeDbip({ last_check: at(0), last_error: "DB-IP returned HTTP 503" });
+			assert.equal(await later.svc.check(), null);
+			later.advance(day);
+			await later.svc.check();
+			assert.equal(later.runs(), 1);
+			// without an error the weekly rule holds
+			const fine = makeDbip({ last_check: at(25), last_error: null });
+			assert.equal(await fine.svc.check(), null);
+			assert.equal(fine.runs(), 0);
+		});
+
+		it("a paused service does not run", async () => {
+			const g = makeDbip({ last_check: null }, { present: false });
+			g.svc.pause();
+			assert.equal(await g.svc.check(), null);
+			assert.equal(g.runs(), 0);
+		});
+	});
+
 	it("reloads every 10 minutes, checks soon after start and hourly, and stops", async () => {
-		const g = make({ account_id: "", license_key: "" });
+		const g = make({ provider: "maxmind", account_id: "", license_key: "" });
 		g.svc.start();
 		assert.ok(g.timers.has(600000) && g.timers.has(3600000));
 		g.timers.fire(600000);
@@ -1453,7 +1567,7 @@ describe("monitoring API", () => {
 						...crowdsec,
 					},
 			},
-			geoip: { available: () => available },
+			geoip: { available: () => available, provider: () => "dbip" },
 			store: {
 				queryTraffic: (args) => {
 					queries.push(args);
@@ -1872,6 +1986,7 @@ describe("monitoring API", () => {
 		assert.deepEqual(out.status, {
 			enabled: true,
 			geoip: true,
+			geoip_provider: "dbip",
 			skipped_lines: 0,
 			dropped_requests: 0,
 			last_read: null,

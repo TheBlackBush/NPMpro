@@ -120,6 +120,12 @@ it("drops locked keys and an empty license key from the GeoIP payload", () => {
 	});
 });
 
+it("sends the GeoIP provider and DB-IP editions unless locked", () => {
+	const values = { provider: "dbip", dbipEditions: ["Country"], licenseKey: "", locked: [] };
+	assert.deepEqual(geoipSettingsPayload(values), { provider: "dbip", dbipEditions: ["Country"] });
+	assert.deepEqual(geoipSettingsPayload({ ...values, locked: ["provider", "dbip_editions"] }), {});
+});
+
 it("turns API buckets into one chart series per status class", () => {
 	const series = [
 		{ bucket: 10, byClass: { "2xx": 5, "3xx": 0, "4xx": 1, "5xx": 0 } },

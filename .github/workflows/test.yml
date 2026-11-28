@@ -64,6 +64,8 @@ jobs:
         run: pnpm run coverage # fails on a failed test or below coverage-floor.json; the summary is in this log
       - name: Data Folder Move
         run: sh test/migrate-data-folder.test.sh
+      - name: GoAccess GeoIP Arguments
+        run: sh test/geoip-goaccess-args.test.sh
       - name: Real Database Servers
         shell: bash
         env:

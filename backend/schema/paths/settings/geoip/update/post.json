@@ -24,7 +24,8 @@
 								"updated": [
 									"GeoLite2-Country",
 									"GeoLite2-ASN"
-								]
+								],
+								"provider": "maxmind"
 							}
 						}
 					},
@@ -32,7 +33,8 @@
 						"type": "object",
 						"additionalProperties": false,
 						"required": [
-							"ok"
+							"ok",
+							"provider"
 						],
 						"properties": {
 							"ok": {
@@ -47,13 +49,23 @@
 									"enum": [
 										"GeoLite2-Country",
 										"GeoLite2-ASN",
-										"GeoLite2-City"
+										"GeoLite2-City",
+										"Country",
+										"ASN"
 									]
 								}
 							},
 							"error": {
 								"type": "string",
 								"description": "Why the update failed; only when ok is false"
+							},
+							"provider": {
+								"type": "string",
+								"enum": [
+									"dbip",
+									"maxmind"
+								],
+								"description": "The provider the run used"
 							}
 						}
 					}
@@ -61,5 +73,5 @@
 			}
 		}
 	},
-	"description": "Downloads the selected GeoLite2 databases from MaxMind now and waits for the result, which can take a while. A failure answers 200 with ok false and the reason in error; updated can still list editions that were replaced.\n\nNeeds: an administrator (a token needs its Administrator switch)"
+	"description": "Downloads the selected databases of the active provider (DB-IP Lite or MaxMind GeoLite2) now and waits for the result, which can take a while. A failure answers 200 with ok false and the reason in error; updated can still list editions that were replaced.\n\nNeeds: an administrator (a token needs its Administrator switch)"
 }

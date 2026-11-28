@@ -60,7 +60,7 @@ Scanners such as Trivy, Grype or Docker Scout read it from the registry.
 
 An example, supported mainly by the community.
 
-1. get the GeoLite2 databases: either enter your MaxMind credentials under Settings, GeoIP (see [Monitoring](Monitoring)), or deploy the legacy geoipupdate container (see the compose.yaml for an example, create credentials [here](https://www.maxmind.com/en/geolite2/signup))
+1. get the GeoIP databases: either keep DB-IP Lite (the default, no account), enter your MaxMind credentials under Settings, GeoIP (see [Monitoring](Monitoring)), or deploy the legacy geoipupdate container (see the compose.yaml for an example, create credentials [here](https://www.maxmind.com/en/geolite2/signup)). With DB-IP Lite the country file is `dbip-country-lite.mmdb`, so use that name in the `geoip_country` line below.
 2. open and edit this file: `/opt/npmpro/custom_nginx/http_top.conf`, if you changed /opt/npmpro to a different path make sure to change the path to fit, the database is only reread when nginx reloads
 ```yaml
 geoip_country /data/goaccess/geoip/GeoLite2-Country.mmdb;

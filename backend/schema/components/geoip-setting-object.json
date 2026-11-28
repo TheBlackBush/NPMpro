@@ -1,15 +1,18 @@
 {
 	"type": "object",
-	"description": "Effective GeoIP (MaxMind GeoLite2) settings (the license key is never returned)",
+	"description": "Effective GeoIP settings: the active provider (DB-IP Lite or MaxMind GeoLite2) and its databases (the license key is never returned)",
 	"additionalProperties": false,
 	"required": [
 		"account_id",
 		"editions",
+		"provider",
+		"dbip_editions",
 		"license_key_set",
 		"locked",
 		"locked_by",
 		"secret_error",
 		"last_update",
+		"last_check",
 		"last_error"
 	],
 	"properties": {
@@ -27,7 +30,27 @@
 					"GeoLite2-City"
 				]
 			},
-			"description": "The GeoLite2 databases to download: Country, ASN and City"
+			"description": "The MaxMind GeoLite2 databases to download: Country, ASN and City (used while the provider is maxmind)"
+		},
+		"provider": {
+			"type": "string",
+			"enum": [
+				"dbip",
+				"maxmind"
+			],
+			"description": "The active provider. GEOIP_PROVIDER wins and locks the field; else the saved choice; else maxmind when a MaxMind account ID and license key are set; else dbip"
+		},
+		"dbip_editions": {
+			"type": "array",
+			"uniqueItems": true,
+			"items": {
+				"type": "string",
+				"enum": [
+					"Country",
+					"ASN"
+				]
+			},
+			"description": "The DB-IP Lite databases to download: Country and ASN (used while the provider is dbip)"
 		},
 		"license_key_set": {
 			"type": "boolean",
@@ -57,6 +80,15 @@
 				"null"
 			],
 			"description": "When the databases were last updated (ISO 8601 in UTC), null before the first update",
+			"example": "2026-11-17T09:30:00.000Z"
+		},
+		"last_check": {
+			"type": [
+				"string",
+				"null"
+			],
+			"format": "date-time",
+			"description": "When the last update run finished, successful or not (ISO 8601 in UTC), null before the first run. The DB-IP weekly schedule keys on it",
 			"example": "2026-11-17T09:30:00.000Z"
 		},
 		"last_error": {

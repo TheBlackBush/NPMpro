@@ -89,7 +89,7 @@
 	"get /settings/acme/profiles": "8564d4d18a80e9a6f9594cc582e2119c6b509e2b41b5102bee1c35bd89522ffb",
 	"get /monitoring/traffic": "c4574eb11941dbfec74694f568eb37ead3568b40a95b0a9f0bdd4e93984f4992",
 	"put /settings/monitoring": "4a18916dbfdc8e6fea1ae900bd6e6385d7037f7d04f32e7304410c86214ef87a",
-	"put /settings/geoip": "98a58c638b51d6094e34d7c957cf0e369976889aad8fd8a7d0ccbde5a5fd7a0e",
+	"put /settings/geoip": "8b6e96a3cad40c01d10843c64262ed4eecb7c4f051c24796163daf78803e989c",
 	"put /settings/landing-pages": "093708d561e93c9947661d25e7f170a2cd6977591b4a54184264b9c29505a4c3",
 	"put /settings/crowdsec": "f0b68ccee172bc161f7f1c6507668a7fa15bcd8f793dc11e3b2a753a7b1b2067",
 	"post /settings/crowdsec/test": "f0b68ccee172bc161f7f1c6507668a7fa15bcd8f793dc11e3b2a753a7b1b2067",
