@@ -40,7 +40,7 @@ describe("renderGeoipConf", () => {
 	});
 
 	it("refuses an unknown variant", () => {
-		assert.throws(() => renderGeoipConf({ variant: "databse" }), VARIANT_ERROR);
+		assert.throws(() => renderGeoipConf({ variant: "maxmind" }), VARIANT_ERROR);
 		assert.throws(() => renderGeoipConf({}), VARIANT_ERROR);
 	});
 
