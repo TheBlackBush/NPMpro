@@ -29,3 +29,12 @@ Más en la wiki: Host options.
 ### Página de denegación
 
 **Denegado** (401, 403) es lo que ve un visitante cuando la lista lo rechaza (no en hosts con autenticación delegada): **Ajuste global** (la página de Configuración, Páginas de destino), la **Página «Acceso denegado»**, una **Página personalizada** solo para esta lista (pega o sube un archivo HTML) o **La página simple de nginx**, que conserva la de nginx.
+
+### Países
+
+Permite o bloquea a los visitantes según su país. **Reglas de país** es **Desactivado**, **Permitir solo estos países** o **Bloquear estos países**; añade países con **Añadir un país** (busca por el nombre del país en el idioma de la interfaz o por su código de dos letras) y da a cada uno un comentario opcional. Una lista en modo de permitir o bloquear necesita al menos un país.
+
+- **Bloquear a los visitantes cuyo país es desconocido** cubre las direcciones públicas para las que la base de datos GeoIP no tiene país. El modo de permitir las bloquea por defecto, el de bloquear las deja pasar.
+- **Cerrar la conexión sin respuesta (444)** se aplica solo a los visitantes bloqueados por país. Los rechazos por IP y contraseña mantienen la página de denegación.
+- Las direcciones privadas y locales siempre pasan. Los países se comprueban antes que las reglas de IP y contraseña, también con **Satisfacer Cualquiera**.
+- Las reglas de país necesitan una base de datos de países GeoIP (Ajustes, GeoIP). Sin ella, o mientras nginx rechace la línea de la base de datos, todos los visitantes pasan: los países guardados se conservan, pero una lista no puede recibir un modo nuevo ni países nuevos hasta que haya una base de datos disponible.

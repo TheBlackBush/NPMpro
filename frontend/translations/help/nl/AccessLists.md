@@ -29,3 +29,12 @@ Meer in de wiki: Host options.
 ### Weigerpagina
 
 **Geweigerd** (401, 403) is wat een bezoeker ziet wanneer de lijst hem weigert (niet op hosts met forward-authenticatie): **Globale instelling** (de pagina van Instellingen, Landingspagina's), de **Pagina ‘Toegang geweigerd’**, een **Aangepaste pagina** alleen voor deze lijst (plak of upload één HTML-bestand) of **De gewone pagina van nginx**, die die van nginx behoudt.
+
+### Landen
+
+Sta bezoekers toe of blokkeer ze op basis van hun land. **Landregels** is **Uit**, **Alleen deze landen toestaan** of **Deze landen blokkeren**; voeg landen toe met **Een land toevoegen** (zoek op de naam van het land in de taal van de interface of op de code van twee letters) en geef elk land een optionele opmerking. Een lijst in een toestaan- of blokkeermodus heeft minstens één land nodig.
+
+- **Bezoekers blokkeren van wie het land onbekend is** gaat over openbare adressen waarvoor de GeoIP-database geen land heeft. De toestaanmodus blokkeert ze standaard, de blokkeermodus laat ze door.
+- **De verbinding sluiten zonder antwoord (444)** geldt alleen voor bezoekers die op land zijn geblokkeerd. Weigeringen op IP en wachtwoord houden de weigerpagina.
+- Privé- en lokale adressen komen altijd door. Landen worden gecontroleerd vóór de IP- en wachtwoordregels, ook bij **Voldoen aan minstens een**.
+- Landregels hebben een GeoIP-landendatabase nodig (Instellingen, GeoIP). Zonder database, of zolang nginx de databaseregel weigert, komt elke bezoeker door: opgeslagen landen blijven bewaard, maar een lijst kan geen nieuwe modus of nieuwe landen krijgen tot er een database beschikbaar is.

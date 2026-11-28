@@ -29,3 +29,12 @@ Więcej w wiki: Host options.
 ### Strona odmowy
 
 **Odmowa** (401, 403) to to, co widzi odwiedzający, gdy lista go odrzuca (nie dotyczy hostów z uwierzytelnianiem przekazywanym): **Ustawienie globalne** (strona z Ustawienia, Strony docelowe), **Strona „Odmowa dostępu”**, **Własna strona** tylko dla tej listy (wklej lub prześlij jeden plik HTML) albo **Zwykła strona nginx**, która zachowuje stronę nginx.
+
+### Kraje
+
+Zezwalaj odwiedzającym lub blokuj ich według kraju. **Reguły krajów** to **Wyłączone**, **Zezwól tylko na te kraje** lub **Zablokuj te kraje**; kraje dodajesz przez **Dodaj kraj** (wyszukiwanie po nazwie kraju w języku interfejsu lub po dwuliterowym kodzie), a każdemu możesz nadać opcjonalny komentarz. Lista w trybie zezwalania lub blokowania wymaga co najmniej jednego kraju.
+
+- **Blokuj odwiedzających o nieznanym kraju** dotyczy adresów publicznych, dla których baza GeoIP nie ma kraju. Tryb zezwalania blokuje je domyślnie, tryb blokowania je przepuszcza.
+- **Zamknij połączenie bez odpowiedzi (444)** dotyczy tylko odwiedzających zablokowanych z powodu kraju. Odmowy według IP i hasła zachowują stronę odmowy.
+- Adresy prywatne i lokalne zawsze przechodzą. Kraje są sprawdzane przed regułami IP i hasła, także przy opcji **Spełnij dowolny warunek**.
+- Reguły krajów wymagają bazy krajów GeoIP (Ustawienia, GeoIP). Bez niej, lub gdy nginx odrzuca wiersz bazy, każdy odwiedzający przechodzi: zapisane kraje zostają, ale lista nie może dostać nowego trybu ani nowych krajów, dopóki baza nie będzie dostępna.

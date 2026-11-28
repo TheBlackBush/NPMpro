@@ -29,3 +29,12 @@ Altro nel wiki: Host options.
 ### Pagina di rifiuto
 
 **Negato** (401, 403) è ciò che vede un visitatore quando la lista lo respinge (non sugli host con autenticazione delegata): **Impostazione globale** (la pagina di Impostazioni, Pagine di destinazione), la **Pagina «Accesso negato»**, una **Pagina personalizzata** solo per questa lista (incolla o carica un file HTML) oppure **La pagina semplice di nginx**, che mantiene quella di nginx.
+
+### Paesi
+
+Consenti o blocca i visitatori in base al loro paese. **Regole per paese** è **Disattivato**, **Consenti solo questi paesi** o **Blocca questi paesi**; aggiungi paesi con **Aggiungi un paese** (cerca per nome del paese nella lingua dell'interfaccia o per codice di due lettere) e dai a ciascuno un commento facoltativo. Una lista in modalità consenti o blocca richiede almeno un paese.
+
+- **Blocca i visitatori il cui paese è sconosciuto** riguarda gli indirizzi pubblici per i quali il database GeoIP non ha un paese. La modalità consenti li blocca per impostazione predefinita, la modalità blocca li lascia passare.
+- **Chiudi la connessione senza risposta (444)** vale solo per i visitatori bloccati per paese. I rifiuti per IP e password mantengono la pagina di rifiuto.
+- Gli indirizzi privati e locali passano sempre. I paesi vengono controllati prima delle regole IP e password, anche con **Soddisfa Qualsiasi**.
+- Le regole per paese richiedono un database dei paesi GeoIP (Impostazioni, GeoIP). Senza, o finché nginx rifiuta la riga del database, tutti i visitatori passano: i paesi salvati restano, ma una lista non può ricevere una nuova modalità né nuovi paesi finché non è disponibile un database.
