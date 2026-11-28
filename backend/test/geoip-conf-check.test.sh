@@ -127,6 +127,7 @@ check "--off writes the off text" "$off_ok"
 mkdir -p "$work/bin"
 cat > "$work/bin/nginx" <<'FAKE'
 #!/bin/sh
+[ "${REFUSE:-0}" = 2 ] && exit 1
 [ "${REFUSE:-0}" = 1 ] && grep -q '^geoip_country' "$FAKE_CONF" && exit 1
 exit 0
 FAKE
@@ -156,6 +157,15 @@ if cmp -s "$work/orig.conf" "$work/geoip.conf" && [ ! -e "$work/geoip.conf.datab
     check "--settle puts the database variant back when nginx accepts it" 0
 else
     check "--settle puts the database variant back when nginx accepts it" 1
+fi
+
+database_conf "$GEOIP_CHECK_DIR/ok.mmdb"
+PATH="$work/bin:$PATH" sh "$SCRIPT" --try-off "$work/geoip.conf"
+out="$(REFUSE=2 PATH="$work/bin:$PATH" sh "$SCRIPT" --settle "$work/geoip.conf")"
+if cmp -s "$work/orig.conf" "$work/geoip.conf" && [ ! -e "$work/geoip.conf.database" ] && [ -z "$out" ]; then
+    check "--settle keeps the database variant and says nothing when nginx fails with either variant" 0
+else
+    check "--settle keeps the database variant and says nothing when nginx fails with either variant" 1
 fi
 
 printf '%s\n' "$OFF" > "$work/geoip.conf"

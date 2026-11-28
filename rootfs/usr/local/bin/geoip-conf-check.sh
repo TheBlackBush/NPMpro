@@ -9,7 +9,7 @@
 #   geoip-conf-check.sh --try-off [conf]  launch.sh, nginx -t failed: keeps the database variant in <conf>.database and
 #                                         writes off, exit 1 when conf has no geoip_country line
 #   geoip-conf-check.sh --settle [conf]   launch.sh, after the other fallbacks: puts the database variant back when
-#                                         nginx -t passes with it, else off stays (a failing nginx -t keeps the old text)
+#                                         nginx -t passes with it, else off stays when nginx -t passes with off
 set -u
 mode=check
 case "${1:-}" in
@@ -43,8 +43,14 @@ case "$mode" in
         [ -f "$conf.database" ] || exit 0
         cp -p "$conf.database" "$conf"
         if ! nginx -tq; then
+            # the off variant decides: when nginx passes with it the database line was the cause, else another file
+            # fails and the database variant stays
             off
-            echo "GeoIP: nginx did not accept the GeoIP country database, the country rules of access lists let every visitor pass until it does (Settings, GeoIP)"
+            if nginx -tq; then
+                echo "GeoIP: nginx did not accept the GeoIP country database, the country rules of access lists let every visitor pass until it does (Settings, GeoIP)"
+            else
+                cp -p "$conf.database" "$conf"
+            fi
         fi
         rm -f "$conf.database"
         exit 0
