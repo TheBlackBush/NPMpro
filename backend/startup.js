@@ -84,7 +84,8 @@ const prepareApp = async ({ background = true } = {}) => {
 	// config generation and reload (the runtime settings below), since the host configs and crowdsec.conf point at them
 	await startLandingPages();
 	// the GeoIP includes (country rules of access lists) before the first config generation, since the host configs
-	// name their variables; a failure keeps the files of data-setup.sh (every country rule lets visitors pass)
+	// name their variables. startGeoipNginx writes passing variables when it cannot read the lists; a failure that is
+	// left (a write error) keeps the files on disk, and host configs naming a variable they do not define go offline
 	try {
 		await startGeoipNginx();
 	} catch (err) {

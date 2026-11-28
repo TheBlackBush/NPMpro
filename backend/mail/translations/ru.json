@@ -43,6 +43,8 @@
 	"alerts.backup.failed.resolved": "Резервная копия {name} снова создаётся",
 	"alerts.backup.failed.resolved.unnamed": "Резервные копии снова создаются",
 	"alerts.geoip.failed": "Не удалось обновить базу GeoIP",
+	"alerts.geoip.failed.missing": "В списках доступа есть правила стран, но ни одна база стран GeoIP не пригодна: все посетители проходят",
+	"alerts.geoip.failed.nginx": "nginx не использует базу стран GeoIP: правила стран в списках доступа пропускают всех посетителей",
 	"alerts.geoip.failed.resolved": "Обновление базы GeoIP снова работает",
 	"alerts.crowdsec.unreachable": "CrowdSec недоступен",
 	"alerts.crowdsec.unreachable.resolved": "CrowdSec снова доступен",

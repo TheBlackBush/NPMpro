@@ -8,7 +8,10 @@ import { withDatabaseType } from "./support/mmdb.js";
 
 const OFF_LINE = /default 0;/u;
 const NO_DATABASE = /no GeoIP country database is usable/u;
-const FAILS_OPEN = /nginx -t fails with the database variant/u;
+const FAILS_OPEN = /nginx -t refuses the country database line of geoip.conf/u;
+const NO_FALLBACK = /fails because of another file, geoip.conf keeps the country database \(no fallback\)/u;
+const DUPLICATE = /"geoip_country" directive is duplicate/u;
+const DATABASE_LINE = /^geoip_country \//mu;
 const GEOIP_LINE = /geoip_country/u;
 const PRIVATE_GEO = /geo \$npmpro_geo_private \{/u;
 const OWN_LINE = /^geoip_country/mu;
@@ -29,8 +32,38 @@ const custom = () => file("data/custom_nginx/http.conf");
 const nginxTests = async () => (await api.outside.calls()).filter((line) => line === "nginx -tq").length;
 const recorder = () => {
 	const lines = [];
-	return { lines, error: (text) => lines.push(text), warn: (text) => lines.push(text), info: () => {} };
+	const debugLines = [];
+	return {
+		lines,
+		debugLines,
+		error: (text) => lines.push(text),
+		warn: (text) => lines.push(text),
+		info: () => {},
+		debug: (text) => debugLines.push(text),
+	};
 };
+const geoipConfFile = () => file("data/npmpro/nginx/geoip.conf");
+// nginx refuses NPMpro's geoip_country line while a custom file has one too (in the real include order the error names
+// the later file)
+const duplicateNginx = () =>
+	`#!/bin/sh
+if grep -q '^geoip_country' "${geoipConfFile()}" && grep -q 'geoip_country' "${custom()}" 2>/dev/null; then
+  echo 'nginx: [emerg] "geoip_country" directive is duplicate in ${custom()}:1' >&2
+  echo 'nginx: configuration file /usr/local/nginx/conf/nginx.conf test failed' >&2
+  exit 1
+fi
+exit 0
+`;
+// a broken host config fails nginx -t whatever geoip.conf holds
+const brokenHostNginx = () =>
+	`#!/bin/sh
+if grep -rlq BADHOST --include='*.conf' "${file("data/nginx/proxy_host")}"; then
+  echo 'nginx: [emerg] unexpected "}" in ${file("data/nginx/proxy_host/991.conf")}:1' >&2
+  echo 'nginx: configuration file /usr/local/nginx/conf/nginx.conf test failed' >&2
+  exit 1
+fi
+exit 0
+`;
 const addDatabase = () => writeFile(database(), withDatabaseType(fixture, "DBIP-Country-Lite"));
 const state = async () => {
 	const row = await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).first();
@@ -106,6 +139,19 @@ describe("startup", () => {
 		assert.match(atStart.lists, PRIVATE_GEO);
 	});
 
+	it("does not leave country rules off when a host config fails nginx -t at start", async () => {
+		await addList("allow");
+		await addDatabase();
+		await api.outside.hookCommand("nginx", brokenHostNginx());
+		await writeFile(file("data/nginx/proxy_host/991.conf"), "# BADHOST\n");
+		try {
+			await geo.startGeoipNginx({ log: recorder() });
+			assert.match(await conf(), DATABASE_LINE);
+		} finally {
+			await rm(file("data/nginx/proxy_host/991.conf"), { force: true });
+		}
+	});
+
 	it("logs the lists with country rules when no database is usable", async () => {
 		await addList("allow");
 		const log = recorder();
@@ -170,26 +216,49 @@ describe("syncGeoipConf", () => {
 		assert.match(text, DEFAULT_ON);
 	});
 
-	it("falls back to the off variant and logs it when nginx -t refuses the database variant", async () => {
+	it("falls back to the off variant when a duplicate the detection misses makes nginx -t fail", async () => {
+		await addList("deny");
 		await addDatabase();
-		// a geoip_country the detection cannot see (an included file): nginx refuses the duplicate
-		await api.outside.hookCommand(
-			"nginx",
-			`#!/bin/sh\nif grep -q '^geoip_country' "${file("data/npmpro/nginx/geoip.conf")}"; then echo '"geoip_country" directive is duplicate' >&2; exit 1; fi\nexit 0\n`,
-		);
+		// after another statement on the same line: hasCustomDirective does not see it, nginx does
+		await writeFile(custom(), "map_hash_bucket_size 128; geoip_country /etc/own/GeoIP.dat;\n");
+		await api.outside.hookCommand("nginx", duplicateNginx());
 		const log = recorder();
 		const reloadsBefore = reloads(api);
 		assert.deepEqual(await geo.syncGeoipConf({ log }), { variant: "off", changed: false });
 		assert.match(await conf(), OFF_LINE);
 		assert.ok(
-			log.lines.some((line) => FAILS_OPEN.test(line) && line.includes("directive is duplicate")),
+			log.lines.some((line) => FAILS_OPEN.test(line) && line.includes("directive is duplicate in")),
 			log.lines.join("\n"),
 		);
-		// the file on disk is the one it had: nothing to reload, and nginx passes its test again
+		// the whole nginx output only at debug level
+		assert.ok(log.debugLines.some((line) => line.includes("test failed")));
+		// the file on disk is the one it had: nothing to reload
 		assert.equal(reloads(api), reloadsBefore);
-		await api.outside.clearCalls();
-		await geo.syncGeoipConf({ log });
-		assert.match(await conf(), OFF_LINE);
+		const { data } = await state();
+		assert.equal(data.reason, "nginx");
+		assert.match(data.error, DUPLICATE);
+	});
+
+	it("keeps the database variant and the country rules when another file fails nginx -t", async () => {
+		await addList("deny");
+		await addDatabase();
+		await api.outside.hookCommand("nginx", brokenHostNginx());
+		await writeFile(file("data/nginx/proxy_host/991.conf"), "# BADHOST\n");
+		try {
+			const log = recorder();
+			const reloadsBefore = reloads(api);
+			assert.deepEqual(await geo.syncGeoipConf({ log }), { variant: "database", changed: true });
+			assert.match(await conf(), DATABASE_LINE);
+			assert.ok(
+				log.lines.some((line) => NO_FALLBACK.test(line) && line.includes("991.conf")),
+				log.lines.join("\n"),
+			);
+			// a reload would fail the same way
+			assert.equal(reloads(api), reloadsBefore);
+			assert.notEqual((await state())?.state, "bad");
+		} finally {
+			await rm(file("data/nginx/proxy_host/991.conf"), { force: true });
+		}
 	});
 });
 
@@ -236,12 +305,18 @@ describe("reportGeoipState", () => {
 		assert.notEqual((await state())?.state, "bad");
 	});
 
-	it("is missing while nginx runs the fail-open variant although the database is usable", async () => {
+	it("is bad with reason nginx while nginx runs the fail-open variant although the database is usable", async () => {
 		await addList("deny");
 		await addDatabase();
-		await api.outside.hookCommand("nginx", "#!/bin/sh\necho 'duplicate' >&2\nexit 1\n");
+		await writeFile(custom(), "map_hash_bucket_size 128; geoip_country /etc/own/GeoIP.dat;\n");
+		await api.outside.hookCommand("nginx", duplicateNginx());
 		await geo.syncGeoipConf({ log: recorder() });
-		assert.deepEqual(await state(), { state: "bad", data: { reason: "missing" } });
+		assert.equal((await state()).data.reason, "nginx");
+		// the custom file fixed: the next sync uses the database and the state is ok again
+		await rm(custom());
+		await geo.syncGeoipConf({ log: recorder() });
+		assert.match(await conf(), DATABASE_LINE);
+		assert.equal((await state()).state, "ok");
 	});
 });
 

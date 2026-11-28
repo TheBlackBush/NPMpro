@@ -43,6 +43,8 @@
 	"alerts.backup.failed.resolved": "Die Sicherung {name} funktioniert wieder",
 	"alerts.backup.failed.resolved.unnamed": "Sicherungen funktionieren wieder",
 	"alerts.geoip.failed": "Die Aktualisierung der GeoIP-Datenbank ist fehlgeschlagen",
+	"alerts.geoip.failed.missing": "Zugriffslisten haben Länderregeln, aber keine GeoIP-Länderdatenbank ist nutzbar: Alle Besucher werden durchgelassen",
+	"alerts.geoip.failed.nginx": "nginx nutzt die GeoIP-Länderdatenbank nicht: Die Länderregeln der Zugriffslisten lassen alle Besucher durch",
 	"alerts.geoip.failed.resolved": "Die Aktualisierung der GeoIP-Datenbank funktioniert wieder",
 	"alerts.crowdsec.unreachable": "CrowdSec ist nicht erreichbar",
 	"alerts.crowdsec.unreachable.resolved": "CrowdSec ist wieder erreichbar",

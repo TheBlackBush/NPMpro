@@ -43,6 +43,8 @@
 	"alerts.backup.failed.resolved": "Back-up {name} werkt weer",
 	"alerts.backup.failed.resolved.unnamed": "Back-ups werken weer",
 	"alerts.geoip.failed": "Het bijwerken van de GeoIP-database is mislukt",
+	"alerts.geoip.failed.missing": "Toegangslijsten hebben landregels, maar er is geen bruikbare GeoIP-landendatabase: elke bezoeker wordt doorgelaten",
+	"alerts.geoip.failed.nginx": "nginx gebruikt de GeoIP-landendatabase niet: de landregels van toegangslijsten laten elke bezoeker door",
 	"alerts.geoip.failed.resolved": "Het bijwerken van de GeoIP-database werkt weer",
 	"alerts.crowdsec.unreachable": "CrowdSec is niet bereikbaar",
 	"alerts.crowdsec.unreachable.resolved": "CrowdSec is weer bereikbaar",

@@ -5,6 +5,7 @@ const ERROR_MAX = 300;
 const RESOLVED = ".resolved";
 const SPACES = /\s+/gu;
 const NAMES_SHOWN = 3;
+const GEOIP_PROBLEM = { missing: "alerts.geoip.failed.missing", nginx: "alerts.geoip.failed.nginx" };
 
 // a time in one format every language reads, always UTC and written by hand (the container has English-only ICU data,
 // so no Intl date locale); the same minute text as the password reset notice, with the zone named
@@ -78,7 +79,8 @@ const SENTENCES = {
 		resolved: named("alerts.backup.failed.resolved", (d) => nameOf(d.schedule)),
 	},
 	"geoip.failed": {
-		problem: (_data, t) => t("alerts.geoip.failed"),
+		// no usable Country database, or nginx does not use it: the country rules of access lists let everyone pass
+		problem: (d, t) => t(GEOIP_PROBLEM[d?.reason] ?? "alerts.geoip.failed"),
 		resolved: (_data, t) => t("alerts.geoip.failed.resolved"),
 	},
 	"crowdsec.unreachable": {

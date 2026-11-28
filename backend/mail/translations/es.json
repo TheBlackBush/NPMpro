@@ -43,6 +43,8 @@
 	"alerts.backup.failed.resolved": "La copia de seguridad {name} vuelve a funcionar",
 	"alerts.backup.failed.resolved.unnamed": "Las copias de seguridad vuelven a funcionar",
 	"alerts.geoip.failed": "Falló la actualización de la base de datos GeoIP",
+	"alerts.geoip.failed.missing": "Las listas de acceso tienen reglas de país, pero no hay ninguna base de datos de países GeoIP utilizable: todos los visitantes pasan",
+	"alerts.geoip.failed.nginx": "nginx no usa la base de datos de países GeoIP: las reglas de país de las listas de acceso dejan pasar a todos los visitantes",
 	"alerts.geoip.failed.resolved": "La actualización de la base de datos GeoIP vuelve a funcionar",
 	"alerts.crowdsec.unreachable": "No se puede alcanzar CrowdSec",
 	"alerts.crowdsec.unreachable.resolved": "CrowdSec vuelve a estar accesible",

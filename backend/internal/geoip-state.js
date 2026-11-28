@@ -1,26 +1,30 @@
 import { readStoredGeoip } from "../lib/monitoring-config.js";
 import { global as logger } from "../logger.js";
 import accessListModel from "../models/access_list.js";
-import { geoipConfFailsOpen, geoipStatus } from "./geoip-nginx.js";
+import { geoipConfFailsOpen, geoipRefusal, geoipStatus } from "./geoip-nginx.js";
 import { notify } from "./notify.js";
 
 /**
- * Whether access lists have country rules that nginx does not apply: no Country database is usable (rule 12), or the
- * geoip.conf on disk is the fail-open variant (nginx -t refused the database variant)
+ * Why access lists have country rules that nginx does not apply: `missing` while no Country database is usable (rule
+ * 12), `nginx` while one is usable but geoip.conf on disk is the fail-open variant (nginx -t refused the database line,
+ * or the sync has not run yet); null when no list has a mode or the rules apply
  *
- * @returns {Promise<boolean>}
+ * @returns {Promise<Object|null>}  the state source
  */
-const countryRulesMissing = async () => {
+const countryRulesProblem = async () => {
 	const lists = await accessListModel.query().whereNot("npmpro_geo_mode", "off").resultSize();
-	if (lists === 0) return false;
-	return !(await geoipStatus()).available || (await geoipConfFailsOpen());
+	if (lists === 0) return null;
+	if (!(await geoipStatus()).available) return { reason: "missing" };
+	if (!(await geoipConfFailsOpen())) return null;
+	const error = geoipRefusal();
+	return error ? { reason: "nginx", error } : { reason: "nginx" };
 };
 
 /**
  * Tells the notification layer whether the GeoIP databases are in order: the `geoip.failed` state is bad with the
- * reason `missing` while access lists have country rules that nginx cannot apply (it wins), else with the reason
- * `download` while the last update stored an error, else ok. Never throws, a notification problem must not fail the
- * caller.
+ * reason `missing` or `nginx` while access lists have country rules that nginx does not apply (they win), else with
+ * the reason `download` while the last update stored an error, else ok. Never throws, a notification problem must not
+ * fail the caller.
  *
  * @param   {Object}  [options]
  * @param   {Object}  [options.log]
@@ -29,9 +33,8 @@ const countryRulesMissing = async () => {
 const reportGeoipState = async ({ log = logger } = {}) => {
 	try {
 		const { last_error: error } = await readStoredGeoip();
-		let source = {};
-		if (await countryRulesMissing()) source = { reason: "missing" };
-		else if (typeof error === "string" && error !== "") source = { reason: "download", error };
+		let source = (await countryRulesProblem()) ?? {};
+		if (!source.reason && typeof error === "string" && error !== "") source = { reason: "download", error };
 		await notify.reportState("geoip.failed", "geoip", {
 			state: source.reason ? "bad" : "ok",
 			source,

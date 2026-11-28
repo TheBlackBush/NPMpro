@@ -43,6 +43,8 @@
 	"alerts.backup.failed.resolved": "Backup {name} succeeded again",
 	"alerts.backup.failed.resolved.unnamed": "Backups succeed again",
 	"alerts.geoip.failed": "The GeoIP database update failed",
+	"alerts.geoip.failed.missing": "Access lists have country rules but no GeoIP country database is usable: every visitor passes",
+	"alerts.geoip.failed.nginx": "nginx does not use the GeoIP country database: the country rules of access lists let every visitor pass",
 	"alerts.geoip.failed.resolved": "The GeoIP database update works again",
 	"alerts.crowdsec.unreachable": "CrowdSec cannot be reached",
 	"alerts.crowdsec.unreachable.resolved": "CrowdSec is reachable again",

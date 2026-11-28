@@ -76,18 +76,65 @@ const writeAtomic = async (file, content) => {
  * Writes geoip-lists.conf from the access lists: one map per list with a country mode, and a passing variable for each
  * list id that a proxy host config on disk still names without such a list (a list turned off or deleted whose hosts
  * are not rewritten yet), so nginx never meets an unknown $npmpro_geo_<id>. No test, no reload; the caller runs it in
- * the runtime settings queue. Then the geoip.failed state is evaluated again.
+ * the runtime settings queue. Then the geoip.failed state is evaluated again (unless report is false).
  *
+ * @param   {Object}   [options]
+ * @param   {boolean}  [options.report]
  * @returns {Promise<{lists: number}>}  the number of lists with a country mode
  */
-const writeGeoipLists = async () => {
+const writeGeoipLists = async ({ report = true } = {}) => {
 	const lists = await listsWithMode();
 	const known = new Set(lists.map(({ id }) => id));
 	const stale = [...(await referencedLists())].filter((id) => !known.has(id)).sort((a, b) => a - b);
 	await writeAtomic(GEOIP_LISTS_CONF, `${renderGeoipLists(lists)}${stale.map(passingGeo).join("")}`);
-	await reportGeoipState();
+	if (report) await reportGeoipState();
 	return { lists: lists.length };
 };
+
+/**
+ * geoip-lists.conf without the database (it could not be read): a passing variable for every list id a proxy host
+ * config names, so the host configs still pass nginx -t; every country rule lets visitors pass
+ */
+const writePassingLists = async () => {
+	const ids = [...(await referencedLists())].sort((a, b) => a - b);
+	await writeAtomic(GEOIP_LISTS_CONF, `${renderGeoipLists([])}${ids.map(passingGeo).join("")}`);
+};
+
+/**
+ * Before the nginx -t of a host save: when one of the written configs names a $npmpro_geo_<id> that geoip-lists.conf
+ * does not define (the file lags behind the database, e.g. after a restore), the file is written again. For code in
+ * the runtime settings queue.
+ *
+ * @param   {string[]}  files  the host configs just written
+ * @returns {Promise<boolean>}  whether the file was written
+ */
+const ensureGeoipLists = async (files) => {
+	const named = new Set();
+	for (const file of files) {
+		const text = await readOrNull(file);
+		for (const match of (text ?? "").matchAll(GEO_REFERENCE)) named.add(match.groups.id);
+	}
+	if (named.size === 0) return false;
+	const defined = (await readOrNull(GEOIP_LISTS_CONF)) ?? "";
+	if ([...named].every((id) => defined.includes(`$npmpro_geo_${id} {`))) return false;
+	await writeGeoipLists();
+	return true;
+};
+
+// the [emerg] line of an nginx -t output (the whole output stays at debug level)
+const firstError = (err) => {
+	const lines = String(err?.message ?? err)
+		.split("\n")
+		.map((line) => line.trim())
+		.filter(Boolean);
+	return (lines.find((line) => line.includes("[emerg]")) ?? lines[0] ?? "").slice(0, 300);
+};
+
+// the nginx error of the last database variant that nginx -t refused, while the off variant is on disk for it
+let refusal = null;
+
+/** @returns {string|null}  why nginx refused the database variant now on disk as off, null when it did not */
+const geoipRefusal = () => refusal;
 
 /**
  * syncGeoipConf for code that runs in the runtime settings queue already (a restore)
@@ -104,26 +151,43 @@ const syncGeoipConfNow = async ({ reload = true, force = false, log = logger } =
 	const before = await readOrNull(GEOIP_CONF);
 	let variant = status.variant;
 	let text = wanted;
+	// nginx -t fails because of another file: a reload would fail the same way
+	let otherFailure = false;
 	if (force || before !== wanted) {
 		await writeAtomic(GEOIP_CONF, wanted);
+		if (variant !== "off") refusal = null;
 		// only NPMpro's own geoip_country line can be the cause: the custom and off variants have none
 		if (variant === "database") {
 			try {
 				await internalNginx.test();
 			} catch (err) {
-				// a geoip_country the detection missed (an included file, conf.d, after another statement): nginx
-				// refuses the duplicate, so the country rules fail open rather than leave nginx unable to reload
-				log.error(
-					`GeoIP: nginx -t fails with the database variant of geoip.conf, country rules of access lists now let every visitor pass until it passes again: ${err.message}`,
-				);
-				variant = "off";
-				text = renderGeoipConf({ variant });
-				await writeAtomic(GEOIP_CONF, text);
+				// the off variant decides: when nginx passes with it, NPMpro's geoip_country line was the cause (a
+				// directive the detection missed in an included file, conf.d or after another statement, or a Country
+				// file nginx cannot open), so the country rules fail open rather than leave nginx unable to reload
+				const off = renderGeoipConf({ variant: "off" });
+				await writeAtomic(GEOIP_CONF, off);
+				try {
+					await internalNginx.test();
+					variant = "off";
+					text = off;
+					refusal = firstError(err);
+					log.error(
+						`GeoIP: nginx -t refuses the country database line of geoip.conf (${refusal}): country rules of access lists let every visitor pass until it passes again`,
+					);
+					log.debug(err.message);
+				} catch (other) {
+					await writeAtomic(GEOIP_CONF, wanted);
+					otherFailure = true;
+					log.error(
+						`GeoIP: nginx -t fails because of another file, geoip.conf keeps the country database (no fallback): ${firstError(other)}`,
+					);
+					log.debug(other.message);
+				}
 			}
 		}
 	}
 	const changed = text !== before || (force && variant !== "off");
-	if (reload && changed) {
+	if (reload && changed && !otherFailure) {
 		try {
 			await internalNginx.reload();
 		} catch (err) {
@@ -136,8 +200,9 @@ const syncGeoipConfNow = async ({ reload = true, force = false, log = logger } =
 
 /**
  * Writes geoip.conf for the current status when its text differs (or force: the Country file was replaced under the
- * same name), then nginx -t: a failure writes the off variant and logs it (R14). With reload, reloads nginx after a
- * change. Runs in the runtime settings queue.
+ * same name), then nginx -t. A failure writes the off variant and tests again (R14): when that passes the off variant
+ * stays and is logged, else the cause is another file and the database variant is written back. With reload, reloads
+ * nginx after a change. Runs in the runtime settings queue.
  *
  * @param   {Object}   [options]
  * @param   {boolean}  [options.reload]
@@ -162,7 +227,16 @@ const geoipConfFailsOpen = async () => {
  * @returns {Promise<void>}
  */
 const startGeoipNginx = async ({ log = logger } = {}) => {
-	const { lists } = await writeGeoipLists();
+	let lists = 0;
+	try {
+		({ lists } = await writeGeoipLists({ report: false }));
+	} catch (err) {
+		// the host configs on disk name list variables: without a definition setup's nginx -t takes them offline
+		log.error(
+			`GeoIP: could not write the country rules of access lists, they let every visitor pass until the next access list save: ${err.message}`,
+		);
+		await writePassingLists();
+	}
 	await syncGeoipConfNow({ reload: false, force: true, log });
 	if (lists > 0 && !(await geoipStatus()).available) {
 		log.warn(
@@ -172,9 +246,11 @@ const startGeoipNginx = async ({ log = logger } = {}) => {
 };
 
 export {
+	ensureGeoipLists,
 	GEOIP_CONF,
 	GEOIP_LISTS_CONF,
 	geoipConfFailsOpen,
+	geoipRefusal,
 	geoipStatus,
 	startGeoipNginx,
 	syncGeoipConf,

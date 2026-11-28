@@ -43,6 +43,8 @@
 	"alerts.backup.failed.resolved": "备份 {name} 已恢复正常",
 	"alerts.backup.failed.resolved.unnamed": "备份已恢复正常",
 	"alerts.geoip.failed": "GeoIP 数据库更新失败",
+	"alerts.geoip.failed.missing": "访问列表有国家规则，但没有可用的 GeoIP 国家数据库：所有访问者都会通过",
+	"alerts.geoip.failed.nginx": "nginx 未使用 GeoIP 国家数据库：访问列表的国家规则让所有访问者通过",
 	"alerts.geoip.failed.resolved": "GeoIP 数据库更新已恢复正常",
 	"alerts.crowdsec.unreachable": "无法连接到 CrowdSec",
 	"alerts.crowdsec.unreachable.resolved": "已恢复与 CrowdSec 的连接",
