@@ -98,7 +98,7 @@ A list with only country rules cannot be switched off or emptied of countries: a
 
 ### Your own geoip_country
 
-If `/data/custom_nginx/http_top.conf` or `/data/custom_nginx/http.conf` has its own `geoip_country` line, it wins: NPMpro's rules use the database that line names, and NPMpro does not write its own. Remove the line to use the database of NPMpro's provider.
+If `/data/custom_nginx/http_top.conf` or `/data/custom_nginx/http.conf` has its own `geoip_country` line, it wins: NPMpro's rules use the database that line names, and NPMpro does not write its own. Remove the line to use the database of NPMpro's provider. NPMpro notices an added or removed line when you save an access list or a proxy host, at a restart, and otherwise within an hour.
 
 - NPMpro only sees a `geoip_country` that starts a line in those two files. One in an included file, in conf.d or after another statement on the same line is not seen: nginx then refuses the duplicate and NPMpro falls back to letting every country pass (logged, Settings shows the database as missing) until you fix it.
 - If your own line names a database file that is gone, nginx does not start, as before. NPMpro only rescues its own line: when its file is missing, empty, truncated or not a MaxMind database, NPMpro lets every country pass at start.
