@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { stat } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
 import { countRows, fileExists } from "./support/hosts.js";
+import { withDatabaseType } from "./support/mmdb.js";
 
 // /backups* (schema/paths/backups, wiki/Backup-and-restore): create, list, inspect, download, delete, upload, the export
 // and import of page items and the restore plan, on backups made in the test.
@@ -381,6 +382,26 @@ it("restores the GeoIP provider and the DB-IP editions, and applies the effectiv
 	assert.equal(legacy.provider, "dbip");
 	assert.deepEqual(legacy.dbip_editions, ["Country", "ASN"]);
 	await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+});
+
+it("a restore of the monitoring settings writes geoip.conf in its own queue job, with the provider's database", async () => {
+	const fixture = await readFile(path.join(import.meta.dirname, "fixtures", "GeoLite2-Country-Test.mmdb"));
+	const database = path.join(api.root, "data/goaccess/geoip/dbip-country-lite.mmdb");
+	await mkdir(path.dirname(database), { recursive: true });
+	assert.equal((await admin.put("/settings/geoip", { provider: "dbip" })).status, 200);
+	const entry = await keep({ types: ["settings_monitoring"] });
+	await writeFile(database, withDatabaseType(fixture, "DBIP-Country-Lite"));
+	try {
+		const { token } = await inspect(entry.name);
+		// the restore runs in the runtime queue: a queued geoip.conf sync from it would wait for itself
+		const done = await admin.post(`${BASE}/restore/${token}`, { types: ["settings_monitoring"], confirm: true });
+		assert.equal(done.status, 200, done.text);
+		const conf = await readFile(path.join(api.root, "data/npmpro/nginx/geoip.conf"), "utf8");
+		assert.ok(conf.includes(`geoip_country ${database};`), conf);
+	} finally {
+		await rm(database, { force: true });
+		await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+	}
 });
 
 it("restores the description of a host from a backup", async () => {

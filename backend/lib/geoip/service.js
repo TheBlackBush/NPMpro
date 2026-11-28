@@ -19,9 +19,10 @@ const defaultTimers = {
 
 /**
  * Keeps the shared GeoIP readers current: reload() every 10 minutes (it only reopens changed files) and an automatic
- * update, checked a minute after start and then hourly; after each hourly check onTick runs (the geoip.conf sync). MaxMind: credentials exist and the last update is missing or
- * older than 3 days. DB-IP: a selected file is missing, the last check is missing or older than 7 days, or the last
- * check failed and is older than 24 hours. The update records its own result (lib/geoip/run.js).
+ * update, checked a minute after start and then hourly; after each hourly check onTick runs (the geoip.conf sync).
+ * MaxMind: credentials exist and the last update is missing or older than 3 days. DB-IP: a selected file is missing,
+ * the last check is missing or older than 7 days, or the last check failed and is older than 24 hours. The update
+ * records its own result (lib/geoip/run.js).
  *
  * @param   {Object}    deps
  * @param   {Object}    deps.geoip      createGeoip() instance

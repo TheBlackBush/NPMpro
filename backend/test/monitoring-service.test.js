@@ -22,6 +22,7 @@ const HASH = /^[0-9a-f]{32}$/u;
 const NOT_FOUND = /not found/u;
 const NGINX_FAILED = /nginx -t failed/u;
 const REFUSED = /ECONNREFUSED/u;
+const ON_TICK_SYNC = /onTick: \(\) => syncGeoipConf\(\),/u;
 const silent = { error: () => {}, warn: () => {}, info: () => {} };
 
 const line = (host, ip = "203.0.113.7", status = 200, bytes = 100) =>
@@ -1335,6 +1336,12 @@ describe("GeoIP service", () => {
 			},
 		};
 	};
+
+	it("the service of the backend syncs geoip.conf on its hourly tick", () => {
+		const source = readFileSync(new URL("../internal/monitoring-services.js", import.meta.url), "utf8");
+		const service = source.slice(source.indexOf("const geoipService = createGeoipService({"));
+		assert.match(service.slice(0, service.indexOf("});")), ON_TICK_SYNC);
+	});
 
 	it("runs onTick after each hourly check, not after the first one and not while paused", async () => {
 		const timers = fakeTimers();

@@ -431,8 +431,11 @@ it("downloads the databases when the credentials change, and records the outcome
 	assert.equal(view.body.last_error, null);
 	const files = await readFile(path.join(api.root, "data/goaccess/geoip/GeoLite2-Country.mmdb"));
 	assert.ok(files.length > 100);
-	const traffic = await admin.get("/monitoring/traffic?range=1h&host=geo.example.com");
-	assert.equal(traffic.body.status.geoip, true);
+	// the readers reopen after the result is recorded (and geoip.conf is synced for the new Country file)
+	const traffic = await waitFor(async () => {
+		const answer = await admin.get("/monitoring/traffic?range=1h&host=geo.example.com");
+		return answer.body.status.geoip ? answer : null;
+	}, "the GeoIP readers");
 	assert.equal(traffic.body.status.geoip_provider, "maxmind");
 	assert.ok(view.body.last_check);
 });
