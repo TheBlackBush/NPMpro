@@ -16,7 +16,7 @@ import accessListCountryModel from "../models/access_list_country.js";
 import locationModel from "../models/location.js";
 import proxyHostModel from "../models/proxy_host.js";
 import internalAuditLog from "./audit-log.js";
-import { geoipStatus } from "./geoip-nginx.js";
+import { geoipStatus, writeGeoipLists } from "./geoip-nginx.js";
 import internalNginx from "./nginx.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 
@@ -103,8 +103,12 @@ const internalAccessList = {
 		});
 
 		try {
-			// in the runtime queue like the host writes: a restore or another save never interleaves with the page write
-			await runtimeExclusive(() => internalAccessList.build(freshRow));
+			// in the runtime queue like the host writes: a restore or another save never interleaves with the page write.
+			// The country map first: a host saved with the new list right after names its variable
+			await runtimeExclusive(async () => {
+				await writeGeoipLists();
+				await internalAccessList.build(freshRow);
+			});
 		} finally {
 			await internalAuditLog.add(access, {
 				action: "created",
@@ -216,9 +220,17 @@ const internalAccessList = {
 		const savedRow = { ...freshRow, proxy_hosts: undefined };
 
 		try {
-			// in the runtime queue like the host writes: a restore or another save never interleaves with the page write
-			await runtimeExclusive(() => internalAccessList.build(freshRow));
+			// in the runtime queue like the host writes: a restore or another save never interleaves with the page write.
+			// The country maps before the host configs, so the batch nginx -t sees the variables the new gates name; a
+			// list turned off keeps a passing variable while the old configs still name it
+			await runtimeExclusive(async () => {
+				await writeGeoipLists();
+				await internalAccessList.build(freshRow);
+			});
 			await internalNginx.configureMany(proxyHostEntries(freshRow.proxy_hosts));
+			if (row.npmpro_geo_mode !== "off" && freshRow.npmpro_geo_mode === "off") {
+				await runtimeExclusive(writeGeoipLists);
+			}
 			await internalNginx.reloadOrRaise({ id: data.id });
 		} finally {
 			await internalAuditLog.add(access, {
@@ -333,6 +345,8 @@ const internalAccessList = {
 
 		try {
 			await internalNginx.configureMany(proxyHostEntries(affectedHosts));
+			// the country map after the host configs: until they were rewritten they named its variable
+			await runtimeExclusive(writeGeoipLists);
 
 			await internalNginx.reloadOrRaise(undefined, { change: true });
 

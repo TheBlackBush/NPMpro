@@ -11,6 +11,7 @@ import { backupStore } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
 import { logCrowdsecBlock, setCrowdsecHooks, startCrowdsec } from "./internal/crowdsec-setting.js";
 import { initDdnsTimer, restartDdnsTimer } from "./internal/ddns.js";
+import { startGeoipNginx, syncGeoipConf } from "./internal/geoip-nginx.js";
 import { applyGeoipProvider } from "./internal/geoip-provider.js";
 import internalHostDnsRecord from "./internal/host-dns-record.js";
 import internalIpRanges from "./internal/ip_ranges.js";
@@ -82,6 +83,13 @@ const prepareApp = async ({ background = true } = {}) => {
 	// Settings, Landing pages: the one import of the old CrowdSec pages, then the global page files. Before the first
 	// config generation and reload (the runtime settings below), since the host configs and crowdsec.conf point at them
 	await startLandingPages();
+	// the GeoIP includes (country rules of access lists) before the first config generation, since the host configs
+	// name their variables; a failure keeps the files of data-setup.sh (every country rule lets visitors pass)
+	try {
+		await startGeoipNginx();
+	} catch (err) {
+		logger.error(`Could not write the GeoIP includes at startup: ${err.message}`);
+	}
 
 	// the http access log is on while traffic statistics or Write log files is on
 	const accessLog = createAccessLogSwitch({
@@ -159,7 +167,8 @@ const prepareApp = async ({ background = true } = {}) => {
 			clearCaches: internalMonitoring.clearCaches,
 		}),
 	});
-	await applyGeoipProvider();
+	// geoip.conf is current since startGeoipNginx: no reload of its own, the one below loads it
+	await applyGeoipProvider({ syncConf: () => syncGeoipConf({ reload: false }) });
 	await internalNginx.reload();
 	// the CrowdSec block of the startup log, after the reload that loaded the files; startup does not wait for its checks
 	if (background) void logCrowdsecBlock(crowdsecStart);

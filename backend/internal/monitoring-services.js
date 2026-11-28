@@ -26,6 +26,7 @@ import {
 import { loadVisitorKey } from "../lib/traffic/visitor-hash.js";
 import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
+import { syncGeoipConf } from "./geoip-nginx.js";
 import { createMonitoring } from "./monitoring.js";
 import internalMonitoringSetting from "./monitoring-setting.js";
 import { notify, worker as notifyWorker } from "./notify.js";
@@ -146,6 +147,8 @@ const geoipService = createGeoipService({
 	runUpdate: runGeoipUpdate,
 	getConfig: getGeoipConfig,
 	filesPresent: geoipFilesPresent,
+	// a lost Country file or a new custom geoip_country directive reaches geoip.conf within an hour
+	onTick: () => syncGeoipConf(),
 });
 
 // the statistics reads: on SQLite in a worker thread (a slow query would block the API), else on the shared pool

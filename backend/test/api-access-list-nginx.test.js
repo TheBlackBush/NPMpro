@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { startApi } from "./support/api.js";
 import { created, fileExists, reloads } from "./support/hosts.js";
+import { withDatabaseType } from "./support/mmdb.js";
 
 const LISTS = "/nginx/access-lists";
 const HOSTS = "/nginx/proxy-hosts";
@@ -303,4 +304,137 @@ it("renders no country line for hosts whose lists have no mode", async () => {
 	const list = await makeList();
 	const host = await makeHost([list.id]);
 	assert.doesNotMatch(await gateConfig(host), GEO_ANY);
+});
+
+// nginx -t as the real one judges the country variables: a host config that names $npmpro_geo_<id> without a map or geo
+// of that name in geoip-lists.conf fails (unknown variable). Each passing test records the variables the host configs
+// name and the ones geoip-lists.conf defines, "names|defines".
+const strictNginx = (extra = "") =>
+	api.outside.hookCommand(
+		"nginx",
+		`#!/bin/sh
+hosts="${api.root}/data/nginx/proxy_host"
+lists="${api.root}/data/npmpro/nginx/geoip-lists.conf"
+${extra}
+names=$(cat "$hosts"/*.conf 2>/dev/null | grep -o 'npmpro_geo_[0-9][0-9]*' | sort -u)
+for v in $names; do
+  if ! grep -qF "\\$$v {" "$lists"; then echo "unknown \\"$v\\" variable" >&2; exit 1; fi
+done
+defines=$(grep -o 'npmpro_geo_[0-9][0-9]* {' "$lists" | tr -d ' {' | sort -u)
+echo "$(echo $names)|$(echo $defines)" >> "${api.root}/fake/geo-tests.log"
+exit 0
+`,
+	);
+const geoLog = () => path.join(api.root, "fake/geo-tests.log");
+const geoTests = async () => {
+	const text = await readFile(geoLog(), "utf8").catch(() => "");
+	return text
+		.trim()
+		.split("\n")
+		.filter(Boolean)
+		.map((line) => line.split("|").map((part) => part.split(" ").filter(Boolean)));
+};
+const listsFile = () => readFile(path.join(api.root, "data/npmpro/nginx/geoip-lists.conf"), "utf8");
+const variable = (id) => `npmpro_geo_${id}`;
+const mapOf = (id) => new RegExp(`map "[^"]+" \\$npmpro_geo_${id} \\{`, "u");
+const definesOf = (id) => new RegExp(`\\$npmpro_geo_${id} `, "u");
+const gateOf = (id) => new RegExp(`\\$npmpro_geo_${id} = 0`, "u");
+const FR_BLOCKED = /"1:0:FR" 0;/u;
+const withDatabase = async () => {
+	const fixture = await readFile(path.join(import.meta.dirname, "fixtures", "GeoLite2-Country-Test.mmdb"));
+	await mkdir(path.join(api.root, "data/goaccess/geoip"), { recursive: true });
+	await writeFile(
+		path.join(api.root, "data/goaccess/geoip/dbip-country-lite.mmdb"),
+		withDatabaseType(fixture, "DBIP-Country-Lite"),
+	);
+};
+const countryList = async (body = {}) => {
+	counter += 1;
+	return created(
+		await admin.post(LISTS, {
+			name: `countries ${counter}`,
+			clients: [{ address: "10.1.0.0/16", directive: "allow" }],
+			npmpro_geo_mode: "allow",
+			npmpro_countries: [{ country: "DE" }],
+			...body,
+		}),
+		"country list",
+	);
+};
+
+it("writes a created list's country map at once, so a host saved with it passes nginx -t", async () => {
+	await withDatabase();
+	// the create writes geoip-lists.conf from every list in the database, also those earlier cases set by hand
+	const list = await countryList();
+	assert.match(await listsFile(), mapOf(list.id));
+	await strictNginx();
+	const host = await makeHost([list.id]);
+	assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+	assert.match(await gateConfig(host), gateOf(list.id));
+});
+
+it("writes the map before the host configs when a used list gains a mode or a country", async () => {
+	await withDatabase();
+	const list = await makeList();
+	const hosts = [await makeHost([list.id]), await makeHost([list.id])];
+	await strictNginx();
+	await rm(geoLog(), { force: true });
+	const gained = await admin.put(`${LISTS}/${list.id}`, {
+		npmpro_geo_mode: "deny",
+		npmpro_countries: [{ country: "US" }],
+	});
+	assert.equal(gained.status, 200, gained.text);
+	const added = await admin.put(`${LISTS}/${list.id}`, { npmpro_countries: [{ country: "US" }, { country: "FR" }] });
+	assert.equal(added.status, 200, added.text);
+	for (const host of hosts) {
+		assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+		assert.match(await gateConfig(host), gateOf(list.id));
+	}
+	// one batch test per save, each with the new gates and their map together
+	const tests = await geoTests();
+	assert.equal(tests.length, 2);
+	for (const [names, defines] of tests) {
+		assert.ok(names.includes(variable(list.id)), names.join(" "));
+		assert.ok(defines.includes(variable(list.id)), defines.join(" "));
+	}
+	assert.match(await listsFile(), FR_BLOCKED);
+	// a single host save after it finds the map as well
+	const saved = await admin.put(`${HOSTS}/${hosts[0].id}`, { forward_port: 81 });
+	assert.equal(saved.status, 200, saved.text);
+	assert.equal((await row(hosts[0].id)).npmpro_nginx_online, 1);
+});
+
+it("keeps a passing variable while a list turned off is checked host by host, then drops it", async () => {
+	await withDatabase();
+	const list = await countryList({ npmpro_geo_mode: "deny" });
+	const good = await makeHost([list.id]);
+	const bad = await makeHost([list.id]);
+	await api.db("proxy_host").where({ id: bad.id }).update({ advanced_config: "# BADHOST" });
+	await strictNginx(
+		`if grep -rq BADHOST --include='*.conf' "$hosts"; then echo "BADHOST is not valid" >&2; exit 1; fi`,
+	);
+	const off = await admin.put(`${LISTS}/${list.id}`, { npmpro_geo_mode: "off" });
+	assert.equal(off.status, 200, off.text);
+	// the batch failed on the broken host and the hosts were checked one by one from their old configs: the good host
+	// passed although the old config of the broken one still named the variable
+	assert.equal((await row(good.id)).npmpro_nginx_online, 1);
+	assert.equal((await row(bad.id)).npmpro_nginx_online, 0);
+	assert.doesNotMatch(await gateConfig(good), gateOf(list.id));
+	assert.doesNotMatch(await listsFile(), definesOf(list.id));
+});
+
+it("rewrites the host configs without the gate before the deleted list's map leaves geoip-lists.conf", async () => {
+	await withDatabase();
+	const list = await countryList();
+	const hosts = [await makeHost([list.id]), await makeHost([list.id])];
+	await strictNginx();
+	await rm(geoLog(), { force: true });
+	assert.equal((await admin.delete(`${LISTS}/${list.id}`)).status, 200);
+	const tests = await geoTests();
+	assert.equal(tests.length, 1);
+	const [[names, defines]] = tests;
+	assert.ok(!names.includes(variable(list.id)), names.join(" "));
+	assert.ok(defines.includes(variable(list.id)), defines.join(" "));
+	assert.doesNotMatch(await listsFile(), definesOf(list.id));
+	for (const host of hosts) assert.equal((await row(host.id)).npmpro_nginx_online, 1);
 });

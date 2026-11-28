@@ -1336,6 +1336,48 @@ describe("GeoIP service", () => {
 		};
 	};
 
+	it("runs onTick after each hourly check, not after the first one and not while paused", async () => {
+		const timers = fakeTimers();
+		const order = [];
+		const errors = [];
+		const svc = createGeoipService({
+			geoip: { reload: () => Promise.resolve() },
+			runUpdate: () => Promise.resolve({ ok: true, updated: [] }),
+			getConfig: () => {
+				order.push("check");
+				return Promise.resolve({ values: { provider: "dbip", dbip_editions: [] } });
+			},
+			onTick: () => {
+				order.push("tick");
+				return order.filter((step) => step === "tick").length === 3
+					? Promise.reject(new Error("sync broke"))
+					: Promise.resolve();
+			},
+			timers,
+			log: { ...silent, error: (text) => errors.push(text) },
+		});
+		svc.start();
+		const settle = () => new Promise((resolve) => setImmediate(resolve));
+		timers.fire(60000);
+		await settle();
+		assert.deepEqual(order, ["check"]);
+		timers.fire(3600000);
+		await settle();
+		timers.fire(3600000);
+		await settle();
+		assert.deepEqual(order, ["check", "check", "tick", "check", "tick"]);
+		svc.pause();
+		timers.fire(3600000);
+		await settle();
+		assert.equal(order.filter((step) => step === "tick").length, 2);
+		svc.resume();
+		timers.fire(3600000);
+		await settle();
+		assert.equal(order.filter((step) => step === "tick").length, 3);
+		assert.deepEqual(errors, ["GeoIP: sync broke"]);
+		svc.stop();
+	});
+
 	it("updates when credentials exist and the last update is missing, then waits a day after a failure", async () => {
 		const g = make({ provider: "maxmind", account_id: "1", license_key: "k", last_update: null });
 		await g.svc.check();

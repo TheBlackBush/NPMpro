@@ -17,6 +17,7 @@ import internalCertificate from "./certificate.js";
 import { reloadCrowdsecAfterRestore } from "./crowdsec-setting.js";
 import { pauseDdns, resumeDdns } from "./ddns.js";
 import internalDnsCredential from "./dns-credential.js";
+import { syncGeoipConfNow } from "./geoip-nginx.js";
 import { applyGeoipProvider } from "./geoip-provider.js";
 import { reloadLandingPagesAfterRestore } from "./landing-pages.js";
 import { reloadMailSettings } from "./mail-setting.js";
@@ -68,7 +69,8 @@ const internalBackup = createBackupService({
 	reloadSettings: {
 		oidc: clearDiscoveryCache,
 		mail: reloadMailSettings,
-		monitoring: () => applyGeoipProvider(),
+		// in the runtime queue already: the restore tests and reloads nginx afterwards
+		monitoring: () => applyGeoipProvider({ syncConf: () => syncGeoipConfNow({ reload: false }) }),
 		landingPages: reloadLandingPagesAfterRestore,
 		crowdsec: reloadCrowdsecAfterRestore,
 		acmeServer: loadAcmeServer,

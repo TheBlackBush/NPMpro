@@ -19,7 +19,7 @@ const defaultTimers = {
 
 /**
  * Keeps the shared GeoIP readers current: reload() every 10 minutes (it only reopens changed files) and an automatic
- * update, checked a minute after start and then hourly. MaxMind: credentials exist and the last update is missing or
+ * update, checked a minute after start and then hourly; after each hourly check onTick runs (the geoip.conf sync). MaxMind: credentials exist and the last update is missing or
  * older than 3 days. DB-IP: a selected file is missing, the last check is missing or older than 7 days, or the last
  * check failed and is older than 24 hours. The update records its own result (lib/geoip/run.js).
  *
@@ -28,6 +28,7 @@ const defaultTimers = {
  * @param   {Function}  deps.runUpdate  () => Promise<{ ok, updated, error }>
  * @param   {Function}  deps.getConfig  () => Promise<{ values }>, the effective GeoIP settings (getGeoipConfig)
  * @param   {Function}  [deps.filesPresent]  (values) => Promise<boolean>, every selected file of the active provider exists
+ * @param   {Function}  [deps.onTick]  () => Promise, after the hourly check (not while paused); a failure is logged
  * @param   {Function}  [deps.now]
  * @param   {Object}    [deps.timers]
  * @returns {Object}
@@ -37,6 +38,7 @@ const createGeoipService = ({
 	runUpdate,
 	getConfig,
 	filesPresent = () => Promise.resolve(true),
+	onTick = () => Promise.resolve(),
 	now = Date.now,
 	timers = defaultTimers,
 	log = logger,
@@ -97,10 +99,16 @@ const createGeoipService = ({
 			const runCheck = () => {
 				check().catch(onError);
 			};
+			const hourly = async () => {
+				await check();
+				if (!paused) await onTick();
+			};
 			reloadTimer = timers.setInterval(() => {
 				reload().catch(onError);
 			}, RELOAD_MS);
-			checkTimer = timers.setInterval(runCheck, CHECK_MS);
+			checkTimer = timers.setInterval(() => {
+				hourly().catch(onError);
+			}, CHECK_MS);
 			firstTimer = timers.setTimeout(runCheck, FIRST_CHECK_MS);
 			for (const t of [reloadTimer, checkTimer, firstTimer]) t?.unref?.();
 		},
