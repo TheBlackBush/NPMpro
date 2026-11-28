@@ -15,7 +15,7 @@ import {
 	TextField,
 	useAppForm,
 } from "src/components";
-import { useGeoipSettings, useSaveGeoipSettings, useUpdateGeoipNow } from "src/hooks";
+import { useAccessListGeoip, useGeoipSettings, useSaveGeoipSettings, useUpdateGeoipNow } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { formatDateTime, intl, T } from "src/locale";
 import {
@@ -324,6 +324,7 @@ function ProviderCards({ data, isLocked }) {
  * replace every field); the key field is emptied after a save, a saved key is never shown
  */
 function GeoipForm({ data, background, setBackground }) {
+	const { data: rules } = useAccessListGeoip();
 	const { mutateAsync: save } = useSaveGeoipSettings();
 	const [errorMsg, setErrorMsg] = useState(null);
 	const errorRef = useRef(null);
@@ -373,6 +374,17 @@ function GeoipForm({ data, background, setBackground }) {
 				<StatusAlert variant="info" icon={Lock} id="settings.authentication.status.locked" />
 			) : null}
 			{background ? <StatusAlert variant="info" icon={Info} id="settings.geoip.background" /> : null}
+			{rules?.customDirective ? (
+				<StatusAlert variant="info" icon={Info} id="settings.geoip.custom-directive" />
+			) : null}
+			{rules?.listsWithRules > 0 && (!rules.available || rules.failsOpen) ? (
+				<StatusAlert
+					variant="danger"
+					icon={CircleAlert}
+					id={rules.available ? "settings.geoip.rules-fails-open" : "settings.geoip.rules-missing"}
+					data={{ count: rules.listsWithRules }}
+				/>
+			) : null}
 			<ProviderFields data={data} isLocked={isLocked} />
 			<ProviderCards data={data} isLocked={isLocked} />
 			<UpdateStatus data={data} />
