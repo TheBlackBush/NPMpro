@@ -411,9 +411,9 @@ const countriesOf = async (id) =>
 		row.country,
 		row.npmpro_comment,
 	]);
-const geoList = async () => {
+const geoList = async (name = "backup countries") => {
 	const done = await admin.post(LISTS, {
-		name: "backup countries",
+		name,
 		clients: [{ address: "10.1.0.0/16", directive: "allow", npmpro_comment: "Office" }],
 		npmpro_geo_mode: "allow",
 		npmpro_geo_unknown: "block",
@@ -487,6 +487,119 @@ it("restores country rules without a usable database: the rules stay and the Geo
 	assert.equal((typeof state.data === "string" ? JSON.parse(state.data) : state.data).reason, "missing");
 	await admin.delete(`${LISTS}/${list.id}`);
 	await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+});
+
+// nginx -t as the real one judges the country variables: a host config that names $npmpro_geo_<id> without a definition
+// in geoip-lists.conf fails
+const strictNginx = () =>
+	api.outside.hookCommand(
+		"nginx",
+		`#!/bin/sh
+for v in $(cat "${api.root}/data/nginx/proxy_host"/*.conf 2>/dev/null | grep -o 'npmpro_geo_[0-9][0-9]*' | sort -u); do
+  if ! grep -qF "\\$$v {" "${api.root}/data/npmpro/nginx/geoip-lists.conf"; then echo "unknown \\"$v\\" variable" >&2; exit 1; fi
+done
+exit 0
+`,
+	);
+const withCountryDatabase = async (run) => {
+	const fixture = await readFile(path.join(import.meta.dirname, "fixtures", "GeoLite2-Country-Test.mmdb"));
+	const database = path.join(api.root, "data/goaccess/geoip/dbip-country-lite.mmdb");
+	await mkdir(path.dirname(database), { recursive: true });
+	await writeFile(database, withDatabaseType(fixture, "DBIP-Country-Lite"));
+	try {
+		await run();
+	} finally {
+		await rm(database, { force: true });
+		await rm(path.join(api.root, "fake", "nginx.hook"), { force: true });
+		await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+	}
+};
+const hostWithList = async (listId, domain) => {
+	const done = await admin.post("/nginx/proxy-hosts", {
+		domain_names: [domain],
+		forward_scheme: "http",
+		forward_host: "10.0.8.1",
+		forward_port: 8080,
+		npmpro_access_list_type: "custom",
+		npmpro_access_list_ids: [listId],
+	});
+	if (done.status !== 201) throw new Error(done.text);
+	return done.body;
+};
+const hostConfig = (host) => readFile(path.join(api.root, `data/nginx/proxy_host/${host.id}.conf`), "utf8");
+
+it("a restore keeps a host with a country list online: the map is written before the host config", async () => {
+	await withCountryDatabase(async () => {
+		const list = await geoList();
+		const host = await hostWithList(list.id, "geo-restore.example.com");
+		const entry = await keep({ types: ["proxy_hosts", "access_lists"] });
+		await rm(LISTS_FILE(), { force: true });
+		await strictNginx();
+		const { token } = await inspect(entry.name);
+		const done = await admin.post(`${BASE}/restore/${token}`, {
+			types: ["proxy_hosts", "access_lists"],
+			confirm: true,
+		});
+		assert.equal(done.status, 200, done.text);
+		assert.deepEqual(done.body.offlineHosts, []);
+		assert.match(await hostConfig(host), new RegExp(`\\$npmpro_geo_${list.id} = 0`, "u"));
+		assert.match(await readFile(LISTS_FILE(), "utf8"), new RegExp(`\\$npmpro_geo_${list.id} \\{`, "u"));
+		assert.equal((await admin.delete(`/nginx/proxy-hosts/${host.id}`)).status, 200);
+		assert.equal((await admin.delete(`${LISTS}/${list.id}`)).status, 200);
+	});
+});
+
+it("a merge adds a list with its countries under the new id and writes its map", async () => {
+	await withCountryDatabase(async () => {
+		const list = await geoList();
+		const host = await hostWithList(list.id, "geo-merge.example.com");
+		const entry = await keep({ types: ["proxy_hosts", "access_lists"] });
+		assert.equal((await admin.delete(`/nginx/proxy-hosts/${host.id}`)).status, 200);
+		assert.equal((await admin.delete(`${LISTS}/${list.id}`)).status, 200);
+		const taken = await geoList("taken by another list");
+		await strictNginx();
+		const { token } = await inspect(entry.name);
+		const types = ["proxy_hosts", "access_lists"];
+		const plan = await admin.post(`${BASE}/restore/${token}/plan`, { mode: "merge", types });
+		assert.equal(plan.status, 200, plan.text);
+		const done = await admin.post(`${BASE}/restore/${token}`, { mode: "merge", types, plan_hash: plan.body.hash });
+		assert.equal(done.status, 200, done.text);
+		const added = await api
+			.db("access_list")
+			.whereNot({ id: taken.id })
+			.where({ name: "backup countries" })
+			.first();
+		assert.ok(added);
+		assert.deepEqual(await countriesOf(added.id), [
+			["AT", ""],
+			["DE", "Berlin"],
+		]);
+		assert.deepEqual(await countriesOf(taken.id), [
+			["AT", ""],
+			["DE", "Berlin"],
+		]);
+		assert.match(await readFile(LISTS_FILE(), "utf8"), new RegExp(`\\$npmpro_geo_${added.id} \\{`, "u"));
+		await api.db("proxy_host").del();
+		await api.db("access_list").del();
+	});
+});
+
+it("an access list with the country mode off keeps its saved countries through a backup and restore", async () => {
+	await withCountryDatabase(async () => {
+		const list = await geoList();
+		assert.equal((await admin.put(`${LISTS}/${list.id}`, { npmpro_geo_mode: "off" })).status, 200);
+		const entry = await keep({ types: ["access_lists"] });
+		assert.equal((await admin.put(`${LISTS}/${list.id}`, { npmpro_countries: [{ country: "US" }] })).status, 200);
+		const { token } = await inspect(entry.name);
+		const done = await admin.post(`${BASE}/restore/${token}`, { types: ["access_lists"], confirm: true });
+		assert.equal(done.status, 200, done.text);
+		assert.equal((await api.db("access_list").where({ id: list.id }).first()).npmpro_geo_mode, "off");
+		assert.deepEqual(await countriesOf(list.id), [
+			["AT", ""],
+			["DE", "Berlin"],
+		]);
+		assert.equal((await admin.delete(`${LISTS}/${list.id}`)).status, 200);
+	});
 });
 
 it("restores the description of a host from a backup", async () => {
