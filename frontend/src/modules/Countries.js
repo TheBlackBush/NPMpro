@@ -257,6 +257,19 @@ export const COUNTRY_CODES = Object.freeze([
 ]);
 
 const namers = new Map();
+const KNOWN = new Set(COUNTRY_CODES);
+const collators = new Map();
+
+const collatorOf = (locale) => {
+	if (!collators.has(locale)) {
+		try {
+			collators.set(locale, new Intl.Collator(locale));
+		} catch {
+			collators.set(locale, new Intl.Collator());
+		}
+	}
+	return collators.get(locale);
+};
 
 /**
  * The name of a country in a language, or the code when the language has none or the code is outside the list
@@ -267,9 +280,10 @@ const namers = new Map();
  */
 export const countryName = (code, locale) => {
 	// ZZ and the like are valid region codes for Intl ("Unknown Region"), but not countries of the list
-	if (!COUNTRY_CODES.includes(code)) return code;
-	if (!namers.has(locale)) namers.set(locale, new Intl.DisplayNames([locale], { type: "region", fallback: "code" }));
+	if (!KNOWN.has(code)) return code;
 	try {
+		if (!namers.has(locale))
+			namers.set(locale, new Intl.DisplayNames([locale], { type: "region", fallback: "code" }));
 		return namers.get(locale).of(code) ?? code;
 	} catch {
 		return code;
@@ -292,7 +306,7 @@ export const searchCountries = (query, locale, codes = COUNTRY_CODES) => {
 	const named = codes.map((code) => ({ code, name: countryName(code, locale) }));
 	return named
 		.filter(({ code, name }) => needle === "" || fold(name).includes(needle) || fold(code).includes(needle))
-		.sort((a, b) => a.name.localeCompare(b.name, locale))
+		.sort((a, b) => collatorOf(locale).compare(a.name, b.name))
 		.map(({ code }) => code);
 };
 
@@ -300,4 +314,4 @@ export const searchCountries = (query, locale, codes = COUNTRY_CODES) => {
  * @param   {string} code
  * @returns {boolean}  whether the list has the code
  */
-export const isKnownCountry = (code) => COUNTRY_CODES.includes(code);
+export const isKnownCountry = (code) => KNOWN.has(code);

@@ -25,6 +25,11 @@ it("names a country in the UI language, the code when there is no name", () => {
 	assert.equal(countryName("not a code", "en"), "not a code");
 });
 
+it("does not throw for a malformed language", () => {
+	assert.equal(countryName("DE", "not a locale"), "DE");
+	assert.ok(searchCountries("de", "not a locale").includes("DE"));
+});
+
 it("knows the codes of the list only", () => {
 	assert.equal(isKnownCountry("DE"), true);
 	assert.equal(isKnownCountry("ZZ"), false);
@@ -35,12 +40,12 @@ it("searches by name in the language and by code, case and accent insensitive, s
 	assert.ok(searchCountries("fr", "en").includes("FR"));
 	assert.ok(searchCountries("GERM", "en").includes("DE"));
 	assert.ok(searchCountries("de", "en").includes("DE"));
-	const accent = searchCountries("ä", "de");
-	assert.deepEqual(
-		accent,
-		searchCountries("a", "de").filter((code) => accent.includes(code)),
-	);
-	assert.ok(accent.length > 0);
+	// a name with a diacritic is found by its plain letters and the other way round
+	assert.ok(searchCountries("aland", "de").includes("AX"));
+	assert.ok(searchCountries("Å", "de").includes("AX"));
+	assert.ok(searchCountries("curacao", "en").includes("CW"));
+	assert.ok(searchCountries("Curaçao", "en").includes("CW"));
+	assert.ok(searchCountries("ä", "de").includes("AX"));
 	assert.ok(searchCountries("cote", "fr").includes("CI"));
 	assert.deepEqual(new Set(searchCountries("", "en")), new Set(COUNTRY_CODES));
 	assert.equal(searchCountries("", "en").length, COUNTRY_CODES.length);

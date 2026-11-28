@@ -93,15 +93,29 @@ export const unknownValue = (mode, switchOn, saved) => {
 };
 
 /**
+ * The switch after a mode change. Leaving off for allow or deny with the switch untouched, it takes the new mode's
+ * default (on for allow, off for deny), so a first save sends "auto" (allow blocks an unknown country, deny lets it
+ * pass). A touched switch and every other change keep the switch where it is, which keeps the allow, deny, allow
+ * round trip at "auto".
+ *
+ * @param   {string}  prevMode  the mode before the change
+ * @param   {string}  nextMode  the mode chosen
+ * @param   {boolean} switchOn  the switch now
+ * @param   {boolean} touched   the user changed the switch since the window opened
+ * @returns {boolean}           the switch to show
+ */
+export const switchForMode = (prevMode, nextMode, switchOn, touched) =>
+	prevMode === "off" && nextMode !== "off" && !touched ? unknownSwitchOn(nextMode, "auto") : switchOn;
+
+/**
  * What the Countries tab allows. Without a country database (rule 6 of the backend) a save may keep or remove
  * countries or turn the mode off, but not turn a mode on, change it or add a country.
  *
- * @param   {Object}  _values    the form values (the rules need only the saved list)
  * @param   {Object}  saved      the saved list (its npmproGeoMode; a new list has none)
  * @param   {boolean} available  the database is usable (GET /nginx/access-lists/geoip)
  * @returns {{ modeLocked: string[], canAdd: boolean }}  the mode options to disable, whether the picker adds
  */
-export const geoRestrictions = (_values, saved, available) =>
+export const geoRestrictions = (saved, available) =>
 	available
 		? { modeLocked: [], canAdd: true }
 		: { modeLocked: ["allow", "deny"].filter((mode) => mode !== (saved?.npmproGeoMode ?? "off")), canAdd: false };
@@ -133,6 +147,30 @@ export function userErrors(rules, rows, saved) {
 		}
 		return Object.keys(error).length > 0 ? error : null;
 	});
+	return errors.some(Boolean) ? errors : undefined;
+}
+
+const MAX_COMMENT = 255;
+
+// two error arrays of the same rows, entry by entry
+const mergeErrors = (a, b) => {
+	if (!a || !b) return a ?? b;
+	return b.map((entry, index) => (a[index] || entry ? { ...a[index], ...entry } : undefined));
+};
+
+/**
+ * The comment errors of rows (rules or countries), one entry per row, or undefined: at most 255 characters
+ *
+ * @param   {Object}   rules
+ * @param   {Object[]} rows
+ * @returns {Array|undefined}
+ */
+export function commentErrors(rules, rows) {
+	const errors = rows.map(({ comment }) =>
+		String(comment ?? "").trim().length > MAX_COMMENT
+			? { comment: rules.message("error.max-character-length", { max: MAX_COMMENT }) }
+			: undefined,
+	);
 	return errors.some(Boolean) ? errors : undefined;
 }
 
@@ -202,7 +240,8 @@ export const ACCESS_LIST_TABS = Object.freeze([
 export const accessListValidate = (rules, { savedUsers }) =>
 	fieldsValidate({ name: rules.validateString(1, 255) }, (values) => {
 		const items = userErrors(rules, values.items, savedUsers);
-		const clients = ruleErrors(rules, values.clients);
+		const clients = mergeErrors(ruleErrors(rules, values.clients), commentErrors(rules, values.clients));
+		const countryComments = commentErrors(rules, values.countries);
 		const countriesOn = values.geoMode !== "off";
 		const noRules =
 			named(values.items).length === 0 &&
@@ -213,7 +252,9 @@ export const accessListValidate = (rules, { savedUsers }) =>
 			...(clients ? { clients } : {}),
 			...(countriesOn && values.countries.length === 0
 				? { countries: rules.message("access-list.countries.required") }
-				: {}),
+				: countryComments
+					? { countries: countryComments }
+					: {}),
 			...(noRules ? { accessRules: rules.message("error.access.at-least-one") } : {}),
 			...placeErrors(rules, "accessList", values),
 		};

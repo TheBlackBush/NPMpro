@@ -4,6 +4,8 @@
 	"access-list.address": "Address",
 	"access-list.address.invalid": "An IPv4/IPv6 address or CIDR range, or unix:",
 	"access-list.auth-count": "{count} {count, plural, one {User} other {Users}}",
+	"access-list.countries": "Countries",
+	"access-list.countries.required": "Choose at least one country or turn the country rules off",
 	"access-list.custom": "Custom",
 	"access-list.custom.subtitle": "Use a custom access list type",
 	"access-list.directive": "Allow or deny",

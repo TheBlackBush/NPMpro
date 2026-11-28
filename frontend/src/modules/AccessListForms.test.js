@@ -9,9 +9,11 @@ import {
 	accessListValidate,
 	blankRule,
 	blankUser,
+	commentErrors,
 	geoRestrictions,
 	ruleErrors,
 	ruleRows,
+	switchForMode,
 	unknownSwitchOn,
 	unknownValue,
 	userErrors,
@@ -21,9 +23,7 @@ import { fieldPaths } from "./HookForm.js";
 import { tabOfPath } from "./ModalTabs.js";
 import { createValidations } from "./ValidationRules.js";
 
-const rules = createValidations(
-	createIntl({ locale: "en", messages: { ...en, "access-list.countries.required": "Choose at least one country" } }),
-);
+const rules = createValidations(createIntl({ locale: "en", messages: en }));
 
 const newList = { id: 0, name: "", satisfyAny: false, passAuth: false, items: [], clients: [] };
 const savedList = {
@@ -295,15 +295,14 @@ it("a list saved with auto saves auto again, also after the mode goes allow, den
 });
 
 it("the Countries tab without a database: only Off and the saved mode stay selectable, nothing is added", () => {
-	const values = accessListDefaults(countryList);
-	assert.deepEqual(geoRestrictions(values, countryList, true), { modeLocked: [], canAdd: true });
-	assert.deepEqual(geoRestrictions(values, countryList, false), { modeLocked: ["deny"], canAdd: false });
-	assert.deepEqual(geoRestrictions(values, { ...countryList, npmproGeoMode: "deny" }, false), {
+	assert.deepEqual(geoRestrictions(countryList, true), { modeLocked: [], canAdd: true });
+	assert.deepEqual(geoRestrictions(countryList, false), { modeLocked: ["deny"], canAdd: false });
+	assert.deepEqual(geoRestrictions({ ...countryList, npmproGeoMode: "deny" }, false), {
 		modeLocked: ["allow"],
 		canAdd: false,
 	});
-	assert.deepEqual(geoRestrictions(values, newList, false), { modeLocked: ["allow", "deny"], canAdd: false });
-	assert.deepEqual(geoRestrictions(values, undefined, false), { modeLocked: ["allow", "deny"], canAdd: false });
+	assert.deepEqual(geoRestrictions(newList, false), { modeLocked: ["allow", "deny"], canAdd: false });
+	assert.deepEqual(geoRestrictions(undefined, false), { modeLocked: ["allow", "deny"], canAdd: false });
 });
 
 it("a saved list with countries opens and saves without a database: a stored code outside the list survives", () => {
@@ -353,7 +352,54 @@ it("a list with only countries satisfies the user or rule requirement, a mode wi
 		accessRules: "Either one Authorization or one Access Rule is required",
 	});
 	assert.deepEqual(validate({ ...base, geoMode: "allow", countries: [] }), {
-		countries: "Choose at least one country",
+		countries: "Choose at least one country or turn the country rules off",
 		accessRules: "Either one Authorization or one Access Rule is required",
 	});
+});
+
+it("the switch follows the first mode while untouched: a new list set to allow or deny saves auto", () => {
+	for (const mode of ["allow", "deny"]) {
+		const values = accessListDefaults(newList);
+		const switchOn = switchForMode(values.geoMode, mode, values.geoBlockUnknown, false);
+		assert.equal(switchOn, mode === "allow");
+		const sent = accessListPayload({ ...values, geoMode: mode, geoBlockUnknown: switchOn }, [], "auto");
+		assert.equal(sent.npmproGeoUnknown, "auto");
+	}
+});
+
+it("the switch after a mode change: a touched switch stays, other changes keep it, the round trip is auto", () => {
+	assert.equal(switchForMode("off", "allow", false, true), false);
+	assert.equal(switchForMode("off", "deny", true, true), true);
+	// a list saved off with an explicit block: untouched, the first mode's default wins
+	const savedOff = accessListDefaults({ ...newList, npmproGeoMode: "off", npmproGeoUnknown: "block" });
+	assert.equal(savedOff.geoBlockUnknown, true);
+	assert.equal(switchForMode("off", "deny", savedOff.geoBlockUnknown, false), false);
+	assert.equal(switchForMode("off", "deny", savedOff.geoBlockUnknown, true), true);
+	assert.equal(accessListPayload({ ...savedOff, geoMode: "off" }, [], "block").npmproGeoUnknown, "block");
+	// allow to deny and back, off again
+	assert.equal(switchForMode("allow", "deny", true, false), true);
+	assert.equal(switchForMode("deny", "allow", true, false), true);
+	assert.equal(switchForMode("allow", "off", true, false), true);
+});
+
+it("comments: at most 255 characters on rules and countries, a field error each", () => {
+	const long = "x".repeat(256);
+	const ok = "x".repeat(255);
+	assert.equal(commentErrors(rules, [{ comment: ok }, { comment: "" }]), undefined);
+	assert.deepEqual(commentErrors(rules, [{ comment: ok }, { comment: long }]), [
+		undefined,
+		{ comment: "Maximum length is 255 characters" },
+	]);
+	const validate = accessListValidate(rules, { savedUsers: new Set(["ann"]) });
+	const values = accessListDefaults(countryList);
+	const rows = values.clients.map((rule, index) => (index === 0 ? { ...rule, comment: long } : rule));
+	assert.deepEqual(validate({ ...values, clients: rows }).clients[0], {
+		comment: "Maximum length is 255 characters",
+	});
+	const countries = [{ country: "DE", comment: long }];
+	assert.deepEqual(validate({ ...values, countries }).countries, [{ comment: "Maximum length is 255 characters" }]);
+	assert.deepEqual(validate({ ...values, clients: [{ ...rows[0], address: "bad host" }, rows[1]] }).clients, [
+		{ address: "An IPv4/IPv6 address or CIDR range, or unix:", comment: "Maximum length is 255 characters" },
+		undefined,
+	]);
 });
