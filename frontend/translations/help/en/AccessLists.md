@@ -29,3 +29,12 @@ More in the wiki: Host options.
 ### Denied page
 
 **Denied** (401, 403) is what a visitor sees when the list refuses them (not on hosts with forward authentication): **Global setting** (the page of Settings, Landing pages), the **Access denied page**, a **Custom page** for this list only (paste or upload one HTML file), or **nginx's plain page**, which keeps nginx's own.
+
+### Countries
+
+Allow or block visitors by their country. **Country rules** is **Off**, **Allow only these countries** or **Block these countries**; add countries with **Add a country** (search by the country's name in the interface language or by its two-letter code) and give each an optional comment. A list in an allow or block mode needs at least one country.
+
+- **Block visitors whose country is unknown** covers public addresses the GeoIP database has no country for. Allow mode blocks them by default, block mode lets them pass.
+- **Close the connection without an answer (444)** applies only to visitors blocked by country. IP and password refusals keep the denied page.
+- Private and local addresses always pass. Countries are checked before the IP and password rules, also with **Satisfy Any**.
+- Country rules need a GeoIP country database (Settings, GeoIP). Without one, or while nginx refuses the database line, every visitor passes: saved countries stay, and a list cannot get a new mode or new countries until a database is available.

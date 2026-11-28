@@ -5,6 +5,8 @@ import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from
 import { TableLayout } from "src/components/Table/TableLayout";
 import { PagedTable } from "src/components/Table/TablePagination";
 import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
+import { TapTooltip } from "src/components/TapTooltip";
+import { Badge } from "src/components/ui/badge";
 import { useCanManage } from "src/hooks";
 import { intl, T } from "src/locale";
 import { ACCESS_LISTS } from "src/modules/Permissions";
@@ -40,6 +42,39 @@ function AccessListActions({ accessList, onDelete, onEdit }) {
 				},
 			]}
 		/>
+	);
+}
+
+// the saved countries of a list with country rules on (mode allow or deny); none for a list with the mode off
+function savedCountries(row) {
+	const mode = row.npmproGeoMode;
+	if (mode !== "allow" && mode !== "deny") return null;
+	return { mode, codes: (row.npmproCountries ?? []).map(({ country }) => country) };
+}
+
+const badgeText = ({ mode, codes }) =>
+	intl.formatMessage({ id: `access-list.countries.badge.${mode}` }, { count: codes.length });
+
+// "Allow 3 countries" / "Block 2 countries", the codes in a tooltip
+function CountryBadge({ rules }) {
+	const text = badgeText(rules);
+	const codes = rules.codes.join(", ");
+	return (
+		<TapTooltip content={<span className="font-mono">{codes}</span>}>
+			<Badge variant="outline" aria-label={`${text}: ${codes}`}>
+				{text}
+			</Badge>
+		</TapTooltip>
+	);
+}
+
+function AccessCell({ row }) {
+	const rules = savedCountries(row);
+	return (
+		<div className="flex flex-col items-start gap-1">
+			<T id="access-list.access-count" data={{ count: row.clients.length }} />
+			{rules ? <CountryBadge rules={rules} /> : null}
+		</div>
 	);
 }
 
@@ -91,10 +126,15 @@ export function useColumns() {
 				meta: {
 					mobile: "summary",
 					summaryText: (row) =>
-						intl.formatMessage({ id: "access-list.access-count" }, { count: row.clients.length }),
+						[
+							intl.formatMessage({ id: "access-list.access-count" }, { count: row.clients.length }),
+							savedCountries(row) ? badgeText(savedCountries(row)) : "",
+						]
+							.filter(Boolean)
+							.join(", "),
 				},
 				header: intl.formatMessage({ id: "column.access" }),
-				cell: (info) => <T id="access-list.access-count" data={{ count: info.getValue() }} />,
+				cell: (info) => <AccessCell row={info.row.original} />,
 			}),
 			columnHelper.accessor((row) => row.satisfyAny, {
 				id: "satisfyAny",

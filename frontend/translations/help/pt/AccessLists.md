@@ -29,3 +29,12 @@ Mais na wiki: Host options.
 ### Página de recusa
 
 **Negado** (401, 403) é o que um visitante vê quando a lista o recusa (não em hosts com autenticação encaminhada): **Definição global** (a página de Definições, Páginas de destino), a **Página «Acesso negado»**, uma **Página personalizada** só para esta lista (cole ou carregue um ficheiro HTML) ou **A página simples do nginx**, que mantém a do nginx.
+
+### Países
+
+Permita ou bloqueie visitantes pelo país. **Regras de país** é **Desativado**, **Permitir apenas estes países** ou **Bloquear estes países**; adicione países com **Adicionar um país** (pesquise pelo nome do país no idioma da interface ou pelo código de duas letras) e dê a cada um um comentário opcional. Uma lista num modo de permitir ou bloquear precisa de pelo menos um país.
+
+- **Bloquear visitantes cujo país é desconhecido** abrange os endereços públicos para os quais a base de dados GeoIP não tem país. O modo de permitir bloqueia-os por predefinição, o de bloquear deixa-os passar.
+- **Fechar a ligação sem resposta (444)** aplica-se apenas a visitantes bloqueados por país. As recusas por IP e palavra-passe mantêm a página de recusa.
+- Os endereços privados e locais passam sempre. Os países são verificados antes das regras de IP e de palavra-passe, também com **Satisfazer Qualquer**.
+- As regras de país precisam de uma base de dados de países GeoIP (Definições, GeoIP). Sem ela, ou enquanto o nginx recusar a linha da base de dados, todos os visitantes passam: os países guardados mantêm-se, mas uma lista não pode receber um novo modo nem novos países até haver uma base de dados disponível.

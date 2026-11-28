@@ -292,10 +292,147 @@ async function accessListDeniedPage({ admin }) {
 		await openTab(dialog, "rules");
 		await dialog.getByRole("button", { name: "Add", exact: true }).click();
 		await dialog.locator('input[name="clients.0.address"]').fill("10.0.0.0/8");
+		await dialog.locator('input[name="clients.0.comment"]').fill("flow lan");
 		await saveWindow(page, "Access List");
-		const list = (await api("GET", "/nginx/access-lists")).find((row) => row.name === "flow-denied");
+		const list = (await api("GET", "/nginx/access-lists?expand=clients")).find((row) => row.name === "flow-denied");
 		if (list?.npmpro_denied_page !== "plain") throw new Error(`the denied page is ${list?.npmpro_denied_page}`);
+		if (list.clients?.[0]?.npmpro_comment !== "flow lan") throw new Error("the rule comment was not stored");
 		if (Object.hasOwn(list, "npmpro_denied_page_html")) throw new Error("the list answer holds the page HTML");
+	} finally {
+		await cleanUp(api);
+	}
+}
+
+const UNKNOWN_SWITCH = /^Block visitors whose country is unknown/u;
+const GEOIP_STATUS_URL = /\/api\/nginx\/access-lists\/geoip(?:\?|$)/u;
+const GERMANY_OPTION = /Germany/u;
+const FRANCE_OPTION = /France/u;
+const NO_DATABASE_NOTE = /No GeoIP country database is available/u;
+
+const openCountries = async (page, name) => {
+	await page.getByRole("button", { name: `Edit ${name}`, exact: true }).click();
+	await windowTitled(page, "Edit Access List");
+	const dialog = page.getByRole("dialog");
+	await openTab(dialog, "countries");
+	return dialog;
+};
+
+const pickCountry = async (page, dialog, search, name) => {
+	await dialog.getByRole("combobox", { name: "Add a country", exact: true }).click();
+	await page.getByPlaceholder("Search countries", { exact: true }).fill(search);
+	await page.getByRole("option", { name }).first().click();
+};
+
+// The country rules of an access list: a mode, countries with a comment, the unknown switch following the mode and,
+// when the database is missing, the locked window that still saves (keep on save). Without a database only the window
+// is checked.
+async function accessListCountries({ admin }) {
+	const { page, api } = admin;
+	try {
+		const status = await api("GET", "/nginx/access-lists/geoip");
+		let name = "flow-countries";
+		if (status.available) {
+			await page.goto("/access");
+			await page.getByRole("button", { name: "Add Access List", exact: true }).first().click();
+			await windowTitled(page, "Add Access List");
+			let dialog = page.getByRole("dialog");
+			await dialog.locator("input[name=name]").fill(name);
+			await openTab(dialog, "countries");
+			await dialog.getByRole("radio", { name: "Allow only these countries", exact: true }).check();
+			await pickCountry(page, dialog, "germ", GERMANY_OPTION);
+			await pickCountry(page, dialog, "fran", FRANCE_OPTION);
+			await dialog
+				.getByRole("textbox", { name: "Comment", exact: true })
+				.filter({ visible: true })
+				.first()
+				.fill("flow office");
+			await saveWindow(page, "Access List");
+			let list = (await api("GET", "/nginx/access-lists?expand=npmpro_countries")).find(
+				(row) => row.name === name,
+			);
+			if (list?.npmpro_geo_mode !== "allow") throw new Error(`the mode is ${list?.npmpro_geo_mode}`);
+			const stored = list.npmpro_countries.map((row) => `${row.country}:${row.npmpro_comment ?? ""}`).sort();
+			if (stored.join() !== "DE:flow office,FR:") throw new Error(`the countries are ${stored.join()}`);
+
+			dialog = await openCountries(page, name);
+			await dialog.getByText("Germany", { exact: true }).waitFor();
+			await dialog.getByText("France", { exact: true }).waitFor();
+			const comment = await dialog
+				.getByRole("textbox", { name: "Comment", exact: true })
+				.filter({ visible: true })
+				.first()
+				.inputValue();
+			if (comment !== "flow office") throw new Error(`the reopened comment is "${comment}"`);
+			if (!(await dialog.getByRole("switch", { name: UNKNOWN_SWITCH }).isChecked())) {
+				throw new Error("the unknown switch is off in Allow mode");
+			}
+			await dialog.getByRole("radio", { name: "Block these countries", exact: true }).check();
+			if (await dialog.getByRole("switch", { name: UNKNOWN_SWITCH }).isChecked()) {
+				throw new Error("the unknown switch stays on after the change to Block");
+			}
+			await saveWindow(page, "Access List");
+			list = (await api("GET", "/nginx/access-lists?expand=npmpro_countries")).find((row) => row.name === name);
+			if (list?.npmpro_geo_mode !== "deny" || list.npmpro_geo_unknown !== "auto") {
+				throw new Error(`the list is ${list?.npmpro_geo_mode} and ${list?.npmpro_geo_unknown}`);
+			}
+		} else {
+			console.log("no GeoIP database, the window checks only");
+			await api("POST", "/nginx/access-lists", {
+				name,
+				satisfy_any: true,
+				items: [],
+				clients: [{ address: "10.0.0.0/8", directive: "allow" }],
+			});
+		}
+
+		// the status answer says no database: the picker and the other mode are locked, the saved mode and Off are not
+		await page.route(GEOIP_STATUS_URL, (route) =>
+			route.fulfill({
+				json: {
+					available: false,
+					fails_open: true,
+					provider: "dbip",
+					custom_directive: false,
+					lists_with_rules: 1,
+				},
+			}),
+		);
+		try {
+			await page.goto("/access");
+			const dialog = await openCountries(page, name);
+			await dialog.getByText(NO_DATABASE_NOTE).waitFor();
+			if (!(await dialog.getByRole("combobox", { name: "Add a country", exact: true }).isDisabled())) {
+				throw new Error("the picker is enabled without a database");
+			}
+			const saved = status.available ? "Block these countries" : "Off";
+			const other = status.available ? "Allow only these countries" : "Block these countries";
+			if (!(await dialog.getByRole("radio", { name: saved, exact: true }).isEnabled())) {
+				throw new Error("the saved mode is locked");
+			}
+			if (!(await dialog.getByRole("radio", { name: other, exact: true }).isDisabled())) {
+				throw new Error("the other mode is enabled without a database");
+			}
+			if (!(await dialog.getByRole("radio", { name: "Off", exact: true }).isEnabled())) {
+				throw new Error("Off is locked");
+			}
+			if (!status.available) {
+				await page.keyboard.press("Escape");
+				await windowClosed(page);
+				return;
+			}
+			await openTab(dialog, "details");
+			await dialog.locator("input[name=name]").fill("flow-countries-2");
+			await saveWindow(page, "Access List");
+			name = "flow-countries-2";
+			const kept = (await api("GET", "/nginx/access-lists?expand=npmpro_countries")).find(
+				(row) => row.name === name,
+			);
+			if (kept?.npmpro_geo_mode !== "deny" || kept.npmpro_countries.length !== 2) {
+				throw new Error("the country rules were not kept by the save without a database");
+			}
+		} finally {
+			await page.unroute(GEOIP_STATUS_URL);
+		}
 	} finally {
 		await cleanUp(api);
 	}
@@ -444,6 +581,7 @@ export const windowFlows = [
 	{ name: "proxy location and access list", run: proxyLocationAccess },
 	{ name: "proxy host pages", run: proxyHostPages },
 	{ name: "access list denied page", run: accessListDeniedPage },
+	{ name: "access list countries", run: accessListCountries },
 	{ name: "nginx error and re-save", run: nginxErrorResave },
 	{ name: "unsaved changes", run: unsavedChangesOfAllWindows },
 	{ name: "close without errors", run: closeWithoutErrors },

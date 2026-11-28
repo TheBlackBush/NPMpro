@@ -29,3 +29,12 @@ Plus dans le wiki : Host options.
 ### Page de refus
 
 **Refusé** (401, 403) est ce que voit un visiteur quand la liste le refuse (pas sur les hôtes avec authentification déléguée) : **Réglage global** (la page de Paramètres, Pages d'accueil), la **Page « Accès refusé »**, une **Page personnalisée** pour cette liste seulement (collez ou téléversez un fichier HTML), ou **La page simple de nginx**, qui garde celle de nginx.
+
+### Pays
+
+Autorisez ou bloquez les visiteurs selon leur pays. **Règles de pays** vaut **Désactivé**, **Autoriser uniquement ces pays** ou **Bloquer ces pays** ; ajoutez des pays avec **Ajouter un pays** (recherche par nom du pays dans la langue de l'interface ou par code à deux lettres) et donnez à chacun un commentaire facultatif. Une liste en mode autorisation ou blocage a besoin d'au moins un pays.
+
+- **Bloquer les visiteurs dont le pays est inconnu** concerne les adresses publiques pour lesquelles la base GeoIP n'a pas de pays. Le mode autorisation les bloque par défaut, le mode blocage les laisse passer.
+- **Fermer la connexion sans réponse (444)** ne s'applique qu'aux visiteurs bloqués par pays. Les refus par IP et mot de passe gardent la page de refus.
+- Les adresses privées et locales passent toujours. Les pays sont vérifiés avant les règles d'IP et de mot de passe, y compris avec **Satisfaire au moins une condition**.
+- Les règles de pays nécessitent une base de données de pays GeoIP (Paramètres, GeoIP). Sans elle, ou tant que nginx refuse la ligne de la base, tous les visiteurs passent : les pays enregistrés sont conservés, mais une liste ne peut pas recevoir de nouveau mode ni de nouveaux pays tant qu'aucune base n'est disponible.

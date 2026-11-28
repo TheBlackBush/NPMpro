@@ -9,6 +9,7 @@ below as its release notes.
 ### Added
 
 - **Access lists:** country rules (allow only some countries or block some countries) checked by nginx before the IP and password rules, with an optional comment per rule; private and local addresses always pass, certificate challenges are never blocked.
+- **Access lists:** a Countries tab with a searchable country picker, a comment per IP rule, country badges in the list and a warning when country rules have no database.
 - **GeoIP:** DB-IP Lite as the default GeoIP provider (country and network databases, no account, CC BY 4.0); MaxMind GeoLite2 stays selectable, exactly one provider is active (`GEOIP_PROVIDER`, `GEOIP_DBIP_EDITIONS`).
 - **Certificates:** a Warn before expiry setting (default 14 days, at most a third of a certificate's lifetime, so short-lived certificates no longer show as expiring all the time).
 - **Notifications:** an event layer that detects certificate, host, backup, GeoIP, CrowdSec and Dynamic DNS problems and changes, the base of mail and webhook notifications.

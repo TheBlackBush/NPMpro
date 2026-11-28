@@ -1,0 +1,69 @@
+import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
+import { it } from "node:test";
+import { COUNTRY_CODES, countryName, isKnownCountry, searchCountries } from "./Countries.js";
+
+it("holds the same codes in the same order as the backend", () => {
+	const backend = JSON.parse(
+		readFileSync(new URL("../../../backend/lib/country-codes.json", import.meta.url), "utf8"),
+	);
+	assert.deepEqual([...COUNTRY_CODES], backend);
+	assert.equal(COUNTRY_CODES.length, 250);
+});
+
+it("has a flag file for every code", () => {
+	const missing = COUNTRY_CODES.filter(
+		(code) => !existsSync(new URL(`../../node_modules/country-flag-icons/string/3x2/${code}.js`, import.meta.url)),
+	);
+	assert.deepEqual(missing, []);
+});
+
+it("names a country in the UI language, the code when there is no name", () => {
+	assert.equal(countryName("DE", "de"), "Deutschland");
+	assert.equal(countryName("DE", "en"), "Germany");
+	assert.equal(countryName("ZZ", "en"), "ZZ");
+	assert.equal(countryName("not a code", "en"), "not a code");
+});
+
+it("does not throw for a malformed language", () => {
+	assert.equal(countryName("DE", "not a locale"), "DE");
+	assert.ok(searchCountries("de", "not a locale").includes("DE"));
+});
+
+it("knows the codes of the list only", () => {
+	assert.equal(isKnownCountry("DE"), true);
+	assert.equal(isKnownCountry("ZZ"), false);
+});
+
+it("searches by name in the language and by code, case and accent insensitive, sorted by name", () => {
+	assert.ok(searchCountries("deu", "de").includes("DE"));
+	assert.ok(searchCountries("fr", "en").includes("FR"));
+	assert.ok(searchCountries("GERM", "en").includes("DE"));
+	assert.ok(searchCountries("de", "en").includes("DE"));
+	// a name with a diacritic is found by its plain letters and the other way round
+	assert.ok(searchCountries("aland", "de").includes("AX"));
+	assert.ok(searchCountries("Å", "de").includes("AX"));
+	assert.ok(searchCountries("curacao", "en").includes("CW"));
+	assert.ok(searchCountries("Curaçao", "en").includes("CW"));
+	assert.ok(searchCountries("ä", "de").includes("AX"));
+	assert.ok(searchCountries("cote", "fr").includes("CI"));
+	assert.deepEqual(new Set(searchCountries("", "en")), new Set(COUNTRY_CODES));
+	assert.equal(searchCountries("", "en").length, COUNTRY_CODES.length);
+	const names = searchCountries("  ", "en").map((code) => countryName(code, "en"));
+	assert.deepEqual(
+		names,
+		[...names].sort((a, b) => a.localeCompare(b, "en")),
+	);
+	assert.deepEqual(searchCountries("zzzz", "en"), []);
+	assert.deepEqual(searchCountries("", "en", ["DE", "AT"]), ["AT", "DE"]);
+});
+
+it("ranks names that start with the query and an exact code before other matches", () => {
+	const ger = searchCountries("ger", "en");
+	assert.equal(ger[0], "DE");
+	assert.ok(ger.includes("DZ"));
+	assert.ok(ger.indexOf("DE") < ger.indexOf("DZ"));
+	const de = searchCountries("de", "en");
+	assert.equal(de[0], "DE");
+	assert.ok(de.includes("DK"));
+});

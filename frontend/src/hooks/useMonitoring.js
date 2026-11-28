@@ -100,6 +100,7 @@ const useSaveGeoipSettings = () => {
 		onSuccess: () =>
 			Promise.all([
 				queryClient.invalidateQueries({ queryKey: ["geoip-settings"] }),
+				queryClient.invalidateQueries({ queryKey: ["access-lists", "geoip"] }),
 				queryClient.invalidateQueries({ queryKey: ["audit-logs"] }),
 			]),
 	});
@@ -112,6 +113,7 @@ const useUpdateGeoipNow = () => {
 		onSuccess: () =>
 			Promise.all([
 				queryClient.invalidateQueries({ queryKey: ["geoip-settings"] }),
+				queryClient.invalidateQueries({ queryKey: ["access-lists", "geoip"] }),
 				queryClient.invalidateQueries({ queryKey: ["monitoring-traffic"] }),
 			]),
 	});

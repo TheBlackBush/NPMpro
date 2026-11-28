@@ -29,6 +29,8 @@ function RuleRow({ name, index, onRemove, onAddressChange }) {
 	const formState = useFormState({ name: `${base}.address` });
 	const directive = useWatch({ name: `${base}.directive` });
 	const error = getFieldState(`${base}.address`, formState).error?.message ?? null;
+	const commentState = useFormState({ name: `${base}.comment` });
+	const commentError = getFieldState(`${base}.comment`, commentState).error?.message ?? null;
 	return (
 		<div className="flex items-start gap-2">
 			<FormSelect
@@ -37,19 +39,36 @@ function RuleRow({ name, index, onRemove, onAddressChange }) {
 				className={directiveClass(directive)}
 				aria-label={intl.formatMessage({ id: "access-list.directive" })}
 			/>
-			<div className="flex min-w-0 flex-1 flex-col gap-1">
-				<Input
-					type="text"
-					{...register(`${base}.address`, { onChange: onAddressChange })}
-					autoComplete="off"
-					aria-label={intl.formatMessage({ id: "access-list.address" })}
-					aria-invalid={error ? "true" : undefined}
-					aria-describedby={error ? `${name}-${index}-address-error` : undefined}
-					placeholder={intl.formatMessage({
-						id: "access-list.rule-source.placeholder",
-					})}
-				/>
-				{error ? <FieldMessage id={`${name}-${index}-address-error`}>{error}</FieldMessage> : null}
+			<div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
+				<div className="flex min-w-0 flex-1 flex-col gap-1">
+					<Input
+						type="text"
+						{...register(`${base}.address`, { onChange: onAddressChange })}
+						autoComplete="off"
+						aria-label={intl.formatMessage({ id: "access-list.address" })}
+						aria-invalid={error ? "true" : undefined}
+						aria-describedby={error ? `${name}-${index}-address-error` : undefined}
+						placeholder={intl.formatMessage({
+							id: "access-list.rule-source.placeholder",
+						})}
+					/>
+					{error ? <FieldMessage id={`${name}-${index}-address-error`}>{error}</FieldMessage> : null}
+				</div>
+				<div className="flex min-w-0 flex-1 flex-col gap-1">
+					<Input
+						type="text"
+						{...register(`${base}.comment`)}
+						autoComplete="off"
+						maxLength={255}
+						aria-label={intl.formatMessage({ id: "access-list.rule.comment" })}
+						placeholder={intl.formatMessage({ id: "access-list.rule.comment" })}
+						aria-invalid={commentError ? "true" : undefined}
+						aria-describedby={commentError ? `${name}-${index}-comment-error` : undefined}
+					/>
+					{commentError ? (
+						<FieldMessage id={`${name}-${index}-comment-error`}>{commentError}</FieldMessage>
+					) : null}
+				</div>
 			</div>
 			<Button
 				variant="ghost"

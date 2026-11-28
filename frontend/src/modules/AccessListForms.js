@@ -22,9 +22,9 @@ export const blankUser = () => ({ username: "", password: "" });
 /**
  * A new access rule row (it goes before the last "all" rule)
  *
- * @returns {{ directive: string, address: string }}
+ * @returns {{ directive: string, address: string, comment: string }}
  */
-export const blankRule = () => ({ directive: "allow", address: "" });
+export const blankRule = () => ({ directive: "allow", address: "", comment: "" });
 
 /**
  * The user rows the window shows: the saved users (a saved password is never sent back, so it starts empty), or
@@ -46,8 +46,12 @@ export function userRows(items) {
  * @returns {Object[]}
  */
 export function ruleRows(clients) {
-	const rows = clients.map(({ directive, address }) => ({ directive, address }));
-	if (rows.at(-1)?.address?.toLowerCase() !== "all") rows.push({ directive: "deny", address: "all" });
+	const rows = clients.map(({ directive, address, npmproComment }) => ({
+		directive,
+		address,
+		comment: npmproComment ?? "",
+	}));
+	if (rows.at(-1)?.address?.toLowerCase() !== "all") rows.push({ directive: "deny", address: "all", comment: "" });
 	return rows.length === 1 ? [blankRule(), ...rows] : rows;
 }
 
@@ -55,7 +59,71 @@ const named = (rows) => rows.filter((row) => String(row.username ?? "").trim() !
 const withAddress = (rows) => rows.filter((row) => String(row.address ?? "").trim() !== "");
 const sameRules = (a, b) =>
 	a.length === b.length &&
-	a.every((rule, index) => rule.directive === b[index].directive && rule.address === b[index].address);
+	a.every(
+		(rule, index) =>
+			rule.directive === b[index].directive &&
+			rule.address === b[index].address &&
+			rule.comment.trim() === b[index].comment.trim(),
+	);
+
+/**
+ * Whether the "block visitors whose country is unknown" switch shows on: a stored "auto" follows the mode (allow
+ * only these countries blocks an unknown country, block these countries lets it pass)
+ *
+ * @param   {string} mode     off, allow or deny
+ * @param   {string} unknown  the stored npmproGeoUnknown: auto, pass or block
+ * @returns {boolean}
+ */
+export const unknownSwitchOn = (mode, unknown) => unknown === "block" || (unknown === "auto" && mode === "allow");
+
+/**
+ * The npmproGeoUnknown a save sends: the stored one while the mode is off, "auto" when the switch shows what the
+ * mode does anyway, else the explicit value. The switch keeps its position when the mode changes, so a list saved
+ * with "auto" returns to "auto" when the mode goes allow, deny, allow.
+ *
+ * @param   {string}  mode      off, allow or deny
+ * @param   {boolean} switchOn  the switch
+ * @param   {string}  saved     the stored npmproGeoUnknown
+ * @returns {string}
+ */
+export const unknownValue = (mode, switchOn, saved) => {
+	if (mode === "off") return saved;
+	if (switchOn === (mode === "allow")) return "auto";
+	return switchOn ? "block" : "pass";
+};
+
+/**
+ * The switch after a mode change. While the user has not touched it, it follows the new mode (on for allow, off for
+ * deny, so a save sends "auto") on every change out of off, and on every other change when the saved value is "auto"
+ * (a new list has none). An explicit saved "block" or "pass" keeps the switch where it is on a change between allow
+ * and deny, and so does a touched switch.
+ *
+ * @param   {string}  prevMode       the mode before the change
+ * @param   {string}  nextMode       the mode chosen
+ * @param   {boolean} switchOn       the switch now
+ * @param   {Object}  state          touched: the user changed the switch since the window opened; savedUnknown: the
+ *                                   saved npmproGeoUnknown (auto for a new list)
+ * @returns {boolean}                the switch to show
+ */
+export const switchForMode = (prevMode, nextMode, switchOn, { touched, savedUnknown = "auto" }) =>
+	!touched && nextMode !== "off" && (prevMode === "off" || savedUnknown === "auto")
+		? unknownSwitchOn(nextMode, "auto")
+		: switchOn;
+
+/**
+ * What the Countries tab allows. Without a country database (rule 6 of the backend) a save may keep or remove
+ * countries or turn the mode off, but not turn a mode on, change it or add a country.
+ *
+ * @param   {Object}  saved      the saved list (its npmproGeoMode; a new list has none)
+ * @param   {boolean} available  the database is usable (GET /nginx/access-lists/geoip)
+ * @returns {{ modeLocked: string[], canAdd: boolean }}  the mode options to disable, whether the picker adds
+ */
+export const geoRestrictions = (saved, available) =>
+	available
+		? { modeLocked: [], canAdd: true }
+		: { modeLocked: ["allow", "deny"].filter((mode) => mode !== (saved?.npmproGeoMode ?? "off")), canAdd: false };
+
+const countryRows = (items) => items.map(({ country, npmproComment }) => ({ country, comment: npmproComment ?? "" }));
 
 /**
  * The errors of the user rows (blank ones included), one entry per row, or undefined: a username without : and
@@ -82,6 +150,30 @@ export function userErrors(rules, rows, saved) {
 		}
 		return Object.keys(error).length > 0 ? error : null;
 	});
+	return errors.some(Boolean) ? errors : undefined;
+}
+
+const MAX_COMMENT = 255;
+
+// two error arrays of the same rows, entry by entry
+const mergeErrors = (a, b) => {
+	if (!a || !b) return a ?? b;
+	return b.map((entry, index) => (a[index] || entry ? { ...a[index], ...entry } : undefined));
+};
+
+/**
+ * The comment errors of rows (rules or countries), one entry per row, or undefined: at most 255 characters
+ *
+ * @param   {Object}   rules
+ * @param   {Object[]} rows
+ * @returns {Array|undefined}
+ */
+export function commentErrors(rules, rows) {
+	const errors = rows.map(({ comment }) =>
+		String(comment ?? "").trim().length > MAX_COMMENT
+			? { comment: rules.message("error.max-character-length", { max: MAX_COMMENT }) }
+			: undefined,
+	);
 	return errors.some(Boolean) ? errors : undefined;
 }
 
@@ -114,6 +206,10 @@ export const accessListDefaults = (data) => ({
 	passAuth: data.passAuth,
 	items: userRows(data.items),
 	clients: ruleRows(data.clients),
+	geoMode: data.npmproGeoMode ?? "off",
+	countries: countryRows(data.npmproCountries ?? []),
+	geoBlockUnknown: unknownSwitchOn(data.npmproGeoMode ?? "off", data.npmproGeoUnknown ?? "auto"),
+	geoDrop: data.npmproGeoDrop ?? false,
 	...placeDefaults("accessList", data),
 });
 
@@ -128,6 +224,11 @@ export const ACCESS_LIST_TABS = Object.freeze([
 	},
 	{ id: "auth", labelId: "column.authorizations", fields: ["items"] },
 	{ id: "rules", labelId: "column.rules", fields: ["clients"] },
+	{
+		id: "countries",
+		labelId: "access-list.countries",
+		fields: ["geoMode", "countries", "geoBlockUnknown", "geoDrop"],
+	},
 ]);
 
 /**
@@ -142,17 +243,32 @@ export const ACCESS_LIST_TABS = Object.freeze([
 export const accessListValidate = (rules, { savedUsers }) =>
 	fieldsValidate({ name: rules.validateString(1, 255) }, (values) => {
 		const items = userErrors(rules, values.items, savedUsers);
-		const clients = ruleErrors(rules, values.clients);
+		const clients = mergeErrors(ruleErrors(rules, values.clients), commentErrors(rules, values.clients));
+		const countryComments = commentErrors(rules, values.countries);
+		const countriesOn = values.geoMode !== "off";
 		const noRules =
 			named(values.items).length === 0 &&
+			!(countriesOn && values.countries.length > 0) &&
 			withAddress(values.clients).every((rule) => rule.address.trim().toLowerCase() === "all");
 		return {
 			...(items ? { items } : {}),
 			...(clients ? { clients } : {}),
+			...(countriesOn && values.countries.length === 0
+				? { countries: rules.message("access-list.countries.required") }
+				: countryComments
+					? { countries: countryComments }
+					: {}),
 			...(noRules ? { accessRules: rules.message("error.access.at-least-one") } : {}),
 			...placeErrors(rules, "accessList", values),
 		};
 	});
+
+const savedRule = ({ directive, address, npmproComment }) => ({
+	directive,
+	address,
+	npmproComment: npmproComment ?? "",
+});
+const sentRule = ({ directive, address, comment }) => ({ directive, address, npmproComment: comment.trim() });
 
 /**
  * The request of an access list: the users with a name, the rules with an address. Rules the user did not change
@@ -160,9 +276,10 @@ export const accessListValidate = (rules, { savedUsers }) =>
  *
  * @param   {Object}   values
  * @param   {Object[]} savedClients  the saved rules
+ * @param   {string}   savedUnknown  the saved npmproGeoUnknown (auto for a new list)
  * @returns {Object}
  */
-export function accessListPayload(values, savedClients) {
+export function accessListPayload(values, savedClients, savedUnknown = "auto") {
 	const rules = withAddress(values.clients);
 	const unchanged = sameRules(rules, withAddress(ruleRows(savedClients)));
 	return {
@@ -170,7 +287,11 @@ export function accessListPayload(values, savedClients) {
 		satisfyAny: values.satisfyAny,
 		passAuth: values.passAuth,
 		items: named(values.items).map(({ username, password }) => ({ username, password })),
-		clients: (unchanged ? savedClients : rules).map(({ directive, address }) => ({ directive, address })),
+		clients: unchanged ? savedClients.map(savedRule) : rules.map(sentRule),
+		npmproGeoMode: values.geoMode,
+		npmproGeoUnknown: unknownValue(values.geoMode, values.geoBlockUnknown, savedUnknown),
+		npmproGeoDrop: values.geoDrop,
+		npmproCountries: values.countries.map(({ country, comment }) => ({ country, npmproComment: comment.trim() })),
 		...placePayload("accessList", {
 			npmproDeniedPage: values.npmproDeniedPage,
 			npmproDeniedPageHtml: values.npmproDeniedPageHtml,

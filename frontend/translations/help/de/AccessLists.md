@@ -29,3 +29,12 @@ Mehr im Wiki: Host options.
 ### Abgelehnte Seite
 
 **Verweigert** (401, 403) ist das, was ein Besucher sieht, wenn die Liste ihn abweist (nicht bei Hosts mit Forward-Authentifizierung): **Globale Einstellung** (die Seite aus Einstellungen, Landing Pages), die **Seite „Zugriff verweigert“**, eine **Benutzerdefinierte Seite** nur für diese Liste (eine HTML-Datei einfügen oder hochladen) oder **Die schlichte Seite von nginx**, die die Seite von nginx beibehält.
+
+### Länder
+
+Besucher nach ihrem Land zulassen oder sperren. **Länderregeln** steht auf **Aus**, **Nur diese Länder erlauben** oder **Diese Länder sperren**; Länder fügen Sie mit **Land hinzufügen** hinzu (Suche nach dem Namen des Landes in der Sprache der Oberfläche oder nach dem zweistelligen Code), jedes mit einem optionalen Kommentar. Eine Liste in einem Erlauben- oder Sperren-Modus braucht mindestens ein Land.
+
+- **Besucher sperren, deren Land unbekannt ist** betrifft öffentliche Adressen, für die die GeoIP-Datenbank kein Land hat. Der Erlauben-Modus sperrt sie standardmäßig, der Sperren-Modus lässt sie durch.
+- **Verbindung ohne Antwort schließen (444)** gilt nur für Besucher, die wegen ihres Landes gesperrt werden. IP- und Passwortablehnungen behalten die Abgelehnt-Seite.
+- Private und lokale Adressen kommen immer durch. Länder werden vor den IP- und Passwortregeln geprüft, auch bei **Eine Bedingung genügt (Satisfy Any)**.
+- Länderregeln brauchen eine GeoIP-Länderdatenbank (Einstellungen, GeoIP). Ohne sie, oder solange nginx die Datenbankzeile ablehnt, kommt jeder Besucher durch: Gespeicherte Länder bleiben erhalten, aber eine Liste kann keinen neuen Modus und keine neuen Länder bekommen, bis eine Datenbank verfügbar ist.
