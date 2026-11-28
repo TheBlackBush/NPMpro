@@ -8,6 +8,7 @@ below as its release notes.
 
 ### Added
 
+- **Access lists:** country rules (allow only some countries or block some countries) checked by nginx before the IP and password rules, with an optional comment per rule; private and local addresses always pass, certificate challenges are never blocked.
 - **GeoIP:** DB-IP Lite as the default GeoIP provider (country and network databases, no account, CC BY 4.0); MaxMind GeoLite2 stays selectable, exactly one provider is active (`GEOIP_PROVIDER`, `GEOIP_DBIP_EDITIONS`).
 - **Certificates:** a Warn before expiry setting (default 14 days, at most a third of a certificate's lifetime, so short-lived certificates no longer show as expiring all the time).
 - **Notifications:** an event layer that detects certificate, host, backup, GeoIP, CrowdSec and Dynamic DNS problems and changes, the base of mail and webhook notifications.
@@ -83,6 +84,8 @@ below as its release notes.
 
 ### Changed
 
+- **Access lists:** a host with several access lists ends with deny all unless every list on the host ends with allow all.
+- **Access lists:** an access list whose only rule is deny all now refuses every visitor; it left the host open before.
 - **GeoIP:** installs without MaxMind credentials switch to DB-IP Lite; the active provider is credited under the traffic map and in Settings, GeoIP; the footer credits both providers.
 - **Notifications:** mails have the NPMpro look (logo, light and dark mode).
 - **Hosts:** saving is safer: a save whose nginx reload fails is kept and says so, streams cannot use NPMpro's own
