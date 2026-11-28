@@ -68,6 +68,7 @@ describe("buildAclFile catch-all (#3808)", () => {
 			rule("allow", "all"),
 		]);
 		assert.deepEqual(last(build(list(1, [rule("allow", "10.0.0.5")]))), rule("deny", "all"));
+		assert.deepEqual(build(list(1, [rule("allow", "all")])).clients, []);
 		assert.deepEqual(build(list(1, [])).clients, []);
 		assert.deepEqual(build().clients, []);
 	});
@@ -78,14 +79,39 @@ describe("buildAclFile a lone all rule (D20)", () => {
 		assert.deepEqual(build(list(1, [rule("deny", "all")])).clients, [rule("deny", "all")]);
 	});
 
-	it("renders allow all for a list with only allow all", () => {
-		assert.deepEqual(build(list(1, [rule("allow", "all")])).clients, [rule("allow", "all")]);
+	it("renders no rule for a list with only allow all, with or without users and satisfy any", () => {
+		assert.deepEqual(build(list(1, [rule("allow", "all")])).clients, []);
+		const users = { items: [{ username: "u", password: "p" }], satisfy_any: true };
+		assert.deepEqual(build(list(1, [rule("allow", "all")], users)).clients, []);
+	});
+
+	it("keeps the catch-all of mixed lists", () => {
+		assert.deepEqual(
+			build(list(1, [rule("allow", "all")]), list(2, [rule("allow", "10.0.0.6"), rule("deny", "all")])).clients,
+			[rule("allow", "10.0.0.6"), rule("deny", "all")],
+		);
+		assert.deepEqual(
+			build(list(1, [rule("deny", "all")]), list(2, [rule("allow", "10.0.0.0/8"), rule("allow", "all")])).clients,
+			[rule("allow", "10.0.0.0/8"), rule("deny", "all")],
+		);
+		assert.deepEqual(
+			build(
+				list(1, [rule("allow", "10.0.0.5"), rule("allow", "all")]),
+				list(2, [rule("allow", "10.0.0.6"), rule("allow", "all")]),
+			).clients,
+			[rule("allow", "10.0.0.5"), rule("allow", "10.0.0.6"), rule("allow", "all")],
+		);
 	});
 
 	it("renders deny all for two lists, one ending with deny all", () => {
 		assert.deepEqual(build(list(1, [rule("allow", "all")]), list(2, [rule("deny", "all")])).clients, [
 			rule("deny", "all"),
 		]);
+	});
+
+	it("renders no rule for a list that mixes all rules without a specific address", () => {
+		assert.deepEqual(build(list(1, [rule("deny", "all"), rule("allow", "all")])).clients, []);
+		assert.deepEqual(build(list(1, [rule("allow", "all"), rule("deny", "all")])).clients, []);
 	});
 
 	it("renders no rule for a list with users only", () => {

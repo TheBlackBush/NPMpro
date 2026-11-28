@@ -352,8 +352,11 @@ it("a list with only deny all and users needs both under satisfy all", async () 
 	assert.doesNotMatch(text, SATISFY_ANY);
 });
 
-it("a list with only allow all renders allow all, and a list with users only no rule", async () => {
-	assert.deepEqual(rulesOf(await loneRuleHost([{ directive: "allow", address: "all" }])), ["allow all;"]);
+it("a list with only allow all or users only renders no rule, so the password stays required", async () => {
+	assert.deepEqual(rulesOf(await loneRuleHost([{ directive: "allow", address: "all" }])), []);
+	const withUsers = await loneRuleHost([{ directive: "allow", address: "all" }], { users: true, satisfyAny: true });
+	assert.deepEqual(rulesOf(withUsers), []);
+	assert.match(withUsers, AUTH_BASIC);
 	assert.deepEqual(rulesOf(await loneRuleHost([], { users: true })), []);
 });
 

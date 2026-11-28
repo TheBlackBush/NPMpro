@@ -101,8 +101,16 @@ const internalProxyHostAccessList = {
 		const first = lists[0] || null; // satisfy any and the denied page come from the first acl
 
 		const isAllowAll = (rule) => rule?.directive === "allow" && rule?.address?.trim().toLowerCase() === "all";
-		// a list with any client rule takes part, a lone deny all or allow all too
-		const withRules = lists.filter((l) => (l.clients ?? []).length > 0);
+		const isDenyAll = (rule) => rule?.directive === "deny" && rule?.address?.trim().toLowerCase() === "all";
+		// a list takes part with a rule for a specific address or with only deny all rules; every other all rule
+		// renders nothing as before, so a list with only allow all keeps its password under satisfy any
+		const withRules = lists.filter((l) => {
+			const rules = l.clients ?? [];
+			return (
+				rules.length > 0 &&
+				(rules.every(isDenyAll) || rules.some((c) => c.address?.trim().toLowerCase() !== "all"))
+			);
+		});
 		// #3808: allow all only when every list that has rules ends with allow all
 		const catchAll =
 			withRules.length > 0 && withRules.every((l) => isAllowAll(l.clients.at(-1)))
@@ -112,7 +120,7 @@ const internalProxyHostAccessList = {
 		const specificRules = lists
 			.flatMap((l) => l.clients || [])
 			.filter((c) => c.address?.trim().toLowerCase() !== "all");
-		// a lone deny all or allow all renders too: without it a deny all only list left the host open
+		// a lone deny all renders too: without it a deny all only list left the host open
 		const clients = withRules.length === 0 ? [] : [...specificRules, catchAll];
 		return {
 			items: getMergedItems(lists),
