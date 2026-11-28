@@ -131,8 +131,10 @@ const createRestore = (
 	// configs, access files and runtime settings from the database as it is now, then one nginx -t and reload; with
 	// wereOnline, a host of it that the regeneration took offline fails the apply as nginx -t would
 	const applyRestored = async (types, { onNginx, wereOnline } = {}) => {
-		// the host configs name the country gate variables: their definitions are on disk before the hosts are written
-		if (types.includes("access_lists")) await geoip?.applyCountryRules();
+		// the host configs name the country gate variables: their definitions are on disk before the hosts are written;
+		// and geoip.conf fits restored custom files (they can bring an own geoip_country) before any nginx -t, also
+		// when no enabled host syncs it on the way
+		if (types.includes("access_lists") || types.includes("custom_nginx")) await geoip?.applyCountryRules();
 		await regenerate.rebuildAccessListFiles();
 		await regenerate.regenerateAllHostsNow(await regenerate.loadEnabledHosts());
 		await regenerate.regenerateDefaultSite();

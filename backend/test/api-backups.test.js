@@ -404,6 +404,53 @@ it("a restore of the monitoring settings writes geoip.conf in its own queue job,
 	}
 });
 
+const DATABASE_LINE = /^geoip_country \S+dbip-country-lite\.mmdb;$/mu;
+const OWN_GEOIP_LINE = /^geoip_country \/etc\/own\/GeoIP\.dat;$/mu;
+it("a restore of custom files with an own geoip_country syncs geoip.conf also without an enabled host", async () => {
+	const fixture = await readFile(path.join(import.meta.dirname, "fixtures", "GeoLite2-Country-Test.mmdb"));
+	const database = path.join(api.root, "data/goaccess/geoip/dbip-country-lite.mmdb");
+	const own = path.join(api.root, "data/custom_nginx/http_top.conf");
+	const geoipConf = () => readFile(path.join(api.root, "data/npmpro/nginx/geoip.conf"), "utf8");
+	const TABLES = ["proxy_host", "redirection_host", "dead_host", "stream"];
+	const enabled = {};
+	for (const table of TABLES) {
+		enabled[table] = await api.db(table).where({ enabled: 1 }).pluck("id");
+		await api.db(table).update({ enabled: 0 });
+	}
+	await mkdir(path.dirname(database), { recursive: true });
+	await mkdir(path.dirname(own), { recursive: true });
+	try {
+		await writeFile(own, "geoip_country /etc/own/GeoIP.dat;\n");
+		const entry = await keep({ types: ["custom_nginx"] });
+		await rm(own);
+		await writeFile(database, withDatabaseType(fixture, "DBIP-Country-Lite"));
+		// a list save syncs geoip.conf to the database variant
+		const list = await admin.post("/nginx/access-lists", {
+			name: "geoip sync",
+			clients: [{ address: "10.3.0.0/16", directive: "allow" }],
+		});
+		assert.equal(list.status, 201, list.text);
+		assert.equal((await admin.delete(`/nginx/access-lists/${list.body.id}`)).status, 200);
+		assert.match(await geoipConf(), DATABASE_LINE);
+		// as the real nginx: NPMpro's database line next to an own geoip_country is a duplicate
+		await api.outside.hookCommand(
+			"nginx",
+			`#!/bin/sh\nif grep -q '^geoip_country' "${api.root}/data/npmpro/nginx/geoip.conf" && grep -qs geoip_country "${own}"; then echo 'nginx: [emerg] "geoip_country" directive is duplicate' >&2; exit 1; fi\n`,
+		);
+		const { token } = await inspect(entry.name);
+		const done = await admin.post(`${BASE}/restore/${token}`, { types: ["custom_nginx"], confirm: true });
+		assert.equal(done.status, 200, done.text);
+		assert.match(await readFile(own, "utf8"), OWN_GEOIP_LINE);
+		assert.doesNotMatch(await geoipConf(), DATABASE_LINE);
+	} finally {
+		await rm(path.join(api.root, "fake", "nginx.hook"), { force: true });
+		await rm(own, { force: true });
+		await rm(database, { force: true });
+		for (const table of TABLES) await api.db(table).whereIn("id", enabled[table]).update({ enabled: 1 });
+		await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+	}
+});
+
 const LISTS = "/nginx/access-lists";
 const LISTS_FILE = () => path.join(api.root, "data/npmpro/nginx/geoip-lists.conf");
 const countriesOf = async (id) =>

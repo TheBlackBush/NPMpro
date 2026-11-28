@@ -60,8 +60,8 @@ const manifestView = ({ files: _files, ...rest }) => rest;
  * Everything it touches is in deps: knex, box (secret box), dataDir, store (createBackupStore), dbVersion,
  * dbMigrations, npmproVersion, instanceKey, audit, nginx { test, reload }, renewals { pause, resume },
  * ddns { pause, resume }, notify { pause, resume, cleanup }, regenerate, runtime, hostname, and the optional reloadSettings,
- * geoip { applyCountryRules } (the country rule files of access lists, in the queue already), dnsCredentials
- * { write, remove }, exclusive (the runtime settings queue), maxUpload, maxImport, clock { now } and log.
+ * geoip { applyCountryRules } (geoip-lists.conf and geoip.conf before the regeneration, in the queue already),
+ * dnsCredentials { write, remove }, exclusive (the runtime settings queue), maxUpload, maxImport, clock { now } and log.
  */
 const createBackupService = ({
 	knex,
