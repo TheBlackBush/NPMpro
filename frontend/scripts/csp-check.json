@@ -469,6 +469,20 @@
 			]
 		},
 		{
+			"name": "access list countries tab",
+			"route": "/access",
+			"steps": [
+				{ "click": "role=button[name='Add Access List']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=countries]" },
+				{ "click": "[role=dialog] >> role=radio[name='Allow only these countries']" },
+				{ "click": "[role=dialog] >> role=combobox[name='Add a country']" },
+				{ "waitFor": "[data-slot=command]" },
+				{ "press": "Escape" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "account window: every part",
 			"route": "/",
 			"steps": [

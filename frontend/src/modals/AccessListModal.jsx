@@ -61,11 +61,11 @@ const Icon = sectionIcon("accessLists");
 const FIELD_LABELS = { accessRules: "access-list.rules-required" };
 
 // the Countries tab: the rules need to know whether a country database is usable
-function CountriesPane({ saved, close }) {
+function CountriesPane({ saved }) {
 	const { data: status, isPending, error } = useAccessListGeoip();
 	if (error) return <ErrorAlert error={error} />;
 	if (isPending) return <Loading noLogo />;
-	return <CountryRulesFields saved={saved} status={status} onNavigate={close} />;
+	return <CountryRulesFields saved={saved} status={status} />;
 }
 
 function AccessListForm({ data, savedUsers, savedGeo, errorMsg, onCloseError, close }) {
@@ -128,7 +128,7 @@ function AccessListForm({ data, savedUsers, savedGeo, errorMsg, onCloseError, cl
 						<AccessClientFields />
 					</TabPane>
 					<TabPane id="countries">
-						<CountriesPane saved={savedGeo} close={close} />
+						<CountriesPane saved={savedGeo} />
 					</TabPane>
 				</ModalTabs>
 			</AppModal.Body>

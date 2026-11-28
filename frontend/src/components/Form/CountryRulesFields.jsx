@@ -1,7 +1,6 @@
 import { CircleAlert, XIcon } from "lucide-react";
 import { useRef } from "react";
 import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
-import { Link } from "react-router";
 import { Button, DESTRUCTIVE_TEXT } from "src/components/Button";
 import { Flag } from "src/components/Flag";
 import { GeoipCredit } from "src/components/GeoipCredit";
@@ -68,9 +67,8 @@ function CountryRow({ name, index, code, onRemove }) {
  * @param {Object} props
  * @param {Object} props.saved       the saved list (its npmproGeoMode), as the window's first data
  * @param {Object} props.status      GET /nginx/access-lists/geoip, camelCase
- * @param {Function} [props.onNavigate]  runs when the Settings link is followed (closes the window)
  */
-export function CountryRulesFields({ saved, status, onNavigate }) {
+export function CountryRulesFields({ saved, status }) {
 	const { register, getValues, setValue } = useFormContext();
 	const { fields, append, remove } = useFieldArray({ name: "countries" });
 	const { afterRemove } = useListRecheck("countries");
@@ -102,17 +100,17 @@ export function CountryRulesFields({ saved, status, onNavigate }) {
 			{status.available ? null : (
 				<StatusAlert variant="warning" icon={CircleAlert}>
 					<T id="access-list.countries.no-database" />{" "}
-					<Link to="/settings/geoip" className="underline underline-offset-4" onClick={onNavigate}>
+					<a href="/settings/geoip" className="underline underline-offset-4">
 						<T id="access-list.countries.settings-link" />
-					</Link>
+					</a>
 				</StatusAlert>
 			)}
 			{status.available && status.failsOpen && hasRules ? (
 				<StatusAlert variant="warning" icon={CircleAlert}>
 					<T id="access-list.countries.fails-open" />{" "}
-					<Link to="/settings/geoip" className="underline underline-offset-4" onClick={onNavigate}>
+					<a href="/settings/geoip" className="underline underline-offset-4">
 						<T id="access-list.countries.settings-link" />
-					</Link>
+					</a>
 				</StatusAlert>
 			) : null}
 			<ChoiceField
