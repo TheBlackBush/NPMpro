@@ -13,6 +13,12 @@
 	},
 	{
 		"type": "index",
+		"name": "npmpro_access_list_country_list_country",
+		"table": "npmpro_access_list_country",
+		"sql": "CREATE UNIQUE INDEX `npmpro_access_list_country_list_country` on `npmpro_access_list_country` (`access_list_id`, `country`)"
+	},
+	{
+		"type": "index",
 		"name": "npmpro_acme_account_server",
 		"table": "npmpro_acme_account",
 		"sql": "CREATE UNIQUE INDEX `npmpro_acme_account_server` on `npmpro_acme_account` (`server`)"
@@ -231,7 +237,7 @@
 		"type": "table",
 		"name": "access_list",
 		"table": "access_list",
-		"sql": "CREATE TABLE \"access_list\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `owner_user_id` integer NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `name` varchar(255) NOT NULL, `meta` json NOT NULL, `satisfy_any` integer NOT NULL DEFAULT '0', `pass_auth` integer NOT NULL DEFAULT '0', `npmpro_denied_page` varchar(16) not null default 'global', `npmpro_denied_page_html` text null)"
+		"sql": "CREATE TABLE \"access_list\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `owner_user_id` integer NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `name` varchar(255) NOT NULL, `meta` json NOT NULL, `satisfy_any` integer NOT NULL DEFAULT '0', `pass_auth` integer NOT NULL DEFAULT '0', `npmpro_denied_page` varchar(16) not null default 'global', `npmpro_denied_page_html` text null, `npmpro_geo_mode` varchar(8) not null default 'off', `npmpro_geo_unknown` varchar(8) not null default 'auto', `npmpro_geo_drop` boolean not null default '0')"
 	},
 	{
 		"type": "table",
@@ -243,7 +249,7 @@
 		"type": "table",
 		"name": "access_list_client",
 		"table": "access_list_client",
-		"sql": "CREATE TABLE `access_list_client` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `access_list_id` integer not null, `address` varchar(255) not null, `directive` varchar(255) not null, `meta` json not null)"
+		"sql": "CREATE TABLE `access_list_client` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `access_list_id` integer not null, `address` varchar(255) not null, `directive` varchar(255) not null, `meta` json not null, `npmpro_comment` varchar(255) not null default '')"
 	},
 	{
 		"type": "table",
@@ -268,6 +274,12 @@
 		"name": "dead_host",
 		"table": "dead_host",
 		"sql": "CREATE TABLE `dead_host` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `owner_user_id` integer not null, `is_deleted` integer not null default '0', `domain_names` json not null, `certificate_id` integer not null default '0', `ssl_forced` integer not null default '0', `advanced_config` text not null default '', `meta` json not null, `http2_support` integer not null default '0', `enabled` integer not null default '1', `hsts_enabled` integer not null default '0', `hsts_subdomains` integer not null default '0', \"npmpro_http3_support\" integer not null default '0', \"npmpro_nginx_online\" integer not null default '0', \"npmpro_nginx_err\" text not null default '', \"npmpro_directory\" varchar(255) not null default '', \"npmpro_mtls_certificate_id\" integer not null default '0', \"npmpro_mtls_verify_client_optional\" integer not null default '0', `npmpro_page` varchar(16) not null default 'global', `npmpro_page_html` text null, `npmpro_description` varchar(255) not null default '', `npmpro_tags` json not null default '[]')"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_access_list_country",
+		"table": "npmpro_access_list_country",
+		"sql": "CREATE TABLE `npmpro_access_list_country` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `access_list_id` integer not null, `country` varchar(2) not null, `npmpro_comment` varchar(255) not null default '', foreign key(`access_list_id`) references `access_list`(`id`) on delete CASCADE)"
 	},
 	{
 		"type": "table",

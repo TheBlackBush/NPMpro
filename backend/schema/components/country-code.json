@@ -1,0 +1,6 @@
+{
+	"type": "string",
+	"description": "An ISO 3166-1 alpha-2 country code in upper case (XK for Kosovo). A new or added code must be on NPMpro's code list; a code saved before stays",
+	"pattern": "^[A-Z]{2}$",
+	"example": "DE"
+}

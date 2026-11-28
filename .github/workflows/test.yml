@@ -84,6 +84,7 @@ jobs:
         run: |
           set -o pipefail
           node --test --test-concurrency=1 --test-reporter=tap \
+            test/access-list-country-servers.test.js \
             test/backup-merge-pg.test.js \
             test/backup-schedule-migration.test.js \
             test/crowdsec-admin-ui-servers.test.js \

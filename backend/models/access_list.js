@@ -3,13 +3,14 @@ import db from "../db.js";
 import { convertBoolFieldsToInt, convertIntFieldsToBool } from "../lib/helpers.js";
 import AccessListAuth from "./access_list_auth.js";
 import AccessListClient from "./access_list_client.js";
+import AccessListCountry from "./access_list_country.js";
 import now from "./now_helper.js";
 import ProxyHost from "./proxy_host.js";
 import User from "./user.js";
 
 Model.knex(db());
 
-const boolFields = ["satisfy_any", "pass_auth"];
+const boolFields = ["satisfy_any", "pass_auth", "npmpro_geo_drop"];
 
 class AccessList extends Model {
 	$beforeInsert() {
@@ -18,6 +19,9 @@ class AccessList extends Model {
 
 		this.meta ??= {};
 		this.npmpro_denied_page ??= "global";
+		this.npmpro_geo_mode ??= "off";
+		this.npmpro_geo_unknown ??= "auto";
+		this.npmpro_geo_drop ??= false;
 	}
 
 	$beforeUpdate() {
@@ -70,6 +74,17 @@ class AccessList extends Model {
 				},
 				modify: (qb) => {
 					qb.orderBy("access_list_client.id");
+				},
+			},
+			npmpro_countries: {
+				relation: Model.HasManyRelation,
+				modelClass: AccessListCountry,
+				join: {
+					from: "access_list.id",
+					to: "npmpro_access_list_country.access_list_id",
+				},
+				modify: (qb) => {
+					qb.orderBy("npmpro_access_list_country.country");
 				},
 			},
 			proxy_hosts: {
