@@ -438,3 +438,44 @@ it("rewrites the host configs without the gate before the deleted list's map lea
 	assert.doesNotMatch(await listsFile(), definesOf(list.id));
 	for (const host of hosts) assert.equal((await row(host.id)).npmpro_nginx_online, 1);
 });
+
+it("a host save writes geoip-lists.conf again when the file lacks a variable its gates name", async () => {
+	await withDatabase();
+	const list = await countryList();
+	// a restore or a hand edit left the file behind the database: only the private geo
+	await writeFile(
+		path.join(api.root, "data/npmpro/nginx/geoip-lists.conf"),
+		"geo $npmpro_geo_private {\n  default 0;\n}\n",
+	);
+	await strictNginx();
+	const host = await makeHost([list.id]);
+	assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+	assert.match(await listsFile(), mapOf(list.id));
+	// in sync: the next save leaves the file alone
+	const synced = await listsFile();
+	assert.equal((await admin.put(`${HOSTS}/${host.id}`, { forward_port: 82 })).status, 200);
+	assert.equal(await listsFile(), synced);
+});
+
+it("drops a deleted list's map also when the host configs could not be written", async () => {
+	await withDatabase();
+	const list = await countryList();
+	const host = await makeHost([list.id]);
+	await strictNginx();
+	const { default: nginxModule } = await import("../internal/nginx.js");
+	const original = nginxModule.configureMany;
+	nginxModule.configureMany = () => Promise.reject(new Error("disk full"));
+	try {
+		assert.equal((await admin.delete(`${LISTS}/${list.id}`)).status, 500);
+	} finally {
+		nginxModule.configureMany = original;
+	}
+	// the old config still names the variable: it lets everyone pass now, the list's own map is gone
+	const text = await listsFile();
+	assert.doesNotMatch(text, mapOf(list.id));
+	assert.match(text, new RegExp(`geo \\$npmpro_geo_${list.id} \\{\\n {2}default 1;`, "u"));
+	assert.match(await gateConfig(host), gateOf(list.id));
+	// and nginx -t still passes with it: the host stays online on its next save
+	assert.equal((await admin.put(`${HOSTS}/${host.id}`, { forward_port: 83 })).status, 200);
+	assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+});

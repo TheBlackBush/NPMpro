@@ -16,7 +16,8 @@ import accessListCountryModel from "../models/access_list_country.js";
 import locationModel from "../models/location.js";
 import proxyHostModel from "../models/proxy_host.js";
 import internalAuditLog from "./audit-log.js";
-import { geoipStatus, writeGeoipLists } from "./geoip-nginx.js";
+import { geoipConfFailsOpen, geoipStatus, syncGeoipConfNow, writeGeoipLists } from "./geoip-nginx.js";
+import { reportGeoipState } from "./geoip-state.js";
 import internalNginx from "./nginx.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 
@@ -29,6 +30,28 @@ const hasNoRules = (items = [], clients = [], countryRule = false) =>
 
 const countryRows = (listId, countries = []) =>
 	countries.map(({ country, npmpro_comment }) => ({ access_list_id: listId, country, npmpro_comment }));
+
+/**
+ * In the runtime queue: geoip-lists.conf from the lists, and geoip.conf too when this list has a mode while the file
+ * on disk lets every visitor pass (a Country file placed by hand is used at once, not at the hourly sync)
+ *
+ * @param {Object}  list
+ * @param {Object}  options  { reload }
+ */
+const writeCountryIncludes = async (list, { reload }) => {
+	await writeGeoipLists({ report: false });
+	if (list.npmpro_geo_mode !== "off" && (await geoipConfFailsOpen())) await syncGeoipConfNow({ reload });
+	else await reportGeoipState();
+};
+
+/** geoip-lists.conf after the host configs; a failure is logged, the save's own error stays the one that counts */
+const rewriteGeoipLists = async () => {
+	try {
+		await runtimeExclusive(writeGeoipLists);
+	} catch (err) {
+		logger.error(`Could not write the country rules of access lists: ${err.message}`);
+	}
+};
 
 const GEO_COLUMNS = ["npmpro_geo_mode", "npmpro_geo_unknown", "npmpro_geo_drop"];
 
@@ -106,7 +129,7 @@ const internalAccessList = {
 			// in the runtime queue like the host writes: a restore or another save never interleaves with the page write.
 			// The country map first: a host saved with the new list right after names its variable
 			await runtimeExclusive(async () => {
-				await writeGeoipLists();
+				await writeCountryIncludes(freshRow, { reload: true });
 				await internalAccessList.build(freshRow);
 			});
 		} finally {
@@ -224,14 +247,18 @@ const internalAccessList = {
 			// The country maps before the host configs, so the batch nginx -t sees the variables the new gates name; a
 			// list turned off keeps a passing variable while the old configs still name it
 			await runtimeExclusive(async () => {
-				await writeGeoipLists();
+				await writeCountryIncludes(freshRow, { reload: false });
 				await internalAccessList.build(freshRow);
 			});
-			await internalNginx.configureMany(proxyHostEntries(freshRow.proxy_hosts));
-			if (row.npmpro_geo_mode !== "off" && freshRow.npmpro_geo_mode === "off") {
-				await runtimeExclusive(writeGeoipLists);
+			try {
+				await internalNginx.configureMany(proxyHostEntries(freshRow.proxy_hosts));
+			} finally {
+				// also after a failed batch: the file follows the configs on disk (a restored old config keeps a
+				// passing variable)
+				if (row.npmpro_geo_mode !== "off" && freshRow.npmpro_geo_mode === "off") await rewriteGeoipLists();
 			}
-			await internalNginx.reloadOrRaise({ id: data.id });
+			// behind every nginx -t of the queue (a geoip.conf sync tests its database line before nginx loads it)
+			await runtimeExclusive(() => internalNginx.reloadOrRaise({ id: data.id }));
 		} finally {
 			await internalAuditLog.add(access, {
 				action: "updated",
@@ -344,11 +371,15 @@ const internalAccessList = {
 		});
 
 		try {
-			await internalNginx.configureMany(proxyHostEntries(affectedHosts));
-			// the country map after the host configs: until they were rewritten they named its variable
-			await runtimeExclusive(writeGeoipLists);
+			try {
+				await internalNginx.configureMany(proxyHostEntries(affectedHosts));
+			} finally {
+				// the country map after the host configs, which named its variable until they were rewritten; also after a
+				// failed batch, so the deleted list's map goes (a restored old config gets a passing variable)
+				await rewriteGeoipLists();
+			}
 
-			await internalNginx.reloadOrRaise(undefined, { change: true });
+			await runtimeExclusive(() => internalNginx.reloadOrRaise(undefined, { change: true }));
 
 			await runtimeExclusive(async () => {
 				await rm(internalAccessList.getFilename(row), { force: true });

@@ -13,6 +13,7 @@ import { rooted } from "../lib/paths.js";
 import { beautifierOn, effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
 import { nginx as logger } from "../logger.js";
+import { ensureGeoipLists } from "./geoip-nginx.js";
 import { reportHostConfig } from "./host-notify.js";
 import internalProxyHostAccessList from "./proxy-host-access-list.js";
 import { runtimeExclusive } from "./runtime-queue.js";
@@ -134,6 +135,8 @@ const internalNginx = {
 		await internalProxyHostAccessList.build(host_type, host);
 		await internalNginx.deleteConfig(host_type, host);
 		await internalNginx.generateConfig(host_type, host, { fetchMissingOcsp });
+		// its country gates need their variables in geoip-lists.conf (a restore can leave the file behind)
+		if (host_type === "proxy_host") await ensureGeoipLists([internalNginx.getConfigName(host_type, host.id)]);
 
 		try {
 			await (skipReload ? internalNginx.test() : internalNginx.reload());
@@ -186,6 +189,11 @@ const internalNginx = {
 				await internalNginx.deleteConfig(hostType, host);
 				await internalNginx.generateConfig(hostType, host, { fetchMissingOcsp });
 			}
+			await ensureGeoipLists(
+				entries
+					.filter(({ hostType }) => hostType === "proxy_host")
+					.map(({ hostType, host }) => internalNginx.getConfigName(hostType, host.id)),
+			);
 			await afterWrite?.(entries);
 		} catch (err) {
 			if (keepPrevious) await restoreConfigs(previous);
