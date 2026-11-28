@@ -83,6 +83,14 @@ async function stateOf(type, id) {
 }
 
 await login();
+// the smoke test starts the container with MaxMind's test Country database, so country rules must be usable
+async function geoipState() {
+	const state = await must("GET", "/nginx/access-lists/geoip");
+	if (state.available !== true || state.custom_directive !== false) {
+		throw new Error(`country rules are not usable: ${JSON.stringify(state)}`);
+	}
+}
+await geoipState();
 const certificateId = await uploadCertificate(
 	"other",
 	"config check",
@@ -102,6 +110,22 @@ const deniedList = await must("POST", "/nginx/access-lists", {
 	npmpro_denied_page_html: '<p>denied <!--# echo var="remote_addr" --></p>',
 	items: [],
 	clients: [{ address: "10.0.0.0/8", directive: "allow" }],
+});
+const countriesAllow = await must("POST", "/nginx/access-lists", {
+	name: "config check countries allow",
+	npmpro_geo_mode: "allow",
+	npmpro_countries: [{ country: "GB" }],
+	items: [],
+	clients: [{ address: "10.0.0.0/8", directive: "allow" }],
+});
+const countriesDeny = await must("POST", "/nginx/access-lists", {
+	name: "config check countries deny",
+	npmpro_geo_mode: "deny",
+	npmpro_countries: [{ country: "US" }],
+	npmpro_geo_drop: true,
+	npmpro_geo_unknown: "block",
+	items: [],
+	clients: [],
 });
 const PAGE = '<!DOCTYPE html><p><!--# config timefmt="%Y-%m-%d" --><!--# echo var="date_gmt" --> <!--# echo var="status" --></p>';
 
@@ -249,6 +273,39 @@ const hosts = [
 			],
 		},
 	],
+	[
+		"proxy-hosts",
+		"proxy with a country list (allow) and an address rule",
+		{ ...plainProxy("countries-allow"), npmpro_access_list_type: "custom", npmpro_access_list_ids: [countriesAllow.id] },
+	],
+	[
+		"proxy-hosts",
+		"proxy with a country list (deny, drop, unknown blocked) on a custom location and a global location",
+		{
+			...plainProxy("countries-deny"),
+			locations: [
+				{
+					path: "/geo",
+					location_type: "^~ ",
+					forward_scheme: "http",
+					forward_host: "127.0.0.1",
+					forward_port: 8081,
+					npmpro_access_list_type: "custom",
+					npmpro_access_list_ids: [countriesDeny.id],
+				},
+				{ path: "/all", forward_scheme: "http", forward_host: "127.0.0.1", forward_port: 8082, npmpro_access_list_type: "global" },
+			],
+		},
+	],
+	[
+		"proxy-hosts",
+		"proxy with both country lists",
+		{
+			...plainProxy("countries-both"),
+			npmpro_access_list_type: "custom",
+			npmpro_access_list_ids: [countriesAllow.id, countriesDeny.id],
+		},
+	],
 	["proxy-hosts", "proxy with the upstream's own errors", { ...plainProxy("own-errors"), npmpro_page_upstream: "upstream" }],
 	["proxy-hosts", "proxy with its own proxy_intercept_errors in the location config", { ...plainProxy("own-intercept"), npmpro_location_config: "proxy_intercept_errors off;" }],
 	["proxy-hosts", "proxy with its own error_page at server level", { ...plainProxy("own-error-page"), advanced_config: "error_page 418 /teapot.html;" }],
@@ -334,6 +391,9 @@ const brokenState = await stateOf("proxy-hosts", broken.id);
 if (brokenState.npmpro_nginx_online !== false) failures.push("negative control: a broken directive came back online");
 else console.log("negative control: refused as it should be");
 await must("DELETE", `/nginx/proxy-hosts/${broken.id}`);
+
+// the variant on disk is the database one: NPMpro's own geoip_country line loaded the fixture
+await geoipState();
 
 if (checked !== hosts.length) failures.push(`checked ${checked} of ${hosts.length} hosts`);
 if (failures.length > 0) {
