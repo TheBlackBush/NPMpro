@@ -74,6 +74,19 @@ echo "this is not a database, it is just some text that is long enough" > "$GEOI
 database_conf "$GEOIP_CHECK_DIR/text.mmdb"
 becomes_off "a file that is not a MaxMind DB becomes the off text"
 
+echo "an error page that mentions MaxMind.com in its text, long enough to look like a file" > "$GEOIP_CHECK_DIR/page.mmdb"
+database_conf "$GEOIP_CHECK_DIR/page.mmdb"
+becomes_off "a text file that names MaxMind.com becomes the off text"
+
+# the real Country database of the test fixtures
+cp "$(dirname "$0")/fixtures/GeoLite2-Country-Test.mmdb" "$GEOIP_CHECK_DIR/real.mmdb"
+database_conf "$GEOIP_CHECK_DIR/real.mmdb"
+stays "a real Country database stays byte for byte"
+# a big file: only its end is read
+{ head -c 20000000 /dev/zero; cat "$GEOIP_CHECK_DIR/ok.mmdb"; } > "$GEOIP_CHECK_DIR/big.mmdb"
+database_conf "$GEOIP_CHECK_DIR/big.mmdb"
+stays "a large database stays byte for byte"
+
 # the path from the content is only followed to a regular file under the GeoIP folder
 good "$work/outside.mmdb"
 database_conf "$work/outside.mmdb"
@@ -83,9 +96,11 @@ becomes_off "a path with .. becomes the off text"
 ln -s "$GEOIP_CHECK_DIR/ok.mmdb" "$GEOIP_CHECK_DIR/link.mmdb"
 database_conf "$GEOIP_CHECK_DIR/link.mmdb"
 becomes_off "a link becomes the off text"
+case "$out" in *"is a link"*) check "a link has its own reason" 0 ;; *) check "a link has its own reason" 1 ;; esac
 mkdir "$GEOIP_CHECK_DIR/dir.mmdb"
 database_conf "$GEOIP_CHECK_DIR/dir.mmdb"
 becomes_off "a folder becomes the off text"
+case "$out" in *"not a regular file"*) check "a folder has its own reason" 0 ;; *) check "a folder has its own reason" 1 ;; esac
 mkfifo "$GEOIP_CHECK_DIR/fifo.mmdb"
 database_conf "$GEOIP_CHECK_DIR/fifo.mmdb"
 becomes_off "a pipe becomes the off text (and the check does not hang)"
@@ -107,6 +122,53 @@ sh "$SCRIPT" --off "$work/geoip.conf"
 off_ok=0
 [ "$(cat "$work/geoip.conf")" = "$OFF" ] || off_ok=1
 check "--off writes the off text" "$off_ok"
+
+# launch.sh fallback: --try-off and --settle with a fake nginx that refuses a geoip_country line (REFUSE=1) or not
+mkdir -p "$work/bin"
+cat > "$work/bin/nginx" <<'FAKE'
+#!/bin/sh
+[ "${REFUSE:-0}" = 1 ] && grep -q '^geoip_country' "$FAKE_CONF" && exit 1
+exit 0
+FAKE
+chmod +x "$work/bin/nginx"
+FAKE_CONF="$work/geoip.conf"
+export FAKE_CONF
+
+database_conf "$GEOIP_CHECK_DIR/ok.mmdb"
+cp "$work/geoip.conf" "$work/orig.conf"
+PATH="$work/bin:$PATH" sh "$SCRIPT" --try-off "$work/geoip.conf"
+if [ "$(cat "$work/geoip.conf")" = "$OFF" ] && cmp -s "$work/orig.conf" "$work/geoip.conf.database"; then
+    check "--try-off writes off and keeps the database variant" 0
+else
+    check "--try-off writes off and keeps the database variant" 1
+fi
+out="$(REFUSE=1 PATH="$work/bin:$PATH" sh "$SCRIPT" --settle "$work/geoip.conf")"
+if [ "$(cat "$work/geoip.conf")" = "$OFF" ] && [ ! -e "$work/geoip.conf.database" ] && [ -n "$out" ]; then
+    check "--settle keeps off and says so when nginx refuses the database variant" 0
+else
+    check "--settle keeps off and says so when nginx refuses the database variant" 1
+fi
+
+database_conf "$GEOIP_CHECK_DIR/ok.mmdb"
+PATH="$work/bin:$PATH" sh "$SCRIPT" --try-off "$work/geoip.conf"
+out="$(REFUSE=0 PATH="$work/bin:$PATH" sh "$SCRIPT" --settle "$work/geoip.conf")"
+if cmp -s "$work/orig.conf" "$work/geoip.conf" && [ ! -e "$work/geoip.conf.database" ] && [ -z "$out" ]; then
+    check "--settle puts the database variant back when nginx accepts it" 0
+else
+    check "--settle puts the database variant back when nginx accepts it" 1
+fi
+
+printf '%s\n' "$OFF" > "$work/geoip.conf"
+PATH="$work/bin:$PATH" sh "$SCRIPT" --try-off "$work/geoip.conf"
+no_line=$?
+if [ "$no_line" = 1 ] && [ ! -e "$work/geoip.conf.database" ]; then
+    check "--try-off without a geoip_country line does nothing (exit 1)" 0
+else
+    check "--try-off without a geoip_country line does nothing (exit 1)" 1
+fi
+PATH="$work/bin:$PATH" sh "$SCRIPT" --settle "$work/geoip.conf"
+[ "$(cat "$work/geoip.conf")" = "$OFF" ]
+check "--settle without a saved variant does nothing" $?
 
 if [ "$failures" -ne 0 ]; then
     echo "$failures failed"
