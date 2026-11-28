@@ -1,13 +1,13 @@
 import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import { Client, fetch } from "undici";
-import { ACME_CHALLENGE_PATH, overridesAcmeChallenge } from "../lib/acme-challenge.js";
+import { overridesAcmeChallenge, servesAcmeChallengeOnly } from "../lib/acme-challenge.js";
 import errs from "../lib/error.js";
 import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forward-auth.js";
 import { certificateUnusable } from "../lib/landing-pages/certificate.js";
 import { removePlacePages, writePlacePages } from "../lib/landing-pages/files.js";
 import { pageWiring } from "../lib/landing-pages/wiring.js";
 import { beautify } from "../lib/nginx-beautify.js";
-import { quoteLocation, serverNames, unquote } from "../lib/nginx-quote.js";
+import { quoteLocation, serverNames } from "../lib/nginx-quote.js";
 import { fetchOcsp, staplingFileReady } from "../lib/ocsp-fetch.js";
 import { rooted } from "../lib/paths.js";
 import { beautifierOn, effectiveEnv } from "../lib/runtime-config.js";
@@ -414,8 +414,9 @@ const internalNginx = {
 					// access_lists is the ordered array, access_list the object the template reads
 					location.access_list = internalProxyHostAccessList.buildAclFile(location.access_lists);
 				}
-				// the ACME challenge must stay reachable for every country: a copy, as "global" locations share the host's object
-				if (unquote(String(location.path ?? "")).startsWith(ACME_CHALLENGE_PATH) && location.access_list) {
+				// the ACME challenge must stay reachable for every country: a copy, as "global" locations share the host's
+				// object; a regular expression location keeps its gates, it can match other paths as well
+				if (servesAcmeChallengeOnly(location) && location.access_list) {
 					location.access_list = { ...location.access_list, geo_gates: [] };
 				}
 

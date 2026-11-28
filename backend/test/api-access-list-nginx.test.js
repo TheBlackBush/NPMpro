@@ -265,6 +265,32 @@ it("renders the country gates of every gated list before the password and IP rul
 	assert.match(locationBlock(text, "location = /.npmpro-geo/denied-1 {"), GEO_TARGET);
 });
 
+it("exempts only prefix and exact ACME locations from the gates, a regular expression keeps them", async () => {
+	const list = await makeList();
+	await setGeo(list.id, "deny");
+	const host = await makeHost([list.id], {
+		locations: [
+			{
+				path: "/.well-known/acme-challenge/token",
+				location_type: "= ",
+				forward_host: "10.0.0.3",
+				npmpro_access_list_type: "global",
+			},
+			{
+				path: "/.well-known/acme-challenge/|/admin",
+				location_type: "~ ",
+				forward_host: "10.0.0.4",
+				npmpro_access_list_type: "global",
+			},
+		],
+	});
+	const text = await gateConfig(host);
+	assert.doesNotMatch(locationBlock(text, 'location = "/.well-known/acme-challenge/token"'), GEO_GATE);
+	const regex = locationBlock(text, 'location ~ "/.well-known/acme-challenge/|/admin"');
+	assert.match(regex, new RegExp(`npmpro_geo_${list.id} = 0`, "u"));
+	assert.ok(regex.indexOf("npmpro_geo") < regex.indexOf("proxy_pass"));
+});
+
 it("repeats the gates in the built-in PHP location of a path host", async () => {
 	const list = await makeList();
 	await setGeo(list.id, "deny");

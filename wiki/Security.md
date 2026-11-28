@@ -76,7 +76,7 @@ How a request is checked:
 - A proxy host or location can use several access lists. The first list that blocks the visitor decides the answer.
 - A blocked country gets 403 with the denied page, or the connection is closed without an answer (444) when the list has "Close the connection without an answer (444)" on. 444 is only for country blocks: IP and password refusals keep the denied page.
 - The refusal is answered by NPMpro itself, so forward authentication (Tinyauth, Authelia, VoidAuth) and Anubis never see it. An `error_page 403` in the advanced config of a location does not apply to country refusals; one at server level does.
-- Certificate challenges (`/.well-known/acme-challenge/`) are never blocked.
+- Certificate challenges (`/.well-known/acme-challenge/`) are never blocked, also in a custom location of that path with the type empty, `^~` or `=`. A regex location (`~`, `~*`) keeps the country rules, as it can match other paths too.
 
 ### Private and local addresses
 
