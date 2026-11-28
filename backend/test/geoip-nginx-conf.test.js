@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
+import { promisify } from "node:util";
 import { PRIVATE_RANGES, renderGeoipConf, renderGeoipLists } from "../lib/geoip/nginx-conf.js";
 
 const VARIANT_ERROR = /variant/u;
@@ -64,6 +67,40 @@ describe("first-start files", () => {
 	it("data-setup.sh writes what the renderers write", async () => {
 		assert.equal(await heredoc("geoip-lists.conf"), renderGeoipLists([]));
 		assert.equal(await heredoc("geoip.conf"), renderGeoipConf({ variant: "off" }));
+	});
+});
+
+describe("geoip-conf-check.sh", () => {
+	const script = path.join(import.meta.dirname, "../../rootfs/usr/local/bin/geoip-conf-check.sh");
+	const run = promisify(execFile);
+
+	it("writes what the off renderer writes, by --off and for a lost database", async () => {
+		const dir = await mkdtemp(path.join(os.tmpdir(), "geoip-check-"));
+		try {
+			const conf = path.join(dir, "geoip.conf");
+			await run("sh", [script, "--off", conf]);
+			assert.equal(await readFile(conf, "utf8"), renderGeoipConf({ variant: "off" }));
+			await writeFile(conf, renderGeoipConf({ variant: "database", file: `${dir}/gone.mmdb` }));
+			await run("sh", [script, conf], { env: { ...process.env, GEOIP_CHECK_DIR: dir } });
+			assert.equal(await readFile(conf, "utf8"), renderGeoipConf({ variant: "off" }));
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("keeps the database variant for a real Country database", async () => {
+		const dir = await mkdtemp(path.join(os.tmpdir(), "geoip-check-"));
+		try {
+			const file = path.join(dir, "country.mmdb");
+			await cp(path.join(import.meta.dirname, "fixtures/GeoLite2-Country-Test.mmdb"), file);
+			const conf = path.join(dir, "geoip.conf");
+			const text = renderGeoipConf({ variant: "database", file });
+			await writeFile(conf, text);
+			await run("sh", [script, conf], { env: { ...process.env, GEOIP_CHECK_DIR: dir } });
+			assert.equal(await readFile(conf, "utf8"), text);
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
 	});
 });
 

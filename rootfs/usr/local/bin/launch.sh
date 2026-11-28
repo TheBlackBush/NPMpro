@@ -121,16 +121,37 @@ if grep -qxF "include /usr/local/nginx/conf/crowdsec-bouncer.conf;" /data/npmpro
 fi
 # crowdsec-files-check end
 
+# a geoip.conf that names a lost or unusable country database would stop nginx: the off variant lets every visitor pass
+geoip-conf-check.sh
+
 # A full regeneration (REGENERATE_ALL) keeps the previous host configs, so the sites keep working until the backend
 # has written the new ones and reloads once. Only when nginx rejects them (an update changed what nginx accepts) they
 # are moved aside and nginx starts without them; the backend removes the moved files after the regeneration.
 if ! nginx -tq; then
+    # The country database line of geoip.conf can be what nginx rejects (a file the check above passed but nginx cannot
+    # read): the off variant lets every visitor pass until the backend writes the database variant again and nginx -t
+    # passes with it.
+    geoip_off=false
+    if grep -q "^geoip_country" /data/npmpro/nginx/geoip.conf 2> /dev/null; then
+        geoip_backup="$(mktemp)"
+        cp -p /data/npmpro/nginx/geoip.conf "$geoip_backup"
+        geoip-conf-check.sh --off /data/npmpro/nginx/geoip.conf
+        if nginx -tq; then
+            geoip_off=true
+            echo "GeoIP: nginx did not accept the GeoIP country database, the country rules of access lists let every visitor pass until it does (Settings, GeoIP)"
+        else
+            cp -p "$geoip_backup" /data/npmpro/nginx/geoip.conf
+        fi
+        rm -f "$geoip_backup"
+    fi
     # A CrowdSec bouncer config nginx rejects must not keep nginx from starting: the bouncer is off until the backend
     # writes it again from Settings, CrowdSec. nginx -t does not run the bouncer's init, so this only catches a
     # directive conflict (for example a custom include that also declares lua_shared_dict crowdsec_cache); the files
     # the bouncer opens at init are checked above.
     crowdsec_off=false
-    if grep -q "^include" /data/npmpro/nginx/crowdsec.conf 2> /dev/null; then
+    if [ "$geoip_off" = true ]; then
+        crowdsec_off=true
+    elif grep -q "^include" /data/npmpro/nginx/crowdsec.conf 2> /dev/null; then
         echo "# the CrowdSec bouncer is off (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec.conf
         if nginx -tq; then
             crowdsec_off=true

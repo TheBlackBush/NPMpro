@@ -66,6 +66,8 @@ jobs:
         run: sh test/migrate-data-folder.test.sh
       - name: GoAccess GeoIP Arguments
         run: sh test/geoip-goaccess-args.test.sh
+      - name: GeoIP Launch Check
+        run: sh test/geoip-conf-check.test.sh
       - name: Real Database Servers
         shell: bash
         env:
