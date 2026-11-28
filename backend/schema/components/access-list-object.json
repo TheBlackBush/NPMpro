@@ -136,7 +136,7 @@
 					},
 					"npmpro_comment": {
 						"type": "string",
-						"description": "A note for the rule, shown in the list and kept as a comment in the generated config",
+						"description": "A note for the rule, shown with the rule (it is not written into the nginx config)",
 						"maxLength": 255,
 						"default": "",
 						"example": "Head office"
