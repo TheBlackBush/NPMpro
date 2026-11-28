@@ -45,7 +45,7 @@
 	"alerts.geoip.failed": "GeoIP 数据库更新失败",
 	"alerts.geoip.failed.missing": "访问列表有国家规则，但没有可用的 GeoIP 国家数据库：所有访问者都会通过",
 	"alerts.geoip.failed.nginx": "nginx 未使用 GeoIP 国家数据库：访问列表的国家规则让所有访问者通过",
-	"alerts.geoip.failed.resolved": "GeoIP 数据库更新已恢复正常",
+	"alerts.geoip.failed.resolved": "GeoIP 已恢复正常：国家数据库可下载，nginx 也在使用它们",
 	"alerts.crowdsec.unreachable": "无法连接到 CrowdSec",
 	"alerts.crowdsec.unreachable.resolved": "已恢复与 CrowdSec 的连接",
 	"alerts.ddns.record_failed": "动态 DNS 记录 {name} 更新失败",

@@ -41,7 +41,7 @@ const RESOLVED = {
 	"certificate.renewal_failed": "Certificate example.com was renewed",
 	"host.config_error": "nginx configuration of app.example.com is valid again",
 	"backup.failed": "Backup nightly succeeded again",
-	"geoip.failed": "The GeoIP database update works again",
+	"geoip.failed": "GeoIP works again: the country databases download and nginx uses them",
 	"crowdsec.unreachable": "CrowdSec is reachable again",
 	"ddns.record_failed": "Dynamic DNS record home.example.com updates again",
 	"ddns.record_stopped": "Dynamic DNS record home.example.com runs again",

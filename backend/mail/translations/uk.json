@@ -45,7 +45,7 @@
 	"alerts.geoip.failed": "Не вдалося оновити базу GeoIP",
 	"alerts.geoip.failed.missing": "У списках доступу є правила країн, але жодна база країн GeoIP не придатна: усі відвідувачі проходять",
 	"alerts.geoip.failed.nginx": "nginx не використовує базу країн GeoIP: правила країн у списках доступу пропускають усіх відвідувачів",
-	"alerts.geoip.failed.resolved": "Оновлення бази GeoIP знову працює",
+	"alerts.geoip.failed.resolved": "GeoIP знову працює: бази країн завантажуються, і nginx їх використовує",
 	"alerts.crowdsec.unreachable": "CrowdSec недоступний",
 	"alerts.crowdsec.unreachable.resolved": "CrowdSec знову доступний",
 	"alerts.ddns.record_failed": "Не вдалося оновити запис динамічного DNS {name}",

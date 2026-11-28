@@ -45,7 +45,7 @@
 	"alerts.geoip.failed": "The GeoIP database update failed",
 	"alerts.geoip.failed.missing": "Access lists have country rules but no GeoIP country database is usable: every visitor passes",
 	"alerts.geoip.failed.nginx": "nginx does not use the GeoIP country database: the country rules of access lists let every visitor pass",
-	"alerts.geoip.failed.resolved": "The GeoIP database update works again",
+	"alerts.geoip.failed.resolved": "GeoIP works again: the country databases download and nginx uses them",
 	"alerts.crowdsec.unreachable": "CrowdSec cannot be reached",
 	"alerts.crowdsec.unreachable.resolved": "CrowdSec is reachable again",
 	"alerts.ddns.record_failed": "Dynamic DNS record {name} failed to update",
