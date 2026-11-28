@@ -32,7 +32,7 @@ More in the wiki: Host options.
 
 ### Countries
 
-Allow or block visitors by their country. **Country rules** is **Off**, **Allow only these countries** or **Block these countries**; add countries with **Add a country** and give each an optional comment. A list in an allow or block mode needs at least one country.
+Allow or block visitors by their country. **Country rules** is **Off**, **Allow only these countries** or **Block these countries**; add countries with **Add a country** (search by the country's name in the interface language or by its two-letter code) and give each an optional comment. A list in an allow or block mode needs at least one country.
 
 - **Block visitors whose country is unknown** covers public addresses the GeoIP database has no country for. Allow mode blocks them by default, block mode lets them pass.
 - **Close the connection without an answer (444)** applies only to visitors blocked by country. IP and password refusals keep the denied page.

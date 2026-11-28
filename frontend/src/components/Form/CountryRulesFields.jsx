@@ -20,7 +20,7 @@ import { SwitchList } from "./SwitchList";
 const MODES = ["off", "allow", "deny"];
 
 // one chosen country: flag, name, an optional comment, the remove button
-function CountryRow({ name, index, code, onRemove, disabled }) {
+function CountryRow({ name, index, code, onRemove }) {
 	const { register, getFieldState } = useFormContext();
 	const base = `${name}.${index}`;
 	const formState = useFormState({ name: `${base}.comment` });
@@ -51,7 +51,6 @@ function CountryRow({ name, index, code, onRemove, disabled }) {
 				variant="ghost"
 				className={DESTRUCTIVE_TEXT}
 				size="icon"
-				disabled={disabled}
 				aria-label={intl.formatMessage({ id: "access-list.countries.remove" }, { name: label })}
 				title={intl.formatMessage({ id: "access-list.countries.remove" }, { name: label })}
 				onClick={onRemove}

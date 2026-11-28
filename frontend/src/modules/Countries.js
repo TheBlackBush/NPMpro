@@ -294,7 +294,8 @@ export const countryName = (code, locale) => {
 const fold = (text) => text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 
 /**
- * The codes whose name (in the language) or code contains the query, sorted by name
+ * The codes whose name (in the language) or code contains the query: an exact code first, then names that start
+ * with the query, then the other matches, each group sorted by name
  *
  * @param   {string}   query   what the user typed (blank: every code)
  * @param   {string}   locale  the UI language
@@ -303,11 +304,16 @@ const fold = (text) => text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase(
  */
 export const searchCountries = (query, locale, codes = COUNTRY_CODES) => {
 	const needle = fold(query.trim());
-	const named = codes.map((code) => ({ code, name: countryName(code, locale) }));
-	return named
-		.filter(({ code, name }) => needle === "" || fold(name).includes(needle) || fold(code).includes(needle))
-		.sort((a, b) => collatorOf(locale).compare(a.name, b.name))
-		.map(({ code }) => code);
+	const compare = (a, b) => collatorOf(locale).compare(a.name, b.name);
+	const matches = codes
+		.map((code) => ({ code, name: countryName(code, locale) }))
+		.map((entry) => ({ ...entry, folded: fold(entry.name), same: fold(entry.code) === needle }))
+		.filter(({ code, folded }) => needle === "" || folded.includes(needle) || fold(code).includes(needle));
+	// an exact code first, then names that start with the query, then the other matches, each group by name
+	const exact = matches.filter(({ same }) => same);
+	const prefix = matches.filter(({ same, folded }) => !same && folded.startsWith(needle));
+	const rest = matches.filter((entry) => !exact.includes(entry) && !prefix.includes(entry));
+	return [...exact.sort(compare), ...prefix.sort(compare), ...rest.sort(compare)].map(({ code }) => code);
 };
 
 /**

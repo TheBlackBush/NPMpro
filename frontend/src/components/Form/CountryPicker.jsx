@@ -33,7 +33,13 @@ function CountryPicker({ value, onAdd, disabled = false }) {
 			}}
 		>
 			<PopoverTrigger asChild>
-				<Button className="self-start" disabled={disabled} role="combobox" aria-expanded={open}>
+				<Button
+					className="self-start"
+					disabled={disabled}
+					role="combobox"
+					aria-expanded={open}
+					aria-label={intl.formatMessage({ id: "access-list.countries.add" })}
+				>
 					<T id="access-list.countries.add" />
 					<ChevronsUpDownIcon data-icon="inline-end" aria-hidden="true" />
 				</Button>

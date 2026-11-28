@@ -57,3 +57,13 @@ it("searches by name in the language and by code, case and accent insensitive, s
 	assert.deepEqual(searchCountries("zzzz", "en"), []);
 	assert.deepEqual(searchCountries("", "en", ["DE", "AT"]), ["AT", "DE"]);
 });
+
+it("ranks names that start with the query and an exact code before other matches", () => {
+	const ger = searchCountries("ger", "en");
+	assert.equal(ger[0], "DE");
+	assert.ok(ger.includes("DZ"));
+	assert.ok(ger.indexOf("DE") < ger.indexOf("DZ"));
+	const de = searchCountries("de", "en");
+	assert.equal(de[0], "DE");
+	assert.ok(de.includes("DK"));
+});
