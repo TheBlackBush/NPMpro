@@ -46,6 +46,22 @@ describe("buildAclFile catch-all (#3808)", () => {
 		assert.deepEqual(last(built), rule("allow", "all"));
 	});
 
+	it("counts a list that has only deny all", () => {
+		const built = build(
+			list(1, [rule("deny", "all")]),
+			list(2, [rule("allow", "10.0.0.0/8"), rule("allow", "all")]),
+		);
+		assert.deepEqual(built.clients, [rule("allow", "10.0.0.0/8"), rule("deny", "all")]);
+	});
+
+	it("reads a padded or upper case all", () => {
+		const built = build(
+			list(1, [rule("allow", "10.0.0.5"), rule("allow", " ALL ")]),
+			list(2, [rule("allow", "10.0.0.6"), rule("allow", " ALL ")]),
+		);
+		assert.deepEqual(built.clients, [rule("allow", "10.0.0.5"), rule("allow", "10.0.0.6"), rule("allow", "all")]);
+	});
+
 	it("keeps the result of a single list", () => {
 		assert.deepEqual(build(list(1, [rule("allow", "10.0.0.5"), rule("allow", "all")])).clients, [
 			rule("allow", "10.0.0.5"),

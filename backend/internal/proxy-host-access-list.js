@@ -101,12 +101,11 @@ const internalProxyHostAccessList = {
 		const first = lists[0] || null; // satisfy any and the denied page come from the first acl
 
 		const isAllowAll = (rule) => rule?.directive === "allow" && rule?.address?.trim().toLowerCase() === "all";
-		const withIpRules = lists.filter((l) =>
-			(l.clients ?? []).some((c) => c.address?.trim().toLowerCase() !== "all"),
-		);
-		// #3808: allow all only when every list that has IP rules ends with allow all
+		// a list with any client rule takes part, a lone deny all or allow all too
+		const withRules = lists.filter((l) => (l.clients ?? []).length > 0);
+		// #3808: allow all only when every list that has rules ends with allow all
 		const catchAll =
-			withIpRules.length > 0 && withIpRules.every((l) => isAllowAll((l.clients ?? []).at(-1)))
+			withRules.length > 0 && withRules.every((l) => isAllowAll(l.clients.at(-1)))
 				? { directive: "allow", address: "all" }
 				: { directive: "deny", address: "all" };
 
