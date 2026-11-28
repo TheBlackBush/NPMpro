@@ -352,6 +352,36 @@ it("a list with only deny all and users needs both under satisfy all", async () 
 	assert.doesNotMatch(text, SATISFY_ANY);
 });
 
+it("a deny all list next to an allow all list with users and satisfy any denies, the password passes", async () => {
+	const deny = await makeList();
+	await api.db("access_list_client").where({ access_list_id: deny.id }).delete();
+	await api.db("access_list_auth").where({ access_list_id: deny.id }).delete();
+	const now = new Date().toISOString();
+	await api.db("access_list_client").insert({
+		access_list_id: deny.id,
+		directive: "deny",
+		address: "all",
+		created_on: now,
+		modified_on: now,
+		meta: "{}",
+	});
+	await api.db("access_list").where({ id: deny.id }).update({ satisfy_any: 1 });
+	const open = await makeList();
+	await api.db("access_list_client").where({ access_list_id: open.id }).delete();
+	await api.db("access_list_client").insert({
+		access_list_id: open.id,
+		directive: "allow",
+		address: "all",
+		created_on: now,
+		modified_on: now,
+		meta: "{}",
+	});
+	const text = await gateConfig(await makeHost([deny.id, open.id]));
+	assert.deepEqual(rulesOf(text), ["deny all;"]);
+	assert.match(text, AUTH_BASIC);
+	assert.match(text, SATISFY_ANY);
+});
+
 it("a list with only allow all or users only renders no rule, so the password stays required", async () => {
 	assert.deepEqual(rulesOf(await loneRuleHost([{ directive: "allow", address: "all" }])), []);
 	const withUsers = await loneRuleHost([{ directive: "allow", address: "all" }], { users: true, satisfyAny: true });

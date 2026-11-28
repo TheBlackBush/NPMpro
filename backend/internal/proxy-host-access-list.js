@@ -111,9 +111,10 @@ const internalProxyHostAccessList = {
 				(rules.every(isDenyAll) || rules.some((c) => c.address?.trim().toLowerCase() !== "all"))
 			);
 		});
-		// #3808: allow all only when every list that has rules ends with allow all
+		// #3808, D9: allow all only when every list on the host ends with allow all; a list without client rules or
+		// with another last rule votes deny
 		const catchAll =
-			withRules.length > 0 && withRules.every((l) => isAllowAll(l.clients.at(-1)))
+			lists.length > 0 && lists.every((l) => isAllowAll((l.clients ?? []).at(-1)))
 				? { directive: "allow", address: "all" }
 				: { directive: "deny", address: "all" };
 

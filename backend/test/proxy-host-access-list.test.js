@@ -41,9 +41,16 @@ describe("buildAclFile catch-all (#3808)", () => {
 		assert.deepEqual(last(built), rule("deny", "all"));
 	});
 
-	it("ignores a list without IP rules", () => {
+	it("votes deny for a list without client rules (D9 literal, as develop)", () => {
 		const built = build(list(1, []), list(2, [rule("deny", "1.2.3.4"), rule("allow", "all")]));
-		assert.deepEqual(last(built), rule("allow", "all"));
+		assert.deepEqual(last(built), rule("deny", "all"));
+	});
+
+	it("keeps a mixed all list in the vote, in either order", () => {
+		const mixed = [rule("allow", "all"), rule("deny", "all")];
+		const open = [rule("allow", "10.0.0.1"), rule("allow", "all")];
+		assert.deepEqual(last(build(list(1, mixed), list(2, open))), rule("deny", "all"));
+		assert.deepEqual(last(build(list(1, open), list(2, mixed))), rule("deny", "all"));
 	});
 
 	it("counts a list that has only deny all", () => {
@@ -112,6 +119,12 @@ describe("buildAclFile a lone all rule (D20)", () => {
 	it("renders no rule for a list that mixes all rules without a specific address", () => {
 		assert.deepEqual(build(list(1, [rule("deny", "all"), rule("allow", "all")])).clients, []);
 		assert.deepEqual(build(list(1, [rule("allow", "all"), rule("deny", "all")])).clients, []);
+	});
+
+	it("renders no rule for a mixed all list with users and satisfy any", () => {
+		const users = { items: [{ username: "u", password: "p" }], satisfy_any: true };
+		assert.deepEqual(build(list(1, [rule("allow", "all"), rule("deny", "all")], users)).clients, []);
+		assert.deepEqual(build(list(1, [rule("deny", "all"), rule("allow", "all")], users)).clients, []);
 	});
 
 	it("renders no rule for a list with users only", () => {
