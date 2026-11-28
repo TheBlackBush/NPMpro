@@ -92,6 +92,13 @@ describe("hasCustomDirective", () => {
 		assert.equal(await hasCustomDirective(await files("geoip_country_code\n")), false);
 	});
 
+	it("handles CRLF, a hash inside a value and a tab before the directive", async () => {
+		assert.equal(await hasCustomDirective(await files("a;\r\ngeoip_country /x.mmdb;\r\n")), true);
+		assert.equal(await hasCustomDirective(await files('geoip_country "/x#y.mmdb"; # note\n')), true);
+		assert.equal(await hasCustomDirective(await files("\tgeoip_country /x;\n")), true);
+		assert.equal(await hasCustomDirective(await files("\t# geoip_country /x;\r\n")), false);
+	});
+
 	it("reads every file and ignores a missing one", async () => {
 		const [one, two] = await files("a;\n", "geoip_country /y;\n");
 		assert.equal(await hasCustomDirective([one, two]), true);

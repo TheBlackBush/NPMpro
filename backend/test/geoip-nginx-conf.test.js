@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { describe, it } from "node:test";
 import { PRIVATE_RANGES, renderGeoipConf, renderGeoipLists } from "../lib/geoip/nginx-conf.js";
+
+const VARIANT_ERROR = /variant/u;
+const ID_ERROR = /id/u;
 
 const list = (id, mode, unknown, countries) => ({
 	id,
@@ -31,6 +36,11 @@ describe("renderGeoipConf", () => {
 		);
 	});
 
+	it("refuses an unknown variant", () => {
+		assert.throws(() => renderGeoipConf({ variant: "databse" }), VARIANT_ERROR);
+		assert.throws(() => renderGeoipConf({}), VARIANT_ERROR);
+	});
+
 	it("refuses a path with a character outside the safe set", () => {
 		assert.throws(() => renderGeoipConf({ variant: "database", file: "/data/a b.mmdb" }));
 		assert.throws(() => renderGeoipConf({ variant: "database", file: "/data/a;b.mmdb" }));
@@ -38,7 +48,32 @@ describe("renderGeoipConf", () => {
 	});
 });
 
+describe("first-start files", () => {
+	const heredoc = async (name) => {
+		const script = await readFile(
+			path.join(import.meta.dirname, "../../rootfs/usr/local/bin/data-setup.sh"),
+			"utf8",
+		);
+		const start = `> /data/npmpro/nginx/${name} <<'EOF'\n`;
+		const from = script.indexOf(start);
+		const to = script.indexOf("\nEOF\n", from);
+		if (from < 0 || to < 0) throw new Error(`${name} heredoc not found`);
+		return `${script.slice(from + start.length, to)}\n`;
+	};
+
+	it("data-setup.sh writes what the renderers write", async () => {
+		assert.equal(await heredoc("geoip-lists.conf"), renderGeoipLists([]));
+		assert.equal(await heredoc("geoip.conf"), renderGeoipConf({ variant: "off" }));
+	});
+});
+
 describe("renderGeoipLists", () => {
+	it("refuses a list id that is not a positive integer", () => {
+		for (const id of ["1\nx", "a", 0, -1, 1.5, undefined]) {
+			assert.throws(() => renderGeoipLists([list(id, "allow", "auto", [])]), ID_ERROR);
+		}
+	});
+
 	const privateGeo = `geo $npmpro_geo_private {\n  default 0;\n${PRIVATE_RANGES.map((r) => `  ${r} 1;\n`).join("")}}\n`;
 
 	it("holds only the private geo without lists", () => {

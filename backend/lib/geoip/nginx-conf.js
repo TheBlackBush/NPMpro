@@ -31,6 +31,7 @@ const renderGeoipConf = ({ variant, file }) => {
 	if (variant === "custom") {
 		return "# geoip_country comes from /data/custom_nginx (your own directive wins, Settings, GeoIP)\ngeo $npmpro_geo_db {\n  default 1;\n}\n";
 	}
+	if (variant !== "off") throw new Error(`Unknown GeoIP include variant: ${variant}`);
 	return "# no usable GeoIP country database: country rules of access lists let every visitor pass (Settings, GeoIP)\ngeo $npmpro_geo_db {\n  default 0;\n}\n";
 };
 
@@ -44,6 +45,8 @@ const unknownResult = (list, allow) => {
 };
 
 const renderList = (list) => {
+	if (!Number.isInteger(list.id) || list.id < 1)
+		throw new Error(`The access list id is not a positive integer: ${list.id}`);
 	const allow = list.npmpro_geo_mode === "allow";
 	const unknown = unknownResult(list, allow);
 	const countries = [...new Set(list.countries ?? [])]
