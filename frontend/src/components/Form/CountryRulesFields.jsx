@@ -85,9 +85,16 @@ export function CountryRulesFields({ saved, status }) {
 	const onModeChange = (next) => {
 		const previous = lastMode.current;
 		lastMode.current = next;
-		setValue("geoBlockUnknown", switchForMode(previous, next, getValues("geoBlockUnknown"), touched.current), {
-			shouldDirty: true,
-		});
+		setValue(
+			"geoBlockUnknown",
+			switchForMode(previous, next, getValues("geoBlockUnknown"), {
+				touched: touched.current,
+				savedUnknown: saved?.npmproGeoUnknown,
+			}),
+			{
+				shouldDirty: true,
+			},
+		);
 	};
 	const options = MODES.map((value) => ({
 		value,

@@ -360,7 +360,7 @@ it("a list with only countries satisfies the user or rule requirement, a mode wi
 it("the switch follows the first mode while untouched: a new list set to allow or deny saves auto", () => {
 	for (const mode of ["allow", "deny"]) {
 		const values = accessListDefaults(newList);
-		const switchOn = switchForMode(values.geoMode, mode, values.geoBlockUnknown, false);
+		const switchOn = switchForMode(values.geoMode, mode, values.geoBlockUnknown, { touched: false });
 		assert.equal(switchOn, mode === "allow");
 		const sent = accessListPayload({ ...values, geoMode: mode, geoBlockUnknown: switchOn }, [], "auto");
 		assert.equal(sent.npmproGeoUnknown, "auto");
@@ -368,18 +368,36 @@ it("the switch follows the first mode while untouched: a new list set to allow o
 });
 
 it("the switch after a mode change: a touched switch stays, other changes keep it, the round trip is auto", () => {
-	assert.equal(switchForMode("off", "allow", false, true), false);
-	assert.equal(switchForMode("off", "deny", true, true), true);
+	assert.equal(switchForMode("off", "allow", false, { touched: true }), false);
+	assert.equal(switchForMode("off", "deny", true, { touched: true }), true);
 	// a list saved off with an explicit block: untouched, the first mode's default wins
 	const savedOff = accessListDefaults({ ...newList, npmproGeoMode: "off", npmproGeoUnknown: "block" });
 	assert.equal(savedOff.geoBlockUnknown, true);
-	assert.equal(switchForMode("off", "deny", savedOff.geoBlockUnknown, false), false);
-	assert.equal(switchForMode("off", "deny", savedOff.geoBlockUnknown, true), true);
+	assert.equal(switchForMode("off", "deny", savedOff.geoBlockUnknown, { touched: false }), false);
+	assert.equal(switchForMode("off", "deny", savedOff.geoBlockUnknown, { touched: true }), true);
 	assert.equal(accessListPayload({ ...savedOff, geoMode: "off" }, [], "block").npmproGeoUnknown, "block");
-	// allow to deny and back, off again
-	assert.equal(switchForMode("allow", "deny", true, false), true);
-	assert.equal(switchForMode("deny", "allow", true, false), true);
-	assert.equal(switchForMode("allow", "off", true, false), true);
+	// allow to off keeps the switch
+	assert.equal(switchForMode("allow", "off", true, { touched: false }), true);
+});
+
+it("the switch follows every mode change until touched: Allow to Block, Block to Allow and the round trip save auto", () => {
+	const send = (mode, switchOn) =>
+		accessListPayload({ ...accessListDefaults(newList), geoMode: mode, geoBlockUnknown: switchOn }, [], "auto");
+	let on = switchForMode("allow", "deny", true, { touched: false });
+	assert.equal(on, false);
+	assert.equal(send("deny", on).npmproGeoUnknown, "auto");
+	on = switchForMode("deny", "allow", false, { touched: false });
+	assert.equal(on, true);
+	assert.equal(send("allow", on).npmproGeoUnknown, "auto");
+	on = switchForMode("allow", "deny", on, { touched: false });
+	on = switchForMode("deny", "allow", on, { touched: false });
+	assert.equal(send("allow", on).npmproGeoUnknown, "auto");
+	// touched: the user's state stays across mode changes
+	assert.equal(switchForMode("allow", "deny", true, { touched: true }), true);
+	assert.equal(switchForMode("deny", "allow", false, { touched: true }), false);
+	// a saved explicit block or pass keeps the switch on a change between allow and deny
+	assert.equal(switchForMode("allow", "deny", true, { touched: false, savedUnknown: "block" }), true);
+	assert.equal(switchForMode("deny", "allow", false, { touched: false, savedUnknown: "pass" }), false);
 });
 
 it("comments: at most 255 characters on rules and countries, a field error each", () => {

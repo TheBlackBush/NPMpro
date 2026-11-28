@@ -93,19 +93,22 @@ export const unknownValue = (mode, switchOn, saved) => {
 };
 
 /**
- * The switch after a mode change. Leaving off for allow or deny with the switch untouched, it takes the new mode's
- * default (on for allow, off for deny), so a first save sends "auto" (allow blocks an unknown country, deny lets it
- * pass). A touched switch and every other change keep the switch where it is, which keeps the allow, deny, allow
- * round trip at "auto".
+ * The switch after a mode change. While the user has not touched it, it follows the new mode (on for allow, off for
+ * deny, so a save sends "auto") on every change out of off, and on every other change when the saved value is "auto"
+ * (a new list has none). An explicit saved "block" or "pass" keeps the switch where it is on a change between allow
+ * and deny, and so does a touched switch.
  *
- * @param   {string}  prevMode  the mode before the change
- * @param   {string}  nextMode  the mode chosen
- * @param   {boolean} switchOn  the switch now
- * @param   {boolean} touched   the user changed the switch since the window opened
- * @returns {boolean}           the switch to show
+ * @param   {string}  prevMode       the mode before the change
+ * @param   {string}  nextMode       the mode chosen
+ * @param   {boolean} switchOn       the switch now
+ * @param   {Object}  state          touched: the user changed the switch since the window opened; savedUnknown: the
+ *                                   saved npmproGeoUnknown (auto for a new list)
+ * @returns {boolean}                the switch to show
  */
-export const switchForMode = (prevMode, nextMode, switchOn, touched) =>
-	prevMode === "off" && nextMode !== "off" && !touched ? unknownSwitchOn(nextMode, "auto") : switchOn;
+export const switchForMode = (prevMode, nextMode, switchOn, { touched, savedUnknown = "auto" }) =>
+	!touched && nextMode !== "off" && (prevMode === "off" || savedUnknown === "auto")
+		? unknownSwitchOn(nextMode, "auto")
+		: switchOn;
 
 /**
  * What the Countries tab allows. Without a country database (rule 6 of the backend) a save may keep or remove

@@ -366,8 +366,6 @@ async function accessListCountries({ admin }) {
 			if (!(await dialog.getByRole("switch", { name: UNKNOWN_SWITCH }).isChecked())) {
 				throw new Error("the unknown switch is off in Allow mode");
 			}
-			// the switch follows the mode when it leaves Off (not for a change between Allow and Block)
-			await dialog.getByRole("radio", { name: "Off", exact: true }).check();
 			await dialog.getByRole("radio", { name: "Block these countries", exact: true }).check();
 			if (await dialog.getByRole("switch", { name: UNKNOWN_SWITCH }).isChecked()) {
 				throw new Error("the unknown switch stays on after the change to Block");

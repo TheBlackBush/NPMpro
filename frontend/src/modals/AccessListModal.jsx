@@ -159,7 +159,7 @@ function AccessListEditor({ data, onSubmit, dirtyRef, readOnly, ...formProps }) 
 		users: new Set(data.items.map((item) => item.username)),
 		clients: data.clients,
 		unknown: data.npmproGeoUnknown ?? "auto",
-		geo: { npmproGeoMode: data.npmproGeoMode ?? "off" },
+		geo: { npmproGeoMode: data.npmproGeoMode ?? "off", npmproGeoUnknown: data.npmproGeoUnknown ?? "auto" },
 	}));
 	const [validate] = useState(() => accessListValidate(validations, { savedUsers: saved.users }));
 	const [defaultValues] = useState(() => accessListDefaults(data));
