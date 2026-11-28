@@ -346,3 +346,21 @@ describe("the callers", () => {
 		assert.equal(reloads(api), reloadsBefore + 1);
 	});
 });
+
+describe("ensureGeoipConf", () => {
+	it("syncs only while NPMpro's database line is on disk", async () => {
+		// off on disk: nothing an own line or a lost file can break, so no sync and no nginx -t (the next one switches)
+		await addDatabase();
+		assert.match(await conf(), OFF_LINE);
+		await geo.ensureGeoipConf();
+		assert.match(await conf(), OFF_LINE);
+		assert.equal(await nginxTests(), 0);
+		// the database line, then an own geoip_country: the custom variant before the caller's nginx -t
+		await geo.syncGeoipConf({ reload: false });
+		assert.match(await conf(), DATABASE_LINE);
+		await writeFile(custom(), "geoip_country /etc/own/GeoIP.dat;\n");
+		await geo.ensureGeoipConf();
+		assert.doesNotMatch(await conf(), OWN_LINE);
+		assert.match(await conf(), DEFAULT_ON);
+	});
+});

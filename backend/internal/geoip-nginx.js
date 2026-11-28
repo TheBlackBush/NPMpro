@@ -14,6 +14,8 @@ const GEOIP_CONF = rooted("/data/npmpro/nginx/geoip.conf");
 const GEOIP_LISTS_CONF = rooted("/data/npmpro/nginx/geoip-lists.conf");
 const PROXY_HOST_DIR = rooted("/data/nginx/proxy_host");
 const GEO_REFERENCE = /\$npmpro_geo_(?<id>\d+)\b/gu;
+// NPMpro's own geoip_country line, only in the database variant of geoip.conf
+const DATABASE_LINE = /^geoip_country /mu;
 
 const readOrNull = (file) => readFile(file, "utf8").catch(() => null);
 
@@ -98,6 +100,20 @@ const writeGeoipLists = async ({ report = true } = {}) => {
 const writePassingLists = async () => {
 	const ids = [...(await referencedLists())].sort((a, b) => a - b);
 	await writeAtomic(GEOIP_LISTS_CONF, `${renderGeoipLists([])}${ids.map(passingGeo).join("")}`);
+};
+
+/**
+ * Before the nginx -t of a stream, redirection or 404 host save: those configs name no country gate, so only NPMpro's
+ * own geoip_country line can fail their test (an own line added since the last sync, or its Country file gone). The
+ * sync runs only while geoip.conf has that line; the off and custom variants cannot fail nginx -t, and a proxy host or
+ * list save or the hourly tick picks up a change from them. That check reads no database, so a save that cannot be
+ * affected costs one file read. For code in the runtime settings queue.
+ *
+ * @returns {Promise<void>}
+ */
+const ensureGeoipConf = async () => {
+	if (!DATABASE_LINE.test((await readOrNull(GEOIP_CONF)) ?? "")) return;
+	await syncGeoipConfNow({ reload: false, report: false });
 };
 
 /**
@@ -250,6 +266,7 @@ const startGeoipNginx = async ({ log = logger } = {}) => {
 };
 
 export {
+	ensureGeoipConf,
 	ensureGeoipLists,
 	GEOIP_CONF,
 	GEOIP_LISTS_CONF,

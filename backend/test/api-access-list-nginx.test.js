@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
@@ -596,6 +597,70 @@ it("drops a deleted list's map also when the host configs could not be written",
 	// and nginx -t still passes with it: the host stays online on its next save
 	assert.equal((await admin.put(`${HOSTS}/${host.id}`, { forward_port: 83 })).status, 200);
 	assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+});
+
+it("a stream or redirection save syncs geoip.conf first, so an own geoip_country or a lost file does not take it offline", async () => {
+	await withDatabase();
+	const geoipConf = () => readFile(path.join(api.root, "data/npmpro/nginx/geoip.conf"), "utf8");
+	const own = path.join(api.root, "data/custom_nginx/http_top.conf");
+	const database = path.join(api.root, "data/goaccess/geoip/dbip-country-lite.mmdb");
+	await mkdir(path.dirname(own), { recursive: true });
+	const list = await countryList({ npmpro_countries: [{ country: "FR" }] });
+	assert.match(await geoipConf(), OWN_DATABASE_LINE);
+	// as the real nginx: a second geoip_country is a duplicate, and the database line needs its file
+	await strictNginx(
+		`conf="${api.root}/data/npmpro/nginx/geoip.conf"
+if grep -q '^geoip_country' "$conf" && grep -qs geoip_country "${own}"; then echo 'nginx: [emerg] "geoip_country" directive is duplicate in ${own}:1' >&2; exit 1; fi
+db=$(sed -n 's/^geoip_country \\(.*\\);$/\\1/p' "$conf")
+if [ -n "$db" ] && [ ! -f "$db" ]; then echo "nginx: [emerg] MMDB_open("$db") failed" >&2; exit 1; fi`,
+	);
+	// a reload runs the same check, as the real control socket tests the config before it reloads
+	api.outside.control.check = () => {
+		try {
+			execFileSync(path.join(api.root, "fake/nginx.hook"), ["-tq"], { stdio: "pipe" });
+			return null;
+		} catch (err) {
+			return String(err.stderr);
+		}
+	};
+	try {
+		await writeFile(own, "geoip_country /etc/own/GeoIP.dat;\n");
+		const stream = await created(
+			await admin.post("/nginx/streams", {
+				incoming_port: "9922",
+				forwarding_host: "10.0.8.1",
+				forwarding_port: "22",
+				tcp_forwarding: true,
+			}),
+			"stream",
+		);
+		assert.equal((await api.db("stream").where({ id: stream.id }).first()).npmpro_nginx_online, 1);
+		assert.doesNotMatch(await geoipConf(), OWN_DATABASE_LINE);
+		assert.equal(await fileExists(api, `data/nginx/stream/${stream.id}.conf`), true);
+
+		// back to the database line, then the Country file goes: a redirection save writes the off variant first
+		await rm(own);
+		assert.equal((await admin.put(`${LISTS}/${list.id}`, { name: `database ${list.id}` })).status, 200);
+		assert.match(await geoipConf(), OWN_DATABASE_LINE);
+		await rm(database);
+		const redirect = await created(
+			await admin.post("/nginx/redirection-hosts", {
+				domain_names: ["geo-redirect.example.com"],
+				forward_scheme: "http",
+				forward_domain_name: "target.example.org",
+				forward_http_code: 301,
+			}),
+			"redirection host",
+		);
+		assert.equal((await api.db("redirection_host").where({ id: redirect.id }).first()).npmpro_nginx_online, 1);
+		assert.doesNotMatch(await geoipConf(), OWN_DATABASE_LINE);
+		assert.equal((await admin.delete(`/nginx/streams/${stream.id}`)).status, 200);
+		assert.equal((await admin.delete(`/nginx/redirection-hosts/${redirect.id}`)).status, 200);
+	} finally {
+		api.outside.control.check = null;
+		await rm(own, { force: true });
+		await withDatabase();
+	}
 });
 
 it("a list or host save picks up an own geoip_country added or removed since the last sync", async () => {
