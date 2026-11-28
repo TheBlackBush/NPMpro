@@ -100,9 +100,13 @@ const internalProxyHostAccessList = {
 		const lists = list || [];
 		const first = lists[0] || null; // satisfy any and the denied page come from the first acl
 
-		const last = (first?.clients || []).at(-1);
+		const isAllowAll = (rule) => rule?.directive === "allow" && rule?.address?.trim().toLowerCase() === "all";
+		const withIpRules = lists.filter((l) =>
+			(l.clients ?? []).some((c) => c.address?.trim().toLowerCase() !== "all"),
+		);
+		// #3808: allow all only when every list that has IP rules ends with allow all
 		const catchAll =
-			last?.directive === "allow" && last?.address?.trim().toLowerCase() === "all"
+			withIpRules.length > 0 && withIpRules.every((l) => isAllowAll((l.clients ?? []).at(-1)))
 				? { directive: "allow", address: "all" }
 				: { directive: "deny", address: "all" };
 
@@ -113,6 +117,10 @@ const internalProxyHostAccessList = {
 		return {
 			items: getMergedItems(lists),
 			clients,
+			// the country gates, in list order; the template checks them before the IP and password rules
+			geo_gates: lists
+				.filter((l) => l.npmpro_geo_mode && l.npmpro_geo_mode !== "off")
+				.map((l) => ({ id: l.id, drop: Boolean(l.npmpro_geo_drop) })),
 			satisfy_any: Boolean(first?.satisfy_any),
 			// the Authorization header reaches the upstream only when every list that asks for a password allows it
 			pass_auth: lists.every((l) => l.pass_auth || !l.items?.length),

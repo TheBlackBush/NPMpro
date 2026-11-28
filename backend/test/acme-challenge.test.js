@@ -37,7 +37,7 @@ describe("overridesAcmeChallenge", () => {
 	}
 });
 
-it("bumps the template version for the ACME location changes", () => {
+it("bumps the template version for the ACME location and country gate changes", () => {
 	const version = Number(TEMPLATE_VERSION.exec(readFileSync(ENVS_SH, "utf8")).groups.version);
-	assert.ok(version >= 28, `TV is ${version}`);
+	assert.ok(version >= 29, `TV is ${version}`);
 });

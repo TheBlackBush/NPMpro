@@ -201,3 +201,52 @@ if grep -rq BADHOST --include='*.conf' "${dir}"; then echo "BADHOST is not valid
 	await api.db("proxy_host").where({ id: hosts[1].id }).delete();
 	await api.db("npmpro_proxy_host_access_list").where({ proxy_host_id: hosts[1].id }).delete();
 });
+
+const GEO_ANY = /npmpro_geo/u;
+const GEO_GATE = /npmpro_geo_\d+ = 0/u;
+const GEO_GATES = /npmpro_geo_\d+ = 0/gu;
+const gateConfig = async (host) => readFile(path.join(api.root, config(host.id)), "utf8");
+const setGeo = (id, mode, drop = 0) =>
+	api.db("access_list").where({ id }).update({ npmpro_geo_mode: mode, npmpro_geo_drop: drop });
+
+it("renders the country gates of every gated list before the password and IP rules", async () => {
+	const a = await makeList();
+	const b = await makeList();
+	const c = await makeList();
+	await setGeo(a.id, "allow");
+	await setGeo(c.id, "deny", 1);
+	const host = await makeHost([a.id, b.id, c.id], {
+		locations: [
+			{ path: "/inner", forward_host: "10.0.0.2", npmpro_access_list_type: "global" },
+			{
+				path: "/.well-known/acme-challenge/",
+				location_type: "^~ ",
+				forward_host: "10.0.0.3",
+				npmpro_access_list_type: "global",
+			},
+		],
+	});
+	const text = await gateConfig(host);
+	const rootStart = text.indexOf("location / {");
+	const root = text.slice(rootStart, text.indexOf("auth_basic ", rootStart));
+	const gates = [...root.matchAll(/if \(\$npmpro_geo_(?<id>\d+) = 0\) \{ return (?<code>\d+); \}/gu)];
+	assert.deepEqual(
+		gates.map((m) => [Number(m.groups.id), m.groups.code]),
+		[
+			[a.id, "403"],
+			[c.id, "444"],
+		],
+	);
+	assert.doesNotMatch(root, new RegExp(`npmpro_geo_${b.id}\\b`, "u"));
+	const inner = text.slice(text.indexOf('location "/inner"'));
+	assert.equal([...inner.slice(0, inner.indexOf("location ", 10)).matchAll(GEO_GATES)].length, 2);
+	const acmeAt = text.indexOf('location ^~ "/.well-known/acme-challenge/"');
+	assert.ok(acmeAt > 0);
+	assert.doesNotMatch(text.slice(acmeAt, acmeAt + 600), GEO_GATE);
+});
+
+it("renders no country line for hosts whose lists have no mode", async () => {
+	const list = await makeList();
+	const host = await makeHost([list.id]);
+	assert.doesNotMatch(await gateConfig(host), GEO_ANY);
+});

@@ -103,3 +103,32 @@ it("a path the user quoted by hand keeps its meaning", () => {
 	assert.equal(quoteLocation({ location_type: "", path: "\"/a'" }).path, '"\\"/a\'"');
 	assert.equal(quoteLocation({ location_type: "", path: '"' }).path, '"\\""');
 });
+
+const GEO_LINE = /npmpro_geo/u;
+
+it("renders the country gates of the access list before the authorization block", async () => {
+	const access_list = {
+		items: [{ username: "u" }],
+		clients: [],
+		pass_auth: true,
+		geo_gates: [
+			{ id: 4, drop: false },
+			{ id: 9, drop: true },
+		],
+	};
+	const base = {
+		forward_scheme: "http",
+		forward_host: "a",
+		forward_upstream_name: "u",
+		location_type: "",
+		path: "/g",
+	};
+	const out = await render({ ...base, access_list });
+	const lines = out.split("\n").filter((line) => line.includes("npmpro_geo"));
+	assert.deepEqual(
+		lines.map((line) => line.trim()),
+		["if ($npmpro_geo_4 = 0) { return 403; }", "if ($npmpro_geo_9 = 0) { return 444; }"],
+	);
+	assert.ok(out.indexOf("npmpro_geo_9") < out.indexOf("auth_basic"));
+	assert.doesNotMatch(await render({ ...base, access_list: { ...access_list, geo_gates: [] } }), GEO_LINE);
+});
