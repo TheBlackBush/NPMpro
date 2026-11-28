@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { ACME_CHALLENGE_PATH, overridesAcmeChallenge } from "../lib/acme-challenge.js";
+import { ACME_CHALLENGE_PATH, overridesAcmeChallenge, servesAcmeChallengeOnly } from "../lib/acme-challenge.js";
 
 const ENVS_SH = new URL("../../rootfs/usr/local/bin/envs.sh", import.meta.url);
 const TEMPLATE_VERSION = /^TV="(?<version>\d+)"$/mu;
@@ -37,7 +37,30 @@ describe("overridesAcmeChallenge", () => {
 	}
 });
 
-it("bumps the template version for the ACME location changes", () => {
+describe("servesAcmeChallengeOnly", () => {
+	const yes = [
+		["a plain prefix", { path: PATH, location_type: "" }],
+		["^~", { path: PATH, location_type: "^~ " }],
+		["=", { path: `${PATH}token`, location_type: "= " }],
+		["no type, a deeper quoted path", { path: `"${PATH}x"` }],
+	];
+	for (const [label, location] of yes) {
+		it(`is true for ${label}`, () => assert.equal(servesAcmeChallengeOnly(location), true));
+	}
+
+	const no = [
+		["~", { path: PATH, location_type: "~ " }],
+		["~* with an alternative", { path: `${PATH}|/admin`, location_type: "~* " }],
+		["@", { path: PATH, location_type: "@" }],
+		["another prefix", { path: "/admin", location_type: "" }],
+		["undefined", undefined],
+	];
+	for (const [label, location] of no) {
+		it(`is false for ${label}`, () => assert.equal(servesAcmeChallengeOnly(location), false));
+	}
+});
+
+it("bumps the template version for the ACME location and country gate changes", () => {
 	const version = Number(TEMPLATE_VERSION.exec(readFileSync(ENVS_SH, "utf8")).groups.version);
-	assert.ok(version >= 28, `TV is ${version}`);
+	assert.equal(version, 29);
 });

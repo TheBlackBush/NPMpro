@@ -1,6 +1,6 @@
 import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import { Client, fetch } from "undici";
-import { overridesAcmeChallenge } from "../lib/acme-challenge.js";
+import { overridesAcmeChallenge, servesAcmeChallengeOnly } from "../lib/acme-challenge.js";
 import errs from "../lib/error.js";
 import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forward-auth.js";
 import { certificateUnusable } from "../lib/landing-pages/certificate.js";
@@ -13,6 +13,7 @@ import { rooted } from "../lib/paths.js";
 import { beautifierOn, effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
 import { nginx as logger } from "../logger.js";
+import { ensureGeoipConf, ensureGeoipLists } from "./geoip-nginx.js";
 import { reportHostConfig } from "./host-notify.js";
 import internalProxyHostAccessList from "./proxy-host-access-list.js";
 import { runtimeExclusive } from "./runtime-queue.js";
@@ -134,6 +135,10 @@ const internalNginx = {
 		await internalProxyHostAccessList.build(host_type, host);
 		await internalNginx.deleteConfig(host_type, host);
 		await internalNginx.generateConfig(host_type, host, { fetchMissingOcsp });
+		// the geoip.conf variant of now (an own geoip_country added or removed), and the variables of its country gates
+		// in geoip-lists.conf (a restore can leave the file behind); other host types only need geoip.conf to pass
+		if (host_type === "proxy_host") await ensureGeoipLists([internalNginx.getConfigName(host_type, host.id)]);
+		else await ensureGeoipConf();
 
 		try {
 			await (skipReload ? internalNginx.test() : internalNginx.reload());
@@ -186,6 +191,11 @@ const internalNginx = {
 				await internalNginx.deleteConfig(hostType, host);
 				await internalNginx.generateConfig(hostType, host, { fetchMissingOcsp });
 			}
+			const proxyFiles = entries
+				.filter(({ hostType }) => hostType === "proxy_host")
+				.map(({ hostType, host }) => internalNginx.getConfigName(hostType, host.id));
+			if (proxyFiles.length > 0) await ensureGeoipLists(proxyFiles);
+			else if (entries.length > 0) await ensureGeoipConf();
 			await afterWrite?.(entries);
 		} catch (err) {
 			if (keepPrevious) await restoreConfigs(previous);
@@ -405,6 +415,11 @@ const internalNginx = {
 					// access_lists is the ordered array, access_list the object the template reads
 					location.access_list = internalProxyHostAccessList.buildAclFile(location.access_lists);
 				}
+				// the ACME challenge must stay reachable for every country: a copy, as "global" locations share the host's
+				// object; a regular expression location keeps its gates, it can match other paths as well
+				if (servesAcmeChallengeOnly(location) && location.access_list) {
+					location.access_list = { ...location.access_list, geo_gates: [] };
+				}
 
 				const htpasswdFileName = internalProxyHostAccessList.getLocationFileName(host, location);
 				if (htpasswdFileName.length > 0) {
@@ -427,6 +442,7 @@ const internalNginx = {
 		const pages = pageWiring(host_type, host);
 		host.npmpro_page_locations = pages.locations;
 		host.npmpro_pages = pages.host;
+		host.npmpro_geo_targets = pages.geoTargets;
 		for (const [index, location] of (host.locations ?? []).entries())
 			location.npmpro_pages = pages.byLocation[index];
 

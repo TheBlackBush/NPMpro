@@ -502,6 +502,29 @@ it("sets the default certificate in the default certificate include, and refuses
 	assert.doesNotMatch(await api.read(include), /npm-\d+/u);
 });
 
+it("a runtime re-render of a host with a country list writes the list's map when geoip-lists.conf lags", async () => {
+	const list = await admin.post("/nginx/access-lists", {
+		name: "runtime countries",
+		clients: [{ address: "10.5.0.0/16", directive: "allow" }],
+	});
+	assert.equal(list.status, 201, list.text);
+	const host = await addProxyHost({
+		npmpro_auth_request: "anubis",
+		npmpro_access_list_type: "custom",
+		npmpro_access_list_ids: [list.body.id],
+	});
+	// the mode is committed, geoip-lists.conf is not (a failed write): the re-render names a variable it lacks
+	await api.db("access_list").where({ id: list.body.id }).update({ npmpro_geo_mode: "deny" });
+	const gate = new RegExp(`\\$npmpro_geo_${list.body.id} = 0`, "u");
+	const map = new RegExp(`\\$npmpro_geo_${list.body.id} \\{`, "u");
+	assert.doesNotMatch(await api.read("data/npmpro/nginx/geoip-lists.conf"), map);
+	await saved("forward-auth", { anubis_upstream: "http://anubis-geo.lan:8923" });
+	assert.match(await api.read(`data/nginx/proxy_host/${host.id}.conf`), gate);
+	assert.match(await api.read("data/npmpro/nginx/geoip-lists.conf"), map);
+	assert.equal((await admin.delete(`/nginx/proxy-hosts/${host.id}`)).status, 200);
+	assert.equal((await admin.delete(`/nginx/access-lists/${list.body.id}`)).status, 200);
+});
+
 it("re-renders the proxy hosts that use a forward authentication provider when its default upstream changes", async () => {
 	const host = await addProxyHost({ npmpro_auth_request: "anubis" });
 	const confFile = `data/nginx/proxy_host/${host.id}.conf`;

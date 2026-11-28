@@ -44,6 +44,18 @@
 						},
 						"npmpro_denied_page_html": {
 							"$ref": "../../../components/access-list-object.json#/properties/npmpro_denied_page_html"
+						},
+						"npmpro_geo_mode": {
+							"$ref": "../../../components/access-list-object.json#/properties/npmpro_geo_mode"
+						},
+						"npmpro_geo_unknown": {
+							"$ref": "../../../components/access-list-object.json#/properties/npmpro_geo_unknown"
+						},
+						"npmpro_geo_drop": {
+							"$ref": "../../../components/access-list-object.json#/properties/npmpro_geo_drop"
+						},
+						"npmpro_countries": {
+							"$ref": "../../../components/access-list-object.json#/properties/npmpro_countries"
 						}
 					}
 				},
@@ -126,5 +138,5 @@
 			}
 		}
 	},
-	"description": "Creates an access list: basic auth users, address rules or both. Every user needs a password (at most 72 bytes), usernames must be unique, an `all` rule can only be the last rule, and the list needs at least one user or one rule that is not `all`, otherwise the answer is 400. The password is stored only as a hash. The list protects nothing until a proxy host uses it.\n\nNeeds: Access Lists manage"
+	"description": "Creates an access list: basic auth users, address rules or both. Every user needs a password (at most 72 bytes), usernames must be unique, an `all` rule can only be the last rule, and the list needs at least one user, one rule that is not `all` or a country rule (a mode other than `off` with at least one country), otherwise the answer is 400. The password is stored only as a hash. The list protects nothing until a proxy host uses it.\n\nCountry rules: `npmpro_geo_mode` (`off`, `allow` or `deny`), `npmpro_countries` (ISO codes from NPMpro's list, each once, with an optional comment), `npmpro_geo_unknown` and `npmpro_geo_drop`. A mode other than `off` needs at least one country and a usable GeoIP country database (see GET /nginx/access-lists/geoip), otherwise the answer is 400. Every address rule and country can carry a comment.\n\nNeeds: Access Lists manage"
 }

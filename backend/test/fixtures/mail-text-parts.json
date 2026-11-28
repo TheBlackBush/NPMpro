@@ -54,7 +54,7 @@
 			"certificate.renewal_failed": "Zertifikat example.com wurde erneuert",
 			"host.config_error": "nginx-Konfiguration von app.example.com ist wieder gültig",
 			"backup.failed": "Sicherung nightly funktioniert wieder",
-			"geoip.failed": "GeoIP-Datenbank funktioniert wieder",
+			"geoip.failed": "GeoIP funktioniert wieder",
 			"crowdsec.unreachable": "CrowdSec ist wieder erreichbar",
 			"ddns.record_failed": "Dynamic-DNS-Eintrag home.example.com wird wieder",
 			"ddns.record_stopped": "Dynamic-DNS-Eintrag home.example.com läuft wieder"

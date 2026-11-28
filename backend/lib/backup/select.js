@@ -17,6 +17,7 @@ const ITEM_TYPES = {
 		children: [
 			["access_list_auth", "access_list_id"],
 			["access_list_client", "access_list_id"],
+			["npmpro_access_list_country", "access_list_id"],
 		],
 	},
 	dns_credentials: {

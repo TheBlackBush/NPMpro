@@ -7,6 +7,7 @@ import { up as addCertificateValidFrom } from "../../migrations/20261126110000_c
 import { up as createNotificationTables } from "../../migrations/20261126120000_notification_tables.js";
 import { up as createPasswordTokens } from "../../migrations/20261127130000_password_tokens.js";
 import { up as createWebhooks } from "../../migrations/20261128120000_webhooks.js";
+import { up as addAccessListCountries } from "../../migrations/20261129120000_access_list_countries.js";
 
 export const createSchema = async (knex) => {
 	const hostTable = (name, extra = () => {}) =>
@@ -131,6 +132,7 @@ export const createSchema = async (knex) => {
 	await createNotificationTables(knex);
 	await createPasswordTokens(knex);
 	await createWebhooks(knex);
+	await addAccessListCountries(knex);
 	await knex.schema.createTable("setting", (t) => {
 		t.string("id").primary();
 		t.string("name").notNull().defaultTo("");

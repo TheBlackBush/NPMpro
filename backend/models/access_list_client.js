@@ -11,6 +11,7 @@ class AccessListClient extends Model {
 		this.modified_on = now();
 
 		this.meta ??= {};
+		this.npmpro_comment ??= "";
 	}
 
 	$beforeUpdate() {

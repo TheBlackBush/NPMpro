@@ -11,7 +11,7 @@ NPMpro saves your hosts, certificates, users and settings to a single `.npmpro` 
 
 - Hosts: proxy hosts (with their custom locations and access list links), redirection hosts, 404 hosts and streams
 - Certificates: Let's Encrypt, custom and mTLS CA certificates with their files. ACME accounts are part of the certificates: the account files (their keys only in a backup with secrets) and NPMpro's record of each CA (server, email, state). EAB keys are never in a backup. An account restored from a backup without secrets registers again at the next certificate request; a CA that needs EAB then asks for its keys in the Connect window of Settings, Certificates, ACME account. A certificate keeps its CA in a backup; restored onto an instance without that CA's account, it registers one (or reports the missing EAB keys) at its next renewal.
-- Access lists, DNS credentials (with their domains), Dynamic DNS records and users
+- Access lists (with their country rules and the comments of their rules), DNS credentials (with their domains), Dynamic DNS records and users
 - Settings: runtime settings, Landing pages (the default site, the page choices and custom pages), OIDC sign-in, Notifications (the mail server, the public URL and the mail language; see [Notifications](Notifications)), monitoring and GeoIP, backup schedules and the CrowdSec settings
 - Webhooks: the webhooks of Settings, Notifications (name, events, URL and signing secrets; see [Notifications](Notifications#webhooks)). Their deliveries are never part of a backup
 - Custom files: everything in `custom_nginx/`, and the CrowdSec pages `ban.html` and `captcha.html` of older versions
@@ -24,7 +24,7 @@ A backup from an older version that holds `crowdsec.conf` restores into the Crow
 
 The page files under `/data/public/pages/` are written again from the database after a restore. A hand-edited `ban.html` or `captcha.html` in an older backup becomes the custom ban or captcha page on a full restore of the CrowdSec files; a merge restore does not import it (nor the page settings of an older backup's `crowdsec.conf`). See [Landing pages](Landing-pages).
 
-A backup never holds traffic statistics (they are not backed up at all), logs, the audit log, sessions, the database file `npmpro/database.sqlite` itself, the key files `npmpro/keys-ec.json` and `npmpro/dns-credentials.key`, or other backups (`/data/backups`). Host configs and access list password files are not in it either: NPMpro writes them again after a restore.
+A backup never holds traffic statistics (they are not backed up at all), logs, the audit log, sessions, the GeoIP database files (NPMpro downloads them again), the database file `npmpro/database.sqlite` itself, the key files `npmpro/keys-ec.json` and `npmpro/dns-credentials.key`, or other backups (`/data/backups`). Host configs and access list password files are not in it either: NPMpro writes them again after a restore.
 
 ## Creating a backup
 

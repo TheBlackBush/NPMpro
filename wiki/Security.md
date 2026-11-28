@@ -58,6 +58,61 @@ Scanners such as Trivy, Grype or Docker Scout read it from the registry.
 
 ## Geoblocking
 
+Access lists can allow or block visitors by country. NPMpro looks the country up in its GeoIP database (Settings, GeoIP, see [Monitoring](Monitoring)), and nginx checks it before the request reaches your upstream. Visitor IPs are never sent anywhere.
+
+### Country rules in access lists
+
+Set the rules on the Countries tab of the access list window. Choose a mode:
+
+- **Off:** no country rules (the default).
+- **Allow only these countries:** every other country is blocked.
+- **Block these countries:** every other country passes.
+
+Every country can have a comment. Private and local addresses always pass (see below). A list with country rules applies to every proxy host and custom location that uses it.
+
+How a request is checked:
+
+- Countries are checked first, then the IP and password rules of the list. Satisfy any covers the IP rules and the passwords only: a visitor from a blocked country is refused even if an IP rule would allow the address or the password is right.
+- A proxy host or location can use several access lists. The first list that blocks the visitor decides the answer.
+- A blocked country gets 403 with the denied page, or the connection is closed without an answer (444) when the list has "Close the connection without an answer (444)" on. 444 is only for country blocks: IP and password refusals keep the denied page.
+- The refusal is answered by NPMpro itself, so forward authentication (Tinyauth, Authelia, VoidAuth) and Anubis never see it. An `error_page 403` in the advanced config of a location does not apply to country refusals; one at server level does.
+- Certificate challenges (`/.well-known/acme-challenge/`) are never blocked, also in a custom location of that path with the type empty, `^~` or `=`. A regex location (`~`, `~*`) keeps the country rules, as it can match other paths too.
+
+### Private and local addresses
+
+These ranges always pass country rules: `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `100.64.0.0/10` (CGNAT), `::1/128`, `fc00::/7` and `fe80::/10`. Behind a proxy that NPMpro does not trust (no `set_real_ip_from`), every visitor looks like the proxy's private address and passes. Set the trusted proxies first.
+
+### Unknown countries
+
+Some public addresses have no country in the database. Each list decides: the switch "Block visitors whose country is unknown" is on by default in allow mode and off in block mode (the API value `auto`). Turn it the other way to change that.
+
+### Without a database
+
+Without a usable GeoIP country database, country rules let every visitor pass (fail open), so a missing database never locks you out. Saved countries stay. While the database is missing:
+
+- you can still rename the list, remove countries, change the 444 setting and turn the country rules off, but you cannot turn a mode on, change it or add a country;
+- the access list page and Settings, GeoIP show a warning;
+- the `geoip.failed` notification fires with the reason `missing`, see [Notifications](Notifications).
+
+The same happens when the database is there but nginx refuses NPMpro's `geoip_country` line (for example a duplicate it did not see, below): NPMpro falls back to letting every country pass so nginx keeps working, logs the nginx error, shows the warnings and sends `geoip.failed` with the reason `nginx`. Saving and changing country rules still works then, as the database itself is usable.
+
+A list with only country rules cannot be switched off or emptied of countries: an access list needs at least one rule or user. Delete the list, or add an IP rule first.
+
+### Your own geoip_country
+
+If `/data/custom_nginx/http_top.conf` or `/data/custom_nginx/http.conf` has its own `geoip_country` line, it wins: NPMpro's rules use the database that line names, and NPMpro does not write its own. Remove the line to use the database of NPMpro's provider. NPMpro notices an added or removed line when you save an access list or a proxy host, at a restart, and otherwise within an hour. Saving a stream, redirection or 404 host notices an added line too, so that save does not fail on a duplicate `geoip_country`.
+
+- NPMpro only sees a `geoip_country` that starts a line in those two files. One in an included file, in conf.d or after another statement on the same line is not seen: nginx then refuses the duplicate and NPMpro falls back to letting every country pass (see Without a database) until you fix it.
+- If your own line names a database file that is gone, nginx does not start, as before. NPMpro only rescues its own line: when its file is missing, empty, truncated or not a MaxMind database, NPMpro lets every country pass at start.
+
+### API
+
+The access list fields are `npmpro_geo_mode` (`off`, `allow` or `deny`), `npmpro_geo_unknown` (`auto`, `pass` or `block`), `npmpro_geo_drop` (boolean) and `npmpro_countries` (a list of `country` and `npmpro_comment`, returned with `expand=npmpro_countries`). `GET /api/nginx/access-lists/geoip` tells whether a country database is usable (`available`, it decides which country rules can be saved), whether the rules let every visitor pass now (`fails_open`: no database, or nginx refused NPMpro's line), which provider is active, whether a custom `geoip_country` is in use and how many lists have country rules. See the Swagger UI at `/api/docs`.
+
+## Legacy: hand-written geoblocking
+
+Use the country rules above instead. If you followed this example before, move its countries into an access list, then delete the example. While its `geoip_country` line is present it decides which database the built-in country rules use (see above).
+
 An example, supported mainly by the community.
 
 1. get the GeoIP databases: either keep DB-IP Lite (the default, no account), enter your MaxMind credentials under Settings, GeoIP (see [Monitoring](Monitoring)), or deploy the legacy geoipupdate container (see the compose.yaml for an example, create credentials [here](https://www.maxmind.com/en/geolite2/signup)). With DB-IP Lite the country file is `dbip-country-lite.mmdb`, so use that name in the `geoip_country` line below.

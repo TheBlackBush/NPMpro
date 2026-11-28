@@ -66,6 +66,8 @@ jobs:
         run: sh test/migrate-data-folder.test.sh
       - name: GoAccess GeoIP Arguments
         run: sh test/geoip-goaccess-args.test.sh
+      - name: GeoIP Launch Check
+        run: sh test/geoip-conf-check.test.sh
       - name: Real Database Servers
         shell: bash
         env:
@@ -84,6 +86,7 @@ jobs:
         run: |
           set -o pipefail
           node --test --test-concurrency=1 --test-reporter=tap \
+            test/access-list-country-servers.test.js \
             test/backup-merge-pg.test.js \
             test/backup-schedule-migration.test.js \
             test/crowdsec-admin-ui-servers.test.js \
@@ -199,5 +202,5 @@ jobs:
         with:
           check_filenames: true
           check_hidden: true
-          skip: pnpm-lock.yaml,./frontend/translations,./frontend/patches,./backend/landing-pages/texts,./backend/mail/translations,./backend/test/fixtures/mail-text-parts.json,./rootfs/usr/local/nginx/html/npmpro
+          skip: pnpm-lock.yaml,./backend/lib/country-codes.json,./frontend/translations,./frontend/patches,./backend/landing-pages/texts,./backend/mail/translations,./backend/test/fixtures/mail-text-parts.json,./rootfs/usr/local/nginx/html/npmpro
           ignore_words_list: afterAll,alog,clen,Nd,hasTable,MapPin,statics

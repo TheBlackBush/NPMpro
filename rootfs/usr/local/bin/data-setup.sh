@@ -333,6 +333,35 @@ map $host $npmpro_visit_time {
 EOF
 fi
 
+# The GeoIP includes of nginx.conf (country rules of access lists): the backend rewrites both at start and on every
+# change of Settings, GeoIP or the access lists; here only when missing (first start, upgrade): no database, so every
+# country rule lets visitors pass.
+if [ ! -e /data/npmpro/nginx/geoip.conf ]; then
+    cat > /data/npmpro/nginx/geoip.conf <<'EOF'
+# no usable GeoIP country database: country rules of access lists let every visitor pass (Settings, GeoIP)
+geo $npmpro_geo_db {
+  default 0;
+}
+EOF
+fi
+if [ ! -e /data/npmpro/nginx/geoip-lists.conf ]; then
+    cat > /data/npmpro/nginx/geoip-lists.conf <<'EOF'
+# the country rules of access lists (written by NPMpro from the access lists)
+geo $npmpro_geo_private {
+  default 0;
+  127.0.0.0/8 1;
+  10.0.0.0/8 1;
+  172.16.0.0/12 1;
+  192.168.0.0/16 1;
+  169.254.0.0/16 1;
+  100.64.0.0/10 1;
+  ::1/128 1;
+  fc00::/7 1;
+  fe80::/10 1;
+}
+EOF
+fi
+
 # http access log, error log, stream access log and the TLS handshake log include: included by nginx.conf and the
 # default servers, the backend rewrites them when the traffic statistics, Write log files or CrowdSec changes. log-includes.sh turns the files on for CrowdSec too, since it reads them.
 mkdir -p /data/npmpro/nginx

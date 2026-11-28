@@ -100,19 +100,36 @@ const internalProxyHostAccessList = {
 		const lists = list || [];
 		const first = lists[0] || null; // satisfy any and the denied page come from the first acl
 
-		const last = (first?.clients || []).at(-1);
+		const isAllowAll = (rule) => rule?.directive === "allow" && rule?.address?.trim().toLowerCase() === "all";
+		const isDenyAll = (rule) => rule?.directive === "deny" && rule?.address?.trim().toLowerCase() === "all";
+		// a list takes part with a rule for a specific address or with only deny all rules; every other all rule
+		// renders nothing as before, so a list with only allow all keeps its password under satisfy any
+		const withRules = lists.filter((l) => {
+			const rules = l.clients ?? [];
+			return (
+				rules.length > 0 &&
+				(rules.every(isDenyAll) || rules.some((c) => c.address?.trim().toLowerCase() !== "all"))
+			);
+		});
+		// #3808, D9: allow all only when every list on the host ends with allow all; a list without client rules or
+		// with another last rule votes deny
 		const catchAll =
-			last?.directive === "allow" && last?.address?.trim().toLowerCase() === "all"
+			lists.length > 0 && lists.every((l) => isAllowAll((l.clients ?? []).at(-1)))
 				? { directive: "allow", address: "all" }
 				: { directive: "deny", address: "all" };
 
 		const specificRules = lists
 			.flatMap((l) => l.clients || [])
 			.filter((c) => c.address?.trim().toLowerCase() !== "all");
-		const clients = specificRules.length === 0 ? [] : [...specificRules, catchAll];
+		// a lone deny all renders too: without it a deny all only list left the host open
+		const clients = withRules.length === 0 ? [] : [...specificRules, catchAll];
 		return {
 			items: getMergedItems(lists),
 			clients,
+			// the country gates, in list order; the template checks them before the IP and password rules
+			geo_gates: lists
+				.filter((l) => l.npmpro_geo_mode && l.npmpro_geo_mode !== "off")
+				.map((l) => ({ id: l.id, drop: Boolean(l.npmpro_geo_drop) })),
 			satisfy_any: Boolean(first?.satisfy_any),
 			// the Authorization header reaches the upstream only when every list that asks for a password allows it
 			pass_auth: lists.every((l) => l.pass_auth || !l.items?.length),

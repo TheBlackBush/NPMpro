@@ -1,6 +1,7 @@
 import common from "../../schema/common.json" with { type: "json" };
 import accessListSchema from "../../schema/components/access-list-object.json" with { type: "json" };
 import certificateSchema from "../../schema/components/certificate-object.json" with { type: "json" };
+import countryCode from "../../schema/components/country-code.json" with { type: "json" };
 import ddnsRecordSchema from "../../schema/components/ddns-record-object.json" with { type: "json" };
 import deadHostSchema from "../../schema/components/dead-host-object.json" with { type: "json" };
 import dnsCredentialSchema from "../../schema/components/dns-credential-object.json" with { type: "json" };
@@ -43,7 +44,12 @@ const LINKED = {
 };
 const LOCATION_SCHEMA = proxyHostSchema.properties.locations.items;
 const ACCESS_CHILDREN = {
-	access_list_client: { address: common.properties.address, directive: common.properties.directive },
+	access_list_client: {
+		address: common.properties.address,
+		directive: common.properties.directive,
+		npmpro_comment: { type: "string", maxLength: 255 },
+	},
+	npmpro_access_list_country: { country: countryCode, npmpro_comment: { type: "string", maxLength: 255 } },
 	access_list_auth: { username: common.properties.access_items.items.properties.username },
 };
 // certificate domains reach certbot and the host configs: the host domain rule applies to them too

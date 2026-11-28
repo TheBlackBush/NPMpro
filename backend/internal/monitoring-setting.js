@@ -1,4 +1,5 @@
 import { lockedByOf } from "../lib/environment-info.js";
+import { providerOf } from "../lib/geoip/providers.js";
 import {
 	getGeoipConfig,
 	getMonitoringConfig,
@@ -11,6 +12,7 @@ import { deleteIps } from "../lib/traffic/store.js";
 import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
+import { syncGeoipConf } from "./geoip-nginx.js";
 import { applyGeoipProvider } from "./geoip-provider.js";
 import { reportGeoipState } from "./geoip-state.js";
 import { createMonitoringUpdater, pickEditable } from "./monitoring-update.js";
@@ -216,6 +218,14 @@ const internalMonitoringSetting = {
 		// a DB-IP check that found nothing newer downloads nothing: only last_check moves (MaxMind's ok is a download)
 		if (updated?.length > 0 || (ok && active === "maxmind")) next.last_update = now;
 		await saveStored("geoip", "GeoIP", next);
+		// nginx reads the Country file only at a (re)load: a replaced one is loaded now, under the same name too
+		if (updated?.includes(providerOf(active).country)) {
+			try {
+				await syncGeoipConf({ force: true });
+			} catch (err) {
+				logger.error(`GeoIP: could not load the new country database into nginx: ${err.message}`);
+			}
+		}
 		await reportGeoipState();
 	},
 };

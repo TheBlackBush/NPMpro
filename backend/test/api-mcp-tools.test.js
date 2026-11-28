@@ -201,7 +201,20 @@ it("a call for each tool, and no secret in any result", async () => {
 	assert.deepEqual((await run(token, "get_access_list", { id: list.id })).items, [{ username: "alice" }]);
 	const lists = await run(token, "list_access_lists");
 	assert.deepEqual(lists.items[0].users, ["alice"]);
-	assert.deepEqual(lists.items[0].clients, [{ address: "10.1.0.0/16", directive: "allow" }]);
+	assert.deepEqual(lists.items[0].clients, [{ address: "10.1.0.0/16", directive: "allow", comment: "" }]);
+	assert.deepEqual(lists.items[0].countries, []);
+	assert.equal(lists.items[0].geo_mode, "off");
+	await api.db("access_list").where({ id: list.id }).update({ npmpro_geo_mode: "deny" });
+	await api.db("npmpro_access_list_country").insert({
+		access_list_id: list.id,
+		country: "FR",
+		npmpro_comment: "",
+		created_on: new Date().toISOString(),
+		modified_on: new Date().toISOString(),
+	});
+	const geo = (await run(token, "list_access_lists")).items[0];
+	assert.deepEqual([geo.geo_mode, geo.geo_unknown, geo.geo_drop, geo.countries], ["deny", "auto", false, ["FR"]]);
+	await api.db("npmpro_access_list_country").where({ access_list_id: list.id }).delete();
 	assert.equal((await run(token, "update_access_list", { id: list.id, data: { name: "renamed" } })).name, "renamed");
 	assert.deepEqual(await run(token, "delete_access_list", { id: list.id }), { deleted: true, id: list.id });
 

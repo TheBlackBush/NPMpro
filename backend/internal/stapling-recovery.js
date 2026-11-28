@@ -1,6 +1,7 @@
 import { effectiveEnv, getRuntimeConfig } from "../lib/runtime-config.js";
 import { createStaplingRecovery } from "../lib/stapling-recovery.js";
 import certificateModel from "../models/certificate.js";
+import { ensureGeoipListsFor } from "./geoip-nginx.js";
 import internalNginx from "./nginx.js";
 import { HOST_TYPES } from "./runtime-hosts.js";
 import { runtimeExclusive } from "./runtime-queue.js";
@@ -16,6 +17,7 @@ const staplingRecovery = createStaplingRecovery({
 	getConfig: getRuntimeConfig,
 	// an mTLS CA certificate cannot serve as the default certificate
 	listCertificates: () => certificateModel.query().select("id").whereNot("provider", "mtls"),
+	beforeTest: (files) => ensureGeoipListsFor(files.map(({ content }) => content)),
 });
 
 /**

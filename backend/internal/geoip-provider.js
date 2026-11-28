@@ -3,6 +3,7 @@ import { readProviderMarker, writeProviderMarker } from "../lib/geoip/marker.js"
 import { getGeoipConfig, logIgnoredGeoipEnv, readStoredGeoip } from "../lib/monitoring-config.js";
 import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
+import { syncGeoipConf } from "./geoip-nginx.js";
 import { reportGeoipState } from "./geoip-state.js";
 
 /**
@@ -29,13 +30,15 @@ const clearOldProviderError = async (log) => {
 /**
  * Makes the readers and the GoAccess marker follow the effective provider: logs an ignored GEOIP_PROVIDER once, points
  * the readers at the provider's files, writes the marker (a failure is logged, never thrown) and reloads the readers.
- * When the marker named another provider, the old provider's error and alert are cleared.
+ * When the marker named another provider, the old provider's error and alert are cleared. Then geoip.conf follows the
+ * provider's Country file (syncConf, by default syncGeoipConf with its reload; a failure is logged, never thrown).
  *
- * @param   {Object}  [options]
- * @param   {Object}  [options.log]
+ * @param   {Object}    [options]
+ * @param   {Object}    [options.log]
+ * @param   {Function}  [options.syncConf]  () => Promise, e.g. syncGeoipConfNow for a caller in the runtime queue
  * @returns {Promise<string>}  the provider id
  */
-const applyGeoipProvider = async ({ log = logger } = {}) => {
+const applyGeoipProvider = async ({ log = logger, syncConf = () => syncGeoipConf() } = {}) => {
 	const config = await getGeoipConfig();
 	logIgnoredGeoipEnv(config, log);
 	const { provider } = config.values;
@@ -48,6 +51,11 @@ const applyGeoipProvider = async ({ log = logger } = {}) => {
 	}
 	if (previous !== null && previous !== provider) await clearOldProviderError(log);
 	await geoip.reload();
+	try {
+		await syncConf();
+	} catch (err) {
+		log.error(`GeoIP: could not write geoip.conf for the ${provider} provider: ${err.message}`);
+	}
 	return provider;
 };
 

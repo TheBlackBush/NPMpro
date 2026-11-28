@@ -121,16 +121,29 @@ if grep -qxF "include /usr/local/nginx/conf/crowdsec-bouncer.conf;" /data/npmpro
 fi
 # crowdsec-files-check end
 
+# a geoip.conf that names a lost or unusable country database would stop nginx: the off variant lets every visitor pass
+geoip-conf-check.sh
+
 # A full regeneration (REGENERATE_ALL) keeps the previous host configs, so the sites keep working until the backend
 # has written the new ones and reloads once. Only when nginx rejects them (an update changed what nginx accepts) they
 # are moved aside and nginx starts without them; the backend removes the moved files after the regeneration.
 if ! nginx -tq; then
+    # The country database line of geoip.conf can be what nginx rejects (a file the check above passed but nginx cannot
+    # read): the off variant lets every visitor pass. It stays while the fallbacks below run, so each tests its own
+    # change without the database line; geoip-conf-check.sh --settle then puts the database variant back when nginx -t
+    # passes with it.
+    geoip_off=false
+    if geoip-conf-check.sh --try-off && nginx -tq; then
+        geoip_off=true
+    fi
     # A CrowdSec bouncer config nginx rejects must not keep nginx from starting: the bouncer is off until the backend
     # writes it again from Settings, CrowdSec. nginx -t does not run the bouncer's init, so this only catches a
     # directive conflict (for example a custom include that also declares lua_shared_dict crowdsec_cache); the files
     # the bouncer opens at init are checked above.
     crowdsec_off=false
-    if grep -q "^include" /data/npmpro/nginx/crowdsec.conf 2> /dev/null; then
+    if [ "$geoip_off" = true ]; then
+        crowdsec_off=true
+    elif grep -q "^include" /data/npmpro/nginx/crowdsec.conf 2> /dev/null; then
         echo "# the CrowdSec bouncer is off (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec.conf
         if nginx -tq; then
             crowdsec_off=true
@@ -163,9 +176,10 @@ if ! nginx -tq; then
         echo "The previous host configs do not pass nginx -t, starting without them until they are regenerated."
         find /data/nginx -mindepth 2 -maxdepth 2 -name "*.conf" -exec mv {} {}.stale \;
     fi
-    if ! nginx -tq; then
-        sleep inf
-    fi
+fi
+geoip-conf-check.sh --settle
+if ! nginx -tq; then
+    sleep inf
 fi
 for v in 83 84 85; do
     [ "$(printenv "PHP$v")" = "true" ] || continue

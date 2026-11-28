@@ -122,7 +122,7 @@ Problem events are sent when a problem starts, and each has a `.resolved` event 
 | `certificate.expiring`, `certificate.renewal_failed` (and `.resolved`) | `id`, `nice_name`, `domain_names`, `provider`, `expires_on`; `state` and `days_left` for `expiring`; `error` for `renewal_failed` |
 | `host.config_error` (and `.resolved`) | `type` (`proxy`, `redirection`, `dead` or `stream`), `id`, `domain_names` (a stream has `incoming_port` instead), `enabled`, `error` |
 | `backup.failed` (and `.resolved`) | `schedule` (`id`, `name`), `error` |
-| `geoip.failed` (and `.resolved`) | `reason` (`download`: the databases could not be downloaded), `error` |
+| `geoip.failed` (and `.resolved`) | `reason` (`download`: the databases could not be downloaded; `missing`: access lists have country rules but there is no usable country database, so every visitor passes; `nginx`: the database is there but nginx refused it), `error` |
 | `crowdsec.unreachable` (and `.resolved`) | `error` |
 | `ddns.record_failed`, `ddns.record_stopped` (and `.resolved`) | `record` (`id`, `name`, `provider`), `error` |
 

@@ -21,6 +21,7 @@ const KNOWN = [
 	"audit_log",
 	"auth",
 	"certificate",
+	"npmpro_access_list_country",
 	"npmpro_backup_schedule",
 	"npmpro_ddns_history",
 	"npmpro_ddns_record",

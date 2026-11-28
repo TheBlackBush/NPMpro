@@ -55,6 +55,18 @@
 						},
 						"npmpro_denied_page_html": {
 							"$ref": "../../../../components/access-list-object.json#/properties/npmpro_denied_page_html"
+						},
+						"npmpro_geo_mode": {
+							"$ref": "../../../../components/access-list-object.json#/properties/npmpro_geo_mode"
+						},
+						"npmpro_geo_unknown": {
+							"$ref": "../../../../components/access-list-object.json#/properties/npmpro_geo_unknown"
+						},
+						"npmpro_geo_drop": {
+							"$ref": "../../../../components/access-list-object.json#/properties/npmpro_geo_drop"
+						},
+						"npmpro_countries": {
+							"$ref": "../../../../components/access-list-object.json#/properties/npmpro_countries"
 						}
 					}
 				},
@@ -157,5 +169,5 @@
 			}
 		}
 	},
-	"description": "Changes an access list: send only what changes. `items` and `clients` replace the whole set: a user sent without a password keeps their password, a user left out is removed, a new user needs a password. The rules of the create operation apply. Saving rewrites the access file and the configs of the proxy hosts that use the list, and reloads nginx.\n\nNeeds: Access Lists manage"
+	"description": "Changes an access list: send only what changes. `items` and `clients` replace the whole set: a user sent without a password keeps their password, a user left out is removed, a new user needs a password. `npmpro_countries` also replaces the whole set when sent. The rules of the create operation apply; without a usable GeoIP country database a list can still be renamed, lose countries or turn the country rules off, but not turn a mode on, change the mode or add a country. Saving rewrites the access file and the configs of the proxy hosts that use the list, and reloads nginx.\n\nNeeds: Access Lists manage"
 }

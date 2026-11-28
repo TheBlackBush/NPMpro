@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
-import { readFile, rm } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { startApi } from "./support/api.js";
 import { created, fileExists, reloads } from "./support/hosts.js";
+import { withDatabaseType } from "./support/mmdb.js";
 
 const LISTS = "/nginx/access-lists";
 const HOSTS = "/nginx/proxy-hosts";
@@ -200,4 +202,503 @@ if grep -rq BADHOST --include='*.conf' "${dir}"; then echo "BADHOST is not valid
 	for (const host of [hosts[0], hosts[2]]) assert.equal((await row(host.id)).npmpro_nginx_online, 1);
 	await api.db("proxy_host").where({ id: hosts[1].id }).delete();
 	await api.db("npmpro_proxy_host_access_list").where({ proxy_host_id: hosts[1].id }).delete();
+});
+
+const GEO_ANY = /npmpro_geo/u;
+const GEO_GATE = /npmpro_geo_\d+ = 0/u;
+const GEO_GATES = /npmpro_geo_\d+ = 0/gu;
+const GATE_LINE = /if \(\$npmpro_geo_(?<id>\d+) = 0\) \{ (?<answer>[^}]+) \}/gu;
+const PROXY_PASS = /proxy_pass /u;
+const GEO_TARGET = /internal;\s+error_page 403 \/\.npmpro-page\/denied-1;\s+return 403;/u;
+const GEO_TARGET_HEADER = /location = \/\.npmpro-geo\/denied-1 \{/u;
+const DENIED_PAGE_HEADER = /location = \/\.npmpro-page\/denied-1 \{/u;
+const GEO_REWRITE = /rewrite \^ \/\.npmpro-geo\/denied-1\? last;/u;
+const TINYAUTH_ERROR_PAGE = /error_page 401 403 =302 \$redirection_url;/u;
+const GEO_TARGET_PAGE = /error_page 403 \/\.npmpro-page\/denied-1;/u;
+const NEXT_LOCATION = /\n\s*location /u;
+// a location from its header to the next line that starts a location (or the end)
+const locationBlock = (text, header) => {
+	const start = text.indexOf(header);
+	if (start < 0) throw new Error(`no ${header} in the config`);
+	const rest = text.slice(start + header.length);
+	const next = rest.search(NEXT_LOCATION);
+	return header + (next < 0 ? rest : rest.slice(0, next));
+};
+const gateConfig = async (host) => readFile(path.join(api.root, config(host.id)), "utf8");
+const setGeo = (id, mode, drop = 0) =>
+	api.db("access_list").where({ id }).update({ npmpro_geo_mode: mode, npmpro_geo_drop: drop });
+
+it("renders the country gates of every gated list before the password and IP rules", async () => {
+	const a = await makeList();
+	const b = await makeList();
+	const c = await makeList();
+	await setGeo(a.id, "allow");
+	await setGeo(c.id, "deny", 1);
+	const host = await makeHost([a.id, b.id, c.id], {
+		locations: [
+			{ path: "/inner", forward_host: "10.0.0.2", npmpro_access_list_type: "global" },
+			{
+				path: "/.well-known/acme-challenge/",
+				location_type: "^~ ",
+				forward_host: "10.0.0.3",
+				npmpro_access_list_type: "global",
+			},
+		],
+	});
+	const text = await gateConfig(host);
+	const rootStart = text.indexOf("location / {");
+	const root = text.slice(rootStart, text.indexOf("auth_basic ", rootStart));
+	const gates = [...root.matchAll(GATE_LINE)];
+	assert.deepEqual(
+		gates.map((m) => [Number(m.groups.id), m.groups.answer]),
+		[
+			[a.id, "rewrite ^ /.npmpro-geo/denied-1? last;"],
+			[c.id, "return 444;"],
+		],
+	);
+	assert.doesNotMatch(root, new RegExp(`npmpro_geo_${b.id}\\b`, "u"));
+	const inner = text.slice(text.indexOf('location "/inner"'));
+	assert.equal([...inner.slice(0, inner.indexOf("location ", 10)).matchAll(GEO_GATES)].length, 2);
+	const acme = locationBlock(text, 'location ^~ "/.well-known/acme-challenge/"');
+	assert.match(acme, PROXY_PASS);
+	assert.doesNotMatch(acme, GEO_GATE);
+	// the target of the 403 gates answers with the denied page, outside the gated locations
+	assert.match(locationBlock(text, "location = /.npmpro-geo/denied-1 {"), GEO_TARGET);
+});
+
+it("exempts only prefix and exact ACME locations from the gates, a regular expression keeps them", async () => {
+	const list = await makeList();
+	await setGeo(list.id, "deny");
+	const host = await makeHost([list.id], {
+		locations: [
+			{
+				path: "/.well-known/acme-challenge/token",
+				location_type: "= ",
+				forward_host: "10.0.0.3",
+				npmpro_access_list_type: "global",
+			},
+			{
+				path: "/.well-known/acme-challenge/|/admin",
+				location_type: "~ ",
+				forward_host: "10.0.0.4",
+				npmpro_access_list_type: "global",
+			},
+		],
+	});
+	const text = await gateConfig(host);
+	assert.doesNotMatch(locationBlock(text, 'location = "/.well-known/acme-challenge/token"'), GEO_GATE);
+	const regex = locationBlock(text, 'location ~ "/.well-known/acme-challenge/|/admin"');
+	assert.match(regex, new RegExp(`npmpro_geo_${list.id} = 0`, "u"));
+	assert.ok(regex.indexOf("npmpro_geo") < regex.indexOf("proxy_pass"));
+});
+
+it("repeats the gates in the built-in PHP location of a path host", async () => {
+	const list = await makeList();
+	await setGeo(list.id, "deny");
+	const host = await makeHost([list.id], { forward_scheme: "path", forward_host: "/var/www/php", forward_port: 83 });
+	const text = await gateConfig(host);
+	const php = locationBlock(text, "location ~* [^/]\\.php(?:$|/) {");
+	assert.match(
+		php,
+		new RegExp(`if \\(\\$npmpro_geo_${list.id} = 0\\) \\{ rewrite \\^ /\\.npmpro-geo/denied-1\\? last; \\}`, "u"),
+	);
+	assert.ok(php.indexOf("npmpro_geo") < php.indexOf("fastcgi_pass"));
+});
+
+it("a country only list gets the denied page, and forward authentication keeps it for the gate", async () => {
+	// the API needs a usable GeoIP database for a country rule: the users and rules go in the database instead
+	const only = await makeList();
+	await api.db("access_list_auth").where({ access_list_id: only.id }).delete();
+	await api.db("access_list_client").where({ access_list_id: only.id }).delete();
+	await setGeo(only.id, "allow");
+	const plain = await gateConfig(await makeHost([only.id]));
+	assert.match(plain, GEO_TARGET_HEADER);
+	assert.match(plain, DENIED_PAGE_HEADER);
+	const tiny = await gateConfig(
+		await makeHost([only.id], {
+			npmpro_auth_request: "tinyauth",
+			npmpro_auth_request_upstream: "http://auth.internal:3000",
+		}),
+	);
+	const root = locationBlock(tiny, "location / {");
+	assert.match(root, GEO_REWRITE);
+	assert.match(root, TINYAUTH_ERROR_PAGE);
+	assert.match(locationBlock(tiny, "location = /.npmpro-geo/denied-1 {"), GEO_TARGET_PAGE);
+	assert.match(tiny, DENIED_PAGE_HEADER);
+});
+
+const SATISFY_ANY = /satisfy any;/u;
+const AUTH_BASIC = /auth_basic /u;
+const DENIED_ERROR_PAGE = /error_page 401 403 \/\.npmpro-page\/denied-1;/u;
+const ACCESS_RULES = /# Access Rules: \d+ total\s+(?<rules>(?:(?:allow|deny) [^;]+;\s*)+)/u;
+const ONE_RULE = /(?:allow|deny) [^;]+;/gu;
+// D20: a list whose only client rule is deny all refuses every visitor
+const loneRuleHost = async (clients, { users = false, satisfyAny = false } = {}) => {
+	const now = new Date().toISOString();
+	const list = await makeList();
+	await api.db("access_list_client").where({ access_list_id: list.id }).delete();
+	if (!users) await api.db("access_list_auth").where({ access_list_id: list.id }).delete();
+	if (clients.length > 0) {
+		await api.db("access_list_client").insert(
+			clients.map((c) => ({
+				access_list_id: list.id,
+				created_on: now,
+				modified_on: now,
+				meta: "{}",
+				...c,
+			})),
+		);
+	}
+	await api
+		.db("access_list")
+		.where({ id: list.id })
+		.update({ satisfy_any: satisfyAny ? 1 : 0 });
+	return gateConfig(await makeHost([list.id]));
+};
+const rulesOf = (text) => [...(text.match(ACCESS_RULES)?.groups.rules.matchAll(ONE_RULE) ?? [])].map((m) => m[0]);
+
+it("a list with only deny all refuses every visitor, with the denied page", async () => {
+	const text = await loneRuleHost([{ directive: "deny", address: "all" }]);
+	assert.deepEqual(rulesOf(text), ["deny all;"]);
+	assert.doesNotMatch(text, SATISFY_ANY);
+	assert.match(text, DENIED_ERROR_PAGE);
+	assert.match(text, DENIED_PAGE_HEADER);
+});
+
+it("a list with only deny all and users still lets the password in under satisfy any", async () => {
+	const text = await loneRuleHost([{ directive: "deny", address: "all" }], { users: true, satisfyAny: true });
+	assert.deepEqual(rulesOf(text), ["deny all;"]);
+	assert.match(text, AUTH_BASIC);
+	assert.match(text, SATISFY_ANY);
+});
+
+it("a list with only deny all and users needs both under satisfy all", async () => {
+	const text = await loneRuleHost([{ directive: "deny", address: "all" }], { users: true });
+	assert.deepEqual(rulesOf(text), ["deny all;"]);
+	assert.match(text, AUTH_BASIC);
+	assert.doesNotMatch(text, SATISFY_ANY);
+});
+
+it("a deny all list next to an allow all list with users and satisfy any denies, the password passes", async () => {
+	const deny = await makeList();
+	await api.db("access_list_client").where({ access_list_id: deny.id }).delete();
+	await api.db("access_list_auth").where({ access_list_id: deny.id }).delete();
+	const now = new Date().toISOString();
+	await api.db("access_list_client").insert({
+		access_list_id: deny.id,
+		directive: "deny",
+		address: "all",
+		created_on: now,
+		modified_on: now,
+		meta: "{}",
+	});
+	await api.db("access_list").where({ id: deny.id }).update({ satisfy_any: 1 });
+	const open = await makeList();
+	await api.db("access_list_client").where({ access_list_id: open.id }).delete();
+	await api.db("access_list_client").insert({
+		access_list_id: open.id,
+		directive: "allow",
+		address: "all",
+		created_on: now,
+		modified_on: now,
+		meta: "{}",
+	});
+	const text = await gateConfig(await makeHost([deny.id, open.id]));
+	assert.deepEqual(rulesOf(text), ["deny all;"]);
+	assert.match(text, AUTH_BASIC);
+	assert.match(text, SATISFY_ANY);
+});
+
+it("a list with only allow all or users only renders no rule, so the password stays required", async () => {
+	assert.deepEqual(rulesOf(await loneRuleHost([{ directive: "allow", address: "all" }])), []);
+	const withUsers = await loneRuleHost([{ directive: "allow", address: "all" }], { users: true, satisfyAny: true });
+	assert.deepEqual(rulesOf(withUsers), []);
+	assert.match(withUsers, AUTH_BASIC);
+	assert.deepEqual(rulesOf(await loneRuleHost([], { users: true })), []);
+});
+
+it("renders no country line for hosts whose lists have no mode", async () => {
+	const list = await makeList();
+	const host = await makeHost([list.id]);
+	assert.doesNotMatch(await gateConfig(host), GEO_ANY);
+});
+
+// nginx -t as the real one judges the country variables: a host config that names $npmpro_geo_<id> without a map or geo
+// of that name in geoip-lists.conf fails (unknown variable). Each passing test records the variables the host configs
+// name and the ones geoip-lists.conf defines, "names|defines".
+const strictNginx = (extra = "") =>
+	api.outside.hookCommand(
+		"nginx",
+		`#!/bin/sh
+hosts="${api.root}/data/nginx/proxy_host"
+lists="${api.root}/data/npmpro/nginx/geoip-lists.conf"
+${extra}
+names=$(cat "$hosts"/*.conf 2>/dev/null | grep -o 'npmpro_geo_[0-9][0-9]*' | sort -u)
+for v in $names; do
+  if ! grep -qF "\\$$v {" "$lists"; then echo "unknown \\"$v\\" variable" >&2; exit 1; fi
+done
+defines=$(grep -o 'npmpro_geo_[0-9][0-9]* {' "$lists" | tr -d ' {' | sort -u)
+echo "$(echo $names)|$(echo $defines)" >> "${api.root}/fake/geo-tests.log"
+exit 0
+`,
+	);
+const geoLog = () => path.join(api.root, "fake/geo-tests.log");
+const geoTests = async () => {
+	const text = await readFile(geoLog(), "utf8").catch(() => "");
+	return text
+		.trim()
+		.split("\n")
+		.filter(Boolean)
+		.map((line) => line.split("|").map((part) => part.split(" ").filter(Boolean)));
+};
+const listsFile = () => readFile(path.join(api.root, "data/npmpro/nginx/geoip-lists.conf"), "utf8");
+const variable = (id) => `npmpro_geo_${id}`;
+const mapOf = (id) => new RegExp(`map "[^"]+" \\$npmpro_geo_${id} \\{`, "u");
+const definesOf = (id) => new RegExp(`\\$npmpro_geo_${id} `, "u");
+const gateOf = (id) => new RegExp(`\\$npmpro_geo_${id} = 0`, "u");
+const FR_BLOCKED = /"1:0:FR" 0;/u;
+const FR_PASSES = /"1:0:FR" 1;/u;
+const OWN_DATABASE_LINE = /^geoip_country \S+dbip-country-lite\.mmdb;$/mu;
+const withDatabase = async () => {
+	const fixture = await readFile(path.join(import.meta.dirname, "fixtures", "GeoLite2-Country-Test.mmdb"));
+	await mkdir(path.join(api.root, "data/goaccess/geoip"), { recursive: true });
+	await writeFile(
+		path.join(api.root, "data/goaccess/geoip/dbip-country-lite.mmdb"),
+		withDatabaseType(fixture, "DBIP-Country-Lite"),
+	);
+};
+const countryList = async (body = {}) => {
+	counter += 1;
+	return created(
+		await admin.post(LISTS, {
+			name: `countries ${counter}`,
+			clients: [{ address: "10.1.0.0/16", directive: "allow" }],
+			npmpro_geo_mode: "allow",
+			npmpro_countries: [{ country: "DE" }],
+			...body,
+		}),
+		"country list",
+	);
+};
+
+it("writes a created list's country map at once, so a host saved with it passes nginx -t", async () => {
+	await withDatabase();
+	// the create writes geoip-lists.conf from every list in the database, also those earlier cases set by hand
+	const list = await countryList();
+	assert.match(await listsFile(), mapOf(list.id));
+	await strictNginx();
+	const host = await makeHost([list.id]);
+	assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+	assert.match(await gateConfig(host), gateOf(list.id));
+});
+
+it("writes the map before the host configs when a used list gains a mode or a country", async () => {
+	await withDatabase();
+	const list = await makeList();
+	const hosts = [await makeHost([list.id]), await makeHost([list.id])];
+	await strictNginx();
+	await rm(geoLog(), { force: true });
+	const gained = await admin.put(`${LISTS}/${list.id}`, {
+		npmpro_geo_mode: "deny",
+		npmpro_countries: [{ country: "US" }],
+	});
+	assert.equal(gained.status, 200, gained.text);
+	const added = await admin.put(`${LISTS}/${list.id}`, { npmpro_countries: [{ country: "US" }, { country: "FR" }] });
+	assert.equal(added.status, 200, added.text);
+	for (const host of hosts) {
+		assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+		assert.match(await gateConfig(host), gateOf(list.id));
+	}
+	// one batch test per save, each with the new gates and their map together
+	const tests = await geoTests();
+	assert.equal(tests.length, 2);
+	for (const [names, defines] of tests) {
+		assert.ok(names.includes(variable(list.id)), names.join(" "));
+		assert.ok(defines.includes(variable(list.id)), defines.join(" "));
+	}
+	assert.match(await listsFile(), FR_BLOCKED);
+	// a single host save after it finds the map as well
+	const saved = await admin.put(`${HOSTS}/${hosts[0].id}`, { forward_port: 81 });
+	assert.equal(saved.status, 200, saved.text);
+	assert.equal((await row(hosts[0].id)).npmpro_nginx_online, 1);
+});
+
+it("keeps a passing variable while a list turned off is checked host by host, then drops it", async () => {
+	await withDatabase();
+	const list = await countryList({ npmpro_geo_mode: "deny" });
+	const good = await makeHost([list.id]);
+	const bad = await makeHost([list.id]);
+	await api.db("proxy_host").where({ id: bad.id }).update({ advanced_config: "# BADHOST" });
+	await strictNginx(
+		`if grep -rq BADHOST --include='*.conf' "$hosts"; then echo "BADHOST is not valid" >&2; exit 1; fi`,
+	);
+	const off = await admin.put(`${LISTS}/${list.id}`, { npmpro_geo_mode: "off" });
+	assert.equal(off.status, 200, off.text);
+	// the batch failed on the broken host and the hosts were checked one by one from their old configs: the good host
+	// passed although the old config of the broken one still named the variable
+	assert.equal((await row(good.id)).npmpro_nginx_online, 1);
+	assert.equal((await row(bad.id)).npmpro_nginx_online, 0);
+	assert.doesNotMatch(await gateConfig(good), gateOf(list.id));
+	assert.doesNotMatch(await listsFile(), definesOf(list.id));
+});
+
+it("rewrites the host configs without the gate before the deleted list's map leaves geoip-lists.conf", async () => {
+	await withDatabase();
+	const list = await countryList();
+	const hosts = [await makeHost([list.id]), await makeHost([list.id])];
+	await strictNginx();
+	await rm(geoLog(), { force: true });
+	assert.equal((await admin.delete(`${LISTS}/${list.id}`)).status, 200);
+	const tests = await geoTests();
+	assert.equal(tests.length, 1);
+	const [[names, defines]] = tests;
+	assert.ok(!names.includes(variable(list.id)), names.join(" "));
+	assert.ok(defines.includes(variable(list.id)), defines.join(" "));
+	assert.doesNotMatch(await listsFile(), definesOf(list.id));
+	for (const host of hosts) assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+});
+
+it("a host save writes geoip-lists.conf again when the file lacks a variable its gates name", async () => {
+	await withDatabase();
+	const list = await countryList();
+	// a restore or a hand edit left the file behind the database: only the private geo
+	await writeFile(
+		path.join(api.root, "data/npmpro/nginx/geoip-lists.conf"),
+		"geo $npmpro_geo_private {\n  default 0;\n}\n",
+	);
+	await strictNginx();
+	const host = await makeHost([list.id]);
+	assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+	assert.match(await listsFile(), mapOf(list.id));
+	// in sync: the next save leaves the file alone
+	const synced = await listsFile();
+	assert.equal((await admin.put(`${HOSTS}/${host.id}`, { forward_port: 82 })).status, 200);
+	assert.equal(await listsFile(), synced);
+});
+
+it("drops a deleted list's map also when the host configs could not be written", async () => {
+	await withDatabase();
+	const list = await countryList();
+	const host = await makeHost([list.id]);
+	await strictNginx();
+	const { default: nginxModule } = await import("../internal/nginx.js");
+	const original = nginxModule.configureMany;
+	nginxModule.configureMany = () => Promise.reject(new Error("disk full"));
+	try {
+		assert.equal((await admin.delete(`${LISTS}/${list.id}`)).status, 500);
+	} finally {
+		nginxModule.configureMany = original;
+	}
+	// the old config still names the variable: it lets everyone pass now, the list's own map is gone
+	const text = await listsFile();
+	assert.doesNotMatch(text, mapOf(list.id));
+	assert.match(text, new RegExp(`geo \\$npmpro_geo_${list.id} \\{\\n {2}default 1;`, "u"));
+	assert.match(await gateConfig(host), gateOf(list.id));
+	// and nginx -t still passes with it: the host stays online on its next save
+	assert.equal((await admin.put(`${HOSTS}/${host.id}`, { forward_port: 83 })).status, 200);
+	assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+});
+
+it("a stream or redirection save syncs geoip.conf first, so an own geoip_country or a lost file does not take it offline", async () => {
+	await withDatabase();
+	const geoipConf = () => readFile(path.join(api.root, "data/npmpro/nginx/geoip.conf"), "utf8");
+	const own = path.join(api.root, "data/custom_nginx/http_top.conf");
+	const database = path.join(api.root, "data/goaccess/geoip/dbip-country-lite.mmdb");
+	await mkdir(path.dirname(own), { recursive: true });
+	const list = await countryList({ npmpro_countries: [{ country: "FR" }] });
+	assert.match(await geoipConf(), OWN_DATABASE_LINE);
+	// as the real nginx: a second geoip_country is a duplicate, and the database line needs its file
+	await strictNginx(
+		`conf="${api.root}/data/npmpro/nginx/geoip.conf"
+if grep -q '^geoip_country' "$conf" && grep -qs geoip_country "${own}"; then echo 'nginx: [emerg] "geoip_country" directive is duplicate in ${own}:1' >&2; exit 1; fi
+db=$(sed -n 's/^geoip_country \\(.*\\);$/\\1/p' "$conf")
+if [ -n "$db" ] && [ ! -f "$db" ]; then echo "nginx: [emerg] MMDB_open("$db") failed" >&2; exit 1; fi`,
+	);
+	// a reload runs the same check, as the real control socket tests the config before it reloads
+	api.outside.control.check = () => {
+		try {
+			execFileSync(path.join(api.root, "fake/nginx.hook"), ["-tq"], { stdio: "pipe" });
+			return null;
+		} catch (err) {
+			return String(err.stderr);
+		}
+	};
+	try {
+		await writeFile(own, "geoip_country /etc/own/GeoIP.dat;\n");
+		const stream = await created(
+			await admin.post("/nginx/streams", {
+				incoming_port: "9922",
+				forwarding_host: "10.0.8.1",
+				forwarding_port: "22",
+				tcp_forwarding: true,
+			}),
+			"stream",
+		);
+		assert.equal((await api.db("stream").where({ id: stream.id }).first()).npmpro_nginx_online, 1);
+		assert.doesNotMatch(await geoipConf(), OWN_DATABASE_LINE);
+		assert.equal(await fileExists(api, `data/nginx/stream/${stream.id}.conf`), true);
+
+		// back to the database line, then the Country file goes: a redirection save writes the off variant first
+		await rm(own);
+		assert.equal((await admin.put(`${LISTS}/${list.id}`, { name: `database ${list.id}` })).status, 200);
+		assert.match(await geoipConf(), OWN_DATABASE_LINE);
+		await rm(database);
+		const redirect = await created(
+			await admin.post("/nginx/redirection-hosts", {
+				domain_names: ["geo-redirect.example.com"],
+				forward_scheme: "http",
+				forward_domain_name: "target.example.org",
+				forward_http_code: 301,
+			}),
+			"redirection host",
+		);
+		assert.equal((await api.db("redirection_host").where({ id: redirect.id }).first()).npmpro_nginx_online, 1);
+		assert.doesNotMatch(await geoipConf(), OWN_DATABASE_LINE);
+		assert.equal((await admin.delete(`/nginx/streams/${stream.id}`)).status, 200);
+		assert.equal((await admin.delete(`/nginx/redirection-hosts/${redirect.id}`)).status, 200);
+	} finally {
+		api.outside.control.check = null;
+		await rm(own, { force: true });
+		await withDatabase();
+	}
+});
+
+it("a list or host save picks up an own geoip_country added or removed since the last sync", async () => {
+	await withDatabase();
+	const geoipConf = () => readFile(path.join(api.root, "data/npmpro/nginx/geoip.conf"), "utf8");
+	const own = path.join(api.root, "data/custom_nginx/http_top.conf");
+	await mkdir(path.dirname(own), { recursive: true });
+	const list = await countryList({ npmpro_countries: [{ country: "FR" }] });
+	const host = await makeHost([list.id]);
+	assert.match(await geoipConf(), OWN_DATABASE_LINE);
+	// nginx refuses a second geoip_country, as the real one does with an own line in http_top.conf
+	await strictNginx(
+		`if grep -q '^geoip_country' "${api.root}/data/npmpro/nginx/geoip.conf" && grep -qs geoip_country "${own}"; then echo 'nginx: [emerg] "geoip_country" directive is duplicate in ${own}:1' >&2; exit 1; fi`,
+	);
+	try {
+		await writeFile(own, "geoip_country /etc/own/GeoIP.dat;\n");
+		const added = await admin.put(`${LISTS}/${list.id}`, { name: `own directive ${list.id}` });
+		assert.equal(added.status, 200, added.text);
+		assert.doesNotMatch(await geoipConf(), OWN_DATABASE_LINE);
+		assert.equal((await admin.get(`${LISTS}/geoip`)).body.custom_directive, true);
+		assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+		// a host save alone switches both ways too
+		await rm(own);
+		assert.equal((await admin.put(`${HOSTS}/${host.id}`, { forward_port: 84 })).status, 200);
+		assert.match(await geoipConf(), OWN_DATABASE_LINE);
+		await writeFile(own, "geoip_country /etc/own/GeoIP.dat;\n");
+		assert.equal((await admin.put(`${HOSTS}/${host.id}`, { forward_port: 85 })).status, 200);
+		assert.doesNotMatch(await geoipConf(), OWN_DATABASE_LINE);
+		assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+
+		await rm(own);
+		const removed = await admin.put(`${LISTS}/${list.id}`, { name: `database again ${list.id}` });
+		assert.equal(removed.status, 200, removed.text);
+		// NPMpro's own line is back, so $geoip_country_code is filled and the allow map lets an FR visitor pass
+		assert.match(await geoipConf(), OWN_DATABASE_LINE);
+		assert.match(await listsFile(), FR_PASSES);
+		assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+	} finally {
+		await rm(own, { force: true });
+	}
 });

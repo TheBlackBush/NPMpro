@@ -8,6 +8,7 @@ import { createSchema } from "./support/backup-schema.js";
 
 const box = { encrypt: (value) => `v1:${JSON.stringify(value)}`, decrypt: (value) => JSON.parse(value.slice(3)) };
 const NOW = 1_800_000_000;
+const STAMPS = { created_on: "2026-01-01 00:00:00", modified_on: "2026-01-01 00:00:00" };
 const UNKNOWN_TYPE = /widgets/u;
 const UNIQUE_FAILED = /UNIQUE constraint failed: npmpro_proxy_host_access_list/u;
 const SCOPE = {
@@ -419,6 +420,61 @@ it("gives every added row the importer as owner on a page import", async () => {
 		assert.deepEqual(
 			(await knex("access_list_client")).map(({ access_list_id, value }) => [access_list_id, value]),
 			[[listId, "10.0.0.0/8"]],
+		);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("adds a list with its countries and rule comments under the new id when the id is taken", async () => {
+	const knex = await open();
+	try {
+		await knex("access_list").insert({ id: 3, name: "Taken" });
+		await knex("npmpro_access_list_country").insert({
+			id: 1,
+			access_list_id: 3,
+			country: "FR",
+			created_on: "2026-01-01 00:00:00",
+			modified_on: "2026-01-01 00:00:00",
+		});
+		const data = {
+			proxy_hosts: proxyHosts([host(1, "geo.example.com", { access_list_id: 3 })]),
+			access_lists: {
+				access_list: [
+					{ id: 3, name: "Geo", npmpro_geo_mode: "allow", npmpro_geo_unknown: "block", npmpro_geo_drop: 1 },
+				],
+				access_list_auth: [],
+				access_list_client: [{ id: 1, access_list_id: 3, address: "10.0.0.0/8", npmpro_comment: "Office" }],
+				npmpro_access_list_country: [
+					{ id: 1, access_list_id: 3, country: "DE", npmpro_comment: "Berlin", ...STAMPS },
+					{ id: 2, access_list_id: 3, country: "AT", npmpro_comment: "", ...STAMPS },
+				],
+			},
+		};
+		const { result } = await merge(knex, { data, types: ["proxy_hosts"], choices: { "access_lists:3": "add" } });
+		const listId = result.maps.access_list.get("3");
+		assert.notEqual(listId, 3);
+		const list = await knex("access_list").where({ id: listId }).first();
+		assert.deepEqual(
+			[list.npmpro_geo_mode, list.npmpro_geo_unknown, Number(list.npmpro_geo_drop)],
+			["allow", "block", 1],
+		);
+		assert.deepEqual(
+			(await knex("npmpro_access_list_country").where({ access_list_id: listId }).orderBy("country")).map(
+				(row) => [row.country, row.npmpro_comment],
+			),
+			[
+				["AT", ""],
+				["DE", "Berlin"],
+			],
+		);
+		assert.deepEqual(
+			(await knex("npmpro_access_list_country").where({ access_list_id: 3 })).map((row) => row.country),
+			["FR"],
+		);
+		assert.equal(
+			(await knex("access_list_client").where({ access_list_id: listId }).first()).npmpro_comment,
+			"Office",
 		);
 	} finally {
 		await knex.destroy();
