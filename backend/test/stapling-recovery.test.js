@@ -56,7 +56,13 @@ const certValues = (overrides = {}) => ({
  * A fake host world on a temp dir: renderConfig staples like the templates (stapling on for the kind and the .der
  * file exists at render time)
  */
-const world = async ({ hosts, env = { ACME_OCSP_STAPLING: "true" }, cert = certValues(), testError } = {}) => {
+const world = async ({
+	hosts,
+	env = { ACME_OCSP_STAPLING: "true" },
+	cert = certValues(),
+	testError,
+	beforeTest,
+} = {}) => {
 	const dir = await mkdtemp(path.join(tmpdir(), "stapling-recovery-"));
 	const tlsDir = path.join(dir, "tls");
 	await mkdir(path.join(tlsDir, "certbot/live"), { recursive: true });
@@ -83,6 +89,7 @@ const world = async ({ hosts, env = { ACME_OCSP_STAPLING: "true" }, cert = certV
 		effectiveEnv: () => env,
 		getConfig: async () => ({ values: cert }),
 		listCertificates: async () => [{ id: 9 }],
+		beforeTest,
 		tlsDir,
 		defaultCertConf,
 		log,
@@ -124,6 +131,25 @@ it("re-renders hosts whose .der appeared after the first render, with one nginx 
 	w.renders.length = 0;
 	assert.deepEqual(await w.recovery.recover(), []);
 	assert.deepEqual(w.renders, []);
+	assert.deepEqual(w.nginx.calls, ["test", "reload"]);
+});
+
+it("hands the rendered files to beforeTest before they are written and tested", async () => {
+	const seen = [];
+	const w = await world({
+		hosts: [le(1)],
+		beforeTest: async (files) => {
+			seen.push({ files: files.map(({ path: file, content }) => [file, content]), calls: [...w.nginx.calls] });
+			seen.push({ onDisk: await w.conf(1) });
+		},
+	});
+	await w.firstRender();
+	const before = await w.conf(1);
+	await w.addDer(1);
+	await w.recovery.recover();
+	assert.deepEqual(seen[0].files, [[path.join(w.dir, "proxy_host/1.conf"), await w.conf(1)]]);
+	assert.deepEqual(seen[0].calls, []);
+	assert.equal(seen[1].onDisk, before);
 	assert.deepEqual(w.nginx.calls, ["test", "reload"]);
 });
 

@@ -42,6 +42,7 @@ const readOrNull = async (fs, file) => {
  * @param   {Function}  deps.effectiveEnv
  * @param   {Function}  deps.getConfig         (group) => { values }
  * @param   {Function}  [deps.listCertificates] () => [{ id }]
+ * @param   {Function}  [deps.beforeTest]      async (files [{ path, content }]), before the files are written and tested
  * @param   {Object}    [deps.fs]
  * @param   {string}    [deps.tlsDir]
  * @param   {string}    [deps.defaultCertConf]
@@ -57,6 +58,7 @@ const createStaplingRecovery = ({
 	effectiveEnv,
 	getConfig,
 	listCertificates = async () => [],
+	beforeTest = async () => {},
 	fs = nodeFs,
 	tlsDir = TLS_DIR,
 	defaultCertConf = DEFAULT_CERT_CONF,
@@ -101,6 +103,7 @@ const createStaplingRecovery = ({
 			if (env.ACME_OCSP_STAPLING !== "true" && env.CUSTOM_OCSP_STAPLING !== "true") return [];
 			const files = [...(await defaultCertFile()), ...(await hostFiles(env))];
 			if (files.length === 0) return [];
+			await beforeTest(files);
 			await withFiles(files, () => testAndReload(nginx), { fs, log });
 			log.info(`OCSP stapling turned on for ${files.length} config(s) whose OCSP response arrived later`);
 			return files.map((file) => file.path);

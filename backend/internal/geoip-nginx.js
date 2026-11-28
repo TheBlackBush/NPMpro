@@ -116,21 +116,11 @@ const ensureGeoipConf = async () => {
 	await syncGeoipConfNow({ reload: false, report: false });
 };
 
-/**
- * Before the nginx -t of a proxy host save (no files: nothing to do): geoip.conf is synced to the variant detected now (the caller reloads), and when
- * one of the written configs names a $npmpro_geo_<id> that geoip-lists.conf does not define (the file lags behind the
- * database, e.g. after a restore), that file is written again. For code in the runtime settings queue.
- *
- * @param   {string[]}  files  the host configs just written
- * @returns {Promise<boolean>}  whether the file was written
- */
-const ensureGeoipLists = async (files) => {
-	if (files.length === 0) return false;
-	// an own geoip_country added or removed since the last sync: the right variant before this save's nginx -t
-	await syncGeoipConfNow({ reload: false, report: false });
+// writes geoip-lists.conf again when one of the configs names a $npmpro_geo_<id> it does not define (the file lags
+// behind the database, e.g. after a restore or a failed write)
+const defineNamedLists = async (texts) => {
 	const named = new Set();
-	for (const file of files) {
-		const text = await readOrNull(file);
+	for (const text of texts) {
 		for (const match of (text ?? "").matchAll(GEO_REFERENCE)) named.add(match.groups.id);
 	}
 	if (named.size === 0) return false;
@@ -138,6 +128,35 @@ const ensureGeoipLists = async (files) => {
 	if ([...named].every((id) => defined.includes(`$npmpro_geo_${id} {`))) return false;
 	await writeGeoipLists();
 	return true;
+};
+
+/**
+ * Before the nginx -t of a proxy host save (no files: nothing to do): geoip.conf is synced to the variant detected
+ * now (the caller reloads), and when one of the written configs names a $npmpro_geo_<id> that geoip-lists.conf does
+ * not define, that file is written again. For code in the runtime settings queue.
+ *
+ * @param   {string[]}  files  the host configs just written
+ * @returns {Promise<boolean>}  whether geoip-lists.conf was written
+ */
+const ensureGeoipLists = async (files) => {
+	if (files.length === 0) return false;
+	// an own geoip_country added or removed since the last sync: the right variant before this save's nginx -t
+	await syncGeoipConfNow({ reload: false, report: false });
+	return defineNamedLists(await Promise.all(files.map(readOrNull)));
+};
+
+/**
+ * For host configs rendered but not written yet (the runtime apply, the stapling recovery), before their nginx -t:
+ * geoip.conf passes (ensureGeoipConf) and geoip-lists.conf defines every country gate variable they name. For code in
+ * the runtime settings queue.
+ *
+ * @param   {string[]}  contents  the rendered configs
+ * @returns {Promise<boolean>}  whether geoip-lists.conf was written
+ */
+const ensureGeoipListsFor = async (contents) => {
+	if (contents.length === 0) return false;
+	await ensureGeoipConf();
+	return defineNamedLists(contents);
 };
 
 // the [emerg] line of an nginx -t output (the whole output stays at debug level)
@@ -268,6 +287,7 @@ const startGeoipNginx = async ({ log = logger } = {}) => {
 export {
 	ensureGeoipConf,
 	ensureGeoipLists,
+	ensureGeoipListsFor,
 	GEOIP_CONF,
 	GEOIP_LISTS_CONF,
 	geoipConfFailsOpen,
