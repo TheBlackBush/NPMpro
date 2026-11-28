@@ -627,11 +627,27 @@ it("GET /nginx/access-lists/geoip: availability, custom directive and the lists 
 	await rm(custom, { force: true });
 	const without = (await admin.get(`${BASE}/geoip`)).body;
 	assert.equal(without.available, false);
+	assert.equal(without.fails_open, true);
 	assert.equal(without.custom_directive, false);
 	assert.equal(without.provider, "dbip");
 	await giveDatabase();
+	// geoip.conf as a sync leaves it: the database line, or the off variant after nginx refused that line
+	const geoipConf = path.join(api.root, "data/npmpro/nginx/geoip.conf");
+	const confBefore = await readFile(geoipConf, "utf8");
+	await writeFile(
+		geoipConf,
+		"geoip_country /data/goaccess/geoip/dbip-country-lite.mmdb;\ngeo $npmpro_geo_db {\n  default 1;\n}\n",
+	);
 	const withFile = (await admin.get(`${BASE}/geoip`)).body;
 	assert.equal(withFile.available, true);
+	assert.equal(withFile.fails_open, false);
+	await writeFile(
+		geoipConf,
+		"# no usable GeoIP country database: country rules of access lists let every visitor pass (Settings, GeoIP)\ngeo $npmpro_geo_db {\n  default 0;\n}\n",
+	);
+	const refused = (await admin.get(`${BASE}/geoip`)).body;
+	assert.deepEqual([refused.available, refused.fails_open], [true, true]);
+	await writeFile(geoipConf, confBefore);
 	assert.equal(
 		withFile.lists_with_rules,
 		Number((await api.db("access_list").whereNot("npmpro_geo_mode", "off").count({ n: "*" }).first()).n),

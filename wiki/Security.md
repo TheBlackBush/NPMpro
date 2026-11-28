@@ -91,8 +91,10 @@ Some public addresses have no country in the database. Each list decides: the sw
 Without a usable GeoIP country database, country rules let every visitor pass (fail open), so a missing database never locks you out. Saved countries stay. While the database is missing:
 
 - you can still rename the list, remove countries, change the 444 setting and turn the country rules off, but you cannot turn a mode on, change it or add a country;
-- the access list page and Settings, GeoIP show a warning, and the Settings status shows the database as missing (also after nginx refused the file and NPMpro fell back);
-- the `geoip.failed` notification fires with the reason `missing` (or `nginx` when the database is there but nginx refused it), see [Notifications](Notifications).
+- the access list page and Settings, GeoIP show a warning;
+- the `geoip.failed` notification fires with the reason `missing`, see [Notifications](Notifications).
+
+The same happens when the database is there but nginx refuses NPMpro's `geoip_country` line (for example a duplicate it did not see, below): NPMpro falls back to letting every country pass so nginx keeps working, logs the nginx error, shows the warnings and sends `geoip.failed` with the reason `nginx`. Saving and changing country rules still works then, as the database itself is usable.
 
 A list with only country rules cannot be switched off or emptied of countries: an access list needs at least one rule or user. Delete the list, or add an IP rule first.
 
@@ -100,12 +102,12 @@ A list with only country rules cannot be switched off or emptied of countries: a
 
 If `/data/custom_nginx/http_top.conf` or `/data/custom_nginx/http.conf` has its own `geoip_country` line, it wins: NPMpro's rules use the database that line names, and NPMpro does not write its own. Remove the line to use the database of NPMpro's provider. NPMpro notices an added or removed line when you save an access list or a proxy host, at a restart, and otherwise within an hour.
 
-- NPMpro only sees a `geoip_country` that starts a line in those two files. One in an included file, in conf.d or after another statement on the same line is not seen: nginx then refuses the duplicate and NPMpro falls back to letting every country pass (logged, Settings shows the database as missing) until you fix it.
+- NPMpro only sees a `geoip_country` that starts a line in those two files. One in an included file, in conf.d or after another statement on the same line is not seen: nginx then refuses the duplicate and NPMpro falls back to letting every country pass (see Without a database) until you fix it.
 - If your own line names a database file that is gone, nginx does not start, as before. NPMpro only rescues its own line: when its file is missing, empty, truncated or not a MaxMind database, NPMpro lets every country pass at start.
 
 ### API
 
-The access list fields are `npmpro_geo_mode` (`off`, `allow` or `deny`), `npmpro_geo_unknown` (`auto`, `pass` or `block`), `npmpro_geo_drop` (boolean) and `npmpro_countries` (a list of `country` and `npmpro_comment`, returned with `expand=npmpro_countries`). `GET /api/nginx/access-lists/geoip` tells whether a country database is usable, which provider is active, whether a custom `geoip_country` is in use and how many lists have country rules. See the Swagger UI at `/api/docs`.
+The access list fields are `npmpro_geo_mode` (`off`, `allow` or `deny`), `npmpro_geo_unknown` (`auto`, `pass` or `block`), `npmpro_geo_drop` (boolean) and `npmpro_countries` (a list of `country` and `npmpro_comment`, returned with `expand=npmpro_countries`). `GET /api/nginx/access-lists/geoip` tells whether a country database is usable (`available`, it decides which country rules can be saved), whether the rules let every visitor pass now (`fails_open`: no database, or nginx refused NPMpro's line), which provider is active, whether a custom `geoip_country` is in use and how many lists have country rules. See the Swagger UI at `/api/docs`.
 
 ## Legacy: hand-written geoblocking
 

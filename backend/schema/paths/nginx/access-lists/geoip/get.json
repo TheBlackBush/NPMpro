@@ -21,6 +21,7 @@
 						"type": "object",
 						"required": [
 							"available",
+							"fails_open",
 							"provider",
 							"custom_directive",
 							"lists_with_rules"
@@ -28,8 +29,13 @@
 						"properties": {
 							"available": {
 								"type": "boolean",
-								"description": "Whether a usable GeoIP country database (or a custom geoip_country directive) exists",
+								"description": "Whether a usable GeoIP country database (or a custom geoip_country directive) exists. It decides which country rules can be saved; whether nginx applies them is fails_open",
 								"example": true
+							},
+							"fails_open": {
+								"type": "boolean",
+								"description": "Whether country rules let every visitor pass now: true without a usable database (available is false), and also while available is true when nginx refused the database line and NPMpro fell back (see the geoip.failed notification with the reason nginx)",
+								"example": false
 							},
 							"provider": {
 								"type": "string",
@@ -57,6 +63,7 @@
 						"default": {
 							"value": {
 								"available": true,
+								"fails_open": false,
 								"provider": "dbip",
 								"custom_directive": false,
 								"lists_with_rules": 2
@@ -67,5 +74,5 @@
 			}
 		}
 	},
-	"description": "Tells whether country rules can be saved: a GeoIP country database of the active provider is usable or a custom geoip_country directive exists. Also counts the visible access lists with a country mode on.\n\nNeeds: Access Lists view"
+	"description": "Tells whether country rules can be saved: a GeoIP country database of the active provider is usable or a custom geoip_country directive exists. Also tells whether the rules let every visitor pass now (fails_open), and counts the visible access lists with a country mode on.\n\nNeeds: Access Lists view"
 }

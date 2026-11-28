@@ -16,7 +16,7 @@ import accessListCountryModel from "../models/access_list_country.js";
 import locationModel from "../models/location.js";
 import proxyHostModel from "../models/proxy_host.js";
 import internalAuditLog from "./audit-log.js";
-import { geoipStatus, syncGeoipConfNow, writeGeoipLists } from "./geoip-nginx.js";
+import { geoipConfFailsOpen, geoipStatus, syncGeoipConfNow, writeGeoipLists } from "./geoip-nginx.js";
 import internalNginx from "./nginx.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 
@@ -429,11 +429,13 @@ const internalAccessList = {
 	},
 
 	/**
-	 * What the country rules of the access lists page need: whether a country database can be used, which provider is
-	 * active, whether a custom geoip_country directive wins, and how many visible lists have a country mode on
+	 * What the country rules of the access lists page need: whether a country database can be used (it decides which
+	 * country rules can be saved), whether the geoip.conf on disk lets every visitor pass (no database, or nginx
+	 * refused the database line and NPMpro fell back), which provider is active, whether a custom geoip_country
+	 * directive wins, and how many visible lists have a country mode on
 	 *
 	 * @param   {Access}  access
-	 * @returns {Promise<{available: boolean, provider: string, custom_directive: boolean, lists_with_rules: number}>}
+	 * @returns {Promise<{available: boolean, fails_open: boolean, provider: string, custom_directive: boolean, lists_with_rules: number}>}
 	 */
 	geoip: async (access) => {
 		access.can("access_lists:view");
@@ -444,6 +446,7 @@ const internalAccessList = {
 		}
 		return {
 			available: status.available,
+			fails_open: !status.available || (await geoipConfFailsOpen()),
 			provider: status.provider,
 			custom_directive: status.custom_directive,
 			lists_with_rules: await query.resultSize(),

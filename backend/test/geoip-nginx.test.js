@@ -237,6 +237,9 @@ describe("syncGeoipConf", () => {
 		const { data } = await state();
 		assert.equal(data.reason, "nginx");
 		assert.match(data.error, DUPLICATE);
+		// the access lists page and Settings, GeoIP read this: a usable database, and rules that let everyone pass
+		const status = (await (await api.admin()).get("/nginx/access-lists/geoip")).body;
+		assert.deepEqual([status.available, status.custom_directive, status.fails_open], [true, false, true]);
 	});
 
 	it("keeps the database variant and the country rules when another file fails nginx -t", async () => {
