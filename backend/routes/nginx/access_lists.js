@@ -12,7 +12,7 @@ const listSchema = {
 	properties: {
 		expand: {
 			$ref: "common#/properties/expand",
-			items: { enum: ["owner", "items", "clients"] },
+			items: { enum: ["owner", "items", "clients", "npmpro_countries"] },
 		},
 		query: {
 			$ref: "common#/properties/query",
@@ -30,7 +30,7 @@ const accessListSchema = {
 		},
 		expand: {
 			$ref: "common#/properties/expand",
-			items: { enum: ["items", "clients"] },
+			items: { enum: ["items", "clients", "npmpro_countries"] },
 		},
 	},
 };
@@ -65,6 +65,18 @@ router
 		const payload = apiValidator(getValidationSchema("/nginx/access-lists", "post"), req.body);
 		const result = await internalAccessList.create(res.locals.access, payload);
 		res.status(201).send(result);
+	});
+
+/**
+ * /api/nginx/access-lists/geoip (before /:list_id)
+ */
+router
+	.route("/geoip")
+	.all(jwtdecode())
+
+	/** GET /api/nginx/access-lists/geoip */
+	.get(async (_req, res) => {
+		res.status(200).send(await internalAccessList.geoip(res.locals.access));
 	});
 
 /**

@@ -124,7 +124,15 @@ const accessListSummary = (list) => ({
 	id: list.id,
 	name: list.name,
 	users: (list.items ?? []).map((item) => item.username),
-	clients: (list.clients ?? []).map(({ address, directive }) => ({ address, directive })),
+	clients: (list.clients ?? []).map(({ address, directive, npmpro_comment }) => ({
+		address,
+		directive,
+		comment: npmpro_comment,
+	})),
+	geo_mode: list.npmpro_geo_mode,
+	geo_unknown: list.npmpro_geo_unknown,
+	geo_drop: list.npmpro_geo_drop,
+	countries: (list.npmpro_countries ?? []).map(({ country }) => country),
 	satisfy_any: list.satisfy_any,
 	pass_auth: list.pass_auth,
 	proxy_host_count: list.proxy_host_count ?? 0,
@@ -256,7 +264,7 @@ const hostTools = [
 	}),
 ];
 
-const ACCESS_LIST_EXPAND = ["items", "clients"];
+const ACCESS_LIST_EXPAND = ["items", "clients", "npmpro_countries"];
 const accessListTools = [
 	tool({
 		name: "list_access_lists",

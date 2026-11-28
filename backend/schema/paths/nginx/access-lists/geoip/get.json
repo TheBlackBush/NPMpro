@@ -1,0 +1,71 @@
+{
+	"operationId": "getAccessListGeoip",
+	"summary": "Get the state of the country rules",
+	"tags": [
+		"access-lists"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "Whether country rules can be saved and used",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"required": [
+							"available",
+							"provider",
+							"custom_directive",
+							"lists_with_rules"
+						],
+						"properties": {
+							"available": {
+								"type": "boolean",
+								"description": "Whether a usable GeoIP country database (or a custom geoip_country directive) exists",
+								"example": true
+							},
+							"provider": {
+								"type": "string",
+								"description": "The active GeoIP provider",
+								"enum": [
+									"dbip",
+									"maxmind"
+								],
+								"example": "dbip"
+							},
+							"custom_directive": {
+								"type": "boolean",
+								"description": "Whether a custom geoip_country directive in the custom nginx files takes over",
+								"example": false
+							},
+							"lists_with_rules": {
+								"type": "integer",
+								"description": "Number of the access lists the user can see that have a country mode other than off",
+								"minimum": 0,
+								"example": 2
+							}
+						}
+					},
+					"examples": {
+						"default": {
+							"value": {
+								"available": true,
+								"provider": "dbip",
+								"custom_directive": false,
+								"lists_with_rules": 2
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"description": "Tells whether country rules can be saved: a GeoIP country database of the active provider is usable or a custom geoip_country directive exists. Also counts the visible access lists with a country mode on.\n\nNeeds: Access Lists view"
+}

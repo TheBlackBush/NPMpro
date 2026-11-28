@@ -302,6 +302,13 @@
 					"directive": {
 						"description": "What the rule does to a matching address: allow or deny",
 						"$ref": "#/properties/directive"
+					},
+					"npmpro_comment": {
+						"type": "string",
+						"description": "A note for the rule, shown in the list and kept as a comment in the generated config",
+						"maxLength": 255,
+						"default": "",
+						"example": "Head office"
 					}
 				},
 				"example": {

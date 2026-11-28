@@ -171,6 +171,11 @@
 				"$ref": "./paths/nginx/access-lists/post.json"
 			}
 		},
+		"/nginx/access-lists/geoip": {
+			"get": {
+				"$ref": "./paths/nginx/access-lists/geoip/get.json"
+			}
+		},
 		"/nginx/access-lists/{listID}": {
 			"get": {
 				"$ref": "./paths/nginx/access-lists/listID/get.json"

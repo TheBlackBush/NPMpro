@@ -1,6 +1,6 @@
 import { rm } from "node:fs/promises";
 import bcrypt from "bcryptjs";
-import { assertAccessListRules, clientsWithAddress } from "../lib/access-list-rules.js";
+import { assertAccessListRules, assertCountryRules, clientsWithAddress } from "../lib/access-list-rules.js";
 import errs from "../lib/error.js";
 import { PROXY_HOST_GRAPH } from "../lib/host-expand.js";
 import { removePlacePages, writePlacePages } from "../lib/landing-pages/files.js";
@@ -12,16 +12,25 @@ import { access as logger } from "../logger.js";
 import accessListModel from "../models/access_list.js";
 import accessListAuthModel from "../models/access_list_auth.js";
 import accessListClientModel from "../models/access_list_client.js";
+import accessListCountryModel from "../models/access_list_country.js";
 import locationModel from "../models/location.js";
 import proxyHostModel from "../models/proxy_host.js";
 import internalAuditLog from "./audit-log.js";
+import { geoipStatus } from "./geoip-nginx.js";
 import internalNginx from "./nginx.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 
 const proxyHostEntries = (hosts) => hosts.map((host) => ({ model: proxyHostModel, hostType: "proxy_host", host }));
 
-const hasNoRules = (items = [], clients = []) =>
-	items.length === 0 && clients.every(({ address = "" }) => ["", "all"].includes(address.trim().toLowerCase()));
+const hasNoRules = (items = [], clients = [], countryRule = false) =>
+	!countryRule &&
+	items.length === 0 &&
+	clients.every(({ address = "" }) => ["", "all"].includes(address.trim().toLowerCase()));
+
+const countryRows = (listId, countries = []) =>
+	countries.map(({ country, npmpro_comment }) => ({ access_list_id: listId, country, npmpro_comment }));
+
+const GEO_COLUMNS = ["npmpro_geo_mode", "npmpro_geo_unknown", "npmpro_geo_drop"];
 
 const internalAccessList = {
 	/**
@@ -37,7 +46,9 @@ const internalAccessList = {
 		if (data.items?.some((item) => item.password && bcrypt.truncates(item.password))) {
 			throw new errs.ValidationError("Access list passwords can not be longer than 72 bytes");
 		}
-		if (hasNoRules(data.items, data.clients)) {
+		assertCountryRules(data, null, await geoipStatus());
+		const countryRule = (data.npmpro_geo_mode ?? "off") !== "off" && (data.npmpro_countries?.length ?? 0) > 0;
+		if (hasNoRules(data.items, data.clients, countryRule)) {
 			throw new errs.ValidationError("Access list needs at least one user or one rule that is not all");
 		}
 		assertAccessListRules(data);
@@ -50,6 +61,9 @@ const internalAccessList = {
 				pass_auth: data.pass_auth,
 				npmpro_denied_page: data.npmpro_denied_page,
 				npmpro_denied_page_html: data.npmpro_denied_page_html,
+				npmpro_geo_mode: data.npmpro_geo_mode,
+				npmpro_geo_unknown: data.npmpro_geo_unknown,
+				npmpro_geo_drop: data.npmpro_geo_drop,
 				owner_user_id: access.token.getUserId(1),
 			});
 
@@ -69,9 +83,14 @@ const internalAccessList = {
 						access_list_id: insertedRow.id,
 						address: client.address,
 						directive: client.directive,
+						npmpro_comment: client.npmpro_comment,
 					}),
 				),
 			);
+
+			for (const country of countryRows(insertedRow.id, data.npmpro_countries)) {
+				await accessListCountryModel.query(trx).insert(country);
+			}
 
 			return insertedRow;
 		});
@@ -80,7 +99,7 @@ const internalAccessList = {
 
 		const freshRow = await internalAccessList.get(access, {
 			id: data.id,
-			expand: ["items", "clients"],
+			expand: ["items", "clients", "npmpro_countries"],
 		});
 
 		try {
@@ -108,7 +127,10 @@ const internalAccessList = {
 	 */
 	update: async (access, data) => {
 		access.can("access_lists:manage");
-		const row = await internalAccessList.get(access, { id: data.id, expand: ["items", "clients"] });
+		const row = await internalAccessList.get(access, {
+			id: data.id,
+			expand: ["items", "clients", "npmpro_countries"],
+		});
 		if (
 			data.items?.some((item) => !item.password && !row.items.some(({ username }) => username === item.username))
 		) {
@@ -117,7 +139,10 @@ const internalAccessList = {
 		if (data.items?.some((item) => item.password && bcrypt.truncates(item.password))) {
 			throw new errs.ValidationError("Access list passwords can not be longer than 72 bytes");
 		}
-		if (hasNoRules(data.items ?? row.items, data.clients ?? row.clients)) {
+		assertCountryRules(data, row, await geoipStatus());
+		const geoMode = data.npmpro_geo_mode ?? row.npmpro_geo_mode;
+		const countryRule = geoMode !== "off" && (data.npmpro_countries ?? row.npmpro_countries).length > 0;
+		if (hasNoRules(data.items ?? row.items, data.clients ?? row.clients, countryRule)) {
 			throw new errs.ValidationError("Access list needs at least one user or one rule that is not all");
 		}
 		assertAccessListRules(data);
@@ -131,6 +156,7 @@ const internalAccessList = {
 				pass_auth: data.pass_auth,
 				npmpro_denied_page: data.npmpro_denied_page,
 				npmpro_denied_page_html: data.npmpro_denied_page_html,
+				...Object.fromEntries(GEO_COLUMNS.map((column) => [column, data[column]])),
 			};
 			if (Object.values(columns).some((value) => value !== undefined)) {
 				await accessListModel.query(trx).where({ id: data.id }).patch(columns);
@@ -168,15 +194,23 @@ const internalAccessList = {
 							access_list_id: data.id,
 							address: client.address,
 							directive: client.directive,
+							npmpro_comment: client.npmpro_comment,
 						}),
 					),
 				);
+			}
+
+			if (data.npmpro_countries) {
+				await accessListCountryModel.query(trx).delete().where("access_list_id", data.id);
+				for (const country of countryRows(data.id, data.npmpro_countries)) {
+					await accessListCountryModel.query(trx).insert(country);
+				}
 			}
 		});
 
 		const freshRow = await internalAccessList.get(access, {
 			id: data.id,
-			expand: ["items", "clients", `proxy_hosts.${PROXY_HOST_GRAPH}`],
+			expand: ["items", "clients", "npmpro_countries", `proxy_hosts.${PROXY_HOST_GRAPH}`],
 		});
 
 		const savedRow = { ...freshRow, proxy_hosts: undefined };
@@ -215,7 +249,7 @@ const internalAccessList = {
 			.leftJoin("proxy_host", "proxy_host.id", "npmpro_proxy_host_access_list.proxy_host_id")
 			.where("access_list.id", data.id)
 			.groupBy("access_list.id")
-			.allowGraph(`[items,clients,proxy_hosts.${PROXY_HOST_GRAPH}]`)
+			.allowGraph(`[items,clients,npmpro_countries,proxy_hosts.${PROXY_HOST_GRAPH}]`)
 			.first();
 
 		if (access.visibility !== "all") {
@@ -246,7 +280,7 @@ const internalAccessList = {
 		access.can("access_lists:manage");
 		const row = await internalAccessList.get(access, {
 			id: data.id,
-			expand: [`proxy_hosts.${PROXY_HOST_GRAPH}`, "items", "clients"],
+			expand: [`proxy_hosts.${PROXY_HOST_GRAPH}`, "items", "clients", "npmpro_countries"],
 		});
 		// 1. update row to be deleted
 		// 2. update any proxy hosts that were using it (ignoring permissions)
@@ -282,6 +316,7 @@ const internalAccessList = {
 			await trx("npmpro_proxy_host_access_list").where("access_list_id", row.id).delete();
 			await accessListAuthModel.query(trx).where("access_list_id", row.id).delete();
 			await accessListClientModel.query(trx).where("access_list_id", row.id).delete();
+			await accessListCountryModel.query(trx).where("access_list_id", row.id).delete();
 			await accessListModel.query(trx).deleteById(row.id);
 			// every host that used it, also those the user cannot edit
 			for (const host of affectedHosts) {
@@ -331,7 +366,7 @@ const internalAccessList = {
 			.leftJoin("npmpro_proxy_host_access_list", "npmpro_proxy_host_access_list.access_list_id", "access_list.id")
 			.leftJoin("proxy_host", "proxy_host.id", "npmpro_proxy_host_access_list.proxy_host_id")
 			.groupBy("access_list.id")
-			.allowGraph("[owner,items,clients]")
+			.allowGraph("[owner,items,clients,npmpro_countries]")
 			.orderBy("access_list.name", "ASC");
 
 		if (access.visibility !== "all") {
@@ -349,6 +384,28 @@ const internalAccessList = {
 		query.runAfter((rows) => (Array.isArray(rows) ? rows.map(withoutPageHtml) : rows));
 
 		return query;
+	},
+
+	/**
+	 * What the country rules of the access lists page need: whether a country database can be used, which provider is
+	 * active, whether a custom geoip_country directive wins, and how many visible lists have a country mode on
+	 *
+	 * @param   {Access}  access
+	 * @returns {Promise<{available: boolean, provider: string, custom_directive: boolean, lists_with_rules: number}>}
+	 */
+	geoip: async (access) => {
+		access.can("access_lists:view");
+		const status = await geoipStatus();
+		const query = accessListModel.query().whereNot("npmpro_geo_mode", "off");
+		if (access.visibility !== "all") {
+			query.andWhere("owner_user_id", access.token.getUserId(1));
+		}
+		return {
+			available: status.available,
+			provider: status.provider,
+			custom_directive: status.custom_directive,
+			lists_with_rules: await query.resultSize(),
+		};
 	},
 
 	/**

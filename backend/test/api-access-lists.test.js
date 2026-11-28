@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { stat } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
 import { countRows, fileExists, reloads } from "./support/hosts.js";
+import { withDatabaseType } from "./support/mmdb.js";
 
 // /nginx/access-lists (schema/paths/nginx/access-lists): rules, the htpasswd file in data/access, and the hosts that use
 // a list.
@@ -483,4 +484,176 @@ it("never returns a user's password hash: create, update, get and list", async (
 		hash,
 	);
 	assert.equal((await api.read(`data/access/${created.id}`)).split("\n").includes(`bob:${hash}`), true);
+});
+
+// country rules and rule comments
+const GEOIP = "data/goaccess/geoip/dbip-country-lite.mmdb";
+const countryList = (overrides = {}) => ({
+	name: name(),
+	npmpro_geo_mode: "allow",
+	npmpro_countries: [
+		{ country: "FR", npmpro_comment: "France office" },
+		{ country: "DE", npmpro_comment: "" },
+	],
+	...overrides,
+});
+const giveDatabase = async () => {
+	const fixture = await readFile(path.join(import.meta.dirname, "fixtures", "GeoLite2-Country-Test.mmdb"));
+	await writeFile(path.join(api.root, GEOIP), withDatabaseType(fixture, "DBIP-Country-Lite"));
+};
+const takeDatabase = () => rm(path.join(api.root, GEOIP), { force: true });
+const countryRowsOf = async (id) =>
+	Number((await api.db("npmpro_access_list_country").where({ access_list_id: id }).count({ n: "*" }).first()).n);
+const countryCodes = (row) => row.npmpro_countries.map(({ country }) => country);
+const errorKey = (done) => done.body.error?.message_i18n;
+const NOW = () => new Date().toISOString();
+const storedList = async (mode, ...codes) => {
+	const [id] = await api.db("access_list").insert({
+		name: name(),
+		owner_user_id: 1,
+		npmpro_geo_mode: mode,
+		created_on: new Date().toISOString(),
+		modified_on: new Date().toISOString(),
+		meta: "{}",
+	});
+	await api.db("access_list_client").insert({
+		access_list_id: id,
+		address: "10.0.0.0/8",
+		directive: "allow",
+		created_on: NOW(),
+		modified_on: NOW(),
+		meta: "{}",
+	});
+	for (const country of codes) {
+		await api.db("npmpro_access_list_country").insert({
+			access_list_id: id,
+			country,
+			npmpro_comment: "",
+			created_on: NOW(),
+			modified_on: NOW(),
+		});
+	}
+	return id;
+};
+
+it("country rules: a round trip with comments, sorted countries, kept and replaced by a PUT", async () => {
+	await giveDatabase();
+	const created = await create(
+		countryList({ clients: [{ address: "10.1.0.0/16", directive: "allow", npmpro_comment: "VPN" }] }),
+	);
+	assert.equal(created.npmpro_geo_mode, "allow");
+	assert.deepEqual(countryCodes(created), ["DE", "FR"]);
+	const read = (await admin.get(`${BASE}/${created.id}?expand=clients,npmpro_countries`)).body;
+	assert.deepEqual(
+		read.npmpro_countries.map(({ country, npmpro_comment }) => [country, npmpro_comment]),
+		[
+			["DE", ""],
+			["FR", "France office"],
+		],
+	);
+	assert.equal(read.clients[0].npmpro_comment, "VPN");
+	assert.equal(read.npmpro_geo_unknown, "auto");
+	assert.equal(read.npmpro_geo_drop, false);
+
+	const renamed = await admin.put(`${BASE}/${created.id}`, { name: "renamed countries", npmpro_geo_drop: true });
+	assert.equal(renamed.status, 200, renamed.text);
+	assert.deepEqual(countryCodes(renamed.body), ["DE", "FR"]);
+	assert.equal(renamed.body.npmpro_geo_drop, true);
+
+	const replaced = await admin.put(`${BASE}/${created.id}`, { npmpro_countries: [{ country: "DE" }] });
+	assert.equal(replaced.status, 200, replaced.text);
+	assert.deepEqual(countryCodes(replaced.body), ["DE"]);
+	assert.equal(await countryRowsOf(created.id), 1);
+	const listed = (await admin.get(`${BASE}?expand=npmpro_countries`)).body.find((row) => row.id === created.id);
+	assert.deepEqual(countryCodes(listed), ["DE"]);
+});
+
+it("country rules: the schema and the checks refuse bad codes, empty modes and too many countries", async () => {
+	await giveDatabase();
+	const lower = await admin.post(BASE, countryList({ npmpro_countries: [{ country: "de" }] }));
+	assert.equal(lower.status, 400);
+	const unknown = await admin.post(BASE, countryList({ npmpro_countries: [{ country: "QQ" }] }));
+	assert.equal(unknown.status, 400);
+	assert.equal(errorKey(unknown), "error.access.country-unknown");
+	assert.deepEqual(unknown.body.error.message_values, { code: "QQ" });
+	const twice = await admin.post(BASE, countryList({ npmpro_countries: [{ country: "DE" }, { country: "DE" }] }));
+	assert.equal(twice.status, 400);
+	assert.equal(errorKey(twice), "error.access.country-duplicate");
+	const many = await admin.post(
+		BASE,
+		countryList({ npmpro_countries: Array.from({ length: 251 }, () => ({ country: "DE" })) }),
+	);
+	assert.equal(many.status, 400);
+	const empty = await admin.post(BASE, countryList({ npmpro_countries: [] }));
+	assert.equal(empty.status, 400);
+	assert.equal(errorKey(empty), "error.access.country-mode-empty");
+	const onlyCountries = await admin.post(BASE, countryList());
+	assert.equal(onlyCountries.status, 201, onlyCountries.text);
+});
+
+it("country rules without a usable database: keeping and removing pass, turning on or adding does not (rule 6)", async () => {
+	await takeDatabase();
+	const refused = await admin.post(BASE, countryList());
+	assert.equal(refused.status, 400);
+	assert.equal(errorKey(refused), "error.access.country-no-database");
+
+	const id = await storedList("deny", "US", "ZZ");
+	const url = `${BASE}/${id}`;
+	const renamed = await admin.put(url, { name: "kept countries" });
+	assert.equal(renamed.status, 200, renamed.text);
+	assert.deepEqual(countryCodes(renamed.body), ["US", "ZZ"]);
+	const dropped = await admin.put(url, { npmpro_geo_drop: true });
+	assert.equal(dropped.status, 200, dropped.text);
+	const sentBack = await admin.put(url, { npmpro_countries: [{ country: "US" }, { country: "ZZ" }] });
+	assert.equal(sentBack.status, 200, sentBack.text);
+	assert.deepEqual(countryCodes(sentBack.body), ["US", "ZZ"]);
+
+	const switched = await admin.put(url, { npmpro_geo_mode: "allow" });
+	assert.equal(switched.status, 400);
+	assert.equal(errorKey(switched), "error.access.country-no-database");
+	const added = await admin.put(url, { npmpro_countries: [{ country: "US" }, { country: "CA" }] });
+	assert.equal(added.status, 400);
+	assert.equal(errorKey(added), "error.access.country-no-database");
+
+	const removed = await admin.put(url, { npmpro_countries: [{ country: "ZZ" }], npmpro_geo_mode: "off" });
+	assert.equal(removed.status, 200, removed.text);
+	assert.equal(removed.body.npmpro_geo_mode, "off");
+	assert.deepEqual(countryCodes(removed.body), ["ZZ"]);
+});
+
+it("GET /nginx/access-lists/geoip: availability, custom directive and the lists with a mode", async () => {
+	await takeDatabase();
+	const custom = path.join(api.root, "data/custom_nginx/http_top.conf");
+	await rm(custom, { force: true });
+	const without = (await admin.get(`${BASE}/geoip`)).body;
+	assert.equal(without.available, false);
+	assert.equal(without.custom_directive, false);
+	assert.equal(without.provider, "dbip");
+	await giveDatabase();
+	const withFile = (await admin.get(`${BASE}/geoip`)).body;
+	assert.equal(withFile.available, true);
+	assert.equal(
+		withFile.lists_with_rules,
+		Number((await api.db("access_list").whereNot("npmpro_geo_mode", "off").count({ n: "*" }).first()).n),
+	);
+	await takeDatabase();
+	await mkdir(path.dirname(custom), { recursive: true });
+	await writeFile(custom, "geoip_country /x/y.mmdb { $geoip2_country_code country iso_code; }\n");
+	const withDirective = (await admin.get(`${BASE}/geoip`)).body;
+	assert.equal(withDirective.available, true);
+	assert.equal(withDirective.custom_directive, true);
+	await rm(custom, { force: true });
+
+	const hidden = await api.limited({ visibility: "all", access_lists: "hidden" });
+	assert.equal((await hidden.get(`${BASE}/geoip`)).status, 403);
+	const viewer = await api.limited({ visibility: "all", access_lists: "view" });
+	assert.equal((await viewer.get(`${BASE}/geoip`)).status, 200);
+});
+
+it("deleting a list removes its country rows without the database cascade", async () => {
+	await giveDatabase();
+	const created = await create(countryList());
+	assert.equal(await countryRowsOf(created.id), 2);
+	assert.equal((await admin.delete(`${BASE}/${created.id}`)).status, 200);
+	assert.equal(await countryRowsOf(created.id), 0);
 });

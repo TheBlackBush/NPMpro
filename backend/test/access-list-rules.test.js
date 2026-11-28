@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { it } from "node:test";
-import { assertAccessListRules, clientsWithAddress } from "../lib/access-list-rules.js";
+import { describe, it } from "node:test";
+import { assertAccessListRules, assertCountryRules, clientsWithAddress } from "../lib/access-list-rules.js";
 
 it("refuses a username twice", () => {
 	const items = [
@@ -51,4 +51,99 @@ it("drops rules without an address", () => {
 		],
 	);
 	assert.deepEqual(clientsWithAddress(undefined), []);
+});
+
+const on = { available: true };
+const off = { available: false };
+const countries = (...codes) => codes.map((country) => ({ country, npmpro_comment: "" }));
+const saved = (mode, ...codes) => ({ npmpro_geo_mode: mode, npmpro_countries: countries(...codes) });
+const keyOf = (fn) => {
+	try {
+		fn();
+	} catch (error) {
+		return error.message_i18n;
+	}
+	return null;
+};
+
+describe("assertCountryRules", () => {
+	it("checks nothing the request does not send", () => {
+		assert.equal(
+			keyOf(() => assertCountryRules({ name: "x" }, saved("allow", "ZZ"), off)),
+			null,
+		);
+	});
+
+	it("refuses a mode with no country and a duplicate or unknown code", () => {
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_geo_mode: "allow", npmpro_countries: [] }, null, on)),
+			"error.access.country-mode-empty",
+		);
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_geo_mode: "deny" }, saved("off"), on)),
+			"error.access.country-mode-empty",
+		);
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_countries: countries("DE", "DE") }, null, on)),
+			"error.access.country-duplicate",
+		);
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_countries: countries("QQ") }, null, on)),
+			"error.access.country-unknown",
+		);
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_countries: countries("XK") }, null, on)),
+			null,
+		);
+	});
+
+	it("carries the code in the unknown error", () => {
+		assert.throws(() => assertCountryRules({ npmpro_countries: countries("QQ") }, null, on), {
+			message_values: { code: "QQ" },
+		});
+	});
+
+	it("keeps a stored code outside the list", () => {
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_countries: countries("ZZ", "DE") }, saved("deny", "ZZ", "DE"), on)),
+			null,
+		);
+	});
+
+	it("without a database refuses only turning a mode on, changing it or adding a country", () => {
+		const row = saved("deny", "US", "FR");
+		const refused = "error.access.country-no-database";
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_geo_mode: "allow" }, row, off)),
+			refused,
+		);
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_countries: countries("US", "CA") }, row, off)),
+			refused,
+		);
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_geo_mode: "deny", npmpro_countries: countries("DE") }, null, off)),
+			refused,
+		);
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_countries: countries("US") }, row, off)),
+			null,
+		);
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_geo_mode: "off" }, row, off)),
+			null,
+		);
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_geo_mode: "deny" }, row, off)),
+			null,
+		);
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_geo_mode: "off", npmpro_countries: [] }, null, off)),
+			null,
+		);
+		assert.equal(
+			keyOf(() => assertCountryRules({ npmpro_geo_mode: "allow", npmpro_countries: countries("DE") }, null, on)),
+			null,
+		);
+	});
 });

@@ -133,6 +133,65 @@
 							"deny"
 						],
 						"example": "allow"
+					},
+					"npmpro_comment": {
+						"type": "string",
+						"description": "A note for the rule, shown in the list and kept as a comment in the generated config",
+						"maxLength": 255,
+						"default": "",
+						"example": "Head office"
+					}
+				}
+			}
+		},
+		"npmpro_geo_mode": {
+			"type": "string",
+			"description": "The country rule: `off`, `allow` (only the listed countries pass) or `deny` (the listed countries are blocked)",
+			"enum": [
+				"off",
+				"allow",
+				"deny"
+			],
+			"default": "off",
+			"example": "deny"
+		},
+		"npmpro_geo_unknown": {
+			"type": "string",
+			"description": "What happens to an address with no country: `auto` (blocked in allow mode, passed in deny mode), `pass` or `block`",
+			"enum": [
+				"auto",
+				"pass",
+				"block"
+			],
+			"default": "auto",
+			"example": "auto"
+		},
+		"npmpro_geo_drop": {
+			"type": "boolean",
+			"description": "Whether a request blocked by a country rule is dropped without an answer (nginx status 444) instead of the denied page",
+			"default": false,
+			"example": false
+		},
+		"npmpro_countries": {
+			"type": "array",
+			"description": "The countries of the country rule, sorted by code; only with `expand` (and in the answers of create, update, get and delete)",
+			"maxItems": 250,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"country"
+				],
+				"properties": {
+					"country": {
+						"$ref": "./country-code.json"
+					},
+					"npmpro_comment": {
+						"type": "string",
+						"description": "A note for the country",
+						"maxLength": 255,
+						"default": "",
+						"example": "Office abroad"
 					}
 				}
 			}
