@@ -694,6 +694,8 @@ it("a restore that replaces the DDNS records clears their notification states, a
 	assert.equal(record.status, 201, record.text);
 	const entry = await keep({ types: ["dns_credentials", "ddns"] });
 	assert.equal((await admin.delete(`/nginx/ddns-records/${record.body.id}`)).status, 200);
+	// a save earlier in the file can leave a geoip.failed state (country rules of restored lists, no database)
+	await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
 	const stateOf = (objectId) => ({
 		key: `ddns.record_failed:${objectId}`,
 		event: "ddns.record_failed",

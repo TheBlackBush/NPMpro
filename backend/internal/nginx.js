@@ -135,7 +135,8 @@ const internalNginx = {
 		await internalProxyHostAccessList.build(host_type, host);
 		await internalNginx.deleteConfig(host_type, host);
 		await internalNginx.generateConfig(host_type, host, { fetchMissingOcsp });
-		// its country gates need their variables in geoip-lists.conf (a restore can leave the file behind)
+		// the geoip.conf variant of now (an own geoip_country added or removed), and the variables of its country gates
+		// in geoip-lists.conf (a restore can leave the file behind)
 		if (host_type === "proxy_host") await ensureGeoipLists([internalNginx.getConfigName(host_type, host.id)]);
 
 		try {

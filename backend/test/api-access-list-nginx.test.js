@@ -430,6 +430,8 @@ const mapOf = (id) => new RegExp(`map "[^"]+" \\$npmpro_geo_${id} \\{`, "u");
 const definesOf = (id) => new RegExp(`\\$npmpro_geo_${id} `, "u");
 const gateOf = (id) => new RegExp(`\\$npmpro_geo_${id} = 0`, "u");
 const FR_BLOCKED = /"1:0:FR" 0;/u;
+const FR_PASSES = /"1:0:FR" 1;/u;
+const OWN_DATABASE_LINE = /^geoip_country \S+dbip-country-lite\.mmdb;$/mu;
 const withDatabase = async () => {
 	const fixture = await readFile(path.join(import.meta.dirname, "fixtures", "GeoLite2-Country-Test.mmdb"));
 	await mkdir(path.join(api.root, "data/goaccess/geoip"), { recursive: true });
@@ -568,4 +570,44 @@ it("drops a deleted list's map also when the host configs could not be written",
 	// and nginx -t still passes with it: the host stays online on its next save
 	assert.equal((await admin.put(`${HOSTS}/${host.id}`, { forward_port: 83 })).status, 200);
 	assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+});
+
+it("a list or host save picks up an own geoip_country added or removed since the last sync", async () => {
+	await withDatabase();
+	const geoipConf = () => readFile(path.join(api.root, "data/npmpro/nginx/geoip.conf"), "utf8");
+	const own = path.join(api.root, "data/custom_nginx/http_top.conf");
+	await mkdir(path.dirname(own), { recursive: true });
+	const list = await countryList({ npmpro_countries: [{ country: "FR" }] });
+	const host = await makeHost([list.id]);
+	assert.match(await geoipConf(), OWN_DATABASE_LINE);
+	// nginx refuses a second geoip_country, as the real one does with an own line in http_top.conf
+	await strictNginx(
+		`if grep -q '^geoip_country' "${api.root}/data/npmpro/nginx/geoip.conf" && grep -qs geoip_country "${own}"; then echo 'nginx: [emerg] "geoip_country" directive is duplicate in ${own}:1' >&2; exit 1; fi`,
+	);
+	try {
+		await writeFile(own, "geoip_country /etc/own/GeoIP.dat;\n");
+		const added = await admin.put(`${LISTS}/${list.id}`, { name: `own directive ${list.id}` });
+		assert.equal(added.status, 200, added.text);
+		assert.doesNotMatch(await geoipConf(), OWN_DATABASE_LINE);
+		assert.equal((await admin.get(`${LISTS}/geoip`)).body.custom_directive, true);
+		assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+		// a host save alone switches both ways too
+		await rm(own);
+		assert.equal((await admin.put(`${HOSTS}/${host.id}`, { forward_port: 84 })).status, 200);
+		assert.match(await geoipConf(), OWN_DATABASE_LINE);
+		await writeFile(own, "geoip_country /etc/own/GeoIP.dat;\n");
+		assert.equal((await admin.put(`${HOSTS}/${host.id}`, { forward_port: 85 })).status, 200);
+		assert.doesNotMatch(await geoipConf(), OWN_DATABASE_LINE);
+		assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+
+		await rm(own);
+		const removed = await admin.put(`${LISTS}/${list.id}`, { name: `database again ${list.id}` });
+		assert.equal(removed.status, 200, removed.text);
+		// NPMpro's own line is back, so $geoip_country_code is filled and the allow map lets an FR visitor pass
+		assert.match(await geoipConf(), OWN_DATABASE_LINE);
+		assert.match(await listsFile(), FR_PASSES);
+		assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+	} finally {
+		await rm(own, { force: true });
+	}
 });

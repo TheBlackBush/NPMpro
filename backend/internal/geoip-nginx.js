@@ -101,14 +101,17 @@ const writePassingLists = async () => {
 };
 
 /**
- * Before the nginx -t of a host save: when one of the written configs names a $npmpro_geo_<id> that geoip-lists.conf
- * does not define (the file lags behind the database, e.g. after a restore), the file is written again. For code in
- * the runtime settings queue.
+ * Before the nginx -t of a proxy host save (no files: nothing to do): geoip.conf is synced to the variant detected now (the caller reloads), and when
+ * one of the written configs names a $npmpro_geo_<id> that geoip-lists.conf does not define (the file lags behind the
+ * database, e.g. after a restore), that file is written again. For code in the runtime settings queue.
  *
  * @param   {string[]}  files  the host configs just written
  * @returns {Promise<boolean>}  whether the file was written
  */
 const ensureGeoipLists = async (files) => {
+	if (files.length === 0) return false;
+	// an own geoip_country added or removed since the last sync: the right variant before this save's nginx -t
+	await syncGeoipConfNow({ reload: false, report: false });
 	const named = new Set();
 	for (const file of files) {
 		const text = await readOrNull(file);
@@ -142,10 +145,11 @@ const geoipRefusal = () => refusal;
  * @param   {Object}   [options]
  * @param   {boolean}  [options.reload]
  * @param   {boolean}  [options.force]
+ * @param   {boolean}  [options.report]  evaluate geoip.failed also when nothing changed
  * @param   {Object}   [options.log]
  * @returns {Promise<{variant: string, changed: boolean}>}
  */
-const syncGeoipConfNow = async ({ reload = true, force = false, log = logger } = {}) => {
+const syncGeoipConfNow = async ({ reload = true, force = false, report = true, log = logger } = {}) => {
 	const status = await geoipStatus();
 	const wanted = renderGeoipConf(status);
 	const before = await readOrNull(GEOIP_CONF);
@@ -194,7 +198,7 @@ const syncGeoipConfNow = async ({ reload = true, force = false, log = logger } =
 			log.error(`GeoIP: nginx could not reload after geoip.conf changed: ${err.message}`);
 		}
 	}
-	await reportGeoipState();
+	if (report || changed) await reportGeoipState();
 	return { variant, changed };
 };
 

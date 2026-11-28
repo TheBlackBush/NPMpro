@@ -16,8 +16,7 @@ import accessListCountryModel from "../models/access_list_country.js";
 import locationModel from "../models/location.js";
 import proxyHostModel from "../models/proxy_host.js";
 import internalAuditLog from "./audit-log.js";
-import { geoipConfFailsOpen, geoipStatus, syncGeoipConfNow, writeGeoipLists } from "./geoip-nginx.js";
-import { reportGeoipState } from "./geoip-state.js";
+import { geoipStatus, syncGeoipConfNow, writeGeoipLists } from "./geoip-nginx.js";
 import internalNginx from "./nginx.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 
@@ -32,22 +31,20 @@ const countryRows = (listId, countries = []) =>
 	countries.map(({ country, npmpro_comment }) => ({ access_list_id: listId, country, npmpro_comment }));
 
 /**
- * In the runtime queue: geoip-lists.conf from the lists, and geoip.conf too when this list has a mode while the file
- * on disk lets every visitor pass (a Country file placed by hand is used at once, not at the hourly sync)
+ * In the runtime queue: geoip.conf follows the variant detected now (an own geoip_country added or removed, a Country
+ * file placed by hand), then geoip-lists.conf from the lists
  *
- * @param {Object}  list
  * @param {Object}  options  { reload }
  */
-const writeCountryIncludes = async (list, { reload }) => {
-	await writeGeoipLists({ report: false });
-	if (list.npmpro_geo_mode !== "off" && (await geoipConfFailsOpen())) await syncGeoipConfNow({ reload });
-	else await reportGeoipState();
+const writeCountryIncludes = async ({ reload }) => {
+	await syncGeoipConfNow({ reload, report: false });
+	await writeGeoipLists();
 };
 
 /** geoip-lists.conf after the host configs; a failure is logged, the save's own error stays the one that counts */
 const rewriteGeoipLists = async () => {
 	try {
-		await runtimeExclusive(writeGeoipLists);
+		await runtimeExclusive(() => writeCountryIncludes({ reload: false }));
 	} catch (err) {
 		logger.error(`Could not write the country rules of access lists: ${err.message}`);
 	}
@@ -129,7 +126,7 @@ const internalAccessList = {
 			// in the runtime queue like the host writes: a restore or another save never interleaves with the page write.
 			// The country map first: a host saved with the new list right after names its variable
 			await runtimeExclusive(async () => {
-				await writeCountryIncludes(freshRow, { reload: true });
+				await writeCountryIncludes({ reload: true });
 				await internalAccessList.build(freshRow);
 			});
 		} finally {
@@ -247,7 +244,7 @@ const internalAccessList = {
 			// The country maps before the host configs, so the batch nginx -t sees the variables the new gates name; a
 			// list turned off keeps a passing variable while the old configs still name it
 			await runtimeExclusive(async () => {
-				await writeCountryIncludes(freshRow, { reload: false });
+				await writeCountryIncludes({ reload: false });
 				await internalAccessList.build(freshRow);
 			});
 			try {

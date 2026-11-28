@@ -147,7 +147,7 @@ const geoipService = createGeoipService({
 	runUpdate: runGeoipUpdate,
 	getConfig: getGeoipConfig,
 	filesPresent: geoipFilesPresent,
-	// a lost Country file or a new custom geoip_country directive reaches geoip.conf within an hour
+	// a lost Country file or a changed own geoip_country reaches geoip.conf within an hour (a host or access list save at once)
 	onTick: () => syncGeoipConf(),
 });
 
