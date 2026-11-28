@@ -105,6 +105,46 @@ it("refuses access list addresses and user names and certificate domains with ng
 			),
 			refuses("access_list_auth.username"),
 		);
+		await check(
+			knex,
+			[item("access_lists", 1)],
+			list({
+				access_list_client: [{ id: 2, access_list_id: 1, address: "10.0.0.0/8", npmpro_comment: "Office" }],
+				npmpro_access_list_country: [{ id: 1, access_list_id: 1, country: "DE", npmpro_comment: "Berlin" }],
+			}),
+		);
+		await assert.rejects(
+			check(
+				knex,
+				[item("access_lists", 1)],
+				list({ npmpro_access_list_country: [{ id: 1, access_list_id: 1, country: "de" }] }),
+			),
+			refuses("npmpro_access_list_country.country"),
+		);
+		await assert.rejects(
+			check(
+				knex,
+				[item("access_lists", 1)],
+				list({
+					npmpro_access_list_country: [
+						{ id: 1, access_list_id: 1, country: "DE", npmpro_comment: "x".repeat(256) },
+					],
+				}),
+			),
+			refuses("npmpro_access_list_country.npmpro_comment"),
+		);
+		await assert.rejects(
+			check(
+				knex,
+				[item("access_lists", 1)],
+				list({
+					access_list_client: [
+						{ id: 2, access_list_id: 1, address: "10.0.0.0/8", npmpro_comment: "x".repeat(256) },
+					],
+				}),
+			),
+			refuses("access_list_client.npmpro_comment"),
+		);
 		await assert.rejects(
 			check(knex, [item("certificates", 1)], {
 				certificates: { certificate: [{ id: 1, provider: "letsencrypt", domain_names: '["a.com;x"]' }] },

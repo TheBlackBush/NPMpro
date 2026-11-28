@@ -404,6 +404,91 @@ it("a restore of the monitoring settings writes geoip.conf in its own queue job,
 	}
 });
 
+const LISTS = "/nginx/access-lists";
+const LISTS_FILE = () => path.join(api.root, "data/npmpro/nginx/geoip-lists.conf");
+const countriesOf = async (id) =>
+	(await api.db("npmpro_access_list_country").where({ access_list_id: id }).orderBy("country")).map((row) => [
+		row.country,
+		row.npmpro_comment,
+	]);
+const geoList = async () => {
+	const done = await admin.post(LISTS, {
+		name: "backup countries",
+		clients: [{ address: "10.1.0.0/16", directive: "allow", npmpro_comment: "Office" }],
+		npmpro_geo_mode: "allow",
+		npmpro_geo_unknown: "block",
+		npmpro_geo_drop: true,
+		npmpro_countries: [{ country: "DE", npmpro_comment: "Berlin" }, { country: "AT" }],
+	});
+	if (done.status !== 201) throw new Error(done.text);
+	return done.body;
+};
+
+it("restores the country rules and rule comments of an access list, and writes geoip-lists.conf for them", async () => {
+	const fixture = await readFile(path.join(import.meta.dirname, "fixtures", "GeoLite2-Country-Test.mmdb"));
+	const database = path.join(api.root, "data/goaccess/geoip/dbip-country-lite.mmdb");
+	await mkdir(path.dirname(database), { recursive: true });
+	await writeFile(database, withDatabaseType(fixture, "DBIP-Country-Lite"));
+	try {
+		const list = await geoList();
+		const entry = await keep({ types: ["access_lists"] });
+		const put = await admin.put(`${LISTS}/${list.id}`, {
+			npmpro_geo_mode: "deny",
+			npmpro_geo_drop: false,
+			npmpro_countries: [{ country: "US" }],
+			clients: [{ address: "10.2.0.0/16", directive: "deny" }],
+		});
+		assert.equal(put.status, 200, put.text);
+		await rm(LISTS_FILE(), { force: true });
+		const { token } = await inspect(entry.name);
+		// the restore runs in the runtime queue: a queued write of geoip-lists.conf from it would wait for itself
+		const done = await admin.post(`${BASE}/restore/${token}`, { types: ["access_lists"], confirm: true });
+		assert.equal(done.status, 200, done.text);
+		const row = await api.db("access_list").where({ id: list.id }).first();
+		assert.deepEqual(
+			[row.npmpro_geo_mode, row.npmpro_geo_unknown, Number(row.npmpro_geo_drop)],
+			["allow", "block", 1],
+		);
+		assert.deepEqual(await countriesOf(list.id), [
+			["AT", ""],
+			["DE", "Berlin"],
+		]);
+		assert.equal(
+			(await api.db("access_list_client").where({ access_list_id: list.id }).first()).npmpro_comment,
+			"Office",
+		);
+		assert.match(await readFile(LISTS_FILE(), "utf8"), new RegExp(`\\$npmpro_geo_${list.id} \\{`, "u"));
+		assert.equal((await admin.delete(`${LISTS}/${list.id}`)).status, 200);
+	} finally {
+		await rm(database, { force: true });
+		await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+	}
+});
+
+it("restores country rules without a usable database: the rules stay and the GeoIP state reports missing", async () => {
+	const fixture = await readFile(path.join(import.meta.dirname, "fixtures", "GeoLite2-Country-Test.mmdb"));
+	const database = path.join(api.root, "data/goaccess/geoip/dbip-country-lite.mmdb");
+	await mkdir(path.dirname(database), { recursive: true });
+	await writeFile(database, withDatabaseType(fixture, "DBIP-Country-Lite"));
+	const list = await geoList();
+	const entry = await keep({ types: ["access_lists"] });
+	assert.equal((await admin.delete(`${LISTS}/${list.id}`)).status, 200);
+	await rm(database, { force: true });
+	await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+	const { token } = await inspect(entry.name);
+	const done = await admin.post(`${BASE}/restore/${token}`, { types: ["access_lists"], confirm: true });
+	assert.equal(done.status, 200, done.text);
+	assert.deepEqual(await countriesOf(list.id), [
+		["AT", ""],
+		["DE", "Berlin"],
+	]);
+	const state = await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).first();
+	assert.equal(state.state, "bad");
+	assert.equal((typeof state.data === "string" ? JSON.parse(state.data) : state.data).reason, "missing");
+	await admin.delete(`${LISTS}/${list.id}`);
+	await api.db("npmpro_notification_state").where({ key: "geoip.failed:geoip" }).delete();
+});
+
 it("restores the description of a host from a backup", async () => {
 	const host = await addHost("described-bk.example.com");
 	assert.equal((await admin.put(`/nginx/proxy-hosts/${host.id}`, { npmpro_description: "Backed up" })).status, 200);

@@ -412,7 +412,12 @@ const TYPES = {
 		secrets: { export: withoutEab, strip: withoutEab, seal: (rowsByTable) => rowsByTable },
 	},
 	access_lists: {
-		tables: [{ table: "access_list" }, { table: "access_list_auth" }, { table: "access_list_client" }],
+		tables: [
+			{ table: "access_list" },
+			{ table: "access_list_auth" },
+			{ table: "access_list_client" },
+			{ table: "npmpro_access_list_country" },
+		],
 		files: NO_FILES,
 		secrets: {
 			...NO_SECRETS,

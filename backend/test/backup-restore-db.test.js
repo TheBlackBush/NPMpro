@@ -11,6 +11,7 @@ import { up as createDnsDomainTable } from "../migrations/20261123120000_dns_dom
 import { up as createDdnsTables } from "../migrations/20261124120000_ddns_records.js";
 import { up as addDdnsHostColumns } from "../migrations/20261125120000_ddns_host_records.js";
 import { up as createPasswordTokens } from "../migrations/20261127130000_password_tokens.js";
+import { createSchema } from "./support/backup-schema.js";
 
 process.env.TZ = "UTC";
 
@@ -576,3 +577,39 @@ for (const [name, copy] of [
 		await knex.destroy();
 	});
 }
+
+it("restores an access list backup from before country rules: mode off, the instance's countries gone", async () => {
+	const knex = knexFactory({
+		client: "better-sqlite3",
+		connection: { filename: ":memory:" },
+		useNullAsDefault: true,
+	});
+	await createSchema(knex);
+	try {
+		await knex("access_list").insert({ id: 1, name: "Now", npmpro_geo_mode: "allow" });
+		await knex("npmpro_access_list_country").insert({
+			access_list_id: 1,
+			country: "DE",
+			created_on: "2026-01-01 00:00:00",
+			modified_on: "2026-01-01 00:00:00",
+		});
+		// no country table in the data and none of the new columns in the rows, as an old backup holds them
+		const data = {
+			access_lists: {
+				access_list: [{ id: 1, owner_user_id: 1, name: "Old", meta: {} }],
+				access_list_auth: [],
+				access_list_client: [{ id: 1, access_list_id: 1, address: "10.0.0.0/8", directive: "allow", meta: {} }],
+			},
+		};
+		await replaceTypes({ knex, data, types: ["access_lists"], adminUserId: 1, box, now: NOW });
+		const list = await knex("access_list").where({ id: 1 }).first();
+		assert.deepEqual(
+			[list.name, list.npmpro_geo_mode, list.npmpro_geo_unknown, Number(list.npmpro_geo_drop)],
+			["Old", "off", "auto", 0],
+		);
+		assert.equal((await knex("access_list_client").first()).npmpro_comment, "");
+		assert.equal((await knex("npmpro_access_list_country")).length, 0);
+	} finally {
+		await knex.destroy();
+	}
+});
