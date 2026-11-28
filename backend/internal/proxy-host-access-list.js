@@ -112,7 +112,8 @@ const internalProxyHostAccessList = {
 		const specificRules = lists
 			.flatMap((l) => l.clients || [])
 			.filter((c) => c.address?.trim().toLowerCase() !== "all");
-		const clients = specificRules.length === 0 ? [] : [...specificRules, catchAll];
+		// a lone deny all or allow all renders too: without it a deny all only list left the host open
+		const clients = withRules.length === 0 ? [] : [...specificRules, catchAll];
 		return {
 			items: getMergedItems(lists),
 			clients,

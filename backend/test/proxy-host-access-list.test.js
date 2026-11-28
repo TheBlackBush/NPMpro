@@ -68,8 +68,38 @@ describe("buildAclFile catch-all (#3808)", () => {
 			rule("allow", "all"),
 		]);
 		assert.deepEqual(last(build(list(1, [rule("allow", "10.0.0.5")]))), rule("deny", "all"));
-		assert.deepEqual(build(list(1, [rule("allow", "all")])).clients, []);
+		assert.deepEqual(build(list(1, [])).clients, []);
 		assert.deepEqual(build().clients, []);
+	});
+});
+
+describe("buildAclFile a lone all rule (D20)", () => {
+	it("renders deny all for a list with only deny all", () => {
+		assert.deepEqual(build(list(1, [rule("deny", "all")])).clients, [rule("deny", "all")]);
+	});
+
+	it("renders allow all for a list with only allow all", () => {
+		assert.deepEqual(build(list(1, [rule("allow", "all")])).clients, [rule("allow", "all")]);
+	});
+
+	it("renders deny all for two lists, one ending with deny all", () => {
+		assert.deepEqual(build(list(1, [rule("allow", "all")]), list(2, [rule("deny", "all")])).clients, [
+			rule("deny", "all"),
+		]);
+	});
+
+	it("renders no rule for a list with users only", () => {
+		const built = build(list(1, [], { items: [{ username: "u", password: "p" }], satisfy_any: true }));
+		assert.deepEqual(built.clients, []);
+	});
+
+	it("keeps satisfy any with users next to a lone deny all", () => {
+		const built = build(
+			list(1, [rule("deny", "all")], { items: [{ username: "u", password: "p" }], satisfy_any: true }),
+		);
+		assert.deepEqual(built.clients, [rule("deny", "all")]);
+		assert.equal(built.satisfy_any, true);
+		assert.equal(built.items.length, 1);
 	});
 });
 

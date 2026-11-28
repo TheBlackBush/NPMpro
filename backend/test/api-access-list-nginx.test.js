@@ -300,6 +300,63 @@ it("a country only list gets the denied page, and forward authentication keeps i
 	assert.match(tiny, DENIED_PAGE_HEADER);
 });
 
+const SATISFY_ANY = /satisfy any;/u;
+const AUTH_BASIC = /auth_basic /u;
+const DENIED_ERROR_PAGE = /error_page 401 403 \/\.npmpro-page\/denied-1;/u;
+const ACCESS_RULES = /# Access Rules: \d+ total\s+(?<rules>(?:(?:allow|deny) [^;]+;\s*)+)/u;
+const ONE_RULE = /(?:allow|deny) [^;]+;/gu;
+// D20: a list whose only client rule is deny all refuses every visitor
+const loneRuleHost = async (clients, { users = false, satisfyAny = false } = {}) => {
+	const now = new Date().toISOString();
+	const list = await makeList();
+	await api.db("access_list_client").where({ access_list_id: list.id }).delete();
+	if (!users) await api.db("access_list_auth").where({ access_list_id: list.id }).delete();
+	if (clients.length > 0) {
+		await api.db("access_list_client").insert(
+			clients.map((c) => ({
+				access_list_id: list.id,
+				created_on: now,
+				modified_on: now,
+				meta: "{}",
+				...c,
+			})),
+		);
+	}
+	await api
+		.db("access_list")
+		.where({ id: list.id })
+		.update({ satisfy_any: satisfyAny ? 1 : 0 });
+	return gateConfig(await makeHost([list.id]));
+};
+const rulesOf = (text) => [...(text.match(ACCESS_RULES)?.groups.rules.matchAll(ONE_RULE) ?? [])].map((m) => m[0]);
+
+it("a list with only deny all refuses every visitor, with the denied page", async () => {
+	const text = await loneRuleHost([{ directive: "deny", address: "all" }]);
+	assert.deepEqual(rulesOf(text), ["deny all;"]);
+	assert.doesNotMatch(text, SATISFY_ANY);
+	assert.match(text, DENIED_ERROR_PAGE);
+	assert.match(text, DENIED_PAGE_HEADER);
+});
+
+it("a list with only deny all and users still lets the password in under satisfy any", async () => {
+	const text = await loneRuleHost([{ directive: "deny", address: "all" }], { users: true, satisfyAny: true });
+	assert.deepEqual(rulesOf(text), ["deny all;"]);
+	assert.match(text, AUTH_BASIC);
+	assert.match(text, SATISFY_ANY);
+});
+
+it("a list with only deny all and users needs both under satisfy all", async () => {
+	const text = await loneRuleHost([{ directive: "deny", address: "all" }], { users: true });
+	assert.deepEqual(rulesOf(text), ["deny all;"]);
+	assert.match(text, AUTH_BASIC);
+	assert.doesNotMatch(text, SATISFY_ANY);
+});
+
+it("a list with only allow all renders allow all, and a list with users only no rule", async () => {
+	assert.deepEqual(rulesOf(await loneRuleHost([{ directive: "allow", address: "all" }])), ["allow all;"]);
+	assert.deepEqual(rulesOf(await loneRuleHost([], { users: true })), []);
+});
+
 it("renders no country line for hosts whose lists have no mode", async () => {
 	const list = await makeList();
 	const host = await makeHost([list.id]);
