@@ -657,3 +657,50 @@ it("deleting a list removes its country rows without the database cascade", asyn
 	assert.equal((await admin.delete(`${BASE}/${created.id}`)).status, 200);
 	assert.equal(await countryRowsOf(created.id), 0);
 });
+
+it("a list with only countries and no usable database cannot lose its last rule, but saves with one IP rule", async () => {
+	await giveDatabase();
+	const created = await create(countryList());
+	await takeDatabase();
+	const url = `${BASE}/${created.id}`;
+	const off = await admin.put(url, { npmpro_geo_mode: "off" });
+	assert.equal(off.status, 400);
+	assert.equal(off.body.error.message, "Access list needs at least one user or one rule that is not all");
+	const emptied = await admin.put(url, { npmpro_countries: [] });
+	assert.equal(emptied.status, 400);
+	assert.equal(errorKey(emptied), "error.access.country-mode-empty");
+	assert.deepEqual(countryCodes((await admin.get(`${url}?expand=npmpro_countries`)).body), ["DE", "FR"]);
+	const saved = await admin.put(url, {
+		npmpro_geo_mode: "off",
+		clients: [{ address: "10.2.0.0/16", directive: "allow" }],
+	});
+	assert.equal(saved.status, 200, saved.text);
+	assert.equal(saved.body.npmpro_geo_mode, "off");
+});
+
+it("lists_with_rules counts only the lists a user with the visibility user owns", async () => {
+	await giveDatabase();
+	const own = await api.limited({ visibility: "user", access_lists: "manage" });
+	const mine = await create(countryList(), own);
+	await create(countryList());
+	const seen = await own.get(`${BASE}/geoip`);
+	assert.equal(seen.status, 200);
+	assert.equal(seen.body.lists_with_rules, 1);
+	const all = (await admin.get(`${BASE}/geoip`)).body.lists_with_rules;
+	assert.ok(all >= 2);
+	assert.equal((await own.delete(`${BASE}/${mine.id}`)).status, 200);
+	assert.equal((await own.get(`${BASE}/geoip`)).body.lists_with_rules, 0);
+});
+
+it("trims the comment of a rule and of a country on save", async () => {
+	await giveDatabase();
+	const created = await create(
+		countryList({
+			npmpro_countries: [{ country: "FR", npmpro_comment: "  Paris  " }],
+			clients: [{ address: "10.3.0.0/16", directive: "allow", npmpro_comment: "  VPN  " }],
+		}),
+	);
+	const read = (await admin.get(`${BASE}/${created.id}?expand=clients,npmpro_countries`)).body;
+	assert.equal(read.npmpro_countries[0].npmpro_comment, "Paris");
+	assert.equal(read.clients[0].npmpro_comment, "VPN");
+});
