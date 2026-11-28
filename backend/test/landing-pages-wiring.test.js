@@ -22,6 +22,7 @@ it("defaults: the global upstream error page, intercepted; the upstream's own 40
 		not_found: "",
 		upstream_error: "upstream-error",
 		denied: "",
+		geo_denied: "",
 		intercept: true,
 		maintenance: "",
 		certificate: "",
@@ -71,6 +72,7 @@ it("grpc and path hosts get the pages without intercepting; upstream choices get
 		not_found: "",
 		upstream_error: "",
 		denied: "",
+		geo_denied: "",
 		intercept: false,
 		maintenance: "",
 		certificate: "",
@@ -169,11 +171,18 @@ it("a server level error_page of the host wins: no page error_page lines, no pag
 		not_found: "",
 		upstream_error: "",
 		denied: "",
+		geo_denied: "",
 		intercept: false,
 		maintenance: "",
 		certificate: "",
 	});
-	assert.deepEqual(wiring.byLocation[0], { not_found: "", upstream_error: "", denied: "", intercept: false });
+	assert.deepEqual(wiring.byLocation[0], {
+		not_found: "",
+		upstream_error: "",
+		denied: "",
+		geo_denied: "",
+		intercept: false,
+	});
 	assert.deepEqual(wiring.locations, []);
 	const inLocation = pageWiring("proxy_host", host({ npmpro_location_config: "error_page 502 /x.html;" }));
 	// location level text silences that location only; here it is the only one, so nothing is wired
@@ -218,17 +227,91 @@ it("an error_page in a location's own config leaves that location alone", () => 
 		not_found: "",
 		upstream_error: "",
 		denied: "",
+		geo_denied: "",
 		intercept: false,
 		maintenance: "",
 		certificate: "",
 	});
 	assert.equal(wiring.byLocation[0].upstream_error, "upstream-error");
 	assert.equal(wiring.byLocation[0].intercept, true);
-	assert.deepEqual(wiring.byLocation[1], { not_found: "", upstream_error: "", denied: "", intercept: false });
+	assert.deepEqual(wiring.byLocation[1], {
+		not_found: "",
+		upstream_error: "",
+		denied: "",
+		geo_denied: "",
+		intercept: false,
+	});
 	assert.deepEqual(
 		wiring.locations.map(({ name }) => name),
 		["upstream-error"],
 	);
 	const none = pageWiring("proxy_host", host({ npmpro_location_config: "error_page 502 /mine.html;" }));
 	assert.deepEqual(none.locations, []);
+});
+
+const GEO = { items: [], clients: [], denied_page: "global", denied_list_id: 3, geo_gates: [{ id: 3, drop: false }] };
+
+it("a country gate gets the denied page at its own target and leaves the location's pages alone", () => {
+	const wiring = pageWiring("proxy_host", host({ access_list: GEO }));
+	// a country only list: no error_page 401 403 in the location, so intercepting stays on
+	assert.equal(wiring.host.denied, "");
+	assert.equal(wiring.host.intercept, true);
+	assert.equal(wiring.host.geo_denied, "denied-1");
+	assert.deepEqual(wiring.geoTargets, ["denied-1"]);
+	assert.deepEqual(wiring.locations.at(-1), { name: "denied-1", file: "/data/public/pages/global/denied.html" });
+	// with users or rules too, the location's and the gate's denied page are one page location
+	const both = pageWiring("proxy_host", host({ access_list: { ...GEO, items: LIST.items } }));
+	assert.equal(both.host.denied, "denied-1");
+	assert.equal(both.host.geo_denied, "denied-1");
+	assert.deepEqual(
+		both.locations.map(({ name }) => name),
+		["upstream-error", "denied-1"],
+	);
+});
+
+it("a country gate under forward authentication still gets the denied page", () => {
+	for (const provider of ["anubis", "tinyauth", "voidauth", "authelia", "oauth2proxy", "authentik"]) {
+		const wiring = pageWiring("proxy_host", host({ access_list: GEO, npmpro_auth_request: provider }));
+		assert.equal(wiring.host.denied, "", provider);
+		assert.equal(wiring.host.geo_denied, "denied-1", provider);
+		assert.deepEqual(wiring.geoTargets, ["denied-1"], provider);
+	}
+});
+
+it("gate targets: none for drop gates, a bare one without a page, one per page across locations", () => {
+	const drop = pageWiring("proxy_host", host({ access_list: { ...GEO, geo_gates: [{ id: 3, drop: true }] } }));
+	assert.equal(drop.host.geo_denied, "");
+	assert.deepEqual(drop.geoTargets, []);
+	assert.deepEqual(
+		drop.locations.map(({ name }) => name),
+		["upstream-error"],
+	);
+	const plain = pageWiring("proxy_host", host({ access_list: { ...GEO, denied_page: "plain" } }));
+	assert.deepEqual(plain.geoTargets, [""]);
+	// a server level error_page of the host: the bare target, which inherits it
+	assert.deepEqual(
+		pageWiring("proxy_host", host({ access_list: GEO, advanced_config: "error_page 403 /x;" })).geoTargets,
+		[""],
+	);
+	const wiring = pageWiring(
+		"proxy_host",
+		host({
+			access_list: GEO,
+			locations: [
+				{ forward_scheme: "http", access_list: GEO, npmpro_auth_request: "none" },
+				{ forward_scheme: "http", access_list: { ...GEO, denied_list_id: 4, denied_page: "custom" } },
+				{ forward_scheme: "http", access_list: { ...GEO, denied_page: "plain" }, npmpro_enabled: false },
+				{
+					forward_scheme: "http",
+					access_list: { ...GEO, denied_page: "plain" },
+					advanced_config: "error_page 404 /y;",
+				},
+			],
+		}),
+	);
+	assert.deepEqual(
+		wiring.byLocation.map(({ geo_denied }) => geo_denied),
+		["denied-1", "denied-2", "", ""],
+	);
+	assert.deepEqual(wiring.geoTargets, ["denied-1", "denied-2", ""]);
 });

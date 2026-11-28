@@ -205,6 +205,14 @@ if grep -rq BADHOST --include='*.conf' "${dir}"; then echo "BADHOST is not valid
 const GEO_ANY = /npmpro_geo/u;
 const GEO_GATE = /npmpro_geo_\d+ = 0/u;
 const GEO_GATES = /npmpro_geo_\d+ = 0/gu;
+// a location from its header to the next line that starts a location (or the end)
+const locationBlock = (text, header) => {
+	const start = text.indexOf(header);
+	assert.ok(start >= 0, header);
+	const rest = text.slice(start + header.length);
+	const next = rest.search(/\n\s*location /u);
+	return header + (next < 0 ? rest : rest.slice(0, next));
+};
 const gateConfig = async (host) => readFile(path.join(api.root, config(host.id)), "utf8");
 const setGeo = (id, mode, drop = 0) =>
 	api.db("access_list").where({ id }).update({ npmpro_geo_mode: mode, npmpro_geo_drop: drop });
@@ -229,20 +237,63 @@ it("renders the country gates of every gated list before the password and IP rul
 	const text = await gateConfig(host);
 	const rootStart = text.indexOf("location / {");
 	const root = text.slice(rootStart, text.indexOf("auth_basic ", rootStart));
-	const gates = [...root.matchAll(/if \(\$npmpro_geo_(?<id>\d+) = 0\) \{ return (?<code>\d+); \}/gu)];
+	const gates = [...root.matchAll(/if \(\$npmpro_geo_(?<id>\d+) = 0\) \{ (?<answer>[^}]+) \}/gu)];
 	assert.deepEqual(
-		gates.map((m) => [Number(m.groups.id), m.groups.code]),
+		gates.map((m) => [Number(m.groups.id), m.groups.answer]),
 		[
-			[a.id, "403"],
-			[c.id, "444"],
+			[a.id, "rewrite ^ /.npmpro-geo/denied-1? last;"],
+			[c.id, "return 444;"],
 		],
 	);
 	assert.doesNotMatch(root, new RegExp(`npmpro_geo_${b.id}\\b`, "u"));
 	const inner = text.slice(text.indexOf('location "/inner"'));
 	assert.equal([...inner.slice(0, inner.indexOf("location ", 10)).matchAll(GEO_GATES)].length, 2);
-	const acmeAt = text.indexOf('location ^~ "/.well-known/acme-challenge/"');
-	assert.ok(acmeAt > 0);
-	assert.doesNotMatch(text.slice(acmeAt, acmeAt + 600), GEO_GATE);
+	const acme = locationBlock(text, 'location ^~ "/.well-known/acme-challenge/"');
+	assert.match(acme, /proxy_pass /u);
+	assert.doesNotMatch(acme, GEO_GATE);
+	// the target of the 403 gates answers with the denied page, outside the gated locations
+	assert.match(
+		locationBlock(text, "location = /.npmpro-geo/denied-1 {"),
+		/internal;\s+error_page 403 \/\.npmpro-page\/denied-1;\s+return 403;/u,
+	);
+});
+
+it("repeats the gates in the built-in PHP location of a path host", async () => {
+	const list = await makeList();
+	await setGeo(list.id, "deny");
+	const host = await makeHost([list.id], { forward_scheme: "path", forward_host: "/var/www/php", forward_port: 83 });
+	const text = await gateConfig(host);
+	const php = locationBlock(text, "location ~* [^/]\\.php(?:$|/) {");
+	assert.match(
+		php,
+		new RegExp(`if \\(\\$npmpro_geo_${list.id} = 0\\) \\{ rewrite \\^ /\\.npmpro-geo/denied-1\\? last; \\}`, "u"),
+	);
+	assert.ok(php.indexOf("npmpro_geo") < php.indexOf("fastcgi_pass"));
+});
+
+it("a country only list gets the denied page, and forward authentication keeps it for the gate", async () => {
+	// the API needs a usable GeoIP database for a country rule: the users and rules go in the database instead
+	const only = await makeList();
+	await api.db("access_list_auth").where({ access_list_id: only.id }).delete();
+	await api.db("access_list_client").where({ access_list_id: only.id }).delete();
+	await setGeo(only.id, "allow");
+	const plain = await gateConfig(await makeHost([only.id]));
+	assert.match(plain, /location = \/\.npmpro-geo\/denied-1 \{/u);
+	assert.match(plain, /location = \/\.npmpro-page\/denied-1 \{/u);
+	const tiny = await gateConfig(
+		await makeHost([only.id], {
+			npmpro_auth_request: "tinyauth",
+			npmpro_auth_request_upstream: "http://auth.internal:3000",
+		}),
+	);
+	const root = locationBlock(tiny, "location / {");
+	assert.match(root, /rewrite \^ \/\.npmpro-geo\/denied-1\? last;/u);
+	assert.match(root, /error_page 401 403 =302 \$redirection_url;/u);
+	assert.match(
+		locationBlock(tiny, "location = /.npmpro-geo/denied-1 {"),
+		/error_page 403 \/\.npmpro-page\/denied-1;/u,
+	);
+	assert.match(tiny, /location = \/\.npmpro-page\/denied-1 \{/u);
 });
 
 it("renders no country line for hosts whose lists have no mode", async () => {

@@ -431,6 +431,7 @@ const internalNginx = {
 		const pages = pageWiring(host_type, host);
 		host.npmpro_page_locations = pages.locations;
 		host.npmpro_pages = pages.host;
+		host.npmpro_geo_targets = pages.geoTargets;
 		for (const [index, location] of (host.locations ?? []).entries())
 			location.npmpro_pages = pages.byLocation[index];
 

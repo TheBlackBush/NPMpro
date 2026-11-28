@@ -105,6 +105,11 @@ it("a path the user quoted by hand keeps its meaning", () => {
 });
 
 const GEO_LINE = /npmpro_geo/u;
+const gateLines = (text) =>
+	text
+		.split("\n")
+		.filter((line) => line.includes("$npmpro_geo_"))
+		.map((line) => line.trim());
 
 it("renders the country gates of the access list before the authorization block", async () => {
 	const access_list = {
@@ -123,12 +128,35 @@ it("renders the country gates of the access list before the authorization block"
 		location_type: "",
 		path: "/g",
 	};
-	const out = await render({ ...base, access_list });
-	const lines = out.split("\n").filter((line) => line.includes("npmpro_geo"));
-	assert.deepEqual(
-		lines.map((line) => line.trim()),
-		["if ($npmpro_geo_4 = 0) { return 403; }", "if ($npmpro_geo_9 = 0) { return 444; }"],
-	);
+	const out = await render({ ...base, access_list, npmpro_pages: { geo_denied: "denied-2" } });
+	assert.deepEqual(gateLines(out), [
+		"if ($npmpro_geo_4 = 0) { rewrite ^ /.npmpro-geo/denied-2? last; }",
+		"if ($npmpro_geo_9 = 0) { return 444; }",
+	]);
 	assert.ok(out.indexOf("npmpro_geo_9") < out.indexOf("auth_basic"));
+	// without a denied page the gate rewrites to the bare target (nginx's own 403)
+	assert.equal(
+		gateLines(await render({ ...base, access_list }))[0],
+		"if ($npmpro_geo_4 = 0) { rewrite ^ /.npmpro-geo/? last; }",
+	);
 	assert.doesNotMatch(await render({ ...base, access_list: { ...access_list, geo_gates: [] } }), GEO_LINE);
+});
+
+it("repeats the country gates in the built-in PHP location (rewrite rules are not inherited)", async () => {
+	const out = await render({
+		forward_scheme: "path",
+		forward_host: "/var/www/",
+		forward_port: 1,
+		location_type: "",
+		path: "/p",
+		access_list: { items: [], clients: [], geo_gates: [{ id: 4, drop: false }] },
+		npmpro_pages: { geo_denied: "denied-1" },
+	});
+	const php = out.slice(out.indexOf("location ~* [^/]\\.php"));
+	assert.deepEqual(gateLines(out.slice(0, out.indexOf("location ~* [^/]\\.php"))), [
+		"if ($npmpro_geo_4 = 0) { rewrite ^ /.npmpro-geo/denied-1? last; }",
+	]);
+	assert.deepEqual(gateLines(php.slice(0, php.indexOf("fastcgi_pass"))), [
+		"if ($npmpro_geo_4 = 0) { rewrite ^ /.npmpro-geo/denied-1? last; }",
+	]);
 });
