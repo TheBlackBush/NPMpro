@@ -68,7 +68,14 @@ Set the rules on the Countries tab of the access list window. Choose a mode:
 - **Allow only these countries:** every other country is blocked.
 - **Block these countries:** every other country passes.
 
-Every country can have a comment. Private and local addresses always pass (see below). A list with country rules applies to every proxy host and custom location that uses it.
+Add countries with **Add a country**. The picker searches by the country's name in the interface language or by its two-letter code, so with the interface in German both "Deutschland" and "DE" find Germany. Every country can have a comment. Private and local addresses always pass (see below). A list with country rules applies to every proxy host and custom location that uses it.
+
+The access list table shows a badge for each list with country rules: **Allow N countries** or **Block N countries**.
+
+Two switches sit under the picker:
+
+- **Block visitors whose country is unknown** (see [Unknown countries](#unknown-countries)).
+- **Close the connection without an answer (444)**, see below.
 
 How a request is checked:
 
@@ -91,7 +98,7 @@ Some public addresses have no country in the database. Each list decides: the sw
 Without a usable GeoIP country database, country rules let every visitor pass (fail open), so a missing database never locks you out. Saved countries stay. While the database is missing:
 
 - you can still rename the list, remove countries, change the 444 setting and turn the country rules off, but you cannot turn a mode on, change it or add a country;
-- the access list page and Settings, GeoIP show a warning;
+- the access list window shows a warning, the access list page shows a banner above the table, and Settings, GeoIP shows an alert for the lists with country rules;
 - the `geoip.failed` notification fires with the reason `missing`, see [Notifications](Notifications).
 
 The same happens when the database is there but nginx refuses NPMpro's `geoip_country` line (for example a duplicate it did not see, below): NPMpro falls back to letting every country pass so nginx keeps working, logs the nginx error, shows the warnings and sends `geoip.failed` with the reason `nginx`. Saving and changing country rules still works then, as the database itself is usable.

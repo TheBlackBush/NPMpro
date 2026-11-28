@@ -128,7 +128,7 @@ Each certificate is requested from the certificate authority chosen in its windo
 
 ## Access lists
 
-Access lists combine basic auth users and allow/deny rules for IP addresses or ranges. A host or location can use several access lists; they are evaluated top-down in the order shown in the UI, and "Satisfy Any" and "Pass Auth to Upstream" only apply when set on the first one. See [Host options](Host-options#access-lists).
+Access lists combine basic auth users and allow/deny rules for IP addresses or ranges. A host or location can use several access lists; they are evaluated top-down in the order shown in the UI, and "Satisfy Any" and "Pass Auth to Upstream" only apply when set on the first one. Each IP rule can have a comment ("Comment (optional)") to remember why it is there. The Countries tab allows or blocks visitors by country: a list with country rules shows a badge in the table, and the rules need a GeoIP country database to take effect, see [Security](Security#geoblocking). See [Host options](Host-options#access-lists).
 
 When you save an access list:
 
